@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Campaign and save state.
+#
+# This is the app's runtime store, not source: the GM's worlds, written on every
+# brush stroke. Committing it would mean a diff on every edit, and merge
+# conflicts on hand-built terrain. Campaign versioning is a product feature
+# (Duplicate), not a git one.
+data/
+
+# Local tool state
+.claude/settings.local.json
+coverage/
+*.log
+
+# Secrets, if any ever appear
+.env
+.env.*
+!.env.example
+
+# macOS
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes

@@ -1,0 +1,14 @@
+{
+  "name": "@tt/render",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@tt/domain": "*",
+    "@tt/geometry": "*",
+    "three": "^0.169.0"
+  }
+}

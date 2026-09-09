@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tabletop Scenarios</title>
+<link rel="stylesheet" href="/style.css">
+<script type="importmap">
+{ "imports": {
+    "three": "/vendor/three/build/three.module.js",
+    "three/addons/": "/vendor/three/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="app">
+  <canvas id="view"></canvas>
+
+  <header id="topbar">
+    <span class="brand">Tabletop</span>
+    <span id="roleBadge" class="badge">connecting…</span>
+    <span id="scenarioName" class="muted"></span>
+    <span class="spacer"></span>
+    <span id="roundLabel" class="muted"></span>
+    <button id="endTurn" class="gm-only">End round</button>
+  </header>
+
+  <aside id="left">
+    <div class="panel">
+      <div class="panel-title">Mode</div>
+      <div class="seg" id="modeSeg">
+        <button data-mode="select" class="on">Select</button>
+        <button data-mode="build" class="gm-only">Build</button>
+        <button data-mode="vision">Vision</button>
+      </div>
+    </div>
+
+    <div class="panel gm-only" id="buildPanel" hidden>
+      <div class="panel-title">Block</div>
+      <div id="kindList" class="kinds"></div>
+      <label class="row">Level <output id="levelOut">1</output>
+        <input id="level" type="range" min="0" max="11" value="1">
+      </label>
+      <p class="hint">Click a face to add, <kbd>Alt</kbd>+click to remove. The
+        build plane is the chosen level.</p>
+      <div class="row">
+        <button id="addPlayerToken">+ Player token</button>
+        <button id="addGmToken">+ NPC token</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Tokens</div>
+      <ul id="tokenList" class="tokens"></ul>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Selected</div>
+      <div id="selInfo" class="muted">nothing selected</div>
+      <div class="seg" id="postureSeg"></div>
+      <p class="hint" id="facingHint" hidden>Drag with <kbd>right mouse</kbd> on the
+        token to turn it. <kbd>Q</kbd>/<kbd>E</kbd> also work.</p>
+    </div>
+
+    <div class="panel gm-only">
+      <div class="panel-title">Rules</div>
+      <label class="row"><span>Wall seams</span>
+        <select id="seam">
+          <option value="strict">strict — airtight</option>
+          <option value="permissive">permissive — peek diagonals</option>
+        </select>
+      </label>
+      <label class="row"><span>Diagonals</span>
+        <select id="cornerRule">
+          <option value="seam">seam — brush corners</option>
+          <option value="strict">strict — no corner cutting</option>
+        </select>
+      </label>
+      <div class="row">
+        <button id="revealAll">Reveal all</button>
+        <button id="resetFog">Reset fog</button>
+      </div>
+      <label class="row"><input type="checkbox" id="showPlayerFog"> Shade what the Player cannot see</label>
+    </div>
+
+    <div class="panel gm-only">
+      <div class="panel-title">Scenario</div>
+      <div class="row"><select id="scenarioPick"></select><button id="loadScenario">Load</button></div>
+      <div class="row"><input id="saveName" placeholder="name" value="warehouse"><button id="saveScenario">Save</button></div>
+    </div>
+  </aside>
+
+  <aside id="right">
+    <div class="panel">
+      <div class="panel-title">Line of sight</div>
+      <div class="row"><span class="lbl">Observer</span><select id="obsPick"></select></div>
+      <div class="row"><span class="lbl">Target</span><select id="tgtPick"></select></div>
+      <div class="row">
+        <label><input type="checkbox" id="showRays" checked> Draw rays</label>
+        <label><input type="checkbox" id="showCone"> Draw view cone</label>
+      </div>
+      <div id="explain" class="explain">Pick two tokens to see how the engine reasons about them.</div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Contacts</div>
+      <div id="contacts" class="muted">—</div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Log</div>
+      <ul id="log" class="log"></ul>
+    </div>
+  </aside>
+
+  <div id="pip">
+    <div class="pip-title"><span id="pipLabel">eye view</span><button id="pipToggle">hide</button></div>
+    <canvas id="pipView"></canvas>
+  </div>
+
+  <div id="toast"></div>
+</div>
+<script type="module" src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,65 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@tt/gm": [
+        "./apps/gm/src/index.ts"
+      ],
+      "@tt/host": [
+        "./apps/host/src/index.ts"
+      ],
+      "@tt/table": [
+        "./apps/table/src/index.ts"
+      ],
+      "@tt/client-core": [
+        "./packages/client-core/src/index.ts"
+      ],
+      "@tt/domain": [
+        "./packages/domain/src/index.ts"
+      ],
+      "@tt/geometry": [
+        "./packages/geometry/src/index.ts"
+      ],
+      "@tt/persistence": [
+        "./packages/persistence/src/index.ts"
+      ],
+      "@tt/protocol": [
+        "./packages/protocol/src/index.ts"
+      ],
+      "@tt/render": [
+        "./packages/render/src/index.ts"
+      ],
+      "@tt/sim": [
+        "./packages/sim/src/index.ts"
+      ],
+      "@tt/ui": [
+        "./packages/ui/src/index.ts"
+      ]
+    }
+  },
+  "include": [
+    "apps/gm/src/**/*",
+    "apps/host/src/**/*",
+    "apps/table/src/**/*",
+    "packages/client-core/src/**/*",
+    "packages/domain/src/**/*",
+    "packages/geometry/src/**/*",
+    "packages/persistence/src/**/*",
+    "packages/protocol/src/**/*",
+    "packages/render/src/**/*",
+    "packages/sim/src/**/*",
+    "packages/ui/src/**/*",
+    "apps/gm/test/**/*",
+    "apps/host/test/**/*",
+    "apps/table/test/**/*",
+    "packages/client-core/test/**/*",
+    "packages/domain/test/**/*",
+    "packages/geometry/test/**/*",
+    "packages/persistence/test/**/*",
+    "packages/protocol/test/**/*",
+    "packages/render/test/**/*",
+    "packages/sim/test/**/*",
+    "packages/ui/test/**/*"
+  ]
+}

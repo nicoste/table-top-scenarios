@@ -1,0 +1,35 @@
+{
+  "name": "table-top-scenarios",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "On-site 3D tabletop tool: GM console + table display over a LAN.",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "arch": "depcruise packages apps --config .dependency-cruiser.cjs",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "verify": "npm run typecheck && npm run arch && npm run lint && npm run test",
+    "build": "npm run build -w @tt/gm && npm run build -w @tt/table",
+    "host": "tsx apps/host/src/main.ts",
+    "start": "npm run build && npm run host"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@types/three": "^0.169.0",
+    "@types/ws": "^8.18.1",
+    "@vitejs/plugin-react": "^4.7.0",
+    "dependency-cruiser": "^16.9.0",
+    "eslint": "^9.17.0",
+    "tsx": "^4.23.13",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.19.0",
+    "vite": "^6.4.3",
+    "vitest": "^2.1.8"
+  }
+}

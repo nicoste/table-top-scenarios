@@ -1,0 +1,23 @@
+{
+  "name": "@tt/table",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@tt/client-core": "*",
+    "@tt/domain": "*",
+    "@tt/geometry": "*",
+    "@tt/protocol": "*",
+    "@tt/render": "*",
+    "@tt/ui": "*",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite"
+  }
+}

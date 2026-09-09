@@ -1,0 +1,17 @@
+{
+  "name": "table-top-scenarios",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local-network 3D tabletop scenario builder/player on a 1x1x1 voxel grid. 1 GM + 1 Player.",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.test.js",
+    "demo": "node tools/demo-3d.mjs",
+    "gen": "node tools/gen-warehouse.mjs"
+  },
+  "dependencies": {
+    "three": "^0.169.0",
+    "ws": "^8.18.0"
+  }
+}

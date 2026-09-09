@@ -1,0 +1,13 @@
+{
+  "name": "@tt/protocol",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@tt/domain": "*",
+    "zod": "^3.25.76"
+  }
+}
