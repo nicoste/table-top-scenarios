@@ -634,6 +634,14 @@ most time in, so it gets specified rather than improvised.
 > Select keeps chunk selection because it is the only route to the Known toggle.
 > If that moves elsewhere, Select becomes POIs only.
 >
+> **Only the neutral tool holds a selection** (`holdsSelection`, D-168). Changing
+> to any other tool drops it, because an inspector left open under Paint
+> describes something that tool cannot act on and offers edits to a thing the GM
+> has moved on from. Note the rule is about *ownership*, not the transition:
+> placing a POI switches to Select and pre-selects the new one (D-127), and that
+> has to survive. A test ties `holdsSelection` to what `clickAction` can actually
+> select, so a sixth tool cannot update one without the other.
+>
 > A Places click on a taken cell is **dropped, not dispatched**: one POI per cell
 > (R-119) is a rule, not a mistake, and it does not deserve a red toast. The hover
 > readout says *"Already a place here"* first, so the dropped click reads as the

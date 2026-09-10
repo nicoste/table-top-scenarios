@@ -1,0 +1,28 @@
+{
+ "id": "campaign_mtw0zazivj2bxh2a",
+ "schemaVersion": 2,
+ "name": "Scratch test",
+ "party": [
+  {
+   "id": "member_mtw0zazjrsaso22r",
+   "name": "player",
+   "colour": "#57d9a3",
+   "visionRange": 12
+  }
+ ],
+ "pois": [
+  {
+   "id": "poi_mtw10pzraiq22tmx",
+   "name": "New place",
+   "cell": {
+    "cx": 15,
+    "cz": 15,
+    "x": 16,
+    "z": 13
+   },
+   "markerId": "marker:town",
+   "encounters": [],
+   "notes": []
+  }
+ ]
+}

@@ -2347,3 +2347,25 @@ did this round was of the *rule* — the reachability guard, the click table, th
 server refusal — and none of it exercised the *first-run path*. A campaign
 created from scratch is the one state I never tried, on a feature whose whole
 subject is a thing that starts out absent.
+
+### D-168 — Only the neutral tool holds a selection · `agreed`
+*"we should remove the current selection panel on tool change, I see the chunk
+detail if I select it and then I go to paint, or a city detail if I select it and
+then I switch to whatever like height tool."*
+
+The other half of D-162. That round stopped non-select tools from *making* a
+selection but left the ones already made sitting there, so an inspector could
+outlive the tool that opened it — describing something Paint cannot act on, and
+offering Delete and rename for a place the GM had moved past.
+
+Implemented as ownership rather than as a transition, which matters: clearing on
+*every* tool change would have broken D-127, where placing a POI switches to
+Select and pre-selects the new one. `holdsSelection(tool)` is the rule; the
+effect drops the selection whenever the active tool is not the one that owns it.
+
+A test asserts `holdsSelection` agrees with what `clickAction` can actually
+select, for every tool. That is the interesting part — the two would otherwise
+drift the moment a sixth tool is added, in either direction: a tool that can
+select but not hold opens an inspector that the next render wipes, and one that
+holds but cannot select keeps a stale panel. Neither is reachable while the test
+stands.

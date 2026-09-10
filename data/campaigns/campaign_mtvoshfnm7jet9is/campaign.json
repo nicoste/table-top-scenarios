@@ -35,6 +35,19 @@
      "visibleToParty": true
     }
    ]
+  },
+  {
+   "id": "poi_mtw1awx8as7i6iaz",
+   "name": "New place",
+   "cell": {
+    "cx": 15,
+    "cz": 15,
+    "x": 13,
+    "z": 14
+   },
+   "markerId": "marker:village",
+   "encounters": [],
+   "notes": []
   }
  ]
 }

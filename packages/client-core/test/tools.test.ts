@@ -3,7 +3,7 @@
 
 import { describe, it, expect } from 'vitest';
 import type { Cell, Pointed } from '@tt/client-core';
-import { clickAction } from '@tt/client-core';
+import { clickAction, holdsSelection } from '@tt/client-core';
 import type { Tool } from '@tt/client-core';
 
 const cell = (x: number, z: number): Cell => ({ cx: 15, cz: 15, x, z });
@@ -116,5 +116,30 @@ describe('travel with no pawn under the pointer', () => {
     // `armed()` in the travel module, not a row of this table.
     expect(clickAction('travel', { ...EMPTY, cell: cell(1, 1) }, free))
       .toEqual({ kind: 'nothing' });
+  });
+});
+
+describe('which tool holds a selection (D-168)', () => {
+  it('is the neutral tool, and only it', () => {
+    expect(holdsSelection('select')).toBe(true);
+    for (const tool of ALL_TOOLS.filter((t) => t !== 'select')) {
+      expect(holdsSelection(tool), tool).toBe(false);
+    }
+  });
+
+  it('agrees with what the click table can actually select', () => {
+    // Tied together on purpose. A sixth tool that can select something must
+    // also hold it, or its inspector opens and is wiped by the next render;
+    // one that cannot select must not hold one, or a stale panel lingers.
+    // This fails if only one of the two is updated.
+    const onAMarker: Pointed = { ...EMPTY, poiId: 'poi_keep', cell: cell(5, 5) };
+    const onGround: Pointed = { ...EMPTY, cell: cell(5, 5) };
+
+    for (const tool of ALL_TOOLS) {
+      const canSelect = [onAMarker, onGround]
+        .map((pointed) => clickAction(tool, pointed, free).kind)
+        .some((kind) => kind === 'selectPoi' || kind === 'selectChunk');
+      expect(holdsSelection(tool), tool).toBe(canSelect);
+    }
   });
 });

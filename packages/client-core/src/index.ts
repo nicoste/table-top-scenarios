@@ -9,5 +9,5 @@ export type { ServerState, ViewState, Tool } from './store/index.js';
 export { idle, GROUP, pick, armed, aim, ghostCell, canConfirm, travelIntent, travelPrompt } from './travel/index.js';
 export type { Travel } from './travel/index.js';
 
-export { clickAction } from './tools/index.js';
+export { clickAction, holdsSelection } from './tools/index.js';
 export type { ClickAction, Pointed, Cell, Slot, Context } from './tools/index.js';

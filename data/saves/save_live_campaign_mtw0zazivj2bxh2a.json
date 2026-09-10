@@ -1,10 +1,10 @@
 {
- "id": "save_live_campaign_mtw0nxg4wvehcpih",
- "campaignId": "campaign_mtw0nxg4wvehcpih",
+ "id": "save_live_campaign_mtw0zazivj2bxh2a",
+ "campaignId": "campaign_mtw0zazivj2bxh2a",
  "campaignSchemaVersion": 2,
  "schemaVersion": 2,
  "label": "Live",
- "savedAt": "2026-09-10T21:13:14.808Z",
+ "savedAt": "2026-09-10T21:14:35.918Z",
  "discovery": {
   "chunks": [
    "15,15"
@@ -16,8 +16,8 @@
   "at": {
    "cx": 15,
    "cz": 15,
-   "x": 13,
-   "z": 16
+   "x": 14,
+   "z": 14
   },
   "members": {}
  }

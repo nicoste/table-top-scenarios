@@ -38,6 +38,21 @@ export interface Context {
 }
 
 /**
+ * Does this tool hold a selection?
+ *
+ * Only the neutral tool does. An inspector left open under Paint describes
+ * something the tool cannot act on, and its buttons edit a thing the GM has
+ * mentally moved on from (D-168).
+ *
+ * Deliberately **not** "clear on every tool change": placing a POI switches to
+ * `select` and pre-selects the new one (D-127), and that must survive. The rule
+ * is about which tool owns a selection, not about the transition.
+ */
+export function holdsSelection(tool: Tool): boolean {
+  return tool === 'select';
+}
+
+/**
  * The decision table from R-87c.
  *
  * Every tool creates a chunk from an empty slot: the `+` affordance is how the

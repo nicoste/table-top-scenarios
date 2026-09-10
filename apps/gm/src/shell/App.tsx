@@ -6,7 +6,10 @@ import { CHUNK_SIZE, MAX_HEIGHT, clampBrush, creatableSlots, sameWorldCell } fro
 import type { GmView, Intent } from '@tt/protocol';
 import { defaultTarget, worldCentre } from '@tt/render';
 import type { Tool, Travel } from '@tt/client-core';
-import { idle, pick, armed, aim, ghostCell, canConfirm, travelIntent, travelPrompt, clickAction } from '@tt/client-core';
+import {
+  idle, pick, armed, aim, ghostCell, canConfirm, travelIntent, travelPrompt,
+  clickAction, holdsSelection,
+} from '@tt/client-core';
 import { useStage } from '../scene/use-stage.js';
 import { Launcher } from '../features/launcher/index.js';
 import { BuildWorldPanel } from '../features/build-world/index.js';
@@ -112,6 +115,14 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   useEffect(() => {
     setTravel((current) => armed(current, tool === 'travel', partyPlaced));
   }, [tool, partyPlaced]);
+
+  // An inspector open under Paint describes something that tool cannot act on
+  // (D-168). Only the neutral tool holds a selection.
+  useEffect(() => {
+    if (holdsSelection(tool)) return;
+    setSelectedPoi(null);
+    setSelectedChunk(null);
+  }, [tool]);
 
   const columnInfo = useCallback((cell: { cx: number; cz: number; x: number; z: number }) => {
     const chunk = campaign?.world.chunks.find((c) => c.cx === cell.cx && c.cz === cell.cz);
