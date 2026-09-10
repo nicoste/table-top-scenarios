@@ -6,7 +6,7 @@ import { CHUNK_SIZE, MAX_HEIGHT, clampBrush, creatableSlots, sameWorldCell } fro
 import type { GmView, Intent } from '@tt/protocol';
 import { defaultTarget, worldCentre } from '@tt/render';
 import type { Tool, Travel } from '@tt/client-core';
-import { idle, pick, aim, ghostCell, canConfirm, travelIntent, travelPrompt, clickAction } from '@tt/client-core';
+import { idle, pick, armed, aim, ghostCell, canConfirm, travelIntent, travelPrompt, clickAction } from '@tt/client-core';
 import { useStage } from '../scene/use-stage.js';
 import { Launcher } from '../features/launcher/index.js';
 import { BuildWorldPanel } from '../features/build-world/index.js';
@@ -60,6 +60,10 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    */
   const standable = (cell: { cx: number; cz: number } | null) =>
     cell !== null && knownChunks.has(`${cell.cx},${cell.cz}`);
+  const placement = view?.save?.placement ?? null;
+  const partyPlaced = Boolean(
+    placement && (placement.at || Object.keys(placement.members).length > 0),
+  );
 
   // Selection lives in view state, so a snapshot cannot close the panel the GM
   // is typing into (R-64). It is resolved against the latest campaign each
@@ -102,6 +106,12 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   useEffect(() => {
     stage?.aimAt(ghostCell(travel));
   }, [travel, stage]);
+
+  // With nothing on the board there is no pawn to pick up, so the sequence
+  // starts itself (D-167).
+  useEffect(() => {
+    setTravel((current) => armed(current, tool === 'travel', partyPlaced));
+  }, [tool, partyPlaced]);
 
   const columnInfo = useCallback((cell: { cx: number; cz: number; x: number; z: number }) => {
     const chunk = campaign?.world.chunks.find((c) => c.cx === cell.cx && c.cz === cell.cz);
@@ -427,7 +437,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
             )}
             <PartyPanel
               campaign={campaign}
-              placement={view?.save?.placement ?? null}
+              placement={placement}
               canPlace={knownChunks.size > 0}
               dispatch={dispatch}
             />

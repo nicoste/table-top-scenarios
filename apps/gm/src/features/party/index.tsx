@@ -32,7 +32,8 @@ export function PartyPanel({ campaign, placement, canPlace, dispatch }: Props) {
         </p>
       ) : !placed && (
         <p className="hint">
-          Not on the map yet. Pick the travel tool and click a revealed cell.
+          Not on the map yet. Pick <b>Travel</b> (key 5) and click a revealed cell —
+          the sequence is already waiting for a destination.
         </p>
       )}
 

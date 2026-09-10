@@ -107,3 +107,14 @@ describe('empty space', () => {
     }
   });
 });
+
+describe('travel with no pawn under the pointer', () => {
+  it('still means nothing here — starting the sequence is not a click (D-167)', () => {
+    // This test used to read as though the dead end were correct behaviour. It
+    // is right that a click on bare ground picks up nothing; what was missing is
+    // that the sequence arms itself when there is nothing to pick up, which is
+    // `armed()` in the travel module, not a row of this table.
+    expect(clickAction('travel', { ...EMPTY, cell: cell(1, 1) }, free))
+      .toEqual({ kind: 'nothing' });
+  });
+});

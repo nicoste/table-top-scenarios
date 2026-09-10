@@ -1494,6 +1494,15 @@ apps/host/src/
 >
 > One sequence covers every move, including the party's first appearance on the
 > map. There is no separate placement gesture.
+>
+> Which means the sequence must be able to start with **nothing to pick up**.
+> Before the first placement there is no pawn, so step one cannot run — with the
+> travel tool active and the party nowhere, the sequence **arms itself** holding
+> the group pawn (D-167). Aim, ghost, reachability guard and confirm are
+> unchanged; only the way in differs.
+>
+> Any gesture whose first step selects an existing thing needs the same question
+> asked of it: what happens when there is none yet?
 
 > **R-133.** The destination is **not adjacency-checked**, and no route is drawn by
 > hand. A GM who wants a particular route expresses it as **shorter trips** to

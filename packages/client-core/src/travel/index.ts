@@ -35,8 +35,31 @@ export type Travel =
 
 export const idle: Travel = { step: 'idle' };
 
+/** The whole party travelling as one. Also the pawn used for a first placement. */
+export const GROUP: PawnRef = { memberId: null };
+
 export function pick(pawn: PawnRef): Travel {
   return { step: 'aiming', pawn, at: null, reachable: false };
+}
+
+/**
+ * Starts the sequence by itself when there is **nothing to pick up**.
+ *
+ * The party's first appearance on the map is a move like any other (D-150) — but
+ * step one is "pick a pawn", and before the first placement no pawn exists. That
+ * left the party unplaceable through the UI, with the panel cheerfully
+ * instructing a flow that could not run (D-167).
+ *
+ * So with the travel tool active and the party nowhere, the sequence arms itself
+ * holding the group pawn: aim and confirm work unchanged, ghost and reachability
+ * guard included.
+ */
+export function armed(travel: Travel, travelActive: boolean, partyPlaced: boolean): Travel {
+  if (partyPlaced) return travel;
+  if (travelActive) return travel.step === 'aiming' ? travel : pick(GROUP);
+  // Tool switched away before placing: drop the sequence rather than leave a
+  // ghost armed under a tool that does not own it.
+  return travel.step === 'aiming' ? idle : travel;
 }
 
 export function aim(travel: Travel, cell: WorldCell | null, reachable: boolean): Travel {

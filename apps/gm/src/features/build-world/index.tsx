@@ -66,7 +66,7 @@ export function BuildWorldPanel({
               : tool === 'height'
                 ? <>Drag a cell up or down. Each step is 150&nbsp;m.</>
                 : tool === 'travel'
-                  ? <>Click a pawn, aim, then click to confirm. Escape cancels.</>
+                  ? <>Click a pawn, aim, then click to confirm. Escape or right-click cancels.</>
                   : <>Click an empty cell to place a new one.</>}
         </p>
 

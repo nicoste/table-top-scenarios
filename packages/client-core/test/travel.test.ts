@@ -8,7 +8,7 @@
 
 import { describe, it, expect } from 'vitest';
 import type { Travel } from '@tt/client-core';
-import { idle, pick, aim, ghostCell, canConfirm, travelIntent, travelPrompt } from '@tt/client-core';
+import { idle, GROUP, pick, armed, aim, ghostCell, canConfirm, travelIntent, travelPrompt } from '@tt/client-core';
 import type { WorldCell } from '@tt/domain';
 
 const cell = (x: number, z: number): WorldCell => ({ cx: 15, cz: 15, x, z });
@@ -119,5 +119,47 @@ describe('what the prompt says', () => {
   it('falls back to a pronoun for a member it cannot name', () => {
     expect(travelPrompt(aim(pick({ memberId: 'gone' }), cell(1, 1), true), nameOf))
       .toMatch(/Move them here/);
+  });
+});
+
+describe('the first placement, when there is no pawn to pick up (D-167)', () => {
+  it('arms itself with the group pawn', () => {
+    // The bug the GM hit on a fresh campaign: reveal a chunk, then discover the
+    // party cannot be placed at all, because step one is "pick a pawn".
+    const travel = armed(idle, true, false);
+    expect(travel.step).toBe('aiming');
+    expect(travel.step === 'aiming' && travel.pawn).toEqual(GROUP);
+  });
+
+  it('confirms into a plain move, so placement needs no second intent', () => {
+    const ready = aim(armed(idle, true, false), cell(6, 6), true);
+    expect(canConfirm(ready)).toBe(true);
+    expect(travelIntent(GROUP, cell(6, 6))).toEqual({ kind: 'moveParty', cell: cell(6, 6) });
+  });
+
+  it('still refuses to aim at unexplored ground while placing', () => {
+    // Placement obeys R-131 like any other move: there is no exemption for the
+    // first one.
+    const blocked = aim(armed(idle, true, false), cell(6, 6), false);
+    expect(ghostCell(blocked)).toBeNull();
+    expect(canConfirm(blocked)).toBe(false);
+  });
+
+  it('does nothing once the party is on the map', () => {
+    expect(armed(idle, true, true)).toBe(idle);
+  });
+
+  it('does not re-arm over a sequence already running', () => {
+    const running = aim(pick({ memberId: 'member_frodo' }), cell(1, 1), true);
+    expect(armed(running, true, false)).toBe(running);
+  });
+
+  it('disarms when the tool is switched away before placing', () => {
+    const ready = aim(armed(idle, true, false), cell(6, 6), true);
+    expect(armed(ready, false, false)).toBe(idle);
+  });
+
+  it('leaves an idle sequence alone under another tool', () => {
+    expect(armed(idle, false, false)).toBe(idle);
   });
 });

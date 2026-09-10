@@ -2304,3 +2304,46 @@ Honest limit: some of the first list stays untestable without a DOM harness —
 whether a panel eats a wheel event, whether a tooltip is clipped by an ancestor's
 overflow. Those are what R-23 means, and they get verified by running the app.
 Adding jsdom to chase them would buy confidence in a fake browser.
+
+---
+
+## Round 31 — the party could not be placed at all
+
+### D-167 — The sequence starts itself when there is nothing to pick up · `agreed`
+*"started it from scratch, I can't get the party token in place… made it known,
+but the token isnt there."*
+
+Nothing wrong with what the GM did. Galia on disk: `chunks: ["15,15"]`, so the
+reveal worked, and `placement.at: null`. **There was no way to place the party
+through the UI at all.**
+
+D-150 collapsed placement into movement — "the first move is a move", which is
+still right — without noticing that step one of the sequence is *pick a pawn*,
+and before the first placement no pawn exists. So the sequence could never start,
+on any campaign, ever. The feature shipped with its entry point missing.
+
+Two things made it survive review:
+
+- **The panel instructed a flow that did not exist.** It said "Pick the travel
+  tool and click a revealed cell", which is what I intended and never built. I
+  wrote the guidance from the design, not from the code, and then read the
+  guidance back as evidence.
+- **My own test asserted the dead end as correct.** `tools.test.ts` checked that
+  every tool means nothing on empty space — true of the click table, and it
+  looked like coverage of exactly this area while the real gap was that nothing
+  ever *armed* the sequence.
+
+Fixed with `armed()` in the travel module: travel active and party unplaced
+arms the group pawn. Aim, ghost, reachability guard (D-164) and confirm are
+untouched, so placement obeys R-131 like any other move — no exemption for the
+first one. Seven tests, including the disarm-on-tool-change case.
+
+Only the GM console arms. The table display would otherwise show players a
+"point at a revealed cell" prompt on the shared screen before the GM had put the
+party anywhere, and the first placement is the GM's to make.
+
+**The lesson worth keeping** is not "test more". It is that every verification I
+did this round was of the *rule* — the reachability guard, the click table, the
+server refusal — and none of it exercised the *first-run path*. A campaign
+created from scratch is the one state I never tried, on a feature whose whole
+subject is a thing that starts out absent.
