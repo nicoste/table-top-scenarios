@@ -7,7 +7,7 @@ import {
   MeshBasicMaterial, PlaneGeometry, Raycaster, Scene, Vector2, WebGLRenderer, BoxGeometry,
   EdgesGeometry, LineSegments, LineBasicMaterial, Group,
 } from 'three';
-import type { Campaign } from '@tt/domain';
+import type { Campaign, Placement, WorldCell } from '@tt/domain';
 import { CHUNK_SIZE, brushCentreOffset } from '@tt/domain';
 import type { CameraTarget } from '../camera/index.js';
 import { applyTarget, clampTarget, createCamera, defaultTarget, PITCH_STEPS, yawRadians } from '../camera/index.js';
@@ -15,11 +15,15 @@ import type { ColumnAddress, WorldMeshes } from '../world/index.js';
 import { buildWorldMeshes, columnCentre, worldCentre, HEIGHT_SCALE } from '../world/index.js';
 import type { PoiMarkers } from '../pois/index.js';
 import { buildPoiMarkers, MARKER_ZOOM } from '../pois/index.js';
+import type { PartyPawns, PawnRef } from '../pawns/index.js';
+import { buildPartyPawns } from '../pawns/index.js';
 
 export interface SlotAddress { readonly cx: number; readonly cz: number }
 
 export interface Picked {
-  /** A POI marker takes precedence: it sits on top of its own column. */
+  /** A pawn wins over everything: it stands on a POI's own cell (R-132). */
+  readonly pawn: PawnRef | null;
+  /** A POI marker takes precedence over its column. */
   readonly poiId: string | null;
   readonly column: ColumnAddress | null;
   readonly slot: SlotAddress | null;
@@ -40,6 +44,10 @@ export class Stage {
   private readonly slots = new Group();
   private world: WorldMeshes | null = null;
   private pois: PoiMarkers | null = null;
+  private pawns: PartyPawns | null = null;
+  /** Held because pawns are rebuilt on their own schedule, not the world's. */
+  private campaign: Campaign | null = null;
+  private placement: Placement | null = null;
   private grid: GridHelper | null = null;
   private slotMeshes: { mesh: Mesh; coord: SlotAddress }[] = [];
   private fogMeshes: Mesh[] = [];
@@ -74,6 +82,8 @@ export class Stage {
   setCampaign(campaign: Campaign | null, recentre = false): void {
     if (this.world) { this.scene.remove(this.world.mesh); this.world.dispose(); this.world = null; }
     if (this.pois) { this.scene.remove(this.pois.group); this.pois.dispose(); this.pois = null; }
+    this.dropPawns();
+    this.campaign = campaign;
     if (!campaign) this.setFogChunks([]);
     for (const { mesh } of this.slotMeshes) {
       this.slots.remove(mesh);
@@ -90,12 +100,46 @@ export class Stage {
     this.pois = buildPoiMarkers(campaign);
     this.scene.add(this.pois.group);
 
+    this.campaign = campaign;
+    this.rebuildPawns();
+
     const centre = worldCentre(campaign.world);
     this.grid = new GridHelper(CHUNK_SIZE * 24, 24, 0x2a3140, 0x1b2028);
     this.grid.position.set(centre.x, 0.01, centre.z);
     this.scene.add(this.grid);
 
     if (recentre) this.target = { ...this.target, focus: centre };
+  }
+
+  private dropPawns(): void {
+    if (!this.pawns) return;
+    this.scene.remove(this.pawns.group);
+    this.pawns.dispose();
+    this.pawns = null;
+  }
+
+  private rebuildPawns(): void {
+    this.dropPawns();
+    if (!this.campaign || !this.placement) return;
+    this.pawns = buildPartyPawns(this.campaign, this.placement);
+    this.scene.add(this.pawns.group);
+  }
+
+  /**
+   * Where the party is standing.
+   *
+   * Separate from `setCampaign` because the party moves far more often than the
+   * world changes, and rebuilding terrain to move a pawn would be absurd — the
+   * same reason geometry and play state travel on separate channels (R-19a).
+   */
+  setPlacement(placement: Placement | null): void {
+    this.placement = placement;
+    this.rebuildPawns();
+  }
+
+  /** Puts the travel ghost on a cell, or takes it off (R-132). */
+  aimAt(cell: WorldCell | null): void {
+    this.pawns?.aimAt(cell);
   }
 
   /**
@@ -202,27 +246,34 @@ export class Stage {
     );
     this.raycaster.setFromCamera(ndc, this.camera);
 
-    // Markers first: one sits on top of its own column, and clicking a place
-    // should mean the place (R-86).
+    // Pawns first, then markers: a pawn may be standing on the very cell a POI
+    // occupies, and clicking the party should mean the party (R-132, R-86).
+    if (this.pawns && this.pawns.group.visible) {
+      for (const hit of this.raycaster.intersectObjects(this.pawns.group.children, true)) {
+        const pawn = this.pawns.pawnAt(hit.object);
+        if (pawn) return { pawn, poiId: null, column: null, slot: null };
+      }
+    }
+
     if (this.pois && this.pois.group.visible) {
       for (const hit of this.raycaster.intersectObjects(this.pois.group.children, true)) {
         const owner = this.pois.poiOf(hit.object);
-        if (owner) return { poiId: owner, column: null, slot: null };
+        if (owner) return { pawn: null, poiId: owner, column: null, slot: null };
       }
     }
 
     if (this.world) {
       const hit = this.raycaster.intersectObject(this.world.mesh, false)[0];
       if (hit && hit.instanceId !== undefined) {
-        return { poiId: null, column: this.world.addressOf(hit.instanceId), slot: null };
+        return { pawn: null, poiId: null, column: this.world.addressOf(hit.instanceId), slot: null };
       }
     }
     for (const { mesh, coord } of this.slotMeshes) {
       if (this.raycaster.intersectObject(mesh, false).length > 0) {
-        return { poiId: null, column: null, slot: coord };
+        return { pawn: null, poiId: null, column: null, slot: coord };
       }
     }
-    return { poiId: null, column: null, slot: null };
+    return { pawn: null, poiId: null, column: null, slot: null };
   }
 
   /**
@@ -258,12 +309,20 @@ export class Stage {
         this.pois.scaleLabels(this.target.zoom, this.canvas.clientHeight || 1);
       }
     }
+    // The party shares the threshold, so pawns and places come and go together.
+    if (this.pawns) {
+      this.pawns.group.visible = this.target.zoom <= MARKER_ZOOM;
+      if (this.pawns.group.visible) {
+        this.pawns.scaleLabels(this.target.zoom, this.canvas.clientHeight || 1);
+      }
+    }
     this.renderer.render(this.scene, this.camera);
   }
 
   dispose(): void {
     instances--;
     this.setFogChunks([]);
+    this.pawns?.dispose();
     this.pois?.dispose();
     this.world?.dispose();
     this.renderer.dispose();

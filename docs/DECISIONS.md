@@ -1964,3 +1964,205 @@ discovery only because encounters do not exist yet (O-009). Once tokens stand on
 an encounter map, play state includes their positions and per-token vision, and
 that all belongs in the same save. D-147 removes a feature, not the structure
 that will hold it.
+
+---
+
+## Round 28 — moving the party (design)
+
+### D-149 — The party can only stand where the party has been · `agreed`
+*"It cant move to unknown chunks, you go to the edge first, then users will want
+to scout (off-tool), then GM reveals the zone, and then they can move. Not even
+the GM can move the tokens to an unknown chunk."*
+
+Better than all three options I offered, and worth saying why rather than just
+recording it. I had framed the question as "what do we draw when a pawn is in the
+fog" — auto-reveal, warn, or hide. All three treat `Known` as a display filter.
+This answer makes it a **gate on play**: revealing a chunk becomes the move that
+opens the frontier, the scout-off-tool loop gets teeth, and the pawn-over-fog
+question stops existing rather than getting an answer.
+
+Two consequences I decided and flagged (R-131): placement obeys the same rule, so
+a fresh campaign must reveal something before the party can be put anywhere; and
+a chunk the party stands in cannot be un-Known.
+
+Checked for a leak, since the player seat can move: refusing a move tells the
+table display nothing new. It already receives `unknownChunks` as coordinates
+(D-140), so it can already tell authored-but-unknown from unauthored.
+
+### D-150 — Pick, aim, confirm — one sequence for every move · `agreed`
+*"pick a token (party or member), move mouse freely to the cell destination
+(ghost token should be rendered), confirm or cancel the move."*
+
+Two things follow that changed the plan:
+
+**Placement is not a separate gesture.** *"This sequence works for the first step
+into navigation up to the last one."* So `placeParty` disappears as its own
+intent — the first move is a move.
+
+**The pending move is client view state (R-64), not protocol.** This is the load
+bearing part. The stated future is: the aim step draws the pathfinder's route
+under the pointer, and confirming opens a menu for transport and pace that reports
+days of travel before you commit. Both are extensions of steps that already exist
+— *if* aiming is local. Put the pending move on the wire and every pointer move
+becomes a round-trip and the confirm menu becomes a protocol negotiation.
+
+A drag would have been the obvious gesture and it is the wrong one: it collapses
+aim and confirm into the same motion, leaving nowhere for the route preview or the
+travel menu to go.
+
+### D-151 — Custom routes are short trips, not drawn paths · `agreed`
+*"If players want a custom path, they define it by doing shorter trips up to the
+places where the pathfinding looks correct to them."*
+
+This settles the adjacency question I had left open: **no adjacency check.** A→Z
+is legal, the pathfinder picks the easiest route, and a GM who dislikes that route
+breaks the journey into legs. No route-drawing tool, ever.
+
+Noted in R-133 because it is the easy thing to forget: the pathfinder must be
+constrained to **Known cells**, or it will route through unexplored ground and
+quietly undo D-149.
+
+### D-152 — Movement is the table display's first interaction · `agreed`
+Follows from *"The player seat too"*. Worth its own entry because the table
+display has had **no interaction at all** until now — it is a pure viewer (R-3,
+R-4) with a campaign-name badge and nothing else.
+
+The GM console enters the sequence through a Travel tool, the fifth in the
+palette. The table display has no palette, so pawns are simply clickable there;
+nothing else on that screen is. Same sequence, different entry (R-134).
+
+This is also the first use of `OPEN_TO_ANYONE`, which has been an empty list since
+D-135. The schema-driven test forces each new intent to be classified either way.
+
+**Correction.** I put `moveParty` and `movePartyMember` in the list and kept
+`setPartyTogether` GM-only, reasoning that splitting the party is a narrative call
+the GM makes rather than a nudge a player makes. Overruled: *"group/ungroup the
+party should be an action for both, GM and Players."*
+
+All three go in, and the correction is an improvement rather than a concession —
+it replaces my per-intent judgement with a line that decides the next case on its
+own (R-136). Splitting up is a table conversation; whichever screen is closer to
+hand should be able to enact it.
+
+### D-153 — Binary together/separated · `agreed`
+Chosen over per-member detach and named groups. Together is one pawn; separated
+is one pawn per member. Gathering reunites everyone at the **first roster
+member's cell**; scattering starts everyone on the group cell to be dragged apart.
+A member added while separated appears on the first member's cell.
+
+I recommended per-member detach on the grounds that a lone scout is the common
+case and a binary toggle cannot express it. Overruled, and the reason stands on
+its own: a party that splits is a thing the GM narrates, and two pawns moved
+together by hand is a smaller cost than a third concept in the data model.
+
+### D-154 — Vision is not shown on the world map · `agreed`
+*"vision should be hidden in the party panel while in the world map, it will
+confuse the GMs or players if we end up showing it in both sides."*
+
+`visionRange` stays in `PartyMember` for encounters and stops being rendered in
+the party panel (R-135). It is an encounter quantity — 12 cells at the encounter
+cell (R-46a) — and beside a 1.5 km world cell it reads as 18 km of sight.
+
+### D-155 — Token positions live in the save · `agreed`
+Not a judgement call, recorded so it is not relitigated. Where the party stands is
+play state, so it sits beside `discovery` in the save (R-8, D-006), never on the
+campaign. A duplicated campaign therefore starts with the party unplaced, which is
+correct — the copy has not been played.
+
+Stale positions are pruned when the campaign opens, exactly as `pruneDiscovery`
+drops POI ids the GM deleted, for the same reason: a position for a member no
+longer on the roster.
+
+### D-156 — The world cell type moves to `world/` · `agreed`
+`{cx, cz, x, z}` currently lives in `poi/` as `PoiCell`, with `isValidPoiCell`
+beside it. The party needs to name a cell too, and `party/` importing from `poi/`
+to say where someone is standing would be nonsense. Promoted to `world/` as
+`WorldCell` with one validity check; `PoiCell` becomes an alias.
+
+### O-019 — Pathfinding on the world map · `open`
+Deferred from round 28 deliberately. A→Z is legal (D-151), so once positions
+exist the obvious next round is the route: easiest path by terrain difficulty
+(R-52) and the 0.83 slope factor, **constrained to Known cells** (R-133), drawn
+under the pointer during the aim step of R-132.
+
+### O-020 — The travel confirmation menu · `open`
+The second half of the same future: confirming a move opens a menu for transport
+and pace, reporting days of travel, with confirm/cancel. Blocked on O-006 (travel
+pace presets) for the actual numbers. R-132 keeps the confirm step local so this
+slots in rather than being retrofitted.
+
+### O-021 — Does the party pawn show who is where when separated? · `open`
+Six pawns of six colours on a 1350 km map, at the zoom where miniatures collapse
+into flat markers (R-83). Names may be unreadable exactly when the party is most
+spread out. Not blocking; worth a look once it can be seen running.
+
+### D-157 — The permission line: the party is the players', the world is the GM's · `agreed`
+Extracted from the D-152 correction, because the correction revealed that
+`OPEN_TO_ANYONE` had no stated principle behind it — only my case-by-case
+judgement, which is exactly what R-0 exists to prevent.
+
+Open to both seats: everything about the party's own pawns — where they stand,
+whether they are grouped.
+
+GM only: everything about the world — terrain, heights, chunks, places, notes, and
+above all **discovery**. What the party is allowed to know is not theirs to grant.
+
+The line also explains why R-131 is not a permission rule. The party cannot enter
+an Unknown chunk because *the party has not been there*, not because a player
+lacks rights: the GM cannot do it either.
+
+---
+
+## Round 28b — what implementing it decided
+
+### D-158 — Party intents are open to the table seat, not to spectators · `agreed`
+Found by the enumeration test the moment the three party intents were added: the
+gate's open-list was consulted before the role was, so opening an intent opened
+it to **spectators** as well.
+
+R-136 says the party belongs to the *players*, and a spectator is not a player —
+it is whoever connected without asking for a seat. So the gate now asks
+`permitted(role, kind)`: the GM may do anything, the table seat may do what
+`OPEN_TO_THE_TABLE` lists, and everyone else may do nothing. The function ends in
+`return false`, which is what makes it fail closed by construction rather than by
+vigilance.
+
+Costs nothing in practice — the table seat is not exclusive (R-127), so every
+real player screen holds one.
+
+### D-159 — A save adopted from disk is stamped with the current schema · `agreed`
+Caught by looking at the file after the round worked. The live save had a
+`placement` block and still said `schemaVersion: 1`, because encoding writes
+whatever the object carries and the object had been read from a version-1 file.
+
+A version field that does not describe its contents is worse than no version
+field: it reads as trustworthy and it is not. `upgraded()` stamps the save where
+`sim` adopts it, so the next autosave persists the upgrade — verified on the real
+file, which now reads version 2 (R-137).
+
+### D-160 — Travel takes key 5; brush moves to 6/7/8 · `agreed`
+**A change to a binding already in use, so flagged rather than slipped in.**
+
+Tools are digits, left to right, and travel is the fifth tool. That collided with
+brush 1×1 on key 5, so the brush digits shifted up one. The digits still run
+tools-then-brushes in order, and `[` / `]` remain the primary brush keys, so the
+cost falls on the redundant half of a binding. The hint bar reads
+`1–5 tool · 6/7/8 or [ ] brush`.
+
+The alternative was a letter for travel, which would have kept brush where it was
+at the price of tools no longer being "the digits".
+
+### D-161 — Aiming is judged by cells, so fog is unpickable · `agreed`
+An accident of the existing render that turned out to be the right behaviour, so
+it is being kept deliberately rather than left to chance.
+
+Fog placeholders are not columns, so `pick()` returns no cell over them. A client
+therefore cannot even *form* a move into an unknown chunk — R-131 is enforced in
+`sim` for correctness and by the picker for feel. Clicking into the dark cancels
+the sequence, which is honest: the prompt disappears, so it does not look like a
+click that did nothing.
+
+### O-022 — The group pawn is neutral-coloured · `open`
+When the party is together its single pawn is off-white rather than any member's
+colour, since it is not any one of them. It reads well on water and grass and will
+read badly on sand or snow. Worth a look once there is a snowy map to look at.

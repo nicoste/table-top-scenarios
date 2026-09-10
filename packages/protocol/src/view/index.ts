@@ -2,8 +2,8 @@
 // passes through viewFor, and there is no second route.
 
 import type { Campaign, Save } from '@tt/domain';
-import { isPoiOnTable, isChunkKnown, belongsTo } from '@tt/domain';
-import type { CampaignWire, SaveWire } from '../wire/index.js';
+import { isPoiOnTable, isChunkKnown, belongsTo, placementToJSON } from '@tt/domain';
+import type { CampaignWire, SaveWire, PlacementWire } from '../wire/index.js';
 import { encodeCampaign, encodeSave } from '../wire/index.js';
 
 export type Role = 'gm' | 'table' | 'spectator';
@@ -33,6 +33,14 @@ export interface GmView {
 export interface TableView {
   readonly role: 'table';
   readonly campaign: CampaignWire | null;
+  /**
+   * Where the party stands — the **only** save data the table ever receives.
+   *
+   * It has to: they are the players' own pawns, and the players move them
+   * (R-136). Discovery is not sent and must never be: knowing *which* chunks are
+   * Known is itself the answer to what is hidden.
+   */
+  readonly placement: PlacementWire | null;
 }
 
 export type View = GmView | TableView;
@@ -59,7 +67,14 @@ export function viewFor(role: Role, state: HostState, connect: readonly string[]
       connect,
     };
   }
-  return { role: 'table', campaign: forTheTable(state.active, state.activeSave) };
+  const campaign = forTheTable(state.active, state.activeSave);
+  return {
+    role: 'table',
+    campaign,
+    // No campaign on the table means no pawns either, rather than pawns floating
+    // over an empty screen.
+    placement: campaign && state.activeSave ? placementToJSON(state.activeSave.placement) : null,
+  };
 }
 
 /**

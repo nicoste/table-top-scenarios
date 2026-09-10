@@ -2,7 +2,7 @@
 // edge with Zod (R-17); trusted everywhere inside.
 
 import { z } from 'zod';
-import { CellIndex, TerrainIdSchema, MarkerIdSchema, PoiCellSchema } from '../wire/index.js';
+import { CellIndex, TerrainIdSchema, MarkerIdSchema, PoiCellSchema, WorldCellSchema } from '../wire/index.js';
 import { MAX_HEIGHT, MAX_BRUSH } from '@tt/domain';
 
 const cell = { cx: z.number().int(), cz: z.number().int(), x: CellIndex, z: CellIndex };
@@ -49,6 +49,12 @@ export const IntentSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('setChunkKnown'), cx: z.number().int(), cz: z.number().int(), known: z.boolean() }),
   z.object({ kind: z.literal('setPoiRevealed'), poiId: z.string().min(1), revealed: z.boolean() }),
   z.object({ kind: z.literal('revealChunk'), cx: z.number().int(), cz: z.number().int(), withPois: z.boolean().optional() }),
+
+  // Where the party stands. Open to both seats: the party is the players' and
+  // the world is the GM's (R-136).
+  z.object({ kind: z.literal('moveParty'), cell: WorldCellSchema }),
+  z.object({ kind: z.literal('movePartyMember'), memberId: z.string().min(1), cell: WorldCellSchema }),
+  z.object({ kind: z.literal('setPartyTogether'), together: z.boolean() }),
 
 ]);
 

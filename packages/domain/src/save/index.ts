@@ -4,12 +4,16 @@
 // way the campaign already does, so a GM cannot lose discovery by forgetting.
 // There is no second kind and no save/load verb anywhere in the UI (D-147).
 
-import type { CampaignId, SaveId, PoiId } from '../ids/index.js';
+import type { CampaignId, SaveId, PoiId, MemberId } from '../ids/index.js';
 import type { Discovery } from '../discovery/index.js';
 import { emptyDiscovery } from '../discovery/index.js';
+import type { Placement } from '../placement/index.js';
+import { emptyPlacement, prunePlacement } from '../placement/index.js';
 import type { Campaign } from '../campaign/index.js';
 
-export const SAVE_SCHEMA_VERSION = 1;
+// 2 adds `placement` (D-155). A version-1 save decodes with the party unplaced,
+// which is exactly right: it was written before the party could be placed.
+export const SAVE_SCHEMA_VERSION = 2;
 export const LIVE_LABEL = 'Live';
 
 export interface Save {
@@ -23,6 +27,8 @@ export interface Save {
   /** ISO-8601. Supplied by the host: `domain` and `sim` have no clock (R-97). */
   readonly savedAt: string;
   readonly discovery: Discovery;
+  /** Where the party is standing (D-155). */
+  readonly placement: Placement;
 }
 
 /**
@@ -45,6 +51,7 @@ export function createLiveSave(campaign: Campaign, savedAt: string): Save {
     label: LIVE_LABEL,
     savedAt,
     discovery: emptyDiscovery(),
+    placement: emptyPlacement(),
   };
 }
 
@@ -57,12 +64,34 @@ export function matchesCampaignVersion(save: Save, campaign: Campaign): boolean 
   return save.campaignSchemaVersion === campaign.schemaVersion;
 }
 
+/**
+ * Brings a save read from disk up to the current schema.
+ *
+ * Reading tolerates an older file — a version-1 save has no `placement` and
+ * decodes with the party unplaced. But it must not then be *written back* still
+ * claiming to be version 1: it now carries version-2 data, and a version field
+ * that does not describe its contents is worse than no version field, because
+ * later code will branch on it.
+ *
+ * Called where a stored save is adopted, so the next autosave persists the
+ * upgrade (R-61).
+ */
+export function upgraded(save: Save): Save {
+  return save.schemaVersion === SAVE_SCHEMA_VERSION
+    ? save
+    : { ...save, schemaVersion: SAVE_SCHEMA_VERSION };
+}
+
 export function touch(save: Save, savedAt: string): Save {
   return save.savedAt === savedAt ? save : { ...save, savedAt };
 }
 
 export function withDiscovery(save: Save, discovery: Discovery): Save {
   return save.discovery === discovery ? save : { ...save, discovery };
+}
+
+export function withPlacement(save: Save, placement: Placement): Save {
+  return save.placement === placement ? save : { ...save, placement };
 }
 
 /**
@@ -75,4 +104,9 @@ export function pruneDiscovery(save: Save, livePoiIds: ReadonlySet<PoiId>): Save
   const pois = new Set([...save.discovery.pois].filter((id) => livePoiIds.has(id)));
   if (pois.size === save.discovery.pois.size) return save;
   return withDiscovery(save, { chunks: save.discovery.chunks, pois });
+}
+
+/** The same tolerance for a member who has left the roster (D-155). */
+export function pruneMembers(save: Save, liveMemberIds: ReadonlySet<MemberId>): Save {
+  return withPlacement(save, prunePlacement(save.placement, liveMemberIds));
 }

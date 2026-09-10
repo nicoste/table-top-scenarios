@@ -3,11 +3,12 @@
 
 import { z } from 'zod';
 import type {
-  Campaign, Chunk, Column, World, PartyMember, TerrainId, Poi, PoiNote, MarkerId, Save,
+  Campaign, Chunk, Column, World, PartyMember, TerrainId, Poi, PoiNote, MarkerId, Save, Placement,
 } from '@tt/domain';
 import {
   CHUNK_SIZE, DEFAULT_METRES_PER_LEVEL, DEFAULT_TERRAIN, DEFAULT_MARKERS,
   chunkKey, registryId, discoveryToJSON, discoveryFromJSON,
+  placementToJSON, placementFromJSON,
 } from '@tt/domain';
 
 export const TerrainIdSchema = z.string().regex(/^terrain:[a-z0-9]+(-[a-z0-9]+)*$/);
@@ -55,9 +56,11 @@ export const MarkerWireSchema = z.object({
   })),
 });
 
-export const PoiCellSchema = z.object({
+/** One world cell (D-156). `PoiCellSchema` is the same shape under its own name. */
+export const WorldCellSchema = z.object({
   cx: z.number().int(), cz: z.number().int(), x: CellIndex, z: CellIndex,
 });
+export const PoiCellSchema = WorldCellSchema;
 
 export const PoiNoteWireSchema = z.object({
   id: z.string(),
@@ -80,6 +83,14 @@ export const DiscoveryWireSchema = z.object({
   pois: z.array(z.string()).default([]),
 });
 
+export const PlacementWireSchema = z.object({
+  together: z.boolean().default(true),
+  at: WorldCellSchema.nullable().default(null),
+  members: z.record(z.string(), WorldCellSchema).default({}),
+});
+
+export type PlacementWire = z.infer<typeof PlacementWireSchema>;
+
 export const SaveWireSchema = z.object({
   id: z.string(),
   campaignId: z.string(),
@@ -88,6 +99,8 @@ export const SaveWireSchema = z.object({
   label: z.string(),
   savedAt: z.string(),
   discovery: DiscoveryWireSchema,
+  // Absent in a schema-version-1 save, which decodes with the party unplaced.
+  placement: PlacementWireSchema.default({ together: true, at: null, members: {} }),
 });
 export type SaveWire = z.infer<typeof SaveWireSchema>;
 
@@ -204,6 +217,7 @@ export function encodeSave(save: Save): SaveWire {
     label: save.label,
     savedAt: save.savedAt,
     discovery: discoveryToJSON(save.discovery),
+    placement: placementToJSON(save.placement),
   };
 }
 
@@ -216,7 +230,20 @@ export function decodeSave(wire: SaveWire): Save {
     label: wire.label,
     savedAt: wire.savedAt,
     discovery: discoveryFromJSON(wire.discovery),
+    placement: placementFromJSON(wire.placement),
   };
+}
+
+/**
+ * Symmetry with `decodeCampaign`: an app reads the wire through `protocol` and
+ * gets domain types back, rather than reaching into `domain` for a JSON helper.
+ */
+export function encodePlacement(placement: Placement): PlacementWire {
+  return placementToJSON(placement);
+}
+
+export function decodePlacement(wire: PlacementWire | null): Placement {
+  return placementFromJSON(wire ?? undefined);
 }
 
 export function encodePoi(poi: Poi): PoiWire {

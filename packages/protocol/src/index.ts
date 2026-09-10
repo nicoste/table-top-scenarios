@@ -2,14 +2,15 @@
 
 export {
   TerrainIdSchema, MarkerIdSchema, CellIndex, ChunkCoordSchema,
-  MarkerWireSchema, PoiCellSchema, PoiNoteWireSchema, PoiWireSchema,
+  MarkerWireSchema, PoiCellSchema, WorldCellSchema, PoiNoteWireSchema, PoiWireSchema,
   encodePoi, decodePoi, parseMarkerId,
-  DiscoveryWireSchema, SaveWireSchema, encodeSave, decodeSave,
+  DiscoveryWireSchema, PlacementWireSchema, SaveWireSchema, encodeSave, decodeSave,
+  encodePlacement, decodePlacement,
   ChunkWireSchema, TerrainWireSchema, MemberWireSchema, WorldWireSchema, CampaignWireSchema,
   encodeChunk, encodeWorld, encodeCampaign, decodeChunk, decodeWorld, decodeCampaign,
   parseTerrainId,
 } from './wire/index.js';
-export type { ChunkWire, CampaignWire, PoiWire, SaveWire } from './wire/index.js';
+export type { ChunkWire, CampaignWire, PoiWire, SaveWire, PlacementWire } from './wire/index.js';
 
 export { IntentSchema, parseIntent } from './intents/index.js';
 export type { Intent, IntentKind } from './intents/index.js';

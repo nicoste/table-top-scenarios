@@ -6,9 +6,9 @@ import {
   MeshLambertMaterial, Sprite, SpriteMaterial, SRGBColorSpace,
 } from 'three';
 import type { BufferGeometry, Material } from 'three';
-import type { Campaign, Marker, MarkerPart, Poi } from '@tt/domain';
-import { CHUNK_SIZE, DEFAULT_MARKERS, chunkAt, columnAt, markerById } from '@tt/domain';
-import { HEIGHT_SCALE } from '../world/index.js';
+import type { Campaign, Marker, MarkerPart } from '@tt/domain';
+import { CHUNK_SIZE, DEFAULT_MARKERS, markerById } from '@tt/domain';
+import { surfaceAt } from '../world/index.js';
 
 /**
  * Zoom at which markers and names appear, in world units visible vertically.
@@ -47,17 +47,10 @@ function geometryFor(part: MarkerPart): BufferGeometry {
   }
 }
 
-/** The height a marker's base sits at, matching how columns are drawn. */
-function columnTopOf(campaign: Campaign, poi: Poi): number {
-  const chunk = chunkAt(campaign.world, { cx: poi.cell.cx, cz: poi.cell.cz });
-  const column = chunk ? columnAt(chunk, poi.cell.x, poi.cell.z) : null;
-  const height = column?.height ?? 0;
-  return height <= 0 ? 0.25 : height * HEIGHT_SCALE;
-}
+export interface Label { readonly sprite: Sprite; readonly aspect: number }
 
-interface Label { readonly sprite: Sprite; readonly aspect: number }
-
-function label(text: string): Label {
+/** A map caption. Shared with the party pawns, which label the same way (R-90). */
+export function nameLabel(text: string): Label {
   const pad = 16;
   const font = '600 34px ui-sans-serif, system-ui, sans-serif';
   const measure = document.createElement('canvas').getContext('2d');
@@ -100,7 +93,7 @@ export function buildPoiMarkers(campaign: Campaign): PoiMarkers {
 
   for (const poi of campaign.pois) {
     const marker: Marker | null = markerById(DEFAULT_MARKERS, poi.markerId);
-    const base = columnTopOf(campaign, poi);
+    const base = surfaceAt(campaign, poi.cell);
     const x = poi.cell.cx * CHUNK_SIZE + poi.cell.x + 0.5;
     const z = poi.cell.cz * CHUNK_SIZE + poi.cell.z + 0.5;
 
@@ -121,7 +114,7 @@ export function buildPoiMarkers(campaign: Campaign): PoiMarkers {
       tallest = Math.max(tallest, part.at[1] + part.size[1] / 2);
     }
 
-    const name = label(poi.name);
+    const name = nameLabel(poi.name);
     name.sprite.position.set(0, tallest + 0.45, 0);
     pin.add(name.sprite);
     owners.set(name.sprite, poi.id);

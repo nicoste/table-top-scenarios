@@ -4,16 +4,16 @@
 import type { MarkerId, NoteId, PoiId, EncounterId } from '../ids/index.js';
 import { freshId } from '../ids/index.js';
 import { DEFAULT_MARKER, isKnownMarker } from '../markers/index.js';
-import type { ChunkCoord, GlobalCell } from '../world/index.js';
-import { CHUNK_SIZE, toGlobal, fromGlobal } from '../world/index.js';
+import type { ChunkCoord, GlobalCell, WorldCell } from '../world/index.js';
+import { toGlobal, fromGlobal, sameWorldCell, isValidWorldCell } from '../world/index.js';
 
-/** Where a POI sits: a chunk plus a cell inside it (R-50, exactly one cell). */
-export interface PoiCell {
-  readonly cx: number;
-  readonly cz: number;
-  readonly x: number;
-  readonly z: number;
-}
+/**
+ * Where a POI sits: a chunk plus a cell inside it (R-50, exactly one cell).
+ *
+ * An alias of `WorldCell`, kept as a name because "the POI's cell" reads better
+ * than "the POI's world cell" everywhere it is used.
+ */
+export type PoiCell = WorldCell;
 
 export interface PoiNote {
   readonly id: NoteId;
@@ -34,9 +34,7 @@ export interface Poi {
 export const MAX_POI_NAME = 60;
 export const MAX_NOTE_TEXT = 2000;
 
-export function sameCell(a: PoiCell, b: PoiCell): boolean {
-  return a.cx === b.cx && a.cz === b.cz && a.x === b.x && a.z === b.z;
-}
+export const sameCell = sameWorldCell;
 
 export function poiGlobal(poi: Poi): GlobalCell {
   return toGlobal({ cx: poi.cell.cx, cz: poi.cell.cz }, poi.cell.x, poi.cell.z);
@@ -47,11 +45,7 @@ export function poiCellFromGlobal(cell: GlobalCell): PoiCell {
   return { cx: coord.cx, cz: coord.cz, x, z };
 }
 
-export function isValidPoiCell(cell: PoiCell): boolean {
-  return Number.isInteger(cell.cx) && Number.isInteger(cell.cz)
-    && Number.isInteger(cell.x) && Number.isInteger(cell.z)
-    && cell.x >= 0 && cell.x < CHUNK_SIZE && cell.z >= 0 && cell.z < CHUNK_SIZE;
-}
+export const isValidPoiCell = isValidWorldCell;
 
 // -- lookups -----------------------------------------------------------------
 

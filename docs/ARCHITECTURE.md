@@ -629,8 +629,11 @@ most time in, so it gets specified rather than improvised.
 ## 6c5. The party marker
 
 > **R-90.** The party renders exactly like a POI marker — a miniature, sharing the
-> same zoom threshold (R-83) — with two differences: **it moves**, and **it is not
-> clickable**. There is no gesture on the party marker yet.
+> same zoom threshold (R-83) — differing in that **it moves**.
+>
+> It *was* also "not clickable, no gesture attached". That held only while the
+> party was a read-only indicator. Picking a pawn is now the first step of every
+> move (R-132), so the marker is selectable on both screens.
 
 ---
 
@@ -1299,15 +1302,19 @@ apps/host/src/
 
 ## Discovery and saves
 
-> **R-18a.** The role gate **fails closed**. It tests membership of
-> `OPEN_TO_ANYONE`, a list that is currently empty, so an intent nobody classified
-> is GM-only by default.
+> **R-18a.** The role gate **fails closed**. `permitted(role, kind)` ends in
+> `return false`, so a role nobody thought about changes nothing and an intent
+> nobody classified is GM-only.
 >
 > The gate used to test an allow-list of mutations, which meant a forgotten intent
-> was *permitted* for the table display. A test enumerates the intent kinds from
-> `IntentSchema` itself and asserts every one is rejected for `table` and
-> `spectator`, so adding an intent without classifying it fails the suite instead
-> of shipping a hole.
+> was *permitted* for the table display. Now the allow-list is the other one:
+> `OPEN_TO_THE_TABLE` names the intents the player seat may send as well
+> (R-136), and a test enumerates `IntentSchema` itself, so adding an intent
+> without classifying it fails the suite instead of shipping a hole.
+>
+> **A spectator holds no seat and changes nothing, ever** — not even the party.
+> The party belongs to the *players*, so acting on it takes a player's screen, and
+> since the table seat is not exclusive (R-127) every real player screen has one.
 
 > **R-120.** A stored key that must be unique per campaign is **derived from the
 > campaign id**, not generated and then constrained. `liveSaveId(campaignId)` makes
@@ -1417,3 +1424,80 @@ apps/host/src/
 > This is a guard, not a fix for something measured. It costs one branch in
 > `onopen`, and the alternative failure is a socket holding the GM seat with
 > nobody behind it, which is the hardest class of bug to see from the console.
+
+---
+
+## 6c6. Moving the party
+
+> **R-131.** **The party can only stand in a Known chunk.** Placing or moving into
+> an Unknown or unauthored chunk is refused — for the GM exactly as for the player
+> seat.
+>
+> This is what makes `Known` load-bearing in play rather than a display filter.
+> The loop is: advance to the frontier, scout off-tool (R-1), the GM reveals the
+> region, then the party may enter it. Revealing a chunk is a move in the game, not
+> a cosmetic toggle.
+>
+> Two consequences, and they are not optional:
+> - **Placement is the same rule.** A new campaign's discovery is empty, so the
+>   party cannot be placed until something is revealed. There is no exemption for
+>   the first placement; the party panel says to reveal a chunk instead.
+> - **A chunk the party occupies cannot be un-Known.** Refused with a reason
+>   (R-18). An invariant that the UI can break is not worth building movement on.
+
+> **R-132.** A move is **pick, aim, confirm**. Pick a token, move the pointer
+> freely while a **ghost** renders at the hovered cell, then confirm or cancel.
+>
+> The pending move is **client view state** (R-64) and does not reach the host
+> until it is confirmed. That is deliberate: it is the extension point. Pathfinding
+> preview draws into the aim step, and the travel menu — transport, pace, days,
+> confirm/cancel — replaces the confirm step, without either one restructuring the
+> flow or adding a protocol round-trip per pointer move.
+>
+> One sequence covers every move, including the party's first appearance on the
+> map. There is no separate placement gesture.
+
+> **R-133.** The destination is **not adjacency-checked**, and no route is drawn by
+> hand. A GM who wants a particular route expresses it as **shorter trips** to
+> waypoints they choose; anything longer is the pathfinder's job.
+>
+> When the pathfinder lands it must be **constrained to Known cells**, or it will
+> happily route the party through unexplored ground and quietly defeat R-131.
+
+> **R-134.** Travel is a **tool on the GM console** (the fifth, alongside select,
+> paint, height, places). On the **table display** party pawns are directly
+> interactive with no tool to select, because there is nothing else there to click.
+> Same three-step sequence, different way in.
+>
+> This is the table display's **first interaction of any kind** (D-152). It stays
+> the only one: it does not acquire a tool palette, a dock, or a roster.
+
+> **R-136.** The permission line is **the party is the players', the world is the
+> GM's**. Anything about the party's own pawns — position, grouping — is open to
+> both seats. Anything about the world is GM-only, and **discovery** most of all:
+> what the party is allowed to know is not the party's to grant.
+>
+> `OPEN_TO_THE_TABLE` (R-18a) is the list this rule produces. Before this it held
+> nothing and each candidate was a judgement call; now a new intent is classified
+> by asking which side of the line it falls on.
+>
+> R-131 is not an instance of this rule. The party cannot enter an Unknown chunk
+> because it has not been there — the GM cannot do it either.
+
+> **R-135.** `visionRange` is **not shown on the world map**. It is an encounter
+> quantity — R-46a pins it to 12 cells at the encounter cell, which on a 1.5 km
+> world cell would read as 18 km — and showing it beside a world position invites
+> exactly the wrong inference. It stays in the model, unrendered, until encounters
+> exist.
+
+> **R-137.** A stored record **read** under an older schema is tolerated; a
+> stored record **written** always carries the current schema version.
+>
+> Reading a version-1 save fills in what it lacks — no `placement` means an
+> unplaced party. But writing it back still labelled version 1 would leave a file
+> whose version does not describe its contents, and later code will branch on that
+> version and be wrong. `upgraded()` stamps it where the save is adopted, so the
+> next autosave persists the upgrade.
+>
+> Refusing a *newer* version stays a hard error (R-61): filling in a missing field
+> is a safe guess, and discarding a field written by a future version is not.

@@ -6,8 +6,8 @@ import {
   BoxGeometry, Color, DynamicDrawUsage, InstancedMesh, Matrix4, MeshLambertMaterial,
   Object3D, Vector3,
 } from 'three';
-import type { Campaign, Chunk, World } from '@tt/domain';
-import { CHUNK_SIZE, MAX_HEIGHT, DEFAULT_TERRAIN, columnAt, terrainById } from '@tt/domain';
+import type { Campaign, Chunk, World, WorldCell } from '@tt/domain';
+import { CHUNK_SIZE, MAX_HEIGHT, DEFAULT_TERRAIN, chunkAt, columnAt, terrainById } from '@tt/domain';
 
 /**
  * Vertical exaggeration, in cell widths per height level.
@@ -46,6 +46,17 @@ export function columnCentre(address: ColumnAddress): Vector3 {
 
 function columnTop(height: number): number {
   return height <= 0 ? SEA_SLAB : height * HEIGHT_SCALE;
+}
+
+/**
+ * The height anything standing on a cell should sit at — markers, pawns, a
+ * travel ghost. One definition, so a pawn never floats above the ground a POI
+ * on the same cell is planted in.
+ */
+export function surfaceAt(campaign: Campaign, cell: WorldCell): number {
+  const chunk = chunkAt(campaign.world, { cx: cell.cx, cz: cell.cz });
+  const column = chunk ? columnAt(chunk, cell.x, cell.z) : null;
+  return columnTop(column?.height ?? 0);
 }
 
 export function buildWorldMeshes(campaign: Campaign): WorldMeshes {

@@ -2,15 +2,18 @@
 // no socket, no randomness reachable from here. Everything arrives as an
 // argument and everything leaves as a return value.
 
-import type { Campaign, ChunkCoord } from '@tt/domain';
-import type { PartyMember, PoiId, NoteId, Save } from '@tt/domain';
+import type { Campaign, ChunkCoord, WorldCell } from '@tt/domain';
+import type { PartyMember, PoiId, NoteId, MemberId, Save } from '@tt/domain';
 import {
   createCampaign, duplicateCampaign, uniqueCampaignName, createMember, editMember, removeMember,
   addChunk, chunkAt, terrainById, isCreatableSlot, DEFAULT_TERRAIN,
   toGlobal, paintArea, setHeightArea, raiseArea,
   addPoi, renamePoi, setPoiMarker, movePoi, removePoi, poiById, poiAt, isValidPoiCell,
   addNote, editNote, setNoteVisible, removeNote, moveNote, isKnownMarker,
-  createLiveSave, withDiscovery, touch, belongsTo, pruneDiscovery,
+  createLiveSave, withDiscovery, withPlacement, touch, upgraded, belongsTo,
+  pruneDiscovery, pruneMembers,
+  pawns, withGroupAt, withMemberAt, gathered, scattered,
+  isValidWorldCell, chunkOf, isChunkKnown,
   setChunkKnown, setPoiRevealed, setPoisRevealed, isAuthored, poisInChunk,
 } from '@tt/domain';
 import type { HostState, Intent, Role } from '@tt/protocol';
@@ -33,21 +36,38 @@ export interface Applied {
 const reject = (state: HostState, reason: string): Applied => ({ state, effects: [], rejected: reason });
 const ok = (state: HostState, effects: readonly Effect[] = []): Applied => ({ state, effects });
 
-/** Only the GM changes anything. The table display is a viewer (R-3, R-4). */
-function mayEdit(role: Role): boolean {
-  return role === 'gm';
+/**
+ * Who may send what (R-136): **the party is the players', the world is the GM's**.
+ *
+ * Fail closed by construction — the last line is `false`, so a role nobody
+ * thought about changes nothing, and an intent nobody classified is GM-only
+ * (R-18a).
+ *
+ * A spectator holds no seat and moves nothing. That is not a technicality: the
+ * party belongs to the *players*, so acting on it takes a player's screen. Since
+ * the table seat is not exclusive (R-127), every real player screen has one.
+ */
+function permitted(role: Role, kind: Intent['kind']): boolean {
+  if (role === 'gm') return true;
+  if (role === 'table') return OPEN_TO_THE_TABLE.has(kind);
+  return false;
 }
 
 /**
- * Intents anyone may send. **Everything not listed here requires the GM.**
+ * Intents the **table seat** may send as well as the GM.
  *
- * This list is deliberately the *read-only* one, not the mutating one. An
- * allow-list of mutations fails open: add an intent, forget to list it, and it is
- * silently permitted for the table display with nothing to notice. Listing the
- * harmless ones instead fails closed — a new intent is GM-only until someone
- * decides otherwise (R-18a).
+ * Deliberately an allow-list of the *open* intents rather than of the mutating
+ * ones. An allow-list of mutations fails open: add an intent, forget to list it,
+ * and it is silently permitted for the table display with nothing to notice.
+ * This way a new intent is GM-only until someone decides otherwise (R-18a), and
+ * a test enumerates `IntentSchema` to force the decision.
+ *
+ * These three are everything about the party's own pawns, and nothing else
+ * (R-136).
  */
-const OPEN_TO_ANYONE = new Set<Intent['kind']>([]);
+const OPEN_TO_THE_TABLE = new Set<Intent['kind']>([
+  'moveParty', 'movePartyMember', 'setPartyTogether',
+]);
 
 /**
  * Applies one intent.
@@ -72,7 +92,9 @@ export function openedWith(
   poiIds: ReadonlySet<PoiId>,
 ): { readonly state: HostState; readonly toPersist: Save | null } {
   const usable = storedSave && belongsTo(storedSave, campaign) ? storedSave : null;
-  const save = usable ? pruneDiscovery(usable, poiIds) : createLiveSave(campaign, savedAt);
+  const save = usable
+    ? upgraded(pruneMembers(pruneDiscovery(usable, poiIds), new Set(campaign.party.map((m) => m.id))))
+    : createLiveSave(campaign, savedAt);
   return {
     state: { ...state, active: campaign, activeSave: save },
     toPersist: save !== usable ? save : null,
@@ -80,7 +102,7 @@ export function openedWith(
 }
 
 export function apply(state: HostState, role: Role, intent: Intent, now: string): Applied {
-  if (!OPEN_TO_ANYONE.has(intent.kind) && !mayEdit(role)) {
+  if (!permitted(role, intent.kind)) {
     return reject(state, 'only the GM can do that');
   }
 
@@ -331,6 +353,33 @@ function applyToPois(
   }
 }
 
+/**
+ * The party may only stand in a Known chunk (R-131).
+ *
+ * Not a permission rule (R-136): the GM is refused too. The party has not been
+ * there, and that is a fact about the party rather than about who is asking.
+ *
+ * One message for both refusals, though the distinction would leak nothing — the
+ * table already receives `unknownChunks` as coordinates (D-140), so it can
+ * already tell authored-but-unknown from unauthored.
+ */
+function reachable(state: HostState, campaign: Campaign, cell: WorldCell): string | null {
+  if (!isValidWorldCell(cell)) return 'that is not a cell';
+  const coord = chunkOf(cell);
+  if (!isAuthored(campaign.world, coord)) return 'the party has not been there';
+  if (!state.activeSave || !isChunkKnown(state.activeSave.discovery, coord)) {
+    return 'the party has not been there';
+  }
+  return null;
+}
+
+/** Is any pawn standing in this chunk? Used to refuse un-Knowing it (R-131). */
+function partyOccupies(state: HostState, campaign: Campaign, coord: ChunkCoord): boolean {
+  if (!state.activeSave) return false;
+  return pawns(state.activeSave.placement, campaign.party)
+    .some((pawn) => pawn.cell.cx === coord.cx && pawn.cell.cz === coord.cz);
+}
+
 // -- what the party knows ---------------------------------------------------
 
 function applyToDiscovery(
@@ -345,17 +394,23 @@ function applyToDiscovery(
   // campaign would apply one world's discovery to another's contents.
   if (save.campaignId !== campaign.id) return reject(state, 'that save belongs to another campaign');
 
-  const commitDiscovery = (discovery: Save['discovery']): Applied => {
-    const next = withDiscovery(save, discovery);
+  const commitSave = (next: Save): Applied => {
     if (next === save) return ok(state);
     const stamped = touch(next, now);
     return ok({ ...state, activeSave: stamped }, [{ kind: 'saveSave', save: stamped }]);
   };
 
+  const commitDiscovery = (discovery: Save['discovery']): Applied =>
+    commitSave(withDiscovery(save, discovery));
+
   switch (intent.kind) {
     case 'setChunkKnown': {
       const coord = { cx: intent.cx, cz: intent.cz };
       if (!isAuthored(campaign.world, coord)) return reject(state, 'that chunk does not exist');
+      // R-131 has to stay true at all times, or movement is built on nothing.
+      if (!intent.known && partyOccupies(state, campaign, coord)) {
+        return reject(state, 'the party is standing there');
+      }
       return commitDiscovery(setChunkKnown(save.discovery, coord, intent.known));
     }
 
@@ -374,6 +429,29 @@ function applyToDiscovery(
         discovery = setPoisRevealed(discovery, ids, true);
       }
       return commitDiscovery(discovery);
+    }
+
+    case 'moveParty': {
+      const why = reachable(state, campaign, intent.cell);
+      if (why) return reject(state, why);
+      return commitSave(withPlacement(save, withGroupAt(save.placement, intent.cell)));
+    }
+
+    case 'movePartyMember': {
+      const id = intent.memberId as MemberId;
+      if (!campaign.party.some((member) => member.id === id)) return reject(state, 'no such member');
+      if (save.placement.together) return reject(state, 'the party is together — separate them first');
+      const why = reachable(state, campaign, intent.cell);
+      if (why) return reject(state, why);
+      return commitSave(withPlacement(save, withMemberAt(save.placement, id, intent.cell)));
+    }
+
+    case 'setPartyTogether': {
+      if (save.placement.together === intent.together) return ok(state);
+      const next = intent.together
+        ? gathered(save.placement, campaign.party)
+        : scattered(save.placement, campaign.party);
+      return commitSave(withPlacement(save, next));
     }
 
     default:

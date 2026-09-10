@@ -280,23 +280,29 @@ describe('permissions fail closed (R-18a)', () => {
     expect(everyIntentKind().length).toBeGreaterThanOrEqual(22);
   });
 
-  it('rejects every intent from the table display unless explicitly opened', () => {
+  it('lets the table seat past the gate for the party, and nothing else', () => {
+    // The whole list, written out rather than derived, because this is the thing
+    // a reviewer checks against R-136: the party is the players', the world is
+    // the GM's. Adding a fourth entry here should require an argument.
     const state = withCampaign();
-    const permitted: string[] = [];
+    const past: string[] = [];
     for (const kind of everyIntentKind()) {
       // A deliberately under-specified payload: we are testing the permission
       // gate, which runs before any field is read.
       const result = apply(state, 'table', { kind } as unknown as Intent, NOW);
-      if (!result.rejected) permitted.push(kind);
+      if (result.rejected !== 'only the GM can do that') past.push(kind);
     }
-    expect(permitted).toEqual([]);
+    expect(past.sort()).toEqual(['movePartyMember', 'moveParty', 'setPartyTogether'].sort());
   });
 
-  it('rejects them from a spectator too', () => {
+  it('rejects every intent from a spectator, including the party ones', () => {
+    // A spectator holds no seat. The party belongs to the players, so moving it
+    // takes a player's screen — and the table seat is not exclusive (R-127), so
+    // every real player screen has one.
     const state = withCampaign();
     for (const kind of everyIntentKind()) {
       const result = apply(state, 'spectator', { kind } as unknown as Intent, NOW);
-      expect(result.rejected, kind).toBeTruthy();
+      expect(result.rejected, kind).toBe('only the GM can do that');
     }
   });
 });

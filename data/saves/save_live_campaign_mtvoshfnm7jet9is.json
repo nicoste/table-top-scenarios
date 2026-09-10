@@ -2,13 +2,26 @@
  "id": "save_live_campaign_mtvoshfnm7jet9is",
  "campaignId": "campaign_mtvoshfnm7jet9is",
  "campaignSchemaVersion": 2,
- "schemaVersion": 1,
+ "schemaVersion": 2,
  "label": "Live",
- "savedAt": "2026-09-10T17:14:57.901Z",
+ "savedAt": "2026-09-10T19:06:50.153Z",
  "discovery": {
   "chunks": [
+   "14,14",
    "15,15"
   ],
-  "pois": []
+  "pois": [
+   "poi_mtvotm616hqjput3"
+  ]
+ },
+ "placement": {
+  "together": true,
+  "at": {
+   "cx": 15,
+   "cz": 15,
+   "x": 17,
+   "z": 9
+  },
+  "members": {}
  }
 }

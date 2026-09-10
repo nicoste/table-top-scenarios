@@ -25,7 +25,7 @@ export const initialServerState: ServerState = {
  * inspect a place without risking creating another one — and no safe state to
  * return to after an action completes (D-127).
  */
-export type Tool = 'select' | 'paint' | 'height' | 'places';
+export type Tool = 'select' | 'paint' | 'height' | 'places' | 'travel';
 
 export interface ViewState {
   readonly camera: CameraTarget;

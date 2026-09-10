@@ -47,6 +47,40 @@ export interface ChunkCoord {
   readonly cz: number;
 }
 
+/**
+ * One cell, addressed as the chunk it belongs to plus its offset inside it.
+ *
+ * This lives here rather than in `poi/` (D-156): it is a world coordinate, and
+ * `party/` has to name one too. A party module importing from `poi/` to say
+ * where somebody is standing would be nonsense.
+ */
+export interface WorldCell {
+  readonly cx: number;
+  readonly cz: number;
+  readonly x: number;
+  readonly z: number;
+}
+
+export function sameWorldCell(a: WorldCell, b: WorldCell): boolean {
+  return a.cx === b.cx && a.cz === b.cz && a.x === b.x && a.z === b.z;
+}
+
+export function chunkOf(cell: WorldCell): ChunkCoord {
+  return { cx: cell.cx, cz: cell.cz };
+}
+
+/**
+ * Total on purpose. Zod validates at the edge (R-17) so a real intent always
+ * carries a cell, but a predicate whose job is to answer "is this a cell" must
+ * not throw when the answer is no.
+ */
+export function isValidWorldCell(cell: WorldCell | null | undefined): boolean {
+  if (!cell) return false;
+  return Number.isInteger(cell.cx) && Number.isInteger(cell.cz)
+    && Number.isInteger(cell.x) && Number.isInteger(cell.z)
+    && cell.x >= 0 && cell.x < CHUNK_SIZE && cell.z >= 0 && cell.z < CHUNK_SIZE;
+}
+
 export interface Chunk {
   readonly coord: ChunkCoord;
   /** Row-major, length CHUNK_SIZE * CHUNK_SIZE. */

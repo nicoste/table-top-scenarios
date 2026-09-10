@@ -12,11 +12,12 @@ export type {
 export type { Terrain, Difficulty } from './terrain/index.js';
 export { DEFAULT_TERRAIN, WATER, terrainById, requireTerrain } from './terrain/index.js';
 
-export type { Column, Chunk, ChunkCoord, World, GlobalCell } from './world/index.js';
+export type { Column, Chunk, ChunkCoord, World, GlobalCell, WorldCell } from './world/index.js';
 export {
   CHUNK_SIZE, MAX_HEIGHT, DEFAULT_METRES_PER_CELL, DEFAULT_METRES_PER_LEVEL,
   DEFAULT_WORLD_BOUNDS, SEA_LEVEL_WATER, centreOfBounds,
   chunkKey, parseChunkKey, createChunk, emptyWorld, inBounds, chunkAt, isAuthored,
+  sameWorldCell, chunkOf, isValidWorldCell,
   columnAt, paintTerrain, clampHeight, setHeight, raiseHeight,
   addChunk, replaceChunk, creatableSlots, isCreatableSlot, CHUNK_NEIGHBOURS,
   MAX_BRUSH, clampBrush, toGlobal, fromGlobal, brushCells, brushCentreOffset,
@@ -54,8 +55,15 @@ export type { Save } from './save/index.js';
 export {
   SAVE_SCHEMA_VERSION, LIVE_LABEL,
   liveSaveId, createLiveSave, belongsTo, matchesCampaignVersion,
-  touch, withDiscovery, pruneDiscovery,
+  touch, upgraded, withDiscovery, withPlacement, pruneDiscovery, pruneMembers,
 } from './save/index.js';
+
+export type { Placement, PlacementJSON } from './placement/index.js';
+export {
+  emptyPlacement, isPartyPlaced, memberCell, pawns,
+  withGroupAt, withMemberAt, gathered, scattered, prunePlacement,
+  placementToJSON, placementFromJSON,
+} from './placement/index.js';
 
 export type { Campaign } from './campaign/index.js';
 export {

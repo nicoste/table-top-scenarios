@@ -48,6 +48,15 @@ export function BuildWorldPanel({
               ⚑ Places
             </button>
           </Tooltip>
+          {/* Spans both columns rather than sitting alone in half of row three. */}
+          <Tooltip label="Move the party — key 5" placement="bottom" stretch>
+            <button
+              className={`wide${tool === 'travel' ? ' on' : ''}`}
+              onClick={() => onTool('travel')}
+            >
+              ⤳ Travel
+            </button>
+          </Tooltip>
         </div>
         <p className="hint">
           {tool === 'select'
@@ -56,7 +65,9 @@ export function BuildWorldPanel({
               ? <>Click, or drag to paint many cells.{selected ? <> Painting <b>{selected.name}</b>.</> : null}</>
               : tool === 'height'
                 ? <>Drag a cell up or down. Each step is 150&nbsp;m.</>
-                : <>Click an empty cell to place a new one.</>}
+                : tool === 'travel'
+                  ? <>Click a pawn, aim, then click to confirm. Escape cancels.</>
+                  : <>Click an empty cell to place a new one.</>}
         </p>
 
         {(tool === 'paint' || tool === 'height') && (
@@ -64,7 +75,7 @@ export function BuildWorldPanel({
           <span className="brush-lbl">Brush</span>
           <div className="brush">
             {BRUSHES.map((n) => (
-              <Tooltip key={n} label={`${n}×${n} cells — key ${n + 4}`} placement="bottom" stretch>
+              <Tooltip key={n} label={`${n}×${n} cells — key ${n + 5}`} placement="bottom" stretch>
                 <button className={brush === n ? 'on' : ''} onClick={() => onBrush(n)} aria-pressed={brush === n}>
                   {n}×{n}
                 </button>

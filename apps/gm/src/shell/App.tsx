@@ -1,11 +1,12 @@
 // The GM console shell: launcher until a campaign is open, then the world.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { decodeCampaign } from '@tt/protocol';
+import { decodeCampaign, decodePlacement } from '@tt/protocol';
 import { CHUNK_SIZE, MAX_HEIGHT, clampBrush, creatableSlots } from '@tt/domain';
 import type { GmView, Intent } from '@tt/protocol';
 import { defaultTarget, worldCentre } from '@tt/render';
-import type { Tool } from '@tt/client-core';
+import type { Tool, Travel } from '@tt/client-core';
+import { idle, pick, aim, travelIntent, travelPrompt } from '@tt/client-core';
 import { useStage } from '../scene/use-stage.js';
 import { Launcher } from '../features/launcher/index.js';
 import { BuildWorldPanel } from '../features/build-world/index.js';
@@ -32,6 +33,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   const [markerId, setMarkerId] = useState('marker:village');
   const [selectedPoi, setSelectedPoi] = useState<string | null>(null);
   const [selectedChunk, setSelectedChunk] = useState<{ cx: number; cz: number } | null>(null);
+  const [travel, setTravel] = useState<Travel>(idle);
   /**
    * The cell a POI was just placed on, waiting for the snapshot that will carry
    * it. The host assigns the id, so the client cannot know it in advance — but
@@ -47,6 +49,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   const campaign = view?.campaign ?? null;
 
   const cellKey = (c: { cx: number; cz: number; x: number; z: number }) => `${c.cx}:${c.cz}:${c.x}:${c.z}`;
+  const memberName = (id: string) => campaign?.party.find((m) => m.id === id)?.name ?? null;
 
   // Selection lives in view state, so a snapshot cannot close the panel the GM
   // is typing into (R-64). It is resolved against the latest campaign each
@@ -80,6 +83,15 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     stage.setSlots(creatableSlots(decoded.world));
     stage.setFogChunks(unknownChunks);
   }, [campaign, stage, view?.save]);
+
+  // The party moves far more often than the world changes (R-19a).
+  useEffect(() => {
+    stage?.setPlacement(view?.save ? decodePlacement(view.save.placement) : null);
+  }, [view?.save, stage]);
+
+  useEffect(() => {
+    stage?.aimAt(travel.step === 'aiming' ? travel.at : null);
+  }, [travel, stage]);
 
   const columnInfo = useCallback((cell: { cx: number; cz: number; x: number; z: number }) => {
     const chunk = campaign?.world.chunks.find((c) => c.cx === cell.cx && c.cz === cell.cz);
@@ -118,6 +130,22 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       return;
     }
     const picked = stage.pick(e.clientX, e.clientY);
+
+    // Mid-sequence, the click means confirm or cancel and nothing else (R-132).
+    if (travel.step === 'aiming') {
+      if (picked.column) dispatch(travelIntent(travel.pawn, picked.column));
+      setTravel(idle);
+      // The aim highlight belongs to the sequence, so it goes with it.
+      stage.showHighlight(null, 0);
+      return;
+    }
+
+    // A pawn is picked up by the travel tool, and ignored by every other one, so
+    // painting terrain under the party still paints.
+    if (tool === 'travel' && picked.pawn) {
+      setTravel(pick(picked.pawn));
+      return;
+    }
 
     // A marker always means the place it belongs to, whatever the tool (R-86).
     // The tool is left alone: switching to Places would arm the next click to
@@ -158,13 +186,20 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!stage) return;
 
+    if (travel.step === 'aiming') {
+      const picked = stage.pick(e.clientX, e.clientY);
+      setTravel((current) => aim(current, picked.column));
+      stage.showHighlight(picked.column, picked.column ? heightAt(picked.column) : 0, 1);
+      return;
+    }
+
     if (panning.current) {
       stage.pan(e.clientX - panning.current.x, e.clientY - panning.current.y);
       panning.current = { x: e.clientX, y: e.clientY };
       return;
     }
 
-    if (tool === 'select') {
+    if (tool === 'select' || tool === 'travel') {
       stage.showHighlight(null, 0);
       setHoverLabel(null);
       return;
@@ -235,9 +270,13 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
         case '2': setTool('paint'); return;
         case '3': setTool('height'); return;
         case '4': setTool('places'); return;
-        case '5': setBrush(1); return;
-        case '6': setBrush(2); return;
-        case '7': setBrush(3); return;
+        case '5': setTool('travel'); return;
+        // Brush moved down one when travel took 5, so the digits still run
+        // left-to-right through the tools and then the brushes. `[` and `]` are
+        // the primary brush keys anyway.
+        case '6': setBrush(1); return;
+        case '7': setBrush(2); return;
+        case '8': setBrush(3); return;
         default: break;
       }
 
@@ -248,7 +287,12 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
         case 'KeyF': stage.tilt(-1); return;
         case 'BracketLeft': setBrush((n) => clampBrush(n - 1)); return;
         case 'BracketRight': setBrush((n) => clampBrush(n + 1)); return;
-        case 'Escape': setSelectedPoi(null); setSelectedChunk(null); return;
+        case 'Escape':
+          setTravel(idle);
+          stage.showHighlight(null, 0);
+          setSelectedPoi(null);
+          setSelectedChunk(null);
+          return;
         default: break;
       }
     };
@@ -315,7 +359,9 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
               tool={tool}
               terrainId={terrainId}
               brush={brush}
-              hoverLabel={hoverLabel}
+              // Mid-sequence the readout says what the click will do, since that
+              // is more useful than the terrain under the pointer (R-132).
+              hoverLabel={travelPrompt(travel, memberName) ?? hoverLabel}
               onTool={setTool}
               onTerrain={setTerrainId}
               onBrush={setBrush}
@@ -345,11 +391,16 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
                 dispatch={dispatch}
               />
             )}
-            <PartyPanel campaign={campaign} dispatch={dispatch} />
+            <PartyPanel
+              campaign={campaign}
+              placement={view?.save?.placement ?? null}
+              canPlace={knownChunks.size > 0}
+              dispatch={dispatch}
+            />
           </div>
 
           <div className="hints">
-            1–4 tool · 5/6/7 or [ ] brush · Q/E turn · R/F tilt · right-drag pan · wheel zoom
+            1–5 tool · 6/7/8 or [ ] brush · Q/E turn · R/F tilt · right-drag pan · wheel zoom
           </div>
           <ConnectBadge urls={view?.connect ?? []} />
         </>

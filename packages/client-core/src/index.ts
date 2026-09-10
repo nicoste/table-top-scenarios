@@ -5,3 +5,6 @@ export type { Connection, Handlers } from './net/index.js';
 
 export { initialServerState, initialViewState } from './store/index.js';
 export type { ServerState, ViewState, Tool } from './store/index.js';
+
+export { idle, pick, aim, travelIntent, travelPrompt } from './travel/index.js';
+export type { Travel } from './travel/index.js';

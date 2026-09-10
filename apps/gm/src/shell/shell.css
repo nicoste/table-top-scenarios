@@ -73,6 +73,7 @@ button.quiet:hover { background: #3a2222; color: #ffc9c9; border-color: transpar
   widening its column past the track.
 */
 .tools { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+.tools .wide, .tools > *:has(.wide) { grid-column: 1 / -1; }
 .tools button {
   width: 100%; padding: 7px 4px; font-size: 12px; white-space: nowrap;
   display: flex; align-items: center; justify-content: center; gap: 5px;

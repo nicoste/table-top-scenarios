@@ -22,7 +22,13 @@
    },
    "markerId": "marker:village",
    "encounters": [],
-   "notes": []
+   "notes": [
+    {
+     "id": "note_mtvtb8znninork2b",
+     "text": "Do you know this?",
+     "visibleToParty": true
+    }
+   ]
   }
  ]
 }
