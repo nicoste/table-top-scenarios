@@ -1,0 +1,24 @@
+{
+ "id": "save_live_campaign_mtvzi8y61kp6zmut",
+ "campaignId": "campaign_mtvzi8y61kp6zmut",
+ "campaignSchemaVersion": 2,
+ "schemaVersion": 2,
+ "label": "Live",
+ "savedAt": "2026-09-10T20:33:09.278Z",
+ "discovery": {
+  "chunks": [
+   "15,15"
+  ],
+  "pois": []
+ },
+ "placement": {
+  "together": true,
+  "at": {
+   "cx": 15,
+   "cz": 15,
+   "x": 5,
+   "z": 5
+  },
+  "members": {}
+ }
+}

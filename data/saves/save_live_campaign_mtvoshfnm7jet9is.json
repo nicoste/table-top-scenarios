@@ -4,11 +4,10 @@
  "campaignSchemaVersion": 2,
  "schemaVersion": 2,
  "label": "Live",
- "savedAt": "2026-09-10T19:23:25.000Z",
+ "savedAt": "2026-09-10T20:28:28.195Z",
  "discovery": {
   "chunks": [
    "14,14",
-   "15,14",
    "15,15"
   ],
   "pois": [
@@ -20,7 +19,7 @@
   "at": {
    "cx": 15,
    "cz": 15,
-   "x": 10,
+   "x": 5,
    "z": 10
   },
   "members": {}

@@ -10,7 +10,7 @@ import { decodeCampaign, decodePlacement } from '@tt/protocol';
 import { CHUNK_SIZE } from '@tt/domain';
 import type { Intent, TableView } from '@tt/protocol';
 import type { Travel } from '@tt/client-core';
-import { idle, pick, aim, travelIntent, travelPrompt } from '@tt/client-core';
+import { idle, pick, aim, ghostCell, canConfirm, travelIntent, travelPrompt } from '@tt/client-core';
 import { defaultTarget, worldCentre } from '@tt/render';
 import { useStage } from '../scene/use-stage.js';
 
@@ -69,7 +69,7 @@ export function App({ view, status, rejection, dispatch }: Props) {
   }, [placementWire, stage]);
 
   useEffect(() => {
-    stage?.aimAt(travel.step === 'aiming' ? travel.at : null);
+    stage?.aimAt(ghostCell(travel));
   }, [travel, stage]);
 
   // Escape cancels, wherever the pointer is (R-132).
@@ -95,7 +95,10 @@ export function App({ view, status, rejection, dispatch }: Props) {
     }
     if (travel.step !== 'aiming' || !stage) return;
     const hit = stage.pick(event.clientX, event.clientY);
-    setTravel((current) => aim(current, hit.column));
+    // The table only ever receives Known chunks (D-140), so any cell it can
+    // raycast is reachable by construction. Stated rather than assumed, because
+    // the guard is what makes the ghost honest (D-164).
+    setTravel((current) => aim(current, hit.column, hit.column !== null));
   };
 
   const onClick = (event: React.PointerEvent) => {
@@ -103,9 +106,9 @@ export function App({ view, status, rejection, dispatch }: Props) {
     const hit = stage.pick(event.clientX, event.clientY);
 
     if (travel.step === 'aiming') {
-      // Second click confirms. Anything that is not a cell cancels, rather than
-      // silently doing nothing.
-      if (hit.column) dispatch(travelIntent(travel.pawn, hit.column));
+      // Second click confirms. Anything that is not a reachable cell cancels,
+      // rather than sending a move the host would refuse.
+      if (canConfirm(travel) && hit.column) dispatch(travelIntent(travel.pawn, hit.column));
       setTravel(idle);
       return;
     }
@@ -125,7 +128,13 @@ export function App({ view, status, rejection, dispatch }: Props) {
       <div className="stage">
         <canvas
           ref={setCanvas}
-          onPointerDown={(e) => { drag.current = { x: e.clientX, y: e.clientY, moved: false }; }}
+          onPointerDown={(e) => {
+            if (e.button === 2 || e.button === 1) {
+              if (travel.step === 'aiming') setTravel(idle);
+              return;
+            }
+            drag.current = { x: e.clientX, y: e.clientY, moved: false };
+          }}
           onPointerMove={onPointerMove}
           onPointerUp={(e) => {
             const dragged = drag.current?.moved ?? true;

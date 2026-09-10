@@ -1,6 +1,6 @@
 // The pick / aim / confirm sequence, shared by both screens (R-132, R-134).
 //
-// Deliberately not React: it is a three-state machine and one intent mapping,
+// Deliberately not React: it is a small state machine and one intent mapping,
 // and both apps hold the state with their own `useState`. What has to be shared
 // is the *shape* of the sequence, so the GM console and the table display cannot
 // drift into behaving differently.
@@ -21,19 +21,39 @@ export type Travel =
     readonly pawn: PawnRef;
     /** Where the pointer last was over a cell; null before it has moved. */
     readonly at: WorldCell | null;
+    /**
+     * Whether the party could actually stand there (R-131).
+     *
+     * Checked on the client as well as in `sim` — not because the client is
+     * trusted, but because a ghost that follows the pointer into unexplored
+     * ground offers a move that will be refused. The GM console draws every
+     * authored chunk with a fog overlay on top, so the terrain under the dark is
+     * real geometry and aims perfectly well (D-164).
+     */
+    readonly reachable: boolean;
   };
 
 export const idle: Travel = { step: 'idle' };
 
 export function pick(pawn: PawnRef): Travel {
-  return { step: 'aiming', pawn, at: null };
+  return { step: 'aiming', pawn, at: null, reachable: false };
 }
 
-export function aim(travel: Travel, cell: WorldCell | null): Travel {
+export function aim(travel: Travel, cell: WorldCell | null, reachable: boolean): Travel {
   if (travel.step !== 'aiming') return travel;
-  if (cell === travel.at) return travel;
-  if (cell && travel.at && sameCell(cell, travel.at)) return travel;
-  return { ...travel, at: cell };
+  const same = cell === travel.at || (cell && travel.at && sameCell(cell, travel.at));
+  if (same && reachable === travel.reachable) return travel;
+  return { ...travel, at: cell, reachable: cell ? reachable : false };
+}
+
+/** Where the ghost should stand: nowhere unless the move is actually possible. */
+export function ghostCell(travel: Travel): WorldCell | null {
+  return travel.step === 'aiming' && travel.reachable ? travel.at : null;
+}
+
+/** Whether a click right now would send a move. */
+export function canConfirm(travel: Travel): boolean {
+  return travel.step === 'aiming' && travel.reachable && travel.at !== null;
 }
 
 function sameCell(a: WorldCell, b: WorldCell): boolean {
@@ -57,7 +77,8 @@ export function travelIntent(pawn: PawnRef, cell: WorldCell): Intent {
 export function travelPrompt(travel: Travel, nameOf: (id: string) => string | null): string | null {
   if (travel.step !== 'aiming') return null;
   const who = travel.pawn.memberId === null ? 'the party' : nameOf(travel.pawn.memberId) ?? 'them';
-  return travel.at
-    ? `Move ${who} here? Click to confirm, or press Escape.`
-    : `Moving ${who}. Point at a revealed cell.`;
+  if (!travel.at) return `Moving ${who}. Point at a revealed cell.`;
+  return travel.reachable
+    ? `Move ${who} here? Click to confirm, Escape or right-click to cancel.`
+    : `${who[0]!.toUpperCase()}${who.slice(1)} have not been there — reveal the chunk first.`;
 }

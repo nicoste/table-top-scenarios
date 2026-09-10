@@ -1,0 +1,14 @@
+{
+ "id": "campaign_mtvzi8y61kp6zmut",
+ "schemaVersion": 2,
+ "name": "Bug Hunt",
+ "party": [
+  {
+   "id": "member_mtvzi8y7lky255y8",
+   "name": "player",
+   "colour": "#57d9a3",
+   "visionRange": 12
+  }
+ ],
+ "pois": []
+}

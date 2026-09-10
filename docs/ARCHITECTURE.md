@@ -1539,3 +1539,30 @@ apps/host/src/
 >
 > Refusing a *newer* version stays a hard error (R-61): filling in a missing field
 > is a safe guess, and discarding a field written by a future version is not.
+
+> **R-23b.** Policy that is a **rule** does not get to hide in a component.
+>
+> R-23 exempts `render` and the apps from unit tests, and its reason is three.js
+> and the DOM: you cannot sensibly mock them. That reason does not cover decision
+> tables, state machines or coordinate rules that happen to be *typed inside* a
+> component — and using R-23 to excuse those is how three fixed bugs in a row
+> shipped with no test (D-166).
+>
+> When a bug turns out to be a rule, extract the rule to a pure module and test
+> it there. What is left in the component — layout, pointer plumbing, GL calls —
+> is what R-23 actually exempts, and is verified by running it.
+
+> **R-138.** A client **must not offer an action the host will refuse.**
+>
+> `sim` stays the only authority (R-3): the client's check is a second opinion,
+> never the enforcement. But a ghost that follows the pointer into unexplored
+> ground, a button that is enabled for something impossible, or a gesture that
+> completes and then earns a red toast all teach the user that the tool is
+> unreliable. Refuse earlier, and say why in place of the thing you refused.
+
+> **R-139.** A multi-step gesture is cancelled by **Escape and by right-click**,
+> and says so while it is running.
+>
+> Escape is the keyboard's "never mind" and right-click is the mouse's; a gesture
+> driven by the mouse should not require the other hand. Right-click during a
+> gesture cancels instead of doing its usual job (R-133's pan).

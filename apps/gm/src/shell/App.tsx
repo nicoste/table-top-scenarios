@@ -6,7 +6,7 @@ import { CHUNK_SIZE, MAX_HEIGHT, clampBrush, creatableSlots, sameWorldCell } fro
 import type { GmView, Intent } from '@tt/protocol';
 import { defaultTarget, worldCentre } from '@tt/render';
 import type { Tool, Travel } from '@tt/client-core';
-import { idle, pick, aim, travelIntent, travelPrompt } from '@tt/client-core';
+import { idle, pick, aim, ghostCell, canConfirm, travelIntent, travelPrompt, clickAction } from '@tt/client-core';
 import { useStage } from '../scene/use-stage.js';
 import { Launcher } from '../features/launcher/index.js';
 import { BuildWorldPanel } from '../features/build-world/index.js';
@@ -53,6 +53,13 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   /** One POI per cell (R-119), checked on the wire form the app actually holds. */
   const occupied = (cell: { cx: number; cz: number; x: number; z: number }) =>
     (campaign?.pois ?? []).some((poi) => sameWorldCell(poi.cell, cell));
+  /**
+   * Can the party stand here? The GM console draws unknown chunks too, with fog
+   * over them, so the ground under the dark is real geometry and aims fine —
+   * hence this check, not just the one in `sim` (D-164).
+   */
+  const standable = (cell: { cx: number; cz: number } | null) =>
+    cell !== null && knownChunks.has(`${cell.cx},${cell.cz}`);
 
   // Selection lives in view state, so a snapshot cannot close the panel the GM
   // is typing into (R-64). It is resolved against the latest campaign each
@@ -93,7 +100,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   }, [view?.save, stage]);
 
   useEffect(() => {
-    stage?.aimAt(travel.step === 'aiming' ? travel.at : null);
+    stage?.aimAt(ghostCell(travel));
   }, [travel, stage]);
 
   const columnInfo = useCallback((cell: { cx: number; cz: number; x: number; z: number }) => {
@@ -129,6 +136,13 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!stage || !campaign) return;
     if (e.button === 2 || e.button === 1) {
+      // Right-click cancels a move in progress instead of starting a pan: it is
+      // the universal "never mind" and the hand is already on the mouse (D-165).
+      if (travel.step === 'aiming') {
+        setTravel(idle);
+        stage.showHighlight(null, 0);
+        return;
+      }
       panning.current = { x: e.clientX, y: e.clientY };
       return;
     }
@@ -136,58 +150,64 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
 
     // Mid-sequence, the click means confirm or cancel and nothing else (R-132).
     if (travel.step === 'aiming') {
-      if (picked.column) dispatch(travelIntent(travel.pawn, picked.column));
+      // An unreachable cell is not confirmable, so the click cancels instead of
+      // sending a move the host would refuse (D-164).
+      if (canConfirm(travel) && picked.column) dispatch(travelIntent(travel.pawn, picked.column));
       setTravel(idle);
       // The aim highlight belongs to the sequence, so it goes with it.
       stage.showHighlight(null, 0);
       return;
     }
 
-    // Every tool creates a chunk from an empty slot: the `+` affordance is not a
-    // tool's business, it is how the world grows (R-79).
-    if (picked.slot) {
-      dispatch({ kind: 'addChunk', cx: picked.slot.cx, cz: picked.slot.cz });
-      return;
-    }
+    // What the click meant is decided by the tested table in `client-core`
+    // (R-87c), not by the order of `if`s in a pointer handler. This switch only
+    // carries it out.
+    const action = clickAction(tool, {
+      pawn: picked.pawn,
+      poiId: picked.poiId,
+      cell: picked.column,
+      slot: picked.slot,
+    }, { occupied });
 
-    // What a click *meant* is the tool's decision, not the renderer's (R-87c).
-    // Anything a tool does not name here it ignores — which is why a paint
-    // stroke over a marker or a pawn now paints the ground under it.
-    if (tool === 'travel') {
-      if (picked.pawn) setTravel(pick(picked.pawn));
-      return;
-    }
+    switch (action.kind) {
+      case 'createChunk':
+        dispatch({ kind: 'addChunk', cx: action.slot.cx, cz: action.slot.cz });
+        return;
 
-    if (tool === 'select') {
-      if (picked.poiId) { setSelectedPoi(picked.poiId); setSelectedChunk(null); return; }
-      if (!picked.column) return;
-      // Bare ground selects its chunk, which is the only route to the Known
-      // toggle (R-87a). Pawns are not selectable here — travel picks those up.
-      setSelectedPoi(null);
-      setSelectedChunk({ cx: picked.column.cx, cz: picked.column.cz });
-      return;
-    }
+      case 'pickPawn':
+        setTravel(pick(action.pawn));
+        return;
 
-    if (!picked.column) return;
+      case 'selectPoi':
+        setSelectedPoi(action.poiId);
+        setSelectedChunk(null);
+        return;
 
-    if (tool === 'places') {
-      // One POI per cell (R-119). The click is dropped rather than dispatched
-      // and refused: an occupied cell is not a mistake worth a red toast, and
-      // the hover readout has already said the cell is taken.
-      if (occupied(picked.column)) return;
-      const { cx, cz, x, z } = picked.column;
-      pendingPoiCell.current = cellKey(picked.column);
-      dispatch({ kind: 'addPoi', cell: { cx, cz, x, z }, markerId });
-      return;
-    }
+      case 'selectChunk':
+        setSelectedPoi(null);
+        setSelectedChunk(action.coord);
+        return;
 
-    if (tool === 'paint') {
-      painting.current = cellKey(picked.column);
-      dispatch({ kind: 'paintTerrain', ...picked.column, terrainId, size: brush });
-      e.currentTarget.setPointerCapture(e.pointerId);
-    } else {
-      drag.current = { startY: e.clientY, base: heightAt(picked.column), cell: picked.column };
-      e.currentTarget.setPointerCapture(e.pointerId);
+      case 'placePoi': {
+        const { cx, cz, x, z } = action.cell;
+        pendingPoiCell.current = cellKey(action.cell);
+        dispatch({ kind: 'addPoi', cell: { cx, cz, x, z }, markerId });
+        return;
+      }
+
+      case 'paint':
+        painting.current = cellKey(action.cell);
+        dispatch({ kind: 'paintTerrain', ...action.cell, terrainId, size: brush });
+        e.currentTarget.setPointerCapture(e.pointerId);
+        return;
+
+      case 'raise':
+        drag.current = { startY: e.clientY, base: heightAt(action.cell), cell: action.cell };
+        e.currentTarget.setPointerCapture(e.pointerId);
+        return;
+
+      default:
+        return;
     }
   };
 
@@ -196,7 +216,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
 
     if (travel.step === 'aiming') {
       const picked = stage.pick(e.clientX, e.clientY);
-      setTravel((current) => aim(current, picked.column));
+      setTravel((current) => aim(current, picked.column, standable(picked.column)));
       stage.showHighlight(picked.column, picked.column ? heightAt(picked.column) : 0, 1);
       return;
     }

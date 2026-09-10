@@ -2231,3 +2231,76 @@ fail against the behaviour this replaced.
 time did not: my click landed on the terrain palette rather than the canvas,
 because the Paint tool opens that panel over the left of the map. The test tells
 me the rule is right; the panel-relative geometry still wants a human eye.
+
+---
+
+## Round 30 — the frontier on the client, and a testing audit
+
+### D-164 — The client refuses to aim where the party cannot go · `agreed`
+*"I can move the token to an unknown chunk."*
+
+The server never allowed it — reproduced on the running host: chunk `16,15`
+authored, `15,15` the only Known one, `moveParty` there answered *"the party has
+not been there"* and the party did not move. The invariant held where it counts.
+
+The defect was in the offer. **The GM console draws every authored chunk and
+lays fog over the unknown ones**, so the terrain under the dark is real geometry
+that raycasts perfectly well. The ghost followed the pointer into unexplored
+ground, the click was accepted by the client, and only then did the host refuse
+it. A gesture that completes and then fails reads as "it let me do it".
+
+So the reachability check is now made twice: in `sim` because that is the
+authority (R-3), and on the client because offering an impossible move is its own
+bug (R-138). The ghost does not appear on an unreachable cell, the click cancels
+instead of dispatching, and the readout says *"…have not been there — reveal the
+chunk first"* rather than going quiet.
+
+The table display needed no equivalent check — it only ever receives Known
+chunks (D-140), so any cell it can raycast is reachable. Stated in the code
+rather than left implicit, since that is the sort of thing that stops being true.
+
+### D-165 — Escape and right-click both cancel · `agreed`
+*"can we do right click or 'escape' to cancel the movement?"*
+
+Escape was already bound on both screens; right-click was not, and on the GM
+console it started a pan instead. It now cancels while a sequence is running and
+pans the rest of the time (R-139).
+
+Being asked for a binding that already existed is itself a finding: the prompt
+said *"Click to confirm, or press Escape"* only in the GM console's readout,
+which is a small line in a panel the pointer is nowhere near. It now names both
+ways out, on both screens.
+
+### D-166 — Rules do not hide in components · `agreed`
+*"add tests if possible to cover every bug we discover and fix. Confirm is that
+what you have been doing."*
+
+**Partly, and the gap was systematic rather than random.** Audited honestly:
+
+Fixed *with* a test at the time — the prototype's vision leak, the revealed-POI
+leak, fail-closed permissions, registries leaking into storage, the seat race and
+zombie sockets, the unstamped schema version, spectator scoping, and the marker
+blocking its own cell.
+
+Fixed *without* one — the dock swallowing pointer events, tooltip clipping,
+`flex-basis` not being a floor, `event.key` versus `event.code`, the canvas mount
+race, `pick()` not syncing the camera, and the per-tool picking matrix itself.
+
+Every entry in the second list lived in an app or in CSS, and I had been treating
+R-23's exemption as "apps are not tested". Its actual reason is that three.js and
+the DOM cannot sensibly be mocked — which says nothing about a decision table or
+a state machine that merely happens to be typed inside a component.
+
+So the two live cases moved out and grew tests: `clickAction` in
+`client-core/tools` is the R-87c matrix, including the *"painting snow around the
+party token"* bug as a named test; `travel` is the pick/aim/confirm sequence
+including this round's reachability guard. 32 tests between them, and the matrix
+one would have caught D-162 before it was reported.
+
+Recorded as R-23b so the next bug in a component gets asked the question: is
+this a rule that can leave, or is it genuinely layout?
+
+Honest limit: some of the first list stays untestable without a DOM harness —
+whether a panel eats a wheel event, whether a tooltip is clipped by an ancestor's
+overflow. Those are what R-23 means, and they get verified by running the app.
+Adding jsdom to chase them would buy confidence in a fake browser.
