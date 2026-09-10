@@ -13,10 +13,14 @@ import type { CameraTarget } from '../camera/index.js';
 import { applyTarget, clampTarget, createCamera, defaultTarget, PITCH_STEPS, yawRadians } from '../camera/index.js';
 import type { ColumnAddress, WorldMeshes } from '../world/index.js';
 import { buildWorldMeshes, columnCentre, worldCentre, HEIGHT_SCALE } from '../world/index.js';
+import type { PoiMarkers } from '../pois/index.js';
+import { buildPoiMarkers, MARKER_ZOOM } from '../pois/index.js';
 
 export interface SlotAddress { readonly cx: number; readonly cz: number }
 
 export interface Picked {
+  /** A POI marker takes precedence: it sits on top of its own column. */
+  readonly poiId: string | null;
   readonly column: ColumnAddress | null;
   readonly slot: SlotAddress | null;
 }
@@ -35,6 +39,7 @@ export class Stage {
   private readonly highlight: LineSegments;
   private readonly slots = new Group();
   private world: WorldMeshes | null = null;
+  private pois: PoiMarkers | null = null;
   private grid: GridHelper | null = null;
   private slotMeshes: { mesh: Mesh; coord: SlotAddress }[] = [];
   private target: CameraTarget = defaultTarget();
@@ -66,6 +71,7 @@ export class Stage {
 
   setCampaign(campaign: Campaign | null, recentre = false): void {
     if (this.world) { this.scene.remove(this.world.mesh); this.world.dispose(); this.world = null; }
+    if (this.pois) { this.scene.remove(this.pois.group); this.pois.dispose(); this.pois = null; }
     for (const { mesh } of this.slotMeshes) {
       this.slots.remove(mesh);
       mesh.geometry.dispose();
@@ -77,6 +83,9 @@ export class Stage {
 
     this.world = buildWorldMeshes(campaign);
     this.scene.add(this.world.mesh);
+
+    this.pois = buildPoiMarkers(campaign);
+    this.scene.add(this.pois.group);
 
     const centre = worldCentre(campaign.world);
     this.grid = new GridHelper(CHUNK_SIZE * 24, 24, 0x2a3140, 0x1b2028);
@@ -161,18 +170,27 @@ export class Stage {
     );
     this.raycaster.setFromCamera(ndc, this.camera);
 
+    // Markers first: one sits on top of its own column, and clicking a place
+    // should mean the place (R-86).
+    if (this.pois && this.pois.group.visible) {
+      for (const hit of this.raycaster.intersectObjects(this.pois.group.children, true)) {
+        const owner = this.pois.poiOf(hit.object);
+        if (owner) return { poiId: owner, column: null, slot: null };
+      }
+    }
+
     if (this.world) {
       const hit = this.raycaster.intersectObject(this.world.mesh, false)[0];
       if (hit && hit.instanceId !== undefined) {
-        return { column: this.world.addressOf(hit.instanceId), slot: null };
+        return { poiId: null, column: this.world.addressOf(hit.instanceId), slot: null };
       }
     }
     for (const { mesh, coord } of this.slotMeshes) {
       if (this.raycaster.intersectObject(mesh, false).length > 0) {
-        return { column: null, slot: coord };
+        return { poiId: null, column: null, slot: coord };
       }
     }
-    return { column: null, slot: null };
+    return { poiId: null, column: null, slot: null };
   }
 
   /**
@@ -201,11 +219,19 @@ export class Stage {
 
   render(): void {
     this.syncCamera();
+    // Markers and their names share one threshold and toggle together (R-83).
+    if (this.pois) {
+      this.pois.group.visible = this.target.zoom <= MARKER_ZOOM;
+      if (this.pois.group.visible) {
+        this.pois.scaleLabels(this.target.zoom, this.canvas.clientHeight || 1);
+      }
+    }
     this.renderer.render(this.scene, this.camera);
   }
 
   dispose(): void {
     instances--;
+    this.pois?.dispose();
     this.world?.dispose();
     this.renderer.dispose();
   }

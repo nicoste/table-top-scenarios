@@ -175,7 +175,7 @@ Campaign {
   name: string
   world: World
   party: PartyMember[]                             // definitions, not placements
-  registries: { terrain, materials, markers }      // append-only (R-11)
+  pois: Poi[]                                      // flat, not per chunk (R-118)
   encounters: Map<EncounterId, EncounterMap>
 }
 
@@ -194,7 +194,7 @@ World {
   chunks: SparseMap<ChunkCoord, Chunk>             // sparse: absent = unauthored
 }
 
-Chunk  { coord: ChunkCoord; terrain: ColumnGrid /* 20x20 */; pois: Poi[] }
+Chunk  { coord: ChunkCoord; terrain: ColumnGrid /* 30x30 */ }
 Column {
   height: number                 // in cells; 0 = sea level
   terrainId: TerrainId           // from the palette; carries the default difficulty
@@ -461,6 +461,14 @@ cube and a short far cube can land on the same pixels. These are not polish.
 > Connectors ("the stairs at C7 lead to Level 2") are deliberately not modelled —
 > the GM says so out loud (R-1, R-39).
 
+> **R-118.** POIs are a **flat list on the campaign**, not a field on each chunk.
+> "Every POI" is then one read rather than a walk over chunks, a POI can be found
+> without knowing which chunk holds it, and moving one across a chunk boundary is
+> a field change rather than a move between containers.
+
+> **R-119.** **At most one POI per cell.** Two would make the tap gesture (R-86)
+> ambiguous, and R-50 already says a POI is one cell.
+
 > **R-50.** A POI occupies **exactly one cell**. Multi-cell footprints are a
 > wanted future feature — an "expand POI" tool that assigns extra cells — and are
 > deliberately not modelled yet (O-014). Building the single-cell case first keeps
@@ -526,6 +534,12 @@ cube and a short far cube can land on the same pixels. These are not polish.
 > which model is drawn; the tool attaches no meaning to the choice. The GM picks
 > whatever best represents the place and the fiction lives off-tool.
 
+> **R-83a.** A name label holds a **constant size on screen**, not in the world.
+> A sprite under an orthographic camera is sized in world units, so a label that
+> reads well at one zoom balloons on zooming in and disappears on zooming out.
+> Scaling it by the camera's zoom each frame makes it behave like a map label
+> rather than a piece of scenery.
+
 > **R-83.** A POI's **marker and its name share a single zoom threshold** and
 > appear together. Below it, neither is drawn.
 >
@@ -572,6 +586,20 @@ most time in, so it gets specified rather than improvised.
 > tools. The tools differ only in what a gesture does, never in what the cursor
 > looks like, so the GM never has to work out which mode they are in from the
 > cursor alone.
+
+> **R-87a.** There is a **neutral tool**, `select`, and it is the default.
+>
+> It changes nothing and only picks things out. Without it every click on the map
+> edits something, so there is no way to inspect a place without risking creating
+> another, and no safe state for an action to finish in.
+>
+> **After an action that creates something, the app returns to `select` with the
+> new thing selected.** Staying in the creating tool arms the next click to
+> create again, which is what makes an editor feel hostile.
+
+> **R-87b.** Clicking a POI marker selects it **whatever the tool is**, and does
+> *not* change the tool. Switching to Places on selection would arm the next
+> click to create another POI — the very thing R-87a exists to prevent.
 
 > **R-88.** **Paint tool** (brush icon): pick a terrain from the palette (R-77),
 > tap a cell to paint it, or drag to paint many. Height is untouched.

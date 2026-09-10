@@ -10,6 +10,7 @@ import { useStage } from '../scene/use-stage.js';
 import { Launcher } from '../features/launcher/index.js';
 import { BuildWorldPanel } from '../features/build-world/index.js';
 import { PartyPanel } from '../features/party/index.js';
+import { PlacesPanel, PoiInspector } from '../features/poi/index.js';
 import { ConnectBadge } from '../features/connect/index.js';
 import { Tooltip } from '@tt/ui';
 
@@ -21,10 +22,18 @@ interface Props {
 }
 
 export function App({ view, status, rejection, dispatch }: Props) {
-  const [tool, setTool] = useState<Tool>('paint');
+  const [tool, setTool] = useState<Tool>('select');
   const [terrainId, setTerrainId] = useState('terrain:grass');
   const [hoverLabel, setHoverLabel] = useState<string | null>(null);
   const [brush, setBrush] = useState(1);
+  const [markerId, setMarkerId] = useState('marker:village');
+  const [selectedPoi, setSelectedPoi] = useState<string | null>(null);
+  /**
+   * The cell a POI was just placed on, waiting for the snapshot that will carry
+   * it. The host assigns the id, so the client cannot know it in advance — but
+   * one POI per cell (R-119) makes the cell an unambiguous handle until then.
+   */
+  const pendingPoiCell = useRef<string | null>(null);
   const { setCanvas, stage } = useStage();
   const openedId = useRef<string | null>(null);
   const drag = useRef<{ startY: number; base: number; cell: { cx: number; cz: number; x: number; z: number } } | null>(null);
@@ -34,6 +43,11 @@ export function App({ view, status, rejection, dispatch }: Props) {
   const campaign = view?.campaign ?? null;
 
   const cellKey = (c: { cx: number; cz: number; x: number; z: number }) => `${c.cx}:${c.cz}:${c.x}:${c.z}`;
+
+  // Selection lives in view state, so a snapshot cannot close the panel the GM
+  // is typing into (R-64). It is resolved against the latest campaign each
+  // render, so a deleted POI simply stops resolving.
+  const poi = campaign?.pois.find((p) => p.id === selectedPoi) ?? null;
 
   // Push server state into the Stage. Recentre only when a different campaign
   // opens, so an edit never yanks the camera (R-64).
@@ -62,6 +76,20 @@ export function App({ view, status, rejection, dispatch }: Props) {
     };
   }, [campaign]);
 
+  useEffect(() => {
+    const waiting = pendingPoiCell.current;
+    if (!waiting || !campaign) return;
+    const placed = campaign.pois.find(
+      (p) => `${p.cell.cx}:${p.cell.cz}:${p.cell.x}:${p.cell.z}` === waiting,
+    );
+    if (!placed) return;
+    pendingPoiCell.current = null;
+    setSelectedPoi(placed.id);
+    // Drop to the neutral tool so the next click inspects rather than places
+    // another one (D-127).
+    setTool('select');
+  }, [campaign]);
+
   const heightAt = useCallback(
     (cell: { cx: number; cz: number; x: number; z: number }) => columnInfo(cell)?.height ?? 0,
     [columnInfo],
@@ -74,11 +102,32 @@ export function App({ view, status, rejection, dispatch }: Props) {
       return;
     }
     const picked = stage.pick(e.clientX, e.clientY);
+
+    // A marker always means the place it belongs to, whatever the tool (R-86).
+    // The tool is left alone: switching to Places would arm the next click to
+    // create another POI, which is exactly what D-127 fixes.
+    if (picked.poiId) { setSelectedPoi(picked.poiId); return; }
+
     if (picked.slot) {
       dispatch({ kind: 'addChunk', cx: picked.slot.cx, cz: picked.slot.cz });
       return;
     }
     if (!picked.column) return;
+
+    if (tool === 'select') {
+      // Clicking bare ground clears the selection; the marker branch above
+      // handles picking one.
+      setSelectedPoi(null);
+      return;
+    }
+
+    if (tool === 'places') {
+      const { cx, cz, x, z } = picked.column;
+      pendingPoiCell.current = cellKey(picked.column);
+      dispatch({ kind: 'addPoi', cell: { cx, cz, x, z }, markerId });
+      return;
+    }
+
     if (tool === 'paint') {
       painting.current = cellKey(picked.column);
       dispatch({ kind: 'paintTerrain', ...picked.column, terrainId, size: brush });
@@ -95,6 +144,20 @@ export function App({ view, status, rejection, dispatch }: Props) {
     if (panning.current) {
       stage.pan(e.clientX - panning.current.x, e.clientY - panning.current.y);
       panning.current = { x: e.clientX, y: e.clientY };
+      return;
+    }
+
+    if (tool === 'select') {
+      stage.showHighlight(null, 0);
+      setHoverLabel(null);
+      return;
+    }
+
+    if (tool === 'places') {
+      const picked = stage.pick(e.clientX, e.clientY);
+      stage.showHighlight(picked.column, picked.column ? heightAt(picked.column) : 0, 1);
+      const info = picked.column ? columnInfo(picked.column) : null;
+      setHoverLabel(info ? `${info.terrain}, height ${info.height}` : null);
       return;
     }
 
@@ -151,11 +214,13 @@ export function App({ view, status, rejection, dispatch }: Props) {
 
       const digit = /^(?:Digit|Numpad)([1-9])$/.exec(e.code)?.[1];
       switch (digit) {
-        case '1': setTool('paint'); return;
-        case '2': setTool('height'); return;
-        case '3': setBrush(1); return;
-        case '4': setBrush(2); return;
-        case '5': setBrush(3); return;
+        case '1': setTool('select'); return;
+        case '2': setTool('paint'); return;
+        case '3': setTool('height'); return;
+        case '4': setTool('places'); return;
+        case '5': setBrush(1); return;
+        case '6': setBrush(2); return;
+        case '7': setBrush(3); return;
         default: break;
       }
 
@@ -166,6 +231,7 @@ export function App({ view, status, rejection, dispatch }: Props) {
         case 'KeyF': stage.tilt(-1); return;
         case 'BracketLeft': setBrush((n) => clampBrush(n - 1)); return;
         case 'BracketRight': setBrush((n) => clampBrush(n + 1)); return;
+        case 'Escape': setSelectedPoi(null); return;
         default: break;
       }
     };
@@ -224,14 +290,25 @@ export function App({ view, status, rejection, dispatch }: Props) {
               onTerrain={setTerrainId}
               onBrush={setBrush}
             />
+            {tool === 'places' && (
+              <PlacesPanel campaign={campaign} markerId={markerId} onMarker={setMarkerId} />
+            )}
           </div>
 
           <div className="dock dock-right">
+            {poi && (
+              <PoiInspector
+                poi={poi}
+                markers={campaign.markers}
+                dispatch={dispatch}
+                onClose={() => setSelectedPoi(null)}
+              />
+            )}
             <PartyPanel campaign={campaign} dispatch={dispatch} />
           </div>
 
           <div className="hints">
-            1/2 tool · 3/4/5 brush · Q/E turn · R/F tilt · right-drag pan · wheel zoom
+            1–4 tool · 5/6/7 or [ ] brush · Q/E turn · R/F tilt · right-drag pan · wheel zoom
           </div>
           <ConnectBadge urls={view?.connect ?? []} />
         </>

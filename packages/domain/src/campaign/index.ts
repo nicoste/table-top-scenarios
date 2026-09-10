@@ -1,31 +1,15 @@
 // A campaign is authored content (R-8): the world, the roster, the registries.
 // Play state lives in a separate save that references it.
 
-import type { CampaignId, PoiId, EncounterId, NoteId, MarkerId } from '../ids/index.js';
+import type { CampaignId } from '../ids/index.js';
 import { freshId } from '../ids/index.js';
 import type { World, ChunkCoord } from '../world/index.js';
 import { emptyWorld, addChunk, centreOfBounds, DEFAULT_WORLD_BOUNDS } from '../world/index.js';
 import type { PartyMember } from '../party/index.js';
+import type { Poi } from '../poi/index.js';
 import { startingParty } from '../party/index.js';
 
 export const SCHEMA_VERSION = 2;
-
-export interface PoiNote {
-  readonly id: NoteId;
-  readonly text: string;
-  /** false = stripped by viewFor, never transmitted (R-85). */
-  readonly visibleToParty: boolean;
-}
-
-export interface Poi {
-  readonly id: PoiId;
-  readonly name: string;
-  /** Exactly one cell (R-50). Multi-cell footprints are O-014. */
-  readonly cell: { readonly cx: number; readonly cz: number; readonly x: number; readonly z: number };
-  readonly markerId: MarkerId;
-  readonly encounters: readonly EncounterId[];
-  readonly notes: readonly PoiNote[];
-}
 
 export interface Campaign {
   readonly id: CampaignId;

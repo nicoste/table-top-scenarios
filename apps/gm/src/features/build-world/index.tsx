@@ -28,33 +28,52 @@ export function BuildWorldPanel({
       <div className="card">
         <h2>Tool</h2>
         <div className="tools">
-          <Tooltip label="Paint terrain — key 1" placement="bottom" stretch>
+          <Tooltip label="Select — key 1" placement="bottom" stretch>
+            <button className={tool === 'select' ? 'on' : ''} onClick={() => onTool('select')}>
+              ⌖ Select
+            </button>
+          </Tooltip>
+          <Tooltip label="Paint terrain — key 2" placement="bottom" stretch>
             <button className={tool === 'paint' ? 'on' : ''} onClick={() => onTool('paint')}>
               🖌 Paint
             </button>
           </Tooltip>
-          <Tooltip label="Raise and lower — key 2" placement="bottom" stretch>
+          <Tooltip label="Raise and lower — key 3" placement="bottom" stretch>
             <button className={tool === 'height' ? 'on' : ''} onClick={() => onTool('height')}>
               ⛰ Height
             </button>
           </Tooltip>
+          <Tooltip label="Place points of interest — key 4" placement="bottom" stretch>
+            <button className={tool === 'places' ? 'on' : ''} onClick={() => onTool('places')}>
+              ⚑ Places
+            </button>
+          </Tooltip>
         </div>
         <p className="hint">
-          {tool === 'paint'
-            ? <>Click, or drag to paint many cells.{selected ? <> Painting <b>{selected.name}</b>.</> : null}</>
-            : <>Drag a cell up or down. Each step is 150&nbsp;m.</>}
+          {tool === 'select'
+            ? <>Click a place to inspect it. Nothing else is editable yet.</>
+            : tool === 'paint'
+              ? <>Click, or drag to paint many cells.{selected ? <> Painting <b>{selected.name}</b>.</> : null}</>
+              : tool === 'height'
+                ? <>Drag a cell up or down. Each step is 150&nbsp;m.</>
+                : <>Click an empty cell to place a new one.</>}
         </p>
 
-        <div className="brush">
+        {(tool === 'paint' || tool === 'height') && (
+        <div className="brush-group">
           <span className="brush-lbl">Brush</span>
-          {BRUSHES.map((n) => (
-            <Tooltip key={n} label={`${n}×${n} cells — key ${n === 1 ? '3' : n === 2 ? '4' : '5'}`} placement="bottom">
-              <button className={brush === n ? 'on' : ''} onClick={() => onBrush(n)} aria-pressed={brush === n}>
-                {n}×{n}
-              </button>
-            </Tooltip>
-          ))}
+          <div className="brush">
+            {BRUSHES.map((n) => (
+              <Tooltip key={n} label={`${n}×${n} cells — key ${n + 4}`} placement="bottom" stretch>
+                <button className={brush === n ? 'on' : ''} onClick={() => onBrush(n)} aria-pressed={brush === n}>
+                  {n}×{n}
+                </button>
+              </Tooltip>
+            ))}
+          </div>
         </div>
+        )}
+
         {/* The readout lives here, not in the terrain card, so it survives that
             card being hidden while the height tool is active. */}
         <p className="readout">{hoverLabel ?? '—'}</p>

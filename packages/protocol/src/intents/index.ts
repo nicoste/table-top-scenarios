@@ -2,7 +2,7 @@
 // edge with Zod (R-17); trusted everywhere inside.
 
 import { z } from 'zod';
-import { CellIndex, TerrainIdSchema } from '../wire/index.js';
+import { CellIndex, TerrainIdSchema, MarkerIdSchema, PoiCellSchema } from '../wire/index.js';
 import { MAX_HEIGHT, MAX_BRUSH } from '@tt/domain';
 
 const cell = { cx: z.number().int(), cz: z.number().int(), x: CellIndex, z: CellIndex };
@@ -30,6 +30,20 @@ export const IntentSchema = z.discriminatedUnion('kind', [
     visionRange: z.number().int().min(0).max(200).optional(),
   }),
   z.object({ kind: z.literal('removeMember'), id: z.string().min(1) }),
+
+  // Points of interest
+  z.object({ kind: z.literal('addPoi'), cell: PoiCellSchema, name: z.string().max(60).optional(), markerId: MarkerIdSchema.optional() }),
+  z.object({ kind: z.literal('renamePoi'), id: z.string().min(1), name: z.string().max(60) }),
+  z.object({ kind: z.literal('setPoiMarker'), id: z.string().min(1), markerId: MarkerIdSchema }),
+  z.object({ kind: z.literal('movePoi'), id: z.string().min(1), cell: PoiCellSchema }),
+  z.object({ kind: z.literal('removePoi'), id: z.string().min(1) }),
+
+  // Notes on a POI
+  z.object({ kind: z.literal('addNote'), poiId: z.string().min(1), text: z.string().min(1).max(2000), visibleToParty: z.boolean().optional() }),
+  z.object({ kind: z.literal('editNote'), poiId: z.string().min(1), noteId: z.string().min(1), text: z.string().max(2000) }),
+  z.object({ kind: z.literal('setNoteVisible'), poiId: z.string().min(1), noteId: z.string().min(1), visibleToParty: z.boolean() }),
+  z.object({ kind: z.literal('removeNote'), poiId: z.string().min(1), noteId: z.string().min(1) }),
+  z.object({ kind: z.literal('moveNote'), poiId: z.string().min(1), noteId: z.string().min(1), delta: z.number().int().min(-99).max(99) }),
 ]);
 
 export type Intent = z.infer<typeof IntentSchema>;

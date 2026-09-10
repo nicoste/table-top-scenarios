@@ -52,5 +52,22 @@ export function viewFor(role: Role, state: HostState, connect: readonly string[]
   if (role === 'gm') {
     return { role: 'gm', campaigns: state.campaigns, campaign, connect };
   }
-  return { role: 'table', campaign };
+  return { role: 'table', campaign: campaign ? forTheTable(campaign) : null };
+}
+
+/**
+ * Everything the table display may not see, removed here and nowhere else
+ * (R-19).
+ *
+ * **POIs are withheld entirely for now.** Whether the party knows a place exists
+ * is `Revealed`, which is play state and lives in a save (R-8, R-16) — and saves
+ * do not exist yet. Sending POIs before that flag exists would put every secret
+ * the GM has written straight onto the players' screen. Withholding is the safe
+ * default until the visibility round; see D-121.
+ */
+function forTheTable(campaign: CampaignWire): CampaignWire {
+  return {
+    ...campaign,
+    pois: [],
+  };
 }

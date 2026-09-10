@@ -65,14 +65,40 @@ button.quiet:hover { background: #3a2222; color: #ffc9c9; border-color: transpar
   margin: 0 0 8px; font-size: 10.5px; letter-spacing: .09em;
   text-transform: uppercase; color: var(--dim); font-weight: 600;
 }
-.tools { display: flex; gap: 6px; }
-.tools button { flex: 1; padding: 6px 4px; }
-.brush { display: flex; align-items: center; gap: 5px; margin-top: 8px; }
-.brush-lbl {
-  color: var(--dim); font-size: 10.5px; text-transform: uppercase;
-  letter-spacing: .08em; margin-right: 2px;
+/*
+  A 2x2 grid, not a wrapping flex row.
+  The flex items here are the Tooltip wrappers, not the buttons, and their
+  shrink factor let four of them squeeze onto one line however narrow the dock
+  got. Fixed columns cannot do that. `minmax(0, 1fr)` keeps a long label from
+  widening its column past the track.
+*/
+.tools { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+.tools button {
+  width: 100%; padding: 7px 4px; font-size: 12px; white-space: nowrap;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
 }
-.brush button { flex: 1; padding: 4px 0; font-size: 11.5px; }
+/* Same treatment as .tools: fixed columns, so the buttons cannot be squeezed
+   below their labels by a wrapper's shrink factor (D-129, R-110c). The label
+   moves above the row rather than sitting inline, which gives each button the
+   full dock width to share. */
+.brush-group { margin-top: 10px; }
+.brush-lbl {
+  display: block; margin-bottom: 5px;
+  color: var(--dim); font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em;
+}
+.brush { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+.brush button { width: 100%; padding: 6px 2px; font-size: 12px; }
+
+.notes { list-style: none; margin: 6px 0 8px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.notes li { display: grid; grid-template-columns: auto 1fr; gap: 4px 6px; align-items: start; }
+.notes textarea {
+  font: inherit; color: var(--ink); background: #212733; border: 1px solid var(--edge);
+  border-radius: 6px; padding: 4px 7px; resize: vertical; width: 100%;
+}
+.notes .eye { font-size: 13px; padding: 3px 5px; line-height: 1; opacity: .55; }
+.notes .eye.shown { opacity: 1; }
+.notes .note-actions { grid-column: 2; display: flex; gap: 3px; justify-content: flex-end; }
+.notes .note-actions button { padding: 1px 6px; font-size: 11px; }
 .palette { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
 .palette button {
   width: 100%; display: flex; align-items: center; gap: 8px;

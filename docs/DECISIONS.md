@@ -1612,3 +1612,142 @@ below it, and — when the viewport is short enough that the dock genuinely
 overflows — wheel over a card scrolls the dock to its maximum with the camera
 untouched, while wheel over the canvas zooms with the dock untouched. Encoded as
 R-117.
+
+---
+
+## Round 23 — points of interest
+
+### D-121 — POIs are withheld from the table display until `Revealed` exists · `agreed`
+Whether the party knows a place exists is **play state**, and play state lives in
+a save (R-8, R-16) — and saves are not built yet. So there is nowhere to put the
+flag this round.
+
+Sending POIs before the flag exists would put every secret the GM has written
+onto the players' screen, so `viewFor('table')` returns an empty POI list. A test
+asserts the table payload contains neither a POI name nor any note text, by any
+route. Withholding is the safe default; the markers appear on the table in the
+visibility round.
+
+### D-122 — Markers are data, not model files · `agreed`
+A marker is a handful of primitives with offsets — `{ shape, at, size, colour }`
+— declared in `domain` and assembled by `render`. Twelve of them: village, town,
+city, castle, fort, cave, mine, forest, ruin, temple, camp, port.
+
+`domain` cannot depend on three.js, there is no asset pipeline, and a low-poly
+marker genuinely is a few boxes and cones. Adding one is a data entry. A test
+asserts every part stays inside its own cell, sits on the ground and stays under
+two cells tall, so a new marker cannot quietly overhang its neighbour.
+
+glTF assets can replace this later behind the same interface; nothing outside
+`render` knows how a marker is drawn (R-82).
+
+### D-123 — POIs are a flat list on the campaign, one per cell · `agreed`
+The docs said `Chunk.pois` and the code said `Campaign.pois`; the code was
+right, and the doc is fixed (R-118). A flat list makes "every POI" one read,
+finds a POI without knowing its chunk, and makes moving one across a chunk
+boundary a field change rather than a move between containers.
+
+**At most one POI per cell** (R-119), or the tap gesture (R-86) has no
+unambiguous answer.
+
+### D-124 — Places is a third tool; tools move to 1/2/3 and brush to 4/5/6 · `agreed`
+Placing a POI needs its own mode, or a click in paint mode paints instead. Tools
+are now grouped on 1/2/3 and brush sizes on 4/5/6, which is more legible than
+tools on 1/2 with brush on 3/4/5.
+
+The brush selector hides in Places mode — it does not apply, and offering it
+would be the same confusion D-110 fixed for terrain.
+
+**A marker click always means the place**, whatever the tool is, and switches to
+Places. Otherwise the only way to edit a POI would be to remember to change mode
+first.
+
+### D-125 — New notes are hidden by default · `agreed`
+`addNote` defaults `visibleToParty` to false. A GM writing "the baron is already
+dead" should have to *choose* to show it; the failure mode of the opposite
+default is a spoiled campaign, and there is no undo for something the players
+have already read.
+
+### D-126 — Every registry is stripped from storage, not just terrain · `agreed`
+Caught by reading the saved manifest: `markers` was being persisted, because
+D-107 stripped `terrain` by name and I added a second registry without revisiting
+it — the same mistake one field later.
+
+Both are now destructured out by name, with a comment saying that adding a
+registry means deciding this again. The test was rewritten to loop over a list of
+registry names rather than checking the one that existed when it was written, so
+the next registry is covered by default.
+
+Legacy manifests keep their stale copy until the next save, and it is ignored on
+load either way.
+
+---
+
+## Open
+
+### O-018 — Marker size against label size · `resolved by D-128`
+At the default zoom the name labels are considerably more prominent than the
+markers they belong to, which reads as a floating label with a speck under it.
+Either the markers want to be larger or the labels smaller. A judgement call best
+made by looking at it during real use rather than by me picking a number.
+
+---
+
+## Round 24 — labels, and the tool that was missing
+
+### D-127 — A neutral `select` tool, and creation returns to it · `agreed`
+*"this POIs feature makes us identify a condition we need and was not there: the
+no-tool or pointer tool."*
+
+Right, and it was a gap in the design rather than a bug in the code. Every tool
+edited something, so there was no way to inspect a place without risking creating
+another, and nothing for an action to finish *into* — placing a POI left the
+Places tool armed, so the next click made another one while the marker list had
+already gone.
+
+- `select` is added as a fourth tool and is now the **default**, so opening a
+  campaign cannot accidentally edit it (R-87a)
+- **after placing a POI the app returns to `select` with the new POI selected**
+- clicking a marker selects it **whatever the tool** and no longer switches to
+  Places, which would have re-armed creation (R-87b)
+- in `select`, the hover outline is hidden — there is no edit to preview
+
+The interesting part is how the new POI gets selected: the **host** assigns the
+id, so the client cannot know it when it dispatches. It remembers the *cell* it
+clicked instead and claims the POI that appears there in the next snapshot —
+which works only because there is at most one POI per cell (R-119). An invariant
+agreed for a different reason turned out to be the handle this needed.
+
+Tools are now 1–4 and brush sizes 5/6/7, with `[` and `]` kept as the
+image-editor idiom.
+
+### D-128 — Name labels hold a constant size on screen · `agreed`
+*"Labels are too big, they should look smaller, and if possible, adjust with
+zoom level."*
+
+Both, and the second explains the first. A `Sprite` under an orthographic camera
+is sized in **world units**, so one tuned at zoom 34 was more than twice as tall
+at zoom 14 — which is exactly when a GM is looking closely and least wants a
+label covering the map.
+
+Labels are now scaled by the camera's zoom each frame, holding **13 px**
+whatever the zoom. Measured: 13 px at zoom 10, 20, 34 and 50 (R-83a).
+
+This also resolves **O-018**: markers and labels no longer compete, because the
+label stops growing while the marker does.
+
+### D-129 — The tool buttons are a 2×2 grid, not a wrapping flex row · `agreed`
+Four tools squeezed onto one line and became unreadable. `flex: 1 1 44%` should
+have wrapped them, but the flex items are the **Tooltip wrappers**, not the
+buttons, and their shrink factor let all four fit however narrow the dock got —
+`flex-basis` is a starting size, not a floor.
+
+`grid-template-columns: repeat(2, minmax(0, 1fr))` cannot do that. Measured:
+two rows of two at 95 px each in the 228 px dock.
+
+A second instance of R-110c: wrapping a control changes which element the
+caller's layout is actually sizing.
+
+The brush selector got the same treatment: three fixed columns with the label
+moved **above** the row rather than sitting inline, which hands the buttons the
+full dock width to share. Both button groups now read as one system.

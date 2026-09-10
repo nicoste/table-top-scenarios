@@ -18,7 +18,14 @@ export const initialServerState: ServerState = {
 };
 
 /** View state: local only. Never persisted, never transmitted (R-84). */
-export type Tool = 'paint' | 'height';
+/**
+ * `select` is the neutral tool: it changes nothing and only picks things out.
+ *
+ * Without it every click on the map edits something, so there is no way to
+ * inspect a place without risking creating another one — and no safe state to
+ * return to after an action completes (D-127).
+ */
+export type Tool = 'select' | 'paint' | 'height' | 'places';
 
 export interface ViewState {
   readonly camera: CameraTarget;
@@ -29,5 +36,5 @@ export interface ViewState {
 }
 
 export function initialViewState(camera: CameraTarget): ViewState {
-  return { camera, tool: 'paint', terrainId: 'terrain:grass', hover: null, panel: 'party' };
+  return { camera, tool: 'select', terrainId: 'terrain:grass', hover: null, panel: 'party' };
 }

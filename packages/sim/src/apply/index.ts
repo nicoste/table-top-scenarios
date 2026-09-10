@@ -3,14 +3,16 @@
 // argument and everything leaves as a return value.
 
 import type { Campaign, ChunkCoord } from '@tt/domain';
-import type { PartyMember } from '@tt/domain';
+import type { PartyMember, PoiId, NoteId } from '@tt/domain';
 import {
   createCampaign, duplicateCampaign, uniqueCampaignName, createMember, editMember, removeMember,
   addChunk, chunkAt, terrainById, isCreatableSlot, DEFAULT_TERRAIN,
   toGlobal, paintArea, setHeightArea, raiseArea,
+  addPoi, renamePoi, setPoiMarker, movePoi, removePoi, poiById, poiAt, isValidPoiCell,
+  addNote, editNote, setNoteVisible, removeNote, moveNote, isKnownMarker,
 } from '@tt/domain';
 import type { HostState, Intent, Role } from '@tt/protocol';
-import { parseTerrainId } from '@tt/protocol';
+import { parseTerrainId, parseMarkerId } from '@tt/protocol';
 
 /** Side effects `sim` asks the host to perform. It performs none itself. */
 export type Effect =
@@ -37,6 +39,8 @@ const MUTATIONS = new Set<Intent['kind']>([
   'createCampaign', 'openCampaign', 'closeCampaign', 'duplicateCampaign', 'deleteCampaign',
   'addChunk', 'paintTerrain', 'setHeight', 'raiseHeight',
   'addMember', 'editMember', 'removeMember',
+  'addPoi', 'renamePoi', 'setPoiMarker', 'movePoi', 'removePoi',
+  'addNote', 'editNote', 'setNoteVisible', 'removeNote', 'moveNote',
 ]);
 
 export function apply(state: HostState, role: Role, intent: Intent): Applied {
@@ -180,7 +184,97 @@ function applyToCampaign(state: HostState, intent: Intent): Applied {
     }
 
     default:
-      return reject(state, `unhandled intent: ${(intent as { kind: string }).kind}`);
+      return applyToPois(state, campaign, intent, commit);
+  }
+}
+
+// -- points of interest ------------------------------------------------------
+
+function applyToPois(
+  state: HostState,
+  campaign: Campaign,
+  intent: Intent,
+  commit: (next: Campaign) => Applied,
+): Applied {
+  const reject_ = (reason: string): Applied => reject(state, reason);
+  const withPois = (pois: Campaign['pois']): Applied =>
+    (pois === campaign.pois ? ok(state) : commit({ ...campaign, pois }));
+
+  /** Every POI intent but `addPoi` names one, so resolve it once. */
+  const target = (id: string): PoiId | null => (poiById(campaign.pois, id as PoiId) ? (id as PoiId) : null);
+
+  switch (intent.kind) {
+    case 'addPoi': {
+      if (!isValidPoiCell(intent.cell)) return reject_('that is not a cell in a chunk');
+      if (!chunkAt(campaign.world, { cx: intent.cell.cx, cz: intent.cell.cz })) {
+        return reject_('that chunk does not exist');
+      }
+      if (poiAt(campaign.pois, intent.cell)) return reject_('there is already a place here');
+      if (intent.markerId && !isKnownMarker(parseMarkerId(intent.markerId))) {
+        return reject_(`unknown marker: ${intent.markerId}`);
+      }
+      const marker = intent.markerId ? parseMarkerId(intent.markerId) : undefined;
+      return withPois(addPoi(campaign.pois, intent.cell, intent.name, marker));
+    }
+
+    case 'renamePoi': {
+      const id = target(intent.id);
+      if (!id) return reject_('no such place');
+      return withPois(renamePoi(campaign.pois, id, intent.name));
+    }
+
+    case 'setPoiMarker': {
+      const id = target(intent.id);
+      if (!id) return reject_('no such place');
+      const marker = parseMarkerId(intent.markerId);
+      if (!isKnownMarker(marker)) return reject_(`unknown marker: ${intent.markerId}`);
+      return withPois(setPoiMarker(campaign.pois, id, marker));
+    }
+
+    case 'movePoi': {
+      const id = target(intent.id);
+      if (!id) return reject_('no such place');
+      if (!isValidPoiCell(intent.cell)) return reject_('that is not a cell in a chunk');
+      if (!chunkAt(campaign.world, { cx: intent.cell.cx, cz: intent.cell.cz })) {
+        return reject_('that chunk does not exist');
+      }
+      const occupant = poiAt(campaign.pois, intent.cell);
+      if (occupant && occupant.id !== id) return reject_('there is already a place there');
+      return withPois(movePoi(campaign.pois, id, intent.cell));
+    }
+
+    case 'removePoi': {
+      const id = target(intent.id);
+      if (!id) return reject_('no such place');
+      return withPois(removePoi(campaign.pois, id));
+    }
+
+    case 'addNote': {
+      const id = target(intent.poiId);
+      if (!id) return reject_('no such place');
+      return withPois(addNote(campaign.pois, id, intent.text, intent.visibleToParty ?? false));
+    }
+
+    case 'editNote':
+    case 'setNoteVisible':
+    case 'removeNote':
+    case 'moveNote': {
+      const id = target(intent.poiId);
+      if (!id) return reject_('no such place');
+      const poi = poiById(campaign.pois, id);
+      if (!poi?.notes.some((note) => note.id === intent.noteId)) return reject_('no such note');
+      const noteId = intent.noteId as NoteId;
+      switch (intent.kind) {
+        case 'editNote': return withPois(editNote(campaign.pois, id, noteId, intent.text));
+        case 'setNoteVisible':
+          return withPois(setNoteVisible(campaign.pois, id, noteId, intent.visibleToParty));
+        case 'removeNote': return withPois(removeNote(campaign.pois, id, noteId));
+        default: return withPois(moveNote(campaign.pois, id, noteId, intent.delta));
+      }
+    }
+
+    default:
+      return reject_(`unhandled intent: ${(intent as { kind: string }).kind}`);
   }
 }
 

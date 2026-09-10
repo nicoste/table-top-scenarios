@@ -70,10 +70,12 @@ export function fileCampaignStore(root: string): CampaignStore {
 
     save(campaign) {
       const wire: CampaignWire = encodeCampaign(campaign);
-      // `world` goes to its own file (R-60). `terrain` is dropped entirely: the
-      // palette is code, and storing it froze old campaigns at a stale one
-      // (D-107).
-      const { world, terrain: _palette, ...manifest } = wire;
+      // `world` goes to its own file (R-60). Every **registry** is dropped:
+      // they are code, not campaign data, and storing them froze old campaigns
+      // at whatever the registry looked like on the day (D-107). Destructure
+      // each one by name so adding a registry without deciding this again is a
+      // compile error rather than a silent leak into the manifest.
+      const { world, terrain: _terrain, markers: _markers, ...manifest } = wire;
       const base = dir(campaign.id);
       mkdirSync(base, { recursive: true });
       writeAtomic(join(base, MANIFEST), JSON.stringify(manifest, null, 1));

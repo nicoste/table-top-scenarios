@@ -33,7 +33,18 @@ export {
   DEFAULT_TRAVEL_MODES, DEFAULT_SLOPE_FACTOR, travelModeById, terrainCost, isPassable,
 } from './travel/index.js';
 
-export type { Campaign, Poi, PoiNote } from './campaign/index.js';
+export type { Marker, MarkerPart, PartShape } from './markers/index.js';
+export { DEFAULT_MARKERS, DEFAULT_MARKER, markerById, isKnownMarker } from './markers/index.js';
+
+export type { Poi, PoiNote, PoiCell } from './poi/index.js';
+export {
+  MAX_POI_NAME, MAX_NOTE_TEXT, sameCell, poiGlobal, poiCellFromGlobal, isValidPoiCell,
+  poiAt, poiById, poisInChunk,
+  addPoi, renamePoi, setPoiMarker, movePoi, removePoi,
+  addNote, editNote, setNoteVisible, removeNote, moveNote, partyVisibleNotes,
+} from './poi/index.js';
+
+export type { Campaign } from './campaign/index.js';
 export {
   SCHEMA_VERSION, ORIGIN, DEFAULT_BOUNDS, createCampaign, duplicateCampaign, uniqueCampaignName,
 } from './campaign/index.js';

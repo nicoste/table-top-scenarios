@@ -2,8 +2,13 @@
 // the conversion lives here and nowhere else.
 
 import { z } from 'zod';
-import type { Campaign, Chunk, Column, World, PartyMember, TerrainId } from '@tt/domain';
-import { CHUNK_SIZE, DEFAULT_METRES_PER_LEVEL, DEFAULT_TERRAIN, chunkKey, registryId } from '@tt/domain';
+import type {
+  Campaign, Chunk, Column, World, PartyMember, TerrainId, Poi, PoiNote, MarkerId,
+} from '@tt/domain';
+import {
+  CHUNK_SIZE, DEFAULT_METRES_PER_LEVEL, DEFAULT_TERRAIN, DEFAULT_MARKERS,
+  chunkKey, registryId,
+} from '@tt/domain';
 
 export const TerrainIdSchema = z.string().regex(/^terrain:[a-z0-9]+(-[a-z0-9]+)*$/);
 export const CellIndex = z.number().int().min(0).max(CHUNK_SIZE - 1);
@@ -35,6 +40,41 @@ export const TerrainWireSchema = z.object({
   defaultDifficulty: z.union([z.number(), z.literal('impassable')]),
 });
 
+export const MarkerIdSchema = z.string().regex(/^marker:[a-z0-9]+(-[a-z0-9]+)*$/);
+
+const Vec3Schema = z.tuple([z.number(), z.number(), z.number()]);
+
+export const MarkerWireSchema = z.object({
+  id: MarkerIdSchema,
+  name: z.string(),
+  parts: z.array(z.object({
+    shape: z.enum(['box', 'cone', 'cylinder']),
+    at: Vec3Schema,
+    size: Vec3Schema,
+    colour: z.string(),
+  })),
+});
+
+export const PoiCellSchema = z.object({
+  cx: z.number().int(), cz: z.number().int(), x: CellIndex, z: CellIndex,
+});
+
+export const PoiNoteWireSchema = z.object({
+  id: z.string(),
+  text: z.string(),
+  visibleToParty: z.boolean(),
+});
+
+export const PoiWireSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  cell: PoiCellSchema,
+  markerId: MarkerIdSchema,
+  encounters: z.array(z.string()),
+  notes: z.array(PoiNoteWireSchema),
+});
+export type PoiWire = z.infer<typeof PoiWireSchema>;
+
 export const MemberWireSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -63,6 +103,9 @@ export const CampaignWireSchema = z.object({
    * palette. Optional so files written before this change still load.
    */
   terrain: z.array(TerrainWireSchema).default([]),
+  /** Like terrain, code rather than campaign data (D-107): never stored. */
+  markers: z.array(MarkerWireSchema).default([]),
+  pois: z.array(PoiWireSchema).default([]),
 });
 export type CampaignWire = z.infer<typeof CampaignWireSchema>;
 
@@ -100,17 +143,57 @@ export function encodeCampaign(campaign: Campaign): CampaignWire {
     terrain: DEFAULT_TERRAIN.map((t) => ({
       id: t.id as string, name: t.name, colour: t.colour, defaultDifficulty: t.defaultDifficulty,
     })),
+    markers: DEFAULT_MARKERS.map((m) => ({
+      id: m.id as string,
+      name: m.name,
+      parts: m.parts.map((part) => ({
+        shape: part.shape,
+        at: [part.at[0], part.at[1], part.at[2]] as [number, number, number],
+        size: [part.size[0], part.size[1], part.size[2]] as [number, number, number],
+        colour: part.colour,
+      })),
+    })),
+    pois: campaign.pois.map(encodePoi),
   };
 }
 
 // -- decode ------------------------------------------------------------------
 
 /** Turns a validated wire string back into a branded TerrainId. */
+export function parseMarkerId(value: string): MarkerId {
+  const [ns, ...rest] = value.split(':');
+  return registryId<'MarkerId'>(ns ?? 'marker', rest.join(':'));
+}
+
 export function parseTerrainId(value: string): TerrainId {
   const [ns, ...rest] = value.split(':');
   return registryId<'TerrainId'>(ns ?? 'terrain', rest.join(':'));
 }
 const terrainId = parseTerrainId;
+
+export function encodePoi(poi: Poi): PoiWire {
+  return {
+    id: poi.id,
+    name: poi.name,
+    cell: poi.cell,
+    markerId: poi.markerId as string,
+    encounters: poi.encounters.map((e) => e as string),
+    notes: poi.notes.map((n) => ({ id: n.id, text: n.text, visibleToParty: n.visibleToParty })),
+  };
+}
+
+export function decodePoi(wire: PoiWire): Poi {
+  return {
+    id: wire.id as Poi['id'],
+    name: wire.name,
+    cell: wire.cell,
+    markerId: parseMarkerId(wire.markerId),
+    encounters: wire.encounters.map((e) => e as Poi['encounters'][number]),
+    notes: wire.notes.map((n): PoiNote => ({
+      id: n.id as PoiNote['id'], text: n.text, visibleToParty: n.visibleToParty,
+    })),
+  };
+}
 
 /**
  * Re-lays the stored grid into the current CHUNK_SIZE. A chunk written smaller
@@ -160,6 +243,6 @@ export function decodeCampaign(wire: CampaignWire): Campaign {
       colour: m.colour,
       visionRange: m.visionRange,
     })),
-    pois: [],
+    pois: wire.pois.map(decodePoi),
   };
 }

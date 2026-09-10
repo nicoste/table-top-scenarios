@@ -65,12 +65,29 @@ describe('round trips', () => {
 });
 
 describe('the terrain palette is code, not campaign data (D-107)', () => {
-  it('does not persist the palette', () => {
+  it('persists no registry at all', () => {
     const store = fileCampaignStore(root);
     const campaign = createCampaign('Ashfall');
     store.save(campaign);
-    const manifest = readFileSync(join(root, campaign.id, 'campaign.json'), 'utf8');
-    expect(manifest).not.toContain('defaultDifficulty');
+    const manifest = JSON.parse(readFileSync(join(root, campaign.id, 'campaign.json'), 'utf8'));
+    // Every registry, not just the one that existed when this rule was written.
+    for (const registry of ['terrain', 'markers']) {
+      expect(Object.keys(manifest), registry).not.toContain(registry);
+    }
+    expect(JSON.stringify(manifest)).not.toContain('defaultDifficulty');
+  });
+
+  it('serves the current marker set to a campaign written with an older one', () => {
+    const store = fileCampaignStore(root);
+    const campaign = createCampaign('Legacy');
+    store.save(campaign);
+    const path = join(root, campaign.id, 'campaign.json');
+    const manifest = JSON.parse(readFileSync(path, 'utf8'));
+    manifest.markers = [{ id: 'marker:hut', name: 'Hut', parts: [] }];
+    writeFileSync(path, JSON.stringify(manifest), 'utf8');
+    const wire = encodeCampaign(store.load(campaign.id)!);
+    expect(wire.markers.map((m) => m.id)).toContain('marker:castle');
+    expect(wire.markers.map((m) => m.id)).not.toContain('marker:hut');
   });
 
   it('serves the current palette to a campaign written with an older one', () => {
