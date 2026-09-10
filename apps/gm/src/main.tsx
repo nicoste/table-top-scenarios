@@ -33,7 +33,10 @@ function Root() {
   );
 
   const gmView = view?.role === 'gm' ? (view as GmView) : null;
-  return <App view={gmView} status={status} rejection={rejection} dispatch={dispatch} />;
+  // A view arrived, but not a GM one: another console claimed the seat (R-127).
+  // The difference from "no view yet" matters — see R-129.
+  const seat = view === null ? 'unknown' : view.role === 'gm' ? 'gm' : 'viewer';
+  return <App view={gmView} status={status} seat={seat} rejection={rejection} dispatch={dispatch} />;
 }
 
 createRoot(document.getElementById('root')!).render(

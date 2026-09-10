@@ -1,0 +1,28 @@
+{
+ "id": "campaign_mtvoshfnm7jet9is",
+ "schemaVersion": 2,
+ "name": "Verification Isles",
+ "party": [
+  {
+   "id": "member_mtvoshfnz7qyeoar",
+   "name": "player",
+   "colour": "#57d9a3",
+   "visionRange": 12
+  }
+ ],
+ "pois": [
+  {
+   "id": "poi_mtvotm616hqjput3",
+   "name": "Harbour of Tests",
+   "cell": {
+    "cx": 15,
+    "cz": 15,
+    "x": 9,
+    "z": 9
+   },
+   "markerId": "marker:village",
+   "encounters": [],
+   "notes": []
+  }
+ ]
+}

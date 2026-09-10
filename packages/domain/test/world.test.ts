@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   CHUNK_SIZE, MAX_HEIGHT, WATER, DEFAULT_TERRAIN,
-  createChunk, emptyWorld, addChunk, replaceChunk, chunkAt, isKnown, creatableSlots,
+  createChunk, emptyWorld, addChunk, replaceChunk, chunkAt, isAuthored, creatableSlots,
   columnAt, paintTerrain, setHeight, raiseHeight, clampHeight, requireTerrain, registryId,
   isCreatableSlot,
 } from '@tt/domain';
@@ -82,7 +82,7 @@ describe('chunks are sparse, and absent means Unknown (R-16, D-010)', () => {
   it('an empty world knows nothing', () => {
     const world = emptyWorld();
     expect(world.chunks.size).toBe(0);
-    expect(isKnown(world, { cx: 0, cz: 0 })).toBe(false);
+    expect(isAuthored(world, { cx: 0, cz: 0 })).toBe(false);
     expect(chunkAt(world, { cx: 0, cz: 0 })).toBeNull();
   });
 

@@ -2,13 +2,19 @@ import { describe, it, expect } from 'vitest';
 import { apply } from '@tt/sim';
 import { viewFor, encodeCampaign } from '@tt/protocol';
 import type { HostState, Intent } from '@tt/protocol';
-import { createCampaign, ORIGIN } from '@tt/domain';
+import { createCampaign, createLiveSave, ORIGIN } from '@tt/domain';
 
+const NOW = '2026-01-01T00:00:00.000Z';
 function open(): HostState {
   const campaign = createCampaign('Ashfall');
-  return { campaigns: [{ id: campaign.id, name: campaign.name }], active: campaign };
+  const live = createLiveSave(campaign, NOW);
+  return {
+    campaigns: [{ id: campaign.id, name: campaign.name }],
+    active: campaign,
+    activeSave: live,
+  };
 }
-const run = (s: HostState, i: Intent, role: 'gm' | 'table' = 'gm') => apply(s, role, i);
+const run = (s: HostState, i: Intent, role: 'gm' | 'table' = 'gm') => apply(s, role, i, NOW);
 const at = (x: number, z: number) => ({ cx: ORIGIN.cx, cz: ORIGIN.cz, x, z });
 
 function withPoi(name = 'Ash Village') {

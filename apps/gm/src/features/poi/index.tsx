@@ -38,11 +38,13 @@ export function PlacesPanel({ campaign, markerId, onMarker }: ToolProps) {
 interface InspectorProps {
   poi: PoiWire;
   markers: CampaignWire['markers'];
+  revealed: boolean;
+  chunkKnown: boolean;
   dispatch: (intent: Intent) => void;
   onClose: () => void;
 }
 
-export function PoiInspector({ poi, markers, dispatch, onClose }: InspectorProps) {
+export function PoiInspector({ poi, markers, revealed, chunkKnown, dispatch, onClose }: InspectorProps) {
   const [draft, setDraft] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -75,6 +77,29 @@ export function PoiInspector({ poi, markers, dispatch, onClose }: InspectorProps
       <p className="hint">
         at chunk {poi.cell.cx},{poi.cell.cz} · cell {poi.cell.x},{poi.cell.z}
       </p>
+
+      <div className="reveal">
+        <Tooltip
+          label={revealed ? 'The party knows this place' : 'Hidden from the party'}
+          placement="left"
+        >
+          <button
+            className={revealed ? 'on' : ''}
+            aria-pressed={revealed}
+            onClick={() => dispatch({ kind: 'setPoiRevealed', poiId: poi.id, revealed: !revealed })}
+          >
+            {revealed ? '👁 Revealed' : '🔒 Hidden'}
+          </button>
+        </Tooltip>
+      </div>
+
+      {/* Revealed alone is not enough: the chunk has to be Known too (D-132).
+          Saying so beats the GM wondering why the marker never appeared. */}
+      {revealed && !chunkKnown && (
+        <p className="warn">
+          Still hidden — the chunk it sits in is Unknown.
+        </p>
+      )}
 
       <h2 style={{ marginTop: 12 }}>Notes</h2>
       {poi.notes.length === 0 && <p className="hint">Nothing recorded yet.</p>}

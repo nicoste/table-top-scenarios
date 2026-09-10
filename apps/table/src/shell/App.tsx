@@ -3,6 +3,7 @@
 
 import { useEffect, useRef } from 'react';
 import { decodeCampaign } from '@tt/protocol';
+import { CHUNK_SIZE } from '@tt/domain';
 import type { TableView } from '@tt/protocol';
 import { defaultTarget, worldCentre } from '@tt/render';
 import { useStage } from '../scene/use-stage.js';
@@ -24,8 +25,21 @@ export function App({ view, status }: Props) {
     const decoded = decodeCampaign(campaign);
     const fresh = openedId.current !== campaign.id;
     stage.setCampaign(decoded, fresh);
+    // Chunks the party has not been shown arrive as coordinates only (R-16) and
+    // are drawn as featureless placeholders.
+    stage.setFogChunks(campaign.world.unknownChunks);
     if (fresh) {
-      stage.setTarget({ ...defaultTarget(worldCentre(decoded.world)), zoom: 34 });
+      // A table that has been shown nothing yet has no known chunks to centre
+      // on, so fall back to the placeholders.
+      const placeholders = campaign.world.unknownChunks;
+      const centre = decoded.world.chunks.size > 0 || placeholders.length === 0
+        ? worldCentre(decoded.world)
+        : {
+          x: (placeholders.reduce((sum, c) => sum + c.cx, 0) / placeholders.length + 0.5) * CHUNK_SIZE,
+          y: 0,
+          z: (placeholders.reduce((sum, c) => sum + c.cz, 0) / placeholders.length + 0.5) * CHUNK_SIZE,
+        };
+      stage.setTarget({ ...defaultTarget(centre), zoom: 34 });
       openedId.current = campaign.id;
     }
   }, [campaign, stage]);

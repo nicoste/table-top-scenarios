@@ -5,13 +5,16 @@ node_modules/
 dist/
 *.tsbuildinfo
 
-# Campaign and save state.
+# Campaign and save state is TRACKED, deliberately.
 #
-# This is the app's runtime store, not source: the GM's worlds, written on every
-# brush stroke. Committing it would mean a diff on every edit, and merge
-# conflicts on hand-built terrain. Campaign versioning is a product feature
-# (Duplicate), not a git one.
-data/
+# It was ignored at first, reasoning that a store written on every brush stroke
+# would churn the diff. That weighed the wrong things: hours of hand-built world
+# are irreplaceable, and a noisy diff is not. With it ignored, a single stray
+# `rm -rf data` destroyed two campaigns with nothing to restore from — which is
+# exactly what happened (D-134).
+#
+# Only the trash is ignored, since the app already moves deletions aside.
+data/**/.trash-*
 
 # Local tool state
 .claude/settings.local.json

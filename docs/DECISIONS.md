@@ -1751,3 +1751,216 @@ caller's layout is actually sizing.
 The brush selector got the same treatment: three fixed columns with the label
 moved **above** the row rather than sitting inline, which hands the buttons the
 full dock width to share. Both button groups now read as one system.
+
+### D-130 — Subagents are Sonnet at high effort, set explicitly · `agreed`
+Nicolás: *"your agents must be always Sonnet with High effort, I want to be able
+to set you in Opus Ultracode if I want, and your agents must be Sonnet with High
+effort."*
+
+The main loop's model is chosen per task and changes often. An agent that
+inherits it turns one dial into a fleet-wide cost multiplier, so the fleet is
+pinned independently: `{ model: 'sonnet', effort: 'high' }` on every `agent()`
+call, never inherited. Recorded in the playbook so it binds anyone working here,
+not just this session.
+
+---
+
+## Round 25 — saves and visibility
+
+### D-134 — Campaign and save data is tracked in git · `agreed`
+**Reverses the `.gitignore` decision from the first commit, after it cost real work.**
+
+`data/` was ignored on the reasoning that a store rewritten on every brush stroke
+would churn the diff, and that campaign versioning is a product feature
+(Duplicate) rather than a git one. That weighed the wrong things: a noisy diff is
+an inconvenience, hours of hand-built world are irreplaceable.
+
+With it ignored, a stray `rm -rf data` in a test-setup command destroyed two
+campaigns — islands, thirteen POIs, party, notes — with nothing to restore from.
+No git, no Trash (`rm -rf` bypasses it), no Time Machine destination configured.
+
+Now tracked, with only `.trash-*` ignored since the app already moves deletions
+aside rather than unlinking (D-108). The churn is real and accepted.
+
+### D-135 — Permissions fail closed · `agreed`
+The role gate tested membership of a `MUTATIONS` allow-list, so an intent nobody
+remembered to list would be **permitted** for the table display, silently. All 22
+intents happened to be listed, so nothing was actually open — but six were about
+to be added.
+
+Inverted to an `OPEN_TO_ANYONE` list, currently empty: everything is GM-only
+until someone decides otherwise. A test enumerates the intent kinds **from the
+protocol schema itself** and asserts every one is rejected for both `table` and
+`spectator`, so a newly added intent fails the test until it is classified (R-18a).
+
+### D-136 — A POI reaches the table only when its chunk is Known too · `agreed`
+The one thing the design panel earned its keep on. Three independent critics each
+found the same HIGH leak in a different design: R-16 makes `Known` and `Revealed`
+independent, which I had written thinking only of *hidden inside known*. The same
+independence permits a **Revealed POI inside an Unknown chunk**, which would put a
+place, its name and its position on screen inside a region the party has never
+seen.
+
+`isPoiOnTable` requires both. The GM console says so out loud too, in both
+inspectors, rather than letting a GM wonder why a revealed marker never appeared.
+
+### D-137 — One live save per campaign, autosaved; snapshots are copies of it · `superseded by D-147`
+Synthesised from the panel's three designs.
+
+- The live save's id is **derived from the campaign id**, so "exactly one" is
+  structural rather than an invariant something has to check.
+- It autosaves on every discovery change, exactly as the campaign already does,
+  so discovery cannot be lost by forgetting.
+- A snapshot is the same shape under a fresh id and the GM's label, with no
+  second persistence mechanism.
+- Restoring pours a snapshot into the live save and **keeps the live save's
+  identity**, so the next autosave cannot overwrite the snapshot the GM is
+  relying on.
+- A duplicate gets a fresh, empty live save: `duplicateCampaign` regenerates
+  every id (D-109), so no save can follow it. Deleting a campaign trashes its
+  saves, which would otherwise point at nothing.
+
+**Correction.** As written, this justified snapshots with a quoted requirement —
+*"save the world status whenever he wants"* — attributed to the GM. I cannot find
+where that was said. It appears to be my own paraphrase of "save/load progress"
+from the original feature list, promoted to a quote by being written down in
+quotation marks and then cited as evidence. A decisions file that invents its own
+authority is worse than no decisions file, so: the autosave and derived-id halves
+above stand on their own merits and survive into D-147; the snapshot half rested
+on that quote and is gone.
+
+### D-138 — `isKnown` renamed to `isAuthored` · `agreed`
+`isKnown(world, coord)` meant "the GM has created this chunk". R-16 uses
+Known/Unknown for whether the *party* knows a chunk — authored content versus
+play state, two different questions sharing one word. Flagged by the panel;
+renamed before it could cause the bug it was clearly going to cause.
+
+### D-139 — Save resolution is a rule, so it lives in `sim` · `agreed`
+Caught by `npm run arch`: my first host implementation imported `createLiveSave`,
+`restoreInto` and `pruneDiscovery` from `domain`, which is both a forbidden edge
+(R-5) and game logic in the host (R-67).
+
+Deciding whether to reuse a stored save, mint a fresh one, or prune stale POI ids
+is a rule. `sim` gained two pure functions, `openedWith` and `restoredWith`; the
+host reads files, hands the results over, and writes back what it is told to.
+`liveSaveId` is re-exported through `protocol` so the host can name a storage key
+without reaching into `domain` — one definition, reachable from both sides.
+
+### D-140 — The fog overlay serves both screens · `agreed`
+One mechanism, two readings. On the table display, dark tiles over unseen chunks
+are R-16's featureless placeholders. On the GM console the same tiles show what
+the players are missing. Both mean "not visible to the party", so they look
+identical on purpose.
+
+Unknown chunks travel as a **separate coordinate-only list**, not a `known` flag
+on each chunk, so an Unknown chunk has no field that *could* carry terrain. A test
+asserts the placeholder has exactly `cx` and `cz` and no `heights` or `terrain`.
+
+---
+
+## Round 26 — seats, found by opening a browser
+
+### D-141 — The newest GM claim takes the seat · `agreed`
+Found the moment the round was opened in a browser: the campaign list was empty
+and **Create** answered *"only the GM can do that"*.
+
+The host had two GM pages open — the browser pane had one from earlier and I had
+opened another — and the first one held the seat. The second console was handed
+`spectator`, and then rendered as a fresh empty install (D-144), so the symptom
+gave no hint of the cause.
+
+I first wrote this up as React StrictMode double-mounting the connecting effect.
+That was wrong and worth recording as wrong: StrictMode's double effect runs in
+development builds only, and the host serves production bundles. Instrumenting
+the host settled it — one page load, one connection.
+
+`taken('gm')` was defending the seat against the GM's own browser. Inverted:
+the newest claim wins, and the previous holder is demoted in place rather than
+disconnected — disconnecting makes two live consoles trade the seat forever.
+
+`table` exclusivity is dropped entirely; a table display and a spectator get the
+identical view, so there was never anything to defend.
+
+### D-142 — Sockets are pinged and reaped · `agreed`
+The zombie above is why. Nothing in TCP reports a browser that navigated away, so
+a socket with nobody behind it holds its seat until the host restarts. 15-second
+ping, terminate on a missed pong (R-128).
+
+Also fixed alongside: the message handler closed over the `role` computed at
+connection time, so a demoted socket would still have been judged as the GM.
+The seat is now read from the map per message.
+
+### D-143 — Host seat tests, as an exception to R-23 · `agreed`
+R-23 exempts the apps from unit tests. Its actual reason is three.js — "do not
+write mocks for what you cannot mock" — and seat arbitration needs no mocks: a
+real `ws` server on an ephemeral port, real client sockets, and a client that
+goes silent by pausing its socket to reproduce the zombie exactly.
+
+Eight tests. Four of them fail against the code as it shipped, which is the only
+reason to trust the other four.
+
+### D-144 — A console must look like the seat it holds · `agreed`
+The reason this cost half an hour to diagnose rather than five minutes. A
+spectator-seated GM console rendered as a fresh empty install, because
+`view?.campaigns ?? []` cannot tell "not entitled" from "none yet". It now says
+*"Another console has the GM seat"* and offers to take it back (R-129).
+
+### D-145 — A socket abandoned mid-handshake closes itself · `agreed`
+A guard, kept on its own merits after the reasoning I first gave for it collapsed.
+
+`connect()`'s teardown sets `closed = true` and calls `socket.close()`, which is
+not dependable while the socket is still CONNECTING: if the upgrade already
+completed on the host, the socket can open, claim a seat, and answer pings
+forever. `onopen` now checks the flag and closes immediately.
+
+What I originally claimed here — a measured two-sockets-per-tab leak — was a
+misreading. The second socket was a second GM tab. The guard stays because it is
+one branch and the failure it prevents is a seat held by nobody, but it fixed
+nothing that was broken.
+
+### D-146 — Copy: singular verb in the chunk warning · `agreed`
+"1 place is marked revealed but **stay** hidden". Trivial, but the warning exists
+to stop a GM misreading the state, and broken grammar in it undermines that.
+
+---
+
+## Round 27 — snapshots removed
+
+### D-147 — A campaign has exactly one save, and no save/load verb · `agreed`
+Supersedes the snapshot half of D-137. The GM asked what snapshots were for and
+there was no answer that survived contact.
+
+What a save holds is which chunks are Known and which places are Revealed. That
+only ever grows during play — a party does not un-see an island — so "come back
+to this point" answers a question a GM does not have. The two cases that sound
+like snapshots are already covered: running the same world for a new group is
+Duplicate (D-109, which regenerates every id so no save can follow it), and
+losing your place is the autosave.
+
+An undo was considered for the real failure mode — clicking Known on the wrong
+chunk mid-session — and rejected by the GM for the right reason: **the toggle is
+already the undo.** Known and Revealed are one click each in both directions, so
+an undo stack would be a second way to do what the button does.
+
+Removed: three intents, `snapshotOf`, `restoreInto`, `summarise`, `isLiveSave`,
+`SaveSummary` and its wire schema, `HostState.saves`, `GmView.saves`, the
+`restoreSave` and `removeSave` effects, `restoredWith`, `SaveStore.list`, and the
+Saves panel. 11 tests went with them.
+
+Kept, because it is load-bearing rather than a feature: **the campaign/save
+separation** (R-8, D-006). Discovery has to live outside the authored world, or
+revealing a chunk would edit the campaign and duplicating a played world would
+carry the previous group's discovery into it. The derived save id (R-120) and the
+autosave (R-121) stay for the same reason.
+
+`SaveStore.removeForCampaign` still sweeps every save file belonging to a
+campaign rather than deleting one derived id, so that files written during the
+snapshot era are cleaned up rather than orphaned. That is the only trace left, and
+a test covers it.
+
+### D-148 — The save is thin now and will not stay thin · `agreed`
+Worth writing down so nobody reads D-147 as "play state is simple". A save holds
+discovery only because encounters do not exist yet (O-009). Once tokens stand on
+an encounter map, play state includes their positions and per-token vision, and
+that all belongs in the same save. D-147 removes a feature, not the structure
+that will hold it.

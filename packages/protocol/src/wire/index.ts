@@ -3,11 +3,11 @@
 
 import { z } from 'zod';
 import type {
-  Campaign, Chunk, Column, World, PartyMember, TerrainId, Poi, PoiNote, MarkerId,
+  Campaign, Chunk, Column, World, PartyMember, TerrainId, Poi, PoiNote, MarkerId, Save,
 } from '@tt/domain';
 import {
   CHUNK_SIZE, DEFAULT_METRES_PER_LEVEL, DEFAULT_TERRAIN, DEFAULT_MARKERS,
-  chunkKey, registryId,
+  chunkKey, registryId, discoveryToJSON, discoveryFromJSON,
 } from '@tt/domain';
 
 export const TerrainIdSchema = z.string().regex(/^terrain:[a-z0-9]+(-[a-z0-9]+)*$/);
@@ -75,6 +75,22 @@ export const PoiWireSchema = z.object({
 });
 export type PoiWire = z.infer<typeof PoiWireSchema>;
 
+export const DiscoveryWireSchema = z.object({
+  chunks: z.array(z.string()).default([]),
+  pois: z.array(z.string()).default([]),
+});
+
+export const SaveWireSchema = z.object({
+  id: z.string(),
+  campaignId: z.string(),
+  campaignSchemaVersion: z.number().int(),
+  schemaVersion: z.number().int(),
+  label: z.string(),
+  savedAt: z.string(),
+  discovery: DiscoveryWireSchema,
+});
+export type SaveWire = z.infer<typeof SaveWireSchema>;
+
 export const MemberWireSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -84,6 +100,13 @@ export const MemberWireSchema = z.object({
 
 export const WorldWireSchema = z.object({
   bounds: z.object({ x: z.number().int(), z: z.number().int() }),
+  /**
+   * Chunks that exist but whose terrain the party has not been shown: the
+   * featureless placeholders of R-16. Coordinates only — deliberately a separate
+   * list rather than a `known` flag on each Chunk, so an Unknown chunk has no
+   * field that *could* carry terrain.
+   */
+  unknownChunks: z.array(ChunkCoordSchema).default([]),
   metresPerCell: z.number(),
   // Older campaigns predate the horizontal/vertical split (D-099); default
   // rather than reject, since the value they implied is the one we now name.
@@ -124,6 +147,7 @@ export function encodeChunk(chunk: Chunk): ChunkWire {
 export function encodeWorld(world: World): z.infer<typeof WorldWireSchema> {
   return {
     bounds: { x: world.bounds.x, z: world.bounds.z },
+    unknownChunks: [],
     metresPerCell: world.metresPerCell,
     metresPerLevel: world.metresPerLevel,
     chunks: [...world.chunks.values()].map(encodeChunk),
@@ -170,6 +194,30 @@ export function parseTerrainId(value: string): TerrainId {
   return registryId<'TerrainId'>(ns ?? 'terrain', rest.join(':'));
 }
 const terrainId = parseTerrainId;
+
+export function encodeSave(save: Save): SaveWire {
+  return {
+    id: save.id,
+    campaignId: save.campaignId,
+    campaignSchemaVersion: save.campaignSchemaVersion,
+    schemaVersion: save.schemaVersion,
+    label: save.label,
+    savedAt: save.savedAt,
+    discovery: discoveryToJSON(save.discovery),
+  };
+}
+
+export function decodeSave(wire: SaveWire): Save {
+  return {
+    id: wire.id as Save['id'],
+    campaignId: wire.campaignId as Save['campaignId'],
+    campaignSchemaVersion: wire.campaignSchemaVersion,
+    schemaVersion: wire.schemaVersion,
+    label: wire.label,
+    savedAt: wire.savedAt,
+    discovery: discoveryFromJSON(wire.discovery),
+  };
+}
 
 export function encodePoi(poi: Poi): PoiWire {
   return {

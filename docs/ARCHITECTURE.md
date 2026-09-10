@@ -1294,3 +1294,126 @@ apps/host/src/
 > is opened by LAN IP** rather than `localhost` — a non-secure context. Fall back
 > to a hidden textarea and `execCommand`, and if that fails too, say so and let
 > the GM copy by hand.
+
+---
+
+## Discovery and saves
+
+> **R-18a.** The role gate **fails closed**. It tests membership of
+> `OPEN_TO_ANYONE`, a list that is currently empty, so an intent nobody classified
+> is GM-only by default.
+>
+> The gate used to test an allow-list of mutations, which meant a forgotten intent
+> was *permitted* for the table display. A test enumerates the intent kinds from
+> `IntentSchema` itself and asserts every one is rejected for `table` and
+> `spectator`, so adding an intent without classifying it fails the suite instead
+> of shipping a hole.
+
+> **R-120.** A stored key that must be unique per campaign is **derived from the
+> campaign id**, not generated and then constrained. `liveSaveId(campaignId)` makes
+> "exactly one save per campaign" a property of the name rather than an invariant
+> something has to check, re-check after a crash, and repair.
+
+> **R-121.** Discovery autosaves, and **there is no save or load verb anywhere in
+> the UI**. Any intent that changes what the party knows writes the save in the
+> same breath, exactly as campaign edits already do (R-66). A GM in the middle of a
+> session must not have to remember one.
+>
+> A campaign has exactly one save. Snapshots were built and then removed (D-147):
+> discovery only grows during play, so restoring an earlier one answers a question
+> a GM does not have, and the Known/Revealed toggles are already their own undo.
+> Do not reintroduce a second save per campaign without a use case that Duplicate
+> does not already serve.
+
+> **R-122.** A POI reaches the table only when it is **Revealed and its chunk is
+> Known**. The two flags are independent (R-16) and their independence permits a
+> revealed place inside a region the party has never seen — a name and a position
+> leaked out of unexplored ground.
+>
+> `isPoiOnTable` is the single predicate; the filter has no business re-deriving
+> it. Both GM inspectors say the rule out loud when it is the reason a revealed
+> marker is not on the table, so the GM is never left guessing.
+
+> **R-123.** Chunk membership is keyed by a **string**, never by a coordinate
+> object. A `Set<ChunkCoord>` dedupes by reference, so it silently holds duplicates
+> of the same cell and `has` never matches a freshly built coord. `chunkKey` is the
+> only way in or out.
+
+> **R-124.** An Unknown chunk travels as a **coordinate-only entry in a separate
+> list**, not as a flag on the full chunk. A `known: false` chunk still carries its
+> heights and terrain over the wire, one client bug away from being drawn. A
+> placeholder with no terrain field cannot leak terrain. A test asserts the
+> placeholder's exact key set.
+
+> **R-125.** Deciding *which* save to use is a rule, so it lives in `sim`. The host
+> reads and writes files; `openedWith` and `restoredWith` decide whether to reuse a
+> stored save, mint a fresh one, and which POI ids to prune. A host reaching into
+> `@tt/domain` for `restoreInto` is both a forbidden edge (R-5) and game logic
+> outside the pure core (R-67) — `npm run arch` caught exactly that.
+
+> **R-126.** Deleting authored content prunes the play state that referenced it.
+> Deleting a campaign trashes its saves; deleting a POI drops it from discovery. A
+> save pointing at an id that no longer exists is a revealed marker for a place
+> that cannot be drawn.
+
+---
+
+## Seats
+
+> **R-23a.** The host's **seat arbitration is tested**, as an exception to R-23.
+> R-23 excuses the apps because they are three.js and a DOM; the reason is "do not
+> write mocks for what you cannot mock", not "apps are exempt". Seat arbitration is
+> a rule about what happens over a socket, and it is testable with a real `ws`
+> server on an ephemeral port and no mocks at all. `apps/host/test` is in the
+> vitest include list for exactly this.
+
+> **R-127.** There is one GM seat and **the newest claim wins it**. The previous
+> holder is demoted to a viewer *in place* — told its new seat and sent a new view,
+> not disconnected.
+>
+> The seat used to be defended against later claims, so that "two GMs cannot fight
+> over the same campaign". That is the wrong threat model for a tool with one GM in
+> the room (R-39). The later claimant is not a rival; it is the same person's
+> browser in a second tab, or after a reload the host has not yet noticed.
+> Defending the seat meant that console silently received a spectator seat and had
+> every action rejected until the host was restarted — which is exactly what
+> happened, with two GM consoles open on one machine.
+>
+> Demoting rather than disconnecting matters: a disconnected client reconnects,
+> re-asks for `gm`, and two live consoles trade the seat forever.
+>
+> **`table` is not exclusive at all.** A table display and a spectator receive the
+> identical view, so there is nothing for a second screen to take, and a second
+> screen is a reasonable thing to want.
+
+> **R-128.** Sockets are **pinged, and reaped when they stop answering**. TCP does
+> not notice a browser that navigated away, a laptop that slept, or a LAN that
+> dropped: the connection stays ESTABLISHED with nobody behind it, and it keeps its
+> seat forever.
+>
+> No leak of this kind has actually been observed running: the two long-lived
+> sockets that first looked like one were two GM tabs, both legitimate. The gap is
+> real all the same — nothing in the old transport could ever have released a seat
+> without a close event — and `apps/host/test/seats.test.ts` reproduces it by
+> pausing a client's socket so it stops answering pings.
+
+> **R-129.** A client **must not present controls for a seat it does not hold**.
+> The seat it holds and "no view yet" are different states and must render
+> differently.
+>
+> The GM console derived its view as `role === 'gm' ? view : null` and then
+> rendered the launcher from `view?.campaigns ?? []`. Holding a spectator seat
+> therefore looked identical to a fresh, empty install: a campaign list with a
+> working Create button that rejected every click. The rejection was not silent
+> (R-18), but the reason was incomprehensible, because the UI was lying about what
+> it was.
+
+> **R-130.** A connection abandoned **before its handshake completed** closes
+> itself when the handshake lands. Calling `close()` while a socket is still
+> CONNECTING is not dependably enough: if the upgrade has already completed on the
+> host, the socket can finish opening, claim a seat, and then answer pings
+> forever — alive enough that R-128 would never reap it.
+>
+> This is a guard, not a fix for something measured. It costs one branch in
+> `onopen`, and the alternative failure is a socket holding the GM seat with
+> nobody behind it, which is the hardest class of bug to see from the console.

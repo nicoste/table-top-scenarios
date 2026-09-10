@@ -42,6 +42,8 @@ export class Stage {
   private pois: PoiMarkers | null = null;
   private grid: GridHelper | null = null;
   private slotMeshes: { mesh: Mesh; coord: SlotAddress }[] = [];
+  private fogMeshes: Mesh[] = [];
+  private readonly fog = new Group();
   private target: CameraTarget = defaultTarget();
 
   constructor(private readonly canvas: HTMLCanvasElement) {
@@ -64,7 +66,7 @@ export class Stage {
     );
     this.highlight.visible = false;
     this.highlight.renderOrder = 10;
-    this.scene.add(this.highlight, this.slots);
+    this.scene.add(this.highlight, this.slots, this.fog);
 
     this.resize();
   }
@@ -72,6 +74,7 @@ export class Stage {
   setCampaign(campaign: Campaign | null, recentre = false): void {
     if (this.world) { this.scene.remove(this.world.mesh); this.world.dispose(); this.world = null; }
     if (this.pois) { this.scene.remove(this.pois.group); this.pois.dispose(); this.pois = null; }
+    if (!campaign) this.setFogChunks([]);
     for (const { mesh } of this.slotMeshes) {
       this.slots.remove(mesh);
       mesh.geometry.dispose();
@@ -93,6 +96,35 @@ export class Stage {
     this.scene.add(this.grid);
 
     if (recentre) this.target = { ...this.target, focus: centre };
+  }
+
+  /**
+   * Chunks the party cannot see, drawn as flat dark tiles.
+   *
+   * One mechanism, two readings. On the **table display** these are R-16's
+   * featureless placeholders: the party learns a chunk is there and nothing
+   * else. On the **GM console** the same tiles are a fog overlay showing what
+   * the players are missing. Both mean "not visible to the party", so they look
+   * the same on purpose.
+   */
+  setFogChunks(coords: readonly SlotAddress[]): void {
+    for (const mesh of this.fogMeshes) {
+      this.fog.remove(mesh);
+      mesh.geometry.dispose();
+      (mesh.material as MeshBasicMaterial).dispose();
+    }
+    this.fogMeshes = coords.map((coord) => {
+      const mesh = new Mesh(
+        new PlaneGeometry(CHUNK_SIZE, CHUNK_SIZE),
+        new MeshBasicMaterial({ color: 0x0a0d12, transparent: true, opacity: 0.72 }),
+      );
+      mesh.rotation.x = -Math.PI / 2;
+      // Just above the grid but below the `+` slots, so a creatable slot still reads.
+      mesh.position.set((coord.cx + 0.5) * CHUNK_SIZE, 0.04, (coord.cz + 0.5) * CHUNK_SIZE);
+      mesh.renderOrder = 1;
+      this.fog.add(mesh);
+      return mesh;
+    });
   }
 
   /** The `+` slots the GM may create a chunk in (R-79). GM console only. */
@@ -231,6 +263,7 @@ export class Stage {
 
   dispose(): void {
     instances--;
+    this.setFogChunks([]);
     this.pois?.dispose();
     this.world?.dispose();
     this.renderer.dispose();

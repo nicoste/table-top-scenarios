@@ -1,0 +1,16 @@
+{
+ "id": "save_mtvouycon60b6kco",
+ "campaignId": "campaign_mtvoshfnm7jet9is",
+ "campaignSchemaVersion": 2,
+ "schemaVersion": 1,
+ "label": "Harbour revealed",
+ "savedAt": "2026-09-10T15:35:04.296Z",
+ "discovery": {
+  "chunks": [
+   "15,15"
+  ],
+  "pois": [
+   "poi_mtvotm616hqjput3"
+  ]
+ }
+}

@@ -35,7 +35,15 @@ export function connect(role: 'gm' | 'table', handlers: Handlers): Connection {
     const ws = new WebSocket(url());
     socket = ws;
 
-    ws.onopen = () => handlers.onStatus('open');
+    ws.onopen = () => {
+      // Abandoned before the handshake finished. Calling `close()` while the
+      // socket was still CONNECTING is not dependable: if the upgrade already
+      // completed on the host, the socket opens anyway, claims a seat, and then
+      // answers pings forever — alive enough that the heartbeat never reaps it
+      // (R-130). A guard, not a fix for anything observed.
+      if (closed) { ws.close(); return; }
+      handlers.onStatus('open');
+    };
     ws.onmessage = (event) => {
       let message: OutboundMessage;
       try { message = JSON.parse(String(event.data)) as OutboundMessage; } catch { return; }

@@ -3,13 +3,15 @@
 // argument and everything leaves as a return value.
 
 import type { Campaign, ChunkCoord } from '@tt/domain';
-import type { PartyMember, PoiId, NoteId } from '@tt/domain';
+import type { PartyMember, PoiId, NoteId, Save } from '@tt/domain';
 import {
   createCampaign, duplicateCampaign, uniqueCampaignName, createMember, editMember, removeMember,
   addChunk, chunkAt, terrainById, isCreatableSlot, DEFAULT_TERRAIN,
   toGlobal, paintArea, setHeightArea, raiseArea,
   addPoi, renamePoi, setPoiMarker, movePoi, removePoi, poiById, poiAt, isValidPoiCell,
   addNote, editNote, setNoteVisible, removeNote, moveNote, isKnownMarker,
+  createLiveSave, withDiscovery, touch, belongsTo, pruneDiscovery,
+  setChunkKnown, setPoiRevealed, setPoisRevealed, isAuthored, poisInChunk,
 } from '@tt/domain';
 import type { HostState, Intent, Role } from '@tt/protocol';
 import { parseTerrainId, parseMarkerId } from '@tt/protocol';
@@ -18,7 +20,8 @@ import { parseTerrainId, parseMarkerId } from '@tt/protocol';
 export type Effect =
   | { readonly kind: 'saveCampaign'; readonly campaign: Campaign }
   | { readonly kind: 'loadCampaign'; readonly id: string }
-  | { readonly kind: 'removeCampaign'; readonly id: string };
+  | { readonly kind: 'removeCampaign'; readonly id: string }
+  | { readonly kind: 'saveSave'; readonly save: Save };
 
 export interface Applied {
   readonly state: HostState;
@@ -35,16 +38,49 @@ function mayEdit(role: Role): boolean {
   return role === 'gm';
 }
 
-const MUTATIONS = new Set<Intent['kind']>([
-  'createCampaign', 'openCampaign', 'closeCampaign', 'duplicateCampaign', 'deleteCampaign',
-  'addChunk', 'paintTerrain', 'setHeight', 'raiseHeight',
-  'addMember', 'editMember', 'removeMember',
-  'addPoi', 'renamePoi', 'setPoiMarker', 'movePoi', 'removePoi',
-  'addNote', 'editNote', 'setNoteVisible', 'removeNote', 'moveNote',
-]);
+/**
+ * Intents anyone may send. **Everything not listed here requires the GM.**
+ *
+ * This list is deliberately the *read-only* one, not the mutating one. An
+ * allow-list of mutations fails open: add an intent, forget to list it, and it is
+ * silently permitted for the table display with nothing to notice. Listing the
+ * harmless ones instead fails closed — a new intent is GM-only until someone
+ * decides otherwise (R-18a).
+ */
+const OPEN_TO_ANYONE = new Set<Intent['kind']>([]);
 
-export function apply(state: HostState, role: Role, intent: Intent): Applied {
-  if (MUTATIONS.has(intent.kind) && !mayEdit(role)) {
+/**
+ * Applies one intent.
+ *
+ * `now` is an ISO timestamp the **host** supplies. `sim` has no clock (R-97), and
+ * a save has to record when it was written, so the time arrives as an argument
+ * like everything else.
+ */
+/**
+ * The state that results from opening a campaign together with its live save.
+ *
+ * Pure, and deliberately here rather than in the host: choosing whether to reuse
+ * a stored save, mint a fresh one, or prune stale POI ids from it is a rule, and
+ * rules do not live in `apps/host` (R-67). The host reads the files and hands
+ * the results over.
+ */
+export function openedWith(
+  state: HostState,
+  campaign: Campaign,
+  storedSave: Save | null,
+  savedAt: string,
+  poiIds: ReadonlySet<PoiId>,
+): { readonly state: HostState; readonly toPersist: Save | null } {
+  const usable = storedSave && belongsTo(storedSave, campaign) ? storedSave : null;
+  const save = usable ? pruneDiscovery(usable, poiIds) : createLiveSave(campaign, savedAt);
+  return {
+    state: { ...state, active: campaign, activeSave: save },
+    toPersist: save !== usable ? save : null,
+  };
+}
+
+export function apply(state: HostState, role: Role, intent: Intent, now: string): Applied {
+  if (!OPEN_TO_ANYONE.has(intent.kind) && !mayEdit(role)) {
     return reject(state, 'only the GM can do that');
   }
 
@@ -56,12 +92,16 @@ export function apply(state: HostState, role: Role, intent: Intent): Applied {
       } catch (error) {
         return reject(state, error instanceof Error ? error.message : 'could not create campaign');
       }
+      // A campaign is never open without a live save: it is what discovery is
+      // recorded in, and the table sees nothing at all until one exists.
+      const live = createLiveSave(campaign, now);
       return ok(
         {
           campaigns: [...state.campaigns, { id: campaign.id, name: campaign.name }],
           active: campaign,
+          activeSave: live,
         },
-        [{ kind: 'saveCampaign', campaign }],
+        [{ kind: 'saveCampaign', campaign }, { kind: 'saveSave', save: live }],
       );
     }
 
@@ -71,7 +111,7 @@ export function apply(state: HostState, role: Role, intent: Intent): Applied {
     }
 
     case 'closeCampaign':
-      return ok({ ...state, active: null });
+      return ok({ ...state, active: null, activeSave: null });
 
     case 'duplicateCampaign': {
       // Only the open campaign can be duplicated: sim cannot read the disk
@@ -88,32 +128,44 @@ export function apply(state: HostState, role: Role, intent: Intent): Applied {
       }
       // Return to the list, where both campaigns are visible. That is the
       // confirmation, and it costs no extra protocol surface (D-109).
+      // The copy gets its own fresh live save. Discovery is deliberately NOT
+      // carried over: a duplicate is a new campaign with new ids (D-109), so the
+      // party has not been anywhere in it.
+      const copyLive = createLiveSave(copy, now);
       return ok(
-        { campaigns: [...state.campaigns, { id: copy.id, name: copy.name }], active: null },
-        [{ kind: 'saveCampaign', campaign: copy }],
+        {
+          campaigns: [...state.campaigns, { id: copy.id, name: copy.name }],
+          active: null,
+          activeSave: null,
+        },
+        [{ kind: 'saveCampaign', campaign: copy }, { kind: 'saveSave', save: copyLive }],
       );
     }
 
     case 'deleteCampaign': {
       if (!state.campaigns.some((c) => c.id === intent.id)) return reject(state, 'no such campaign');
+      const closing = state.active?.id === intent.id;
       return ok(
         {
           campaigns: state.campaigns.filter((c) => c.id !== intent.id),
           // Deleting the open campaign closes it rather than leaving a ghost.
-          active: state.active?.id === intent.id ? null : state.active,
+          active: closing ? null : state.active,
+          activeSave: closing ? null : state.activeSave,
         },
+        // The host trashes the campaign's saves alongside it; an orphaned save
+        // would otherwise sit in the store forever pointing at nothing.
         [{ kind: 'removeCampaign', id: intent.id }],
       );
     }
 
     default:
-      return applyToCampaign(state, intent);
+      return applyToCampaign(state, intent, now);
   }
 }
 
 // -- everything below needs an open campaign ---------------------------------
 
-function applyToCampaign(state: HostState, intent: Intent): Applied {
+function applyToCampaign(state: HostState, intent: Intent, now: string): Applied {
   const campaign = state.active;
   if (!campaign) return reject(state, 'no campaign is open');
 
@@ -184,7 +236,7 @@ function applyToCampaign(state: HostState, intent: Intent): Applied {
     }
 
     default:
-      return applyToPois(state, campaign, intent, commit);
+      return applyToPois(state, campaign, intent, commit, now);
   }
 }
 
@@ -195,6 +247,7 @@ function applyToPois(
   campaign: Campaign,
   intent: Intent,
   commit: (next: Campaign) => Applied,
+  now: string,
 ): Applied {
   const reject_ = (reason: string): Applied => reject(state, reason);
   const withPois = (pois: Campaign['pois']): Applied =>
@@ -274,7 +327,58 @@ function applyToPois(
     }
 
     default:
-      return reject_(`unhandled intent: ${(intent as { kind: string }).kind}`);
+      return applyToDiscovery(state, campaign, intent, now);
   }
 }
+
+// -- what the party knows ---------------------------------------------------
+
+function applyToDiscovery(
+  state: HostState,
+  campaign: Campaign,
+  intent: Intent,
+  now: string,
+): Applied {
+  const save = state.activeSave;
+  if (!save) return reject(state, 'no save is open');
+  // The pairing is checked here as well as in viewFor: a save from another
+  // campaign would apply one world's discovery to another's contents.
+  if (save.campaignId !== campaign.id) return reject(state, 'that save belongs to another campaign');
+
+  const commitDiscovery = (discovery: Save['discovery']): Applied => {
+    const next = withDiscovery(save, discovery);
+    if (next === save) return ok(state);
+    const stamped = touch(next, now);
+    return ok({ ...state, activeSave: stamped }, [{ kind: 'saveSave', save: stamped }]);
+  };
+
+  switch (intent.kind) {
+    case 'setChunkKnown': {
+      const coord = { cx: intent.cx, cz: intent.cz };
+      if (!isAuthored(campaign.world, coord)) return reject(state, 'that chunk does not exist');
+      return commitDiscovery(setChunkKnown(save.discovery, coord, intent.known));
+    }
+
+    case 'setPoiRevealed': {
+      const id = intent.poiId as PoiId;
+      if (!poiById(campaign.pois, id)) return reject(state, 'no such place');
+      return commitDiscovery(setPoiRevealed(save.discovery, id, intent.revealed));
+    }
+
+    case 'revealChunk': {
+      const coord = { cx: intent.cx, cz: intent.cz };
+      if (!isAuthored(campaign.world, coord)) return reject(state, 'that chunk does not exist');
+      let discovery = setChunkKnown(save.discovery, coord, true);
+      if (intent.withPois) {
+        const ids = poisInChunk(campaign.pois, coord).map((poi) => poi.id);
+        discovery = setPoisRevealed(discovery, ids, true);
+      }
+      return commitDiscovery(discovery);
+    }
+
+    default:
+      return reject(state, `unhandled intent: ${(intent as { kind: string }).kind}`);
+  }
+}
+
 

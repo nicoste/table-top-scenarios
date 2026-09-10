@@ -44,6 +44,12 @@ export const IntentSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('setNoteVisible'), poiId: z.string().min(1), noteId: z.string().min(1), visibleToParty: z.boolean() }),
   z.object({ kind: z.literal('removeNote'), poiId: z.string().min(1), noteId: z.string().min(1) }),
   z.object({ kind: z.literal('moveNote'), poiId: z.string().min(1), noteId: z.string().min(1), delta: z.number().int().min(-99).max(99) }),
+
+  // What the party knows. GM-granted; no geometry at world scale (R-16).
+  z.object({ kind: z.literal('setChunkKnown'), cx: z.number().int(), cz: z.number().int(), known: z.boolean() }),
+  z.object({ kind: z.literal('setPoiRevealed'), poiId: z.string().min(1), revealed: z.boolean() }),
+  z.object({ kind: z.literal('revealChunk'), cx: z.number().int(), cz: z.number().int(), withPois: z.boolean().optional() }),
+
 ]);
 
 export type Intent = z.infer<typeof IntentSchema>;

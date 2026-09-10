@@ -89,6 +89,13 @@ button.quiet:hover { background: #3a2222; color: #ffc9c9; border-color: transpar
 .brush { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
 .brush button { width: 100%; padding: 6px 2px; font-size: 12px; }
 
+.reveal { display: flex; gap: 5px; }
+.reveal button { flex: 1; padding: 6px 4px; }
+.warn {
+  margin: 8px 0 0; padding: 6px 8px; border-radius: 6px; font-size: 11.5px;
+  background: #3a2f18; border: 1px solid #ffc85744; color: #ffe0a3;
+}
+
 .notes { list-style: none; margin: 6px 0 8px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .notes li { display: grid; grid-template-columns: auto 1fr; gap: 4px 6px; align-items: start; }
 .notes textarea {

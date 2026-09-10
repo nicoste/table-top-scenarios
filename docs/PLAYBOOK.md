@@ -120,6 +120,20 @@ Each of these is easier than doing it properly, which is why they are listed.
 
 ---
 
+## Delegating to agents
+
+> **Subagents run on Sonnet at high effort. Always. Set it explicitly.**
+
+Never let an agent inherit the main loop's model. The main loop is dialled up and
+down deliberately — including to Opus for heavy orchestration — and that choice
+must not propagate to a fleet of agents, where one change silently multiplies
+cost across every one of them.
+
+In a Workflow script that means `{ model: 'sonnet', effort: 'high' }` on every
+`agent()` call; with the Agent tool it means passing the model explicitly.
+
+---
+
 ## Naming
 
 - files `kebab-case.ts` · types `PascalCase` · functions `camelCase`

@@ -108,8 +108,15 @@ export function chunkAt(world: World, coord: ChunkCoord): Chunk | null {
   return world.chunks.get(chunkKey(coord)) ?? null;
 }
 
-/** True when the chunk has been authored. Absent chunks are Unknown (R-16). */
-export function isKnown(world: World, coord: ChunkCoord): boolean {
+/**
+ * True when the GM has created this chunk.
+ *
+ * Deliberately **not** called `isKnown`: R-16 uses Known/Unknown for whether the
+ * *party* knows a chunk, which is play state in a save. Whether a chunk exists at
+ * all is authored content. Two different questions, and one word for both was a
+ * bug waiting to happen (D-131).
+ */
+export function isAuthored(world: World, coord: ChunkCoord): boolean {
   return world.chunks.has(chunkKey(coord));
 }
 
@@ -273,7 +280,7 @@ export function raiseArea(world: World, at: GlobalCell, size: number, delta: num
 // -- world-level edits -------------------------------------------------------
 
 export function addChunk(world: World, coord: ChunkCoord): World {
-  if (!inBounds(world, coord) || isKnown(world, coord)) return world;
+  if (!inBounds(world, coord) || isAuthored(world, coord)) return world;
   const chunks = new Map(world.chunks);
   chunks.set(chunkKey(coord), createChunk(coord));
   return { ...world, chunks };
@@ -304,9 +311,9 @@ export function replaceChunk(world: World, chunk: Chunk): World {
  * it; neither reimplements it.
  */
 export function isCreatableSlot(world: World, coord: ChunkCoord): boolean {
-  if (!inBounds(world, coord) || isKnown(world, coord)) return false;
+  if (!inBounds(world, coord) || isAuthored(world, coord)) return false;
   if (world.chunks.size === 0) return coord.cx === 0 && coord.cz === 0;
-  return CHUNK_NEIGHBOURS.some(([dx, dz]) => isKnown(world, { cx: coord.cx + dx, cz: coord.cz + dz }));
+  return CHUNK_NEIGHBOURS.some(([dx, dz]) => isAuthored(world, { cx: coord.cx + dx, cz: coord.cz + dz }));
 }
 
 /** Every slot the GM may create a chunk in. */

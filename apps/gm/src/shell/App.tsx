@@ -11,23 +11,27 @@ import { Launcher } from '../features/launcher/index.js';
 import { BuildWorldPanel } from '../features/build-world/index.js';
 import { PartyPanel } from '../features/party/index.js';
 import { PlacesPanel, PoiInspector } from '../features/poi/index.js';
+import { ChunkInspector } from '../features/visibility/index.js';
 import { ConnectBadge } from '../features/connect/index.js';
 import { Tooltip } from '@tt/ui';
 
 interface Props {
   view: GmView | null;
   status: 'connecting' | 'open' | 'closed';
+  /** Which seat this console actually holds (R-129). */
+  seat: 'unknown' | 'gm' | 'viewer';
   rejection: string | null;
   dispatch: (intent: Intent) => void;
 }
 
-export function App({ view, status, rejection, dispatch }: Props) {
+export function App({ view, status, seat, rejection, dispatch }: Props) {
   const [tool, setTool] = useState<Tool>('select');
   const [terrainId, setTerrainId] = useState('terrain:grass');
   const [hoverLabel, setHoverLabel] = useState<string | null>(null);
   const [brush, setBrush] = useState(1);
   const [markerId, setMarkerId] = useState('marker:village');
   const [selectedPoi, setSelectedPoi] = useState<string | null>(null);
+  const [selectedChunk, setSelectedChunk] = useState<{ cx: number; cz: number } | null>(null);
   /**
    * The cell a POI was just placed on, waiting for the snapshot that will carry
    * it. The host assigns the id, so the client cannot know it in advance — but
@@ -49,6 +53,17 @@ export function App({ view, status, rejection, dispatch }: Props) {
   // render, so a deleted POI simply stops resolving.
   const poi = campaign?.pois.find((p) => p.id === selectedPoi) ?? null;
 
+  // Discovery lives in the save; the GM console shows it so the GM can see what
+  // the players are missing.
+  const knownChunks = new Set(view?.save?.discovery.chunks ?? []);
+  const revealedPois = new Set(view?.save?.discovery.pois ?? []);
+  const unknownChunks = (campaign?.world.chunks ?? [])
+    .filter((c) => !knownChunks.has(`${c.cx},${c.cz}`))
+    .map((c) => ({ cx: c.cx, cz: c.cz }));
+  const chunkPois = selectedChunk
+    ? (campaign?.pois ?? []).filter((p) => p.cell.cx === selectedChunk.cx && p.cell.cz === selectedChunk.cz)
+    : [];
+
   // Push server state into the Stage. Recentre only when a different campaign
   // opens, so an edit never yanks the camera (R-64).
   useEffect(() => {
@@ -63,7 +78,8 @@ export function App({ view, status, rejection, dispatch }: Props) {
     }
     // R-79 lives in domain; the console draws from it and never restates it.
     stage.setSlots(creatableSlots(decoded.world));
-  }, [campaign, stage]);
+    stage.setFogChunks(unknownChunks);
+  }, [campaign, stage, view?.save]);
 
   const columnInfo = useCallback((cell: { cx: number; cz: number; x: number; z: number }) => {
     const chunk = campaign?.world.chunks.find((c) => c.cx === cell.cx && c.cz === cell.cz);
@@ -106,7 +122,7 @@ export function App({ view, status, rejection, dispatch }: Props) {
     // A marker always means the place it belongs to, whatever the tool (R-86).
     // The tool is left alone: switching to Places would arm the next click to
     // create another POI, which is exactly what D-127 fixes.
-    if (picked.poiId) { setSelectedPoi(picked.poiId); return; }
+    if (picked.poiId) { setSelectedPoi(picked.poiId); setSelectedChunk(null); return; }
 
     if (picked.slot) {
       dispatch({ kind: 'addChunk', cx: picked.slot.cx, cz: picked.slot.cz });
@@ -115,9 +131,10 @@ export function App({ view, status, rejection, dispatch }: Props) {
     if (!picked.column) return;
 
     if (tool === 'select') {
-      // Clicking bare ground clears the selection; the marker branch above
-      // handles picking one.
+      // Bare ground selects its chunk — the neutral tool selects whatever is
+      // under it, and a chunk is the other selectable thing (R-87a).
       setSelectedPoi(null);
+      setSelectedChunk({ cx: picked.column.cx, cz: picked.column.cz });
       return;
     }
 
@@ -231,7 +248,7 @@ export function App({ view, status, rejection, dispatch }: Props) {
         case 'KeyF': stage.tilt(-1); return;
         case 'BracketLeft': setBrush((n) => clampBrush(n - 1)); return;
         case 'BracketRight': setBrush((n) => clampBrush(n + 1)); return;
-        case 'Escape': setSelectedPoi(null); return;
+        case 'Escape': setSelectedPoi(null); setSelectedChunk(null); return;
         default: break;
       }
     };
@@ -262,11 +279,24 @@ export function App({ view, status, rejection, dispatch }: Props) {
         </div>
       )}
 
-      {status === 'open' && !campaign && (
+      {status === 'open' && seat === 'viewer' && (
+        <div className="launcher">
+          <div className="card">
+            <h1>Another console has the GM seat</h1>
+            <p>
+              This tab is watching. Reload it to take the seat back — the other
+              console becomes the viewer instead.
+            </p>
+            <button onClick={() => location.reload()}>Take the GM seat</button>
+          </div>
+        </div>
+      )}
+
+      {status === 'open' && seat === 'gm' && !campaign && (
         <Launcher campaigns={view?.campaigns ?? []} dispatch={dispatch} />
       )}
 
-      {status === 'open' && campaign && (
+      {status === 'open' && seat === 'gm' && campaign && (
         <>
           <div className="dock">
             <div className="card">
@@ -300,8 +330,19 @@ export function App({ view, status, rejection, dispatch }: Props) {
               <PoiInspector
                 poi={poi}
                 markers={campaign.markers}
+                revealed={revealedPois.has(poi.id)}
+                chunkKnown={knownChunks.has(`${poi.cell.cx},${poi.cell.cz}`)}
                 dispatch={dispatch}
                 onClose={() => setSelectedPoi(null)}
+              />
+            )}
+            {!poi && selectedChunk && (
+              <ChunkInspector
+                coord={selectedChunk}
+                known={knownChunks.has(`${selectedChunk.cx},${selectedChunk.cz}`)}
+                poiCount={chunkPois.length}
+                revealedPoiCount={chunkPois.filter((p) => revealedPois.has(p.id)).length}
+                dispatch={dispatch}
               />
             )}
             <PartyPanel campaign={campaign} dispatch={dispatch} />

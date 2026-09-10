@@ -1,16 +1,22 @@
 import { describe, it, expect } from 'vitest';
 import { apply } from '@tt/sim';
-import { parseIntent, viewFor } from '@tt/protocol';
+import { parseIntent, viewFor, IntentSchema } from '@tt/protocol';
 import type { HostState, Intent } from '@tt/protocol';
-import { chunkAt, columnAt, createCampaign, ORIGIN } from '@tt/domain';
+import { chunkAt, columnAt, createCampaign, createLiveSave, liveSaveId, ORIGIN } from '@tt/domain';
 
-const empty: HostState = { campaigns: [], active: null };
+const NOW = '2026-01-01T00:00:00.000Z';
+const empty: HostState = { campaigns: [], active: null, activeSave: null };
 
 function withCampaign(): HostState {
   const campaign = createCampaign('Ashfall');
-  return { campaigns: [{ id: campaign.id, name: campaign.name }], active: campaign };
+  const live = createLiveSave(campaign, NOW);
+  return {
+    campaigns: [{ id: campaign.id, name: campaign.name }],
+    active: campaign,
+    activeSave: live,
+  };
 }
-const run = (state: HostState, intent: Intent, role: 'gm' | 'table' = 'gm') => apply(state, role, intent);
+const run = (state: HostState, intent: Intent, role: 'gm' | 'table' = 'gm') => apply(state, role, intent, NOW);
 
 describe('permissions (R-3, R-4)', () => {
   const mutations: Intent[] = [
@@ -57,7 +63,10 @@ describe('campaigns', () => {
     expect(result.rejected).toBeUndefined();
     expect(result.state.active?.name).toBe('Ashfall');
     expect(result.state.campaigns).toHaveLength(1);
-    expect(result.effects).toEqual([{ kind: 'saveCampaign', campaign: result.state.active }]);
+    // A campaign is never created without its save (D-147).
+    expect(result.effects.map((e) => e.kind)).toEqual(['saveCampaign', 'saveSave']);
+    expect(result.state.activeSave?.campaignId).toBe(result.state.active?.id);
+    expect(result.state.activeSave?.id).toBe(liveSaveId(result.state.active!.id));
   });
 
   it('refuses a blank name', () => {
@@ -209,8 +218,9 @@ describe('duplicating and deleting campaigns', () => {
     expect(result.state.campaigns).toHaveLength(2);
     expect(result.state.campaigns[1]?.name).toBe('Ashfall (copy)');
     expect(result.state.active).toBeNull();
-    expect(result.effects).toHaveLength(1);
-    expect(result.effects[0]?.kind).toBe('saveCampaign');
+    expect(result.state.activeSave).toBeNull();
+    // The copy gets its own fresh live save, with no discovery carried over.
+    expect(result.effects.map((e) => e.kind)).toEqual(['saveCampaign', 'saveSave']);
   });
 
   it('never lets a copy share an id with its source', () => {
@@ -252,5 +262,41 @@ describe('duplicating and deleting campaigns', () => {
     const state = withCampaign();
     expect(run(state, { kind: 'deleteCampaign', id: state.active!.id }, 'table').rejected).toBeTruthy();
     expect(run(state, { kind: 'duplicateCampaign', id: state.active!.id }, 'table').rejected).toBeTruthy();
+  });
+});
+
+describe('permissions fail closed (R-18a)', () => {
+  /**
+   * Enumerated from the protocol itself, so a newly added intent fails this test
+   * until somebody decides whether the table display may send it. An allow-list
+   * of mutations would instead permit it silently.
+   */
+  const everyIntentKind = (): string[] => {
+    const options = (IntentSchema as unknown as { options: { shape: { kind: { value: string } } }[] }).options;
+    return options.map((o) => o.shape.kind.value);
+  };
+
+  it('covers every intent the protocol defines', () => {
+    expect(everyIntentKind().length).toBeGreaterThanOrEqual(22);
+  });
+
+  it('rejects every intent from the table display unless explicitly opened', () => {
+    const state = withCampaign();
+    const permitted: string[] = [];
+    for (const kind of everyIntentKind()) {
+      // A deliberately under-specified payload: we are testing the permission
+      // gate, which runs before any field is read.
+      const result = apply(state, 'table', { kind } as unknown as Intent, NOW);
+      if (!result.rejected) permitted.push(kind);
+    }
+    expect(permitted).toEqual([]);
+  });
+
+  it('rejects them from a spectator too', () => {
+    const state = withCampaign();
+    for (const kind of everyIntentKind()) {
+      const result = apply(state, 'spectator', { kind } as unknown as Intent, NOW);
+      expect(result.rejected, kind).toBeTruthy();
+    }
   });
 });

@@ -18,8 +18,10 @@ export default defineConfig({
     },
   },
   test: {
-    // R-22: the pure packages are the ones that must be tested.
-    include: ['packages/*/test/**/*.test.ts', 'test/**/*.test.ts'],
+    // R-22: the pure packages are the ones that must be tested. The host is
+    // included too — its seat arbitration is a rule, and it is testable against
+    // a real socket with no mocks (R-23a).
+    include: ['packages/*/test/**/*.test.ts', 'apps/host/test/**/*.test.ts', 'test/**/*.test.ts'],
     exclude: ['prototype/**', '**/node_modules/**'],
     passWithNoTests: true,
   },

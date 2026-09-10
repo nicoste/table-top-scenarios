@@ -4,7 +4,7 @@ import { createServer } from 'node:http';
 import { networkInterfaces } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { fileCampaignStore } from '@tt/persistence';
+import { fileCampaignStore, fileSaveStore } from '@tt/persistence';
 import { createSession } from './session/index.js';
 import { serveSockets } from './transport/index.js';
 import { serveStatic } from './static/index.js';
@@ -12,7 +12,7 @@ import { serveStatic } from './static/index.js';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..', '..', '..');
 const PORT = Number(process.env.PORT) || 8080;
-const DATA = process.env.TT_DATA ?? join(ROOT, 'data', 'campaigns');
+const DATA = process.env.TT_DATA ?? join(ROOT, 'data');
 
 /** LAN addresses the table display can be reached at (R-93). */
 function lanUrls(port: number): readonly string[] {
@@ -25,8 +25,9 @@ function lanUrls(port: number): readonly string[] {
   return out;
 }
 
-const store = fileCampaignStore(DATA);
-const session = createSession(store, () => lanUrls(PORT));
+const store = fileCampaignStore(join(DATA, 'campaigns'));
+const saves = fileSaveStore(join(DATA, 'saves'));
+const session = createSession(store, saves, () => lanUrls(PORT));
 
 const server = createServer(serveStatic({
   gm: join(ROOT, 'apps', 'gm', 'dist'),
@@ -38,7 +39,7 @@ serveSockets(server, session);
 server.listen(PORT, () => {
   const urls = lanUrls(PORT);
   console.log('\n  Table Top Scenarios');
-  console.log(`  campaigns in  ${DATA}`);
+  console.log(`  data in  ${DATA}`);
   console.log(`  GM      http://localhost:${PORT}/gm/`);
   console.log(`  Table   http://localhost:${PORT}/table/`);
   for (const url of urls) console.log(`  LAN     ${url}`);

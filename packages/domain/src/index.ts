@@ -16,7 +16,7 @@ export type { Column, Chunk, ChunkCoord, World, GlobalCell } from './world/index
 export {
   CHUNK_SIZE, MAX_HEIGHT, DEFAULT_METRES_PER_CELL, DEFAULT_METRES_PER_LEVEL,
   DEFAULT_WORLD_BOUNDS, SEA_LEVEL_WATER, centreOfBounds,
-  chunkKey, parseChunkKey, createChunk, emptyWorld, inBounds, chunkAt, isKnown,
+  chunkKey, parseChunkKey, createChunk, emptyWorld, inBounds, chunkAt, isAuthored,
   columnAt, paintTerrain, clampHeight, setHeight, raiseHeight,
   addChunk, replaceChunk, creatableSlots, isCreatableSlot, CHUNK_NEIGHBOURS,
   MAX_BRUSH, clampBrush, toGlobal, fromGlobal, brushCells, brushCentreOffset,
@@ -43,6 +43,19 @@ export {
   addPoi, renamePoi, setPoiMarker, movePoi, removePoi,
   addNote, editNote, setNoteVisible, removeNote, moveNote, partyVisibleNotes,
 } from './poi/index.js';
+
+export type { Discovery } from './discovery/index.js';
+export {
+  emptyDiscovery, isChunkKnown, isPoiRevealed, setChunkKnown, setPoiRevealed,
+  setPoisRevealed, isPoiOnTable, discoveryToJSON, discoveryFromJSON,
+} from './discovery/index.js';
+
+export type { Save } from './save/index.js';
+export {
+  SAVE_SCHEMA_VERSION, LIVE_LABEL,
+  liveSaveId, createLiveSave, belongsTo, matchesCampaignVersion,
+  touch, withDiscovery, pruneDiscovery,
+} from './save/index.js';
 
 export type { Campaign } from './campaign/index.js';
 export {
