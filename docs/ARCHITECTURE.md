@@ -597,9 +597,47 @@ most time in, so it gets specified rather than improvised.
 > new thing selected.** Staying in the creating tool arms the next click to
 > create again, which is what makes an editor feel hostile.
 
-> **R-87b.** Clicking a POI marker selects it **whatever the tool is**, and does
-> *not* change the tool. Switching to Places on selection would arm the next
-> click to create another POI — the very thing R-87a exists to prevent.
+> **R-87b.** ~~Clicking a POI marker selects it **whatever the tool is**.~~
+> **Superseded by R-87c (D-162).** The half that survives: selecting a POI does
+> *not* change the tool, because switching to Places would arm the next click to
+> create another one — the very thing R-87a exists to prevent.
+>
+> The rest was wrong. "Whatever the tool" meant a paint stroke near a marker
+> selected the place instead of painting the ground, which is how it was found:
+> painting snow around the party.
+
+> **R-87c.** **`render` reports what is under the pointer; the tool decides what
+> it meant.** `Picked` resolves pawn, POI, cell and empty slot *independently*,
+> with no precedence, so a tool that wants terrain always gets terrain.
+>
+> The cell it reports for a marker or a pawn is **that thing's own cell**, not
+> what the ray found. A strict raycast answers "the ground visible through this
+> pixel", and a marker stands *above* its ground, so in an angled view the ray
+> passes over it and lands on the neighbour — clicking a marker would paint the
+> cell behind it. `intendedCell` in `render/picking` owns that decision, has no
+> three.js in it, and is unit tested, because it is a rule and getting it wrong
+> silently edits the wrong cell (D-163).
+>
+> Anything a tool does not name, it ignores:
+>
+> | Tool | Picks | Ignores |
+> |---|---|---|
+> | **Select** | a POI; otherwise the cell's **chunk** | pawns |
+> | **Paint** | the cell | POIs, pawns |
+> | **Height** | the cell | POIs, pawns |
+> | **Places** | an **empty** cell | POIs, pawns; a taken cell is dropped |
+> | **Travel** | a pawn, then a cell while aiming | POIs |
+>
+> Creating a chunk from an empty `+` slot is **outside** the table: every tool
+> does it, because that affordance is how the world grows (R-79), not a mode.
+>
+> Select keeps chunk selection because it is the only route to the Known toggle.
+> If that moves elsewhere, Select becomes POIs only.
+>
+> A Places click on a taken cell is **dropped, not dispatched**: one POI per cell
+> (R-119) is a rule, not a mistake, and it does not deserve a red toast. The hover
+> readout says *"Already a place here"* first, so the dropped click reads as the
+> rule rather than as a dead button (R-18).
 
 > **R-88.** **Paint tool** (brush icon): pick a terrain from the palette (R-77),
 > tap a cell to paint it, or drag to paint many. Height is untouched.

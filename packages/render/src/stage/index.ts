@@ -17,15 +17,24 @@ import type { PoiMarkers } from '../pois/index.js';
 import { buildPoiMarkers, MARKER_ZOOM } from '../pois/index.js';
 import type { PartyPawns, PawnRef } from '../pawns/index.js';
 import { buildPartyPawns } from '../pawns/index.js';
+import { intendedCell } from '../picking/index.js';
 
 export interface SlotAddress { readonly cx: number; readonly cz: number }
 
+/**
+ * Everything under the pointer, resolved **independently** (R-87c).
+ *
+ * There is no precedence here on purpose. `render` reports what is there and the
+ * active tool decides what it meant — a paint stroke wants the cell even when a
+ * pawn or a marker is standing on it, and it used to get `null` because a marker
+ * hit ended the search.
+ */
 export interface Picked {
-  /** A pawn wins over everything: it stands on a POI's own cell (R-132). */
   readonly pawn: PawnRef | null;
-  /** A POI marker takes precedence over its column. */
   readonly poiId: string | null;
+  /** The cell, whatever is standing on it. */
   readonly column: ColumnAddress | null;
+  /** An empty neighbouring slot where a chunk could be created. */
   readonly slot: SlotAddress | null;
 }
 
@@ -246,34 +255,39 @@ export class Stage {
     );
     this.raycaster.setFromCamera(ndc, this.camera);
 
-    // Pawns first, then markers: a pawn may be standing on the very cell a POI
-    // occupies, and clicking the party should mean the party (R-132, R-86).
+    let pawn: PawnRef | null = null;
     if (this.pawns && this.pawns.group.visible) {
       for (const hit of this.raycaster.intersectObjects(this.pawns.group.children, true)) {
-        const pawn = this.pawns.pawnAt(hit.object);
-        if (pawn) return { pawn, poiId: null, column: null, slot: null };
+        pawn = this.pawns.pawnAt(hit.object);
+        if (pawn) break;
       }
     }
 
+    let poiId: string | null = null;
     if (this.pois && this.pois.group.visible) {
       for (const hit of this.raycaster.intersectObjects(this.pois.group.children, true)) {
-        const owner = this.pois.poiOf(hit.object);
-        if (owner) return { pawn: null, poiId: owner, column: null, slot: null };
+        poiId = this.pois.poiOf(hit.object);
+        if (poiId) break;
       }
     }
 
+    let rayCell: WorldCell | null = null;
     if (this.world) {
       const hit = this.raycaster.intersectObject(this.world.mesh, false)[0];
-      if (hit && hit.instanceId !== undefined) {
-        return { pawn: null, poiId: null, column: this.world.addressOf(hit.instanceId), slot: null };
+      if (hit && hit.instanceId !== undefined) rayCell = this.world.addressOf(hit.instanceId);
+    }
+    // Which cell that *meant* is a rule, and it lives in `picking` where it can
+    // be tested without a GL context (R-87c, D-163).
+    const column = intendedCell({ pawn, poiId, rayCell }, this.campaign, this.placement);
+
+    let slot: SlotAddress | null = null;
+    if (!column) {
+      for (const { mesh, coord } of this.slotMeshes) {
+        if (this.raycaster.intersectObject(mesh, false).length > 0) { slot = coord; break; }
       }
     }
-    for (const { mesh, coord } of this.slotMeshes) {
-      if (this.raycaster.intersectObject(mesh, false).length > 0) {
-        return { pawn: null, poiId: null, column: null, slot: coord };
-      }
-    }
-    return { pawn: null, poiId: null, column: null, slot: null };
+
+    return { pawn, poiId, column, slot };
   }
 
   /**

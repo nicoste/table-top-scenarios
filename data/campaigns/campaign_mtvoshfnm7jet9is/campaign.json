@@ -5,8 +5,14 @@
  "party": [
   {
    "id": "member_mtvoshfnz7qyeoar",
-   "name": "player",
-   "colour": "#57d9a3",
+   "name": "Frodo",
+   "colour": "#6b87f5",
+   "visionRange": 12
+  },
+  {
+   "id": "member_mtvwv35hk8jhddvv",
+   "name": "Legolas",
+   "colour": "#fff94d",
    "visionRange": 12
   }
  ],

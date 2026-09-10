@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { decodeCampaign, decodePlacement } from '@tt/protocol';
-import { CHUNK_SIZE, MAX_HEIGHT, clampBrush, creatableSlots } from '@tt/domain';
+import { CHUNK_SIZE, MAX_HEIGHT, clampBrush, creatableSlots, sameWorldCell } from '@tt/domain';
 import type { GmView, Intent } from '@tt/protocol';
 import { defaultTarget, worldCentre } from '@tt/render';
 import type { Tool, Travel } from '@tt/client-core';
@@ -50,6 +50,9 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
 
   const cellKey = (c: { cx: number; cz: number; x: number; z: number }) => `${c.cx}:${c.cz}:${c.x}:${c.z}`;
   const memberName = (id: string) => campaign?.party.find((m) => m.id === id)?.name ?? null;
+  /** One POI per cell (R-119), checked on the wire form the app actually holds. */
+  const occupied = (cell: { cx: number; cz: number; x: number; z: number }) =>
+    (campaign?.pois ?? []).some((poi) => sameWorldCell(poi.cell, cell));
 
   // Selection lives in view state, so a snapshot cannot close the panel the GM
   // is typing into (R-64). It is resolved against the latest campaign each
@@ -140,33 +143,38 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       return;
     }
 
-    // A pawn is picked up by the travel tool, and ignored by every other one, so
-    // painting terrain under the party still paints.
-    if (tool === 'travel' && picked.pawn) {
-      setTravel(pick(picked.pawn));
-      return;
-    }
-
-    // A marker always means the place it belongs to, whatever the tool (R-86).
-    // The tool is left alone: switching to Places would arm the next click to
-    // create another POI, which is exactly what D-127 fixes.
-    if (picked.poiId) { setSelectedPoi(picked.poiId); setSelectedChunk(null); return; }
-
+    // Every tool creates a chunk from an empty slot: the `+` affordance is not a
+    // tool's business, it is how the world grows (R-79).
     if (picked.slot) {
       dispatch({ kind: 'addChunk', cx: picked.slot.cx, cz: picked.slot.cz });
       return;
     }
-    if (!picked.column) return;
+
+    // What a click *meant* is the tool's decision, not the renderer's (R-87c).
+    // Anything a tool does not name here it ignores — which is why a paint
+    // stroke over a marker or a pawn now paints the ground under it.
+    if (tool === 'travel') {
+      if (picked.pawn) setTravel(pick(picked.pawn));
+      return;
+    }
 
     if (tool === 'select') {
-      // Bare ground selects its chunk — the neutral tool selects whatever is
-      // under it, and a chunk is the other selectable thing (R-87a).
+      if (picked.poiId) { setSelectedPoi(picked.poiId); setSelectedChunk(null); return; }
+      if (!picked.column) return;
+      // Bare ground selects its chunk, which is the only route to the Known
+      // toggle (R-87a). Pawns are not selectable here — travel picks those up.
       setSelectedPoi(null);
       setSelectedChunk({ cx: picked.column.cx, cz: picked.column.cz });
       return;
     }
 
+    if (!picked.column) return;
+
     if (tool === 'places') {
+      // One POI per cell (R-119). The click is dropped rather than dispatched
+      // and refused: an occupied cell is not a mistake worth a red toast, and
+      // the hover readout has already said the cell is taken.
+      if (occupied(picked.column)) return;
       const { cx, cz, x, z } = picked.column;
       pendingPoiCell.current = cellKey(picked.column);
       dispatch({ kind: 'addPoi', cell: { cx, cz, x, z }, markerId });
@@ -208,6 +216,12 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     if (tool === 'places') {
       const picked = stage.pick(e.clientX, e.clientY);
       stage.showHighlight(picked.column, picked.column ? heightAt(picked.column) : 0, 1);
+      // Says the cell is taken *before* the click that would do nothing, so a
+      // dropped click reads as a rule rather than as a dead button (R-18).
+      if (picked.column && occupied(picked.column)) {
+        setHoverLabel('Already a place here');
+        return;
+      }
       const info = picked.column ? columnInfo(picked.column) : null;
       setHoverLabel(info ? `${info.terrain}, height ${info.height}` : null);
       return;

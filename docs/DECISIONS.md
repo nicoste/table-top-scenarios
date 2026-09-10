@@ -2166,3 +2166,68 @@ click that did nothing.
 When the party is together its single pawn is off-white rather than any member's
 colour, since it is not any one of them. It reads well on water and grass and will
 read badly on sand or snow. Worth a look once there is a snowy map to look at.
+
+---
+
+## Round 29 — picking belongs to the tool
+
+### D-162 — `render` reports, the tool decides · `agreed`
+*"you can select POIs while you are attempting to paint. Discovered this while
+painting snow around the party token."*
+
+A real bug and a rule of mine behind it. R-87b said a marker click means the
+place **whatever the tool is**, justified by "otherwise the only way to edit a
+POI would be to remember to change mode first". That reason was already weak —
+Select is the default tool, so inspecting is the no-mode case — and the cost is
+that the map has spots you cannot paint.
+
+Two changes, and the first is the real one:
+
+**`pick()` no longer picks a winner.** It resolved in precedence order and
+returned on the first hit, so a marker hit reported `column: null` — the terrain
+under a POI was not merely deprioritised, it was *unreachable*. Now pawn, POI,
+cell and slot resolve independently; the ray passes through a marker to the
+ground beneath it. Precedence was never `render`'s to decide.
+
+**Each tool names what it picks** (the table in R-87c), and ignores the rest.
+Paint and Height see only cells. Places sees only empty cells. Travel sees pawns,
+then cells while aiming. Select sees POIs, then chunks.
+
+Two details worth recording:
+
+- **Chunk selection stays on Select**, though the request said "POIs only". It is
+  the only route to the Known toggle, and dropping it would have stranded the
+  visibility workflow. Flagged rather than assumed — if the toggle moves
+  somewhere else, Select becomes POIs only.
+- **A Places click on a taken cell is dropped, not dispatched.** Sending it would
+  earn a rejection toast for obeying a rule (R-119). But a click that does
+  nothing looks broken, so the hover readout says *"Already a place here"* before
+  the click happens — the feedback moves earlier instead of disappearing.
+
+Creating a chunk from a `+` slot stayed outside the per-tool table: it is how the
+world grows (R-79), not a mode, and every tool should do it.
+
+### D-163 — A marker does not block *its own* cell · `agreed`
+Found while verifying D-162, which was itself incomplete.
+
+Reporting the cell independently of the marker was the right move but the wrong
+cell. A raycast answers "the ground visible through this pixel", and a marker or
+pawn is drawn standing *above* its ground — so at an angle the ray sails over it
+and hits the neighbour. D-162 turned "clicking a marker selects it" into
+"clicking a marker paints the cell behind it", which is a subtler version of the
+same bug.
+
+A pawn or marker now reports the cell it stands on, pawn first because it is
+drawn on top. That is what *"ignores any POI or token blocking the terrain"* has
+to mean: not that the thing is transparent to the ray, but that it does not stop
+you editing the ground it occupies.
+
+Extracted to `render/picking` as a pure `intendedCell`, and unit tested. R-23
+exempts `render` because three.js cannot sensibly be mocked; that reason does not
+cover a cell-selection rule that needs no GL context, and four of the nine tests
+fail against the behaviour this replaced.
+
+**Verification note.** The browser check that should have caught this the first
+time did not: my click landed on the terrain palette rather than the canvas,
+because the Paint tool opens that panel over the left of the map. The test tells
+me the rule is right; the panel-relative geometry still wants a human eye.
