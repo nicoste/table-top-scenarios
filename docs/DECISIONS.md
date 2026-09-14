@@ -2453,3 +2453,24 @@ deletion brings the place back **Hidden**, whatever it was before.
 Kept, because it errs the safe way. The project's bias throughout is that things
 are hidden until the GM says otherwise (D-121, D-125), and there is no undo for
 something the players have already read.
+
+### D-172 — One button grid, three users · `agreed`
+The campaign card was a flex `row`, and adding undo and redo to it produced
+exactly the failure D-129 already documented for the tool palette: "← campaigns"
+wrapped onto two lines, Duplicate was clipped off the card, and the two arrows
+floated in the gap. `flex-basis` is not a floor.
+
+Fixed by the layout the GM asked for — back on its own row, duplicate on its
+own row, undo and redo sharing the third — and by making the grid a **shared
+class** rather than a third copy of the same four rules. `.btn-grid` holds the
+fixed columns, the `wide` span and the full-width buttons; `.tools`, `.brush`
+and `.campaign-actions` supply only their column count and padding.
+
+The `:has(.wide)` selector carried over from `.tools` is the non-obvious part,
+and it is why copying would have gone wrong: a Tooltip wraps its button, so the
+*wrapper* is the grid item, and spanning the button alone leaves it inside a
+one-column cell.
+
+Labels spelled out rather than iconic — "Back to main menu", "Duplicate
+campaign", "↶ Undo", "↷ Redo". The bare arrows were unreadable at that size, and
+at dock width there is room for words.

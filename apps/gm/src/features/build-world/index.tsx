@@ -27,7 +27,7 @@ export function BuildWorldPanel({
     <>
       <div className="card">
         <h2>Tool</h2>
-        <div className="tools">
+        <div className="btn-grid tools">
           <Tooltip label="Select — key 1" placement="bottom" stretch>
             <button className={tool === 'select' ? 'on' : ''} onClick={() => onTool('select')}>
               ⌖ Select
@@ -73,7 +73,7 @@ export function BuildWorldPanel({
         {(tool === 'paint' || tool === 'height') && (
         <div className="brush-group">
           <span className="brush-lbl">Brush</span>
-          <div className="brush">
+          <div className="btn-grid brush">
             {BRUSHES.map((n) => (
               <Tooltip key={n} label={`${n}×${n} cells — key ${n + 5}`} placement="bottom" stretch>
                 <button className={brush === n ? 'on' : ''} onClick={() => onBrush(n)} aria-pressed={brush === n}>

@@ -72,12 +72,30 @@ button.quiet:hover { background: #3a2222; color: #ffc9c9; border-color: transpar
   got. Fixed columns cannot do that. `minmax(0, 1fr)` keeps a long label from
   widening its column past the track.
 */
-.tools { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
-.tools .wide, .tools > *:has(.wide) { grid-column: 1 / -1; }
-.tools button {
-  width: 100%; padding: 7px 4px; font-size: 12px; white-space: nowrap;
+/*
+  One button grid, used by the tool palette, the brush sizes and the campaign
+  actions. Fixed columns, because `flex-basis` is not a floor: a flex row lets a
+  wrapper's shrink factor squeeze buttons below their own labels, which is how
+  the tools ended up crammed onto one line (D-129, R-110c) and how the campaign
+  card ended up wrapping "campaigns" onto two lines (D-172).
+
+  `:has(.wide)` is not optional. A Tooltip wraps its button, so the *wrapper* is
+  the grid item — targeting only `.wide` would span the button inside a cell that
+  is still one column wide.
+*/
+.btn-grid { display: grid; gap: 5px; }
+.btn-grid > * { min-width: 0; }
+.btn-grid .wide, .btn-grid > *:has(.wide) { grid-column: 1 / -1; }
+.btn-grid button {
+  width: 100%; white-space: nowrap;
   display: flex; align-items: center; justify-content: center; gap: 5px;
 }
+
+.tools { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.tools button { padding: 7px 4px; font-size: 12px; }
+
+.campaign-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.campaign-actions button { padding: 7px 4px; font-size: 12px; }
 /* Same treatment as .tools: fixed columns, so the buttons cannot be squeezed
    below their labels by a wrapper's shrink factor (D-129, R-110c). The label
    moves above the row rather than sitting inline, which gives each button the
@@ -87,8 +105,8 @@ button.quiet:hover { background: #3a2222; color: #ffc9c9; border-color: transpar
   display: block; margin-bottom: 5px;
   color: var(--dim); font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em;
 }
-.brush { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
-.brush button { width: 100%; padding: 6px 2px; font-size: 12px; }
+.brush { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.brush button { padding: 6px 2px; font-size: 12px; }
 
 .reveal { display: flex; gap: 5px; }
 .reveal button { flex: 1; padding: 6px 4px; }

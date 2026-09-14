@@ -437,34 +437,31 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
           <div className="dock">
             <div className="card">
               <h2>{campaign.name}</h2>
-              <div className="row">
-                <button onClick={() => dispatch({ kind: 'closeCampaign' })}>← campaigns</button>
+              <div className="btn-grid campaign-actions">
+                <Tooltip label="Close this campaign and pick another" placement="bottom" stretch>
+                  <button className="wide" onClick={() => dispatch({ kind: 'closeCampaign' })}>
+                    ← Back to main menu
+                  </button>
+                </Tooltip>
+                <Tooltip label="Save a copy as a new campaign" placement="bottom" stretch>
+                  <button
+                    className="wide"
+                    onClick={() => dispatch({ kind: 'duplicateCampaign', id: campaign.id })}
+                  >
+                    Duplicate campaign
+                  </button>
+                </Tooltip>
                 {/* Buttons as well as the shortcut: a keyboard-only feature is
-                    one nobody finds, and disabled states say when there is
+                    one nobody finds, and the disabled state says when there is
                     nothing left to take back (R-140). */}
-                <Tooltip label={`Undo — ${MOD}Z`} placement="bottom">
-                  <button
-                    className="quiet"
-                    disabled={!view?.canUndo}
-                    onClick={() => dispatch({ kind: 'undo' })}
-                    aria-label="Undo"
-                  >
-                    ↶
+                <Tooltip label={`Undo — ${MOD}Z`} placement="bottom" stretch>
+                  <button disabled={!view?.canUndo} onClick={() => dispatch({ kind: 'undo' })}>
+                    ↶ Undo
                   </button>
                 </Tooltip>
-                <Tooltip label={`Redo — ${MOD}\u21e7Z`} placement="bottom">
-                  <button
-                    className="quiet"
-                    disabled={!view?.canRedo}
-                    onClick={() => dispatch({ kind: 'redo' })}
-                    aria-label="Redo"
-                  >
-                    ↷
-                  </button>
-                </Tooltip>
-                <Tooltip label="Save a copy as a new campaign" placement="bottom">
-                  <button onClick={() => dispatch({ kind: 'duplicateCampaign', id: campaign.id })}>
-                    Duplicate
+                <Tooltip label={`Redo — ${MOD}\u21e7Z`} placement="bottom" stretch>
+                  <button disabled={!view?.canRedo} onClick={() => dispatch({ kind: 'redo' })}>
+                    ↷ Redo
                   </button>
                 </Tooltip>
               </div>
