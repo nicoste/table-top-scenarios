@@ -9,7 +9,25 @@ import type { PartyMember } from '../party/index.js';
 import type { Poi } from '../poi/index.js';
 import { startingParty } from '../party/index.js';
 
-export const SCHEMA_VERSION = 2;
+// 3 turns a POI's `encounters` from bare ids into named, individually visible
+// records (D-175). Nothing ever wrote a non-empty one, so reading an older
+// campaign is lossless.
+export const SCHEMA_VERSION = 3;
+
+/**
+ * Stamps a campaign read from disk with the current schema (R-137).
+ *
+ * Reading an older one is tolerated — v2 had bare-id encounters, and they
+ * normalise to records on the way in. Writing it back still labelled v2 would
+ * leave a file whose version does not describe its contents, and later code
+ * will branch on that number. Same rule, same reason as `upgraded` for saves
+ * (D-159).
+ */
+export function upgradedCampaign(campaign: Campaign): Campaign {
+  return campaign.schemaVersion === SCHEMA_VERSION
+    ? campaign
+    : { ...campaign, schemaVersion: SCHEMA_VERSION };
+}
 
 export interface Campaign {
   readonly id: CampaignId;

@@ -1645,3 +1645,24 @@ apps/host/src/
 > send anything" — has no way to. Players do not write notes, reorder them,
 > rename a place or delete it, and the cheapest guarantee of that is a component
 > with nothing to send it through.
+
+> **R-143.** An **encounter is a record, not an id**. `Poi.encounters` holds
+> `{ id, name, visibleToParty }` in the GM's order, and each entry is stripped at
+> the boundary exactly as a note is (R-85) — an unrevealed encounter's *name* is
+> a spoiler, so it never leaves the host.
+>
+> A record rather than a bare string because the encounter **map** attaches here
+> later (R-49, O-009): a name in a list can grow a grid, an id in an array cannot.
+>
+> Notes and encounters are the same shape on purpose. The one genuinely fiddly
+> part — reordering, with its index clamping and splice — is `moveWithin`, shared
+> by both. Two copies of that is how they drift.
+
+> **R-137a.** Schema tolerance is **normalised at the boundary**, never carried
+> inward as a union.
+>
+> The first attempt at reading v2's bare-id encounters typed the wire as
+> `string | record`, which pushed a `typeof` check into the view filter, both
+> apps and the tests. A Zod `.transform()` parses the old shape into the new one,
+> so exactly one place knows the old shape existed and nothing downstream can
+> forget to handle it.

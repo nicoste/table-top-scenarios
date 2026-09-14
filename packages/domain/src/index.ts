@@ -37,12 +37,15 @@ export {
 export type { Marker, MarkerPart, PartShape } from './markers/index.js';
 export { DEFAULT_MARKERS, DEFAULT_MARKER, markerById, isKnownMarker } from './markers/index.js';
 
-export type { Poi, PoiNote, PoiCell } from './poi/index.js';
+export type { Poi, PoiNote, PoiCell, PoiEncounter } from './poi/index.js';
 export {
   MAX_POI_NAME, MAX_NOTE_TEXT, sameCell, poiGlobal, poiCellFromGlobal, isValidPoiCell,
   poiAt, poiById, poisInChunk,
   addPoi, renamePoi, setPoiMarker, movePoi, removePoi,
   addNote, editNote, setNoteVisible, removeNote, moveNote, partyVisibleNotes,
+  MAX_ENCOUNTER_NAME, moveWithin,
+  addEncounter, renameEncounter, setEncounterVisible, removeEncounter, moveEncounter,
+  partyVisibleEncounters,
 } from './poi/index.js';
 
 export type { Discovery } from './discovery/index.js';
@@ -66,6 +69,7 @@ export {
 } from './placement/index.js';
 
 export type { Campaign } from './campaign/index.js';
+export { upgradedCampaign } from './campaign/index.js';
 export {
   SCHEMA_VERSION, ORIGIN, DEFAULT_BOUNDS, createCampaign, duplicateCampaign, uniqueCampaignName,
 } from './campaign/index.js';

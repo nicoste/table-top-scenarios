@@ -50,6 +50,14 @@ export const IntentSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('removeNote'), poiId: z.string().min(1), noteId: z.string().min(1) }),
   z.object({ kind: z.literal('moveNote'), poiId: z.string().min(1), noteId: z.string().min(1), delta: z.number().int().min(-99).max(99) }),
 
+  // Encounters a place owns. Same shape as notes: ordered, individually visible
+  // (D-175). GM only — this is authored content.
+  z.object({ kind: z.literal('addEncounter'), poiId: z.string().min(1), name: z.string().min(1).max(80), visibleToParty: z.boolean().optional() }),
+  z.object({ kind: z.literal('renameEncounter'), poiId: z.string().min(1), encounterId: z.string().min(1), name: z.string().min(1).max(80) }),
+  z.object({ kind: z.literal('setEncounterVisible'), poiId: z.string().min(1), encounterId: z.string().min(1), visibleToParty: z.boolean() }),
+  z.object({ kind: z.literal('removeEncounter'), poiId: z.string().min(1), encounterId: z.string().min(1) }),
+  z.object({ kind: z.literal('moveEncounter'), poiId: z.string().min(1), encounterId: z.string().min(1), delta: z.number().int().min(-99).max(99) }),
+
   // What the party knows. GM-granted; no geometry at world scale (R-16).
   z.object({ kind: z.literal('setChunkKnown'), cx: z.number().int(), cz: z.number().int(), known: z.boolean() }),
   z.object({ kind: z.literal('setPoiRevealed'), poiId: z.string().min(1), revealed: z.boolean() }),

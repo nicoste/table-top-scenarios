@@ -143,6 +143,12 @@ function forTheTable(campaign: Campaign | null, save: Save | null): CampaignWire
         cell: poi.cell,
       }))
       // A revealed place still keeps its private notes private (R-85).
-      .map((poi) => ({ ...poi, notes: poi.notes.filter((note) => note.visibleToParty) })),
+      // Notes *and* encounters are stripped here. A secret is not merely
+      // unrendered on the table — it never leaves the host (R-85, D-175).
+      .map((poi) => ({
+        ...poi,
+        notes: poi.notes.filter((note) => note.visibleToParty),
+        encounters: poi.encounters.filter((e) => e.visibleToParty),
+      })),
   };
 }

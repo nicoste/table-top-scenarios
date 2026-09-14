@@ -3,14 +3,15 @@
 // argument and everything leaves as a return value.
 
 import type { Campaign, ChunkCoord, WorldCell } from '@tt/domain';
-import type { PartyMember, PoiId, NoteId, MemberId, Save } from '@tt/domain';
+import type { PartyMember, PoiId, NoteId, EncounterId, MemberId, Save } from '@tt/domain';
 import {
   createCampaign, duplicateCampaign, uniqueCampaignName, createMember, editMember, removeMember,
   addChunk, chunkAt, terrainById, isCreatableSlot, DEFAULT_TERRAIN,
   toGlobal, paintArea, setHeightArea, raiseArea,
   addPoi, renamePoi, setPoiMarker, movePoi, removePoi, poiById, poiAt, isValidPoiCell,
   addNote, editNote, setNoteVisible, removeNote, moveNote, isKnownMarker,
-  createLiveSave, withDiscovery, withPlacement, touch, upgraded, belongsTo,
+  addEncounter, renameEncounter, setEncounterVisible, removeEncounter, moveEncounter,
+  createLiveSave, withDiscovery, withPlacement, touch, upgraded, upgradedCampaign, belongsTo,
   pruneDiscovery, pruneMembers,
   pawns, withGroupAt, withMemberAt, gathered, scattered,
   isValidWorldCell, chunkOf, isChunkKnown,
@@ -87,11 +88,14 @@ const OPEN_TO_THE_TABLE = new Set<Intent['kind']>([
  */
 export function openedWith(
   state: HostState,
-  campaign: Campaign,
+  stored: Campaign,
   storedSave: Save | null,
   savedAt: string,
   poiIds: ReadonlySet<PoiId>,
 ): { readonly state: HostState; readonly toPersist: Save | null } {
+  // Stamped on adoption so the next write does not claim an older schema than
+  // the data it holds (R-137).
+  const campaign = upgradedCampaign(stored);
   const usable = storedSave && belongsTo(storedSave, campaign) ? storedSave : null;
   const save = usable
     ? upgraded(pruneMembers(pruneDiscovery(usable, poiIds), new Set(campaign.party.map((m) => m.id))))
@@ -402,6 +406,35 @@ function applyToPois(
           return withPois(setNoteVisible(campaign.pois, id, noteId, intent.visibleToParty));
         case 'removeNote': return withPois(removeNote(campaign.pois, id, noteId));
         default: return withPois(moveNote(campaign.pois, id, noteId, intent.delta));
+      }
+    }
+
+    case 'addEncounter': {
+      const id = target(intent.poiId);
+      if (!id) return reject_('no such place');
+      return withPois(addEncounter(campaign.pois, id, intent.name, intent.visibleToParty ?? false));
+    }
+
+    case 'renameEncounter':
+    case 'setEncounterVisible':
+    case 'removeEncounter':
+    case 'moveEncounter': {
+      const id = target(intent.poiId);
+      if (!id) return reject_('no such place');
+      const poi = poiById(campaign.pois, id);
+      if (!poi?.encounters.some((e) => e.id === intent.encounterId)) {
+        return reject_('no such encounter');
+      }
+      const encounterId = intent.encounterId as EncounterId;
+      switch (intent.kind) {
+        case 'renameEncounter':
+          return withPois(renameEncounter(campaign.pois, id, encounterId, intent.name));
+        case 'setEncounterVisible':
+          return withPois(setEncounterVisible(campaign.pois, id, encounterId, intent.visibleToParty));
+        case 'removeEncounter':
+          return withPois(removeEncounter(campaign.pois, id, encounterId));
+        default:
+          return withPois(moveEncounter(campaign.pois, id, encounterId, intent.delta));
       }
     }
 

@@ -22,17 +22,34 @@ export interface PoiNote {
   readonly visibleToParty: boolean;
 }
 
+/**
+ * One encounter a place owns (D-175).
+ *
+ * For now a name and a visibility flag — the list the GM asked for. It is
+ * deliberately a *record with an id* rather than a bare string, because the
+ * encounter **map** attaches here later (O-009, R-49): a name in a list can grow
+ * a grid, a string in an array cannot.
+ */
+export interface PoiEncounter {
+  readonly id: EncounterId;
+  readonly name: string;
+  /** false = stripped by viewFor; never leaves the host (R-85). */
+  readonly visibleToParty: boolean;
+}
+
 export interface Poi {
   readonly id: PoiId;
   readonly name: string;
   readonly cell: PoiCell;
   readonly markerId: MarkerId;
-  readonly encounters: readonly EncounterId[];
+  /** ORDERED, the GM sorts them. A POI owns many maps (R-49). */
+  readonly encounters: readonly PoiEncounter[];
   readonly notes: readonly PoiNote[];
 }
 
 export const MAX_POI_NAME = 60;
 export const MAX_NOTE_TEXT = 2000;
+export const MAX_ENCOUNTER_NAME = 80;
 
 export const sameCell = sameWorldCell;
 
@@ -182,6 +199,29 @@ export function removeNote(pois: readonly Poi[], id: PoiId, noteId: NoteId): rea
   });
 }
 
+/**
+ * Moves one entry of an ordered list, clamped to its ends.
+ *
+ * Shared by notes and encounters. The index clamping and the splice dance are
+ * the only fiddly part of either, and two copies is how they drift apart.
+ * Returns the same array when nothing moves, so identity survives (R-12).
+ */
+export function moveWithin<T extends { readonly id: string }>(
+  list: readonly T[],
+  entryId: string,
+  delta: number,
+): readonly T[] {
+  const from = list.findIndex((entry) => entry.id === entryId);
+  if (from < 0) return list;
+  const to = Math.min(list.length - 1, Math.max(0, from + delta));
+  if (to === from) return list;
+  const next = [...list];
+  const [moved] = next.splice(from, 1);
+  if (!moved) return list;
+  next.splice(to, 0, moved);
+  return next;
+}
+
 /** Moves a note within its POI. Notes are ordered and the GM sorts them (R-85). */
 export function moveNote(
   pois: readonly Poi[],
@@ -190,19 +230,101 @@ export function moveNote(
   delta: number,
 ): readonly Poi[] {
   return mapPoi(pois, id, (poi) => {
-    const from = poi.notes.findIndex((note) => note.id === noteId);
-    if (from < 0) return poi;
-    const to = Math.min(poi.notes.length - 1, Math.max(0, from + delta));
-    if (to === from) return poi;
-    const notes = [...poi.notes];
-    const [moved] = notes.splice(from, 1);
-    if (!moved) return poi;
-    notes.splice(to, 0, moved);
-    return { ...poi, notes };
+    const notes = moveWithin(poi.notes, noteId, delta);
+    return notes === poi.notes ? poi : { ...poi, notes };
   });
 }
 
 /** What the table display may see: the visible notes, in the GM's order (R-85). */
 export function partyVisibleNotes(poi: Poi): readonly PoiNote[] {
   return poi.notes.filter((note) => note.visibleToParty);
+}
+
+// -- encounters --------------------------------------------------------------
+//
+// The same shape as notes, and deliberately so: an ordered list the GM sorts,
+// each entry individually visible or not. Nothing here knows about maps yet
+// (O-009); an entry is a name the map will hang off later.
+
+function mapEncounter(
+  poi: Poi,
+  encounterId: EncounterId,
+  change: (encounter: PoiEncounter) => PoiEncounter,
+): Poi {
+  let touched = false;
+  const encounters = poi.encounters.map((encounter) => {
+    if (encounter.id !== encounterId) return encounter;
+    const changed = change(encounter);
+    if (changed !== encounter) touched = true;
+    return changed;
+  });
+  return touched ? { ...poi, encounters } : poi;
+}
+
+export function addEncounter(
+  pois: readonly Poi[],
+  id: PoiId,
+  name: string,
+  visibleToParty = false,
+): readonly Poi[] {
+  const clean = name.trim().slice(0, MAX_ENCOUNTER_NAME);
+  if (!clean) return pois;
+  return mapPoi(pois, id, (poi) => ({
+    ...poi,
+    encounters: [
+      ...poi.encounters,
+      { id: freshId<'EncounterId'>('encounter'), name: clean, visibleToParty },
+    ],
+  }));
+}
+
+export function renameEncounter(
+  pois: readonly Poi[],
+  id: PoiId,
+  encounterId: EncounterId,
+  name: string,
+): readonly Poi[] {
+  const clean = name.trim().slice(0, MAX_ENCOUNTER_NAME);
+  if (!clean) return pois;
+  return mapPoi(pois, id, (poi) =>
+    mapEncounter(poi, encounterId, (e) => (e.name === clean ? e : { ...e, name: clean })));
+}
+
+export function setEncounterVisible(
+  pois: readonly Poi[],
+  id: PoiId,
+  encounterId: EncounterId,
+  visibleToParty: boolean,
+): readonly Poi[] {
+  return mapPoi(pois, id, (poi) =>
+    mapEncounter(poi, encounterId, (e) =>
+      (e.visibleToParty === visibleToParty ? e : { ...e, visibleToParty })));
+}
+
+export function removeEncounter(
+  pois: readonly Poi[],
+  id: PoiId,
+  encounterId: EncounterId,
+): readonly Poi[] {
+  return mapPoi(pois, id, (poi) => {
+    const encounters = poi.encounters.filter((e) => e.id !== encounterId);
+    return encounters.length === poi.encounters.length ? poi : { ...poi, encounters };
+  });
+}
+
+export function moveEncounter(
+  pois: readonly Poi[],
+  id: PoiId,
+  encounterId: EncounterId,
+  delta: number,
+): readonly Poi[] {
+  return mapPoi(pois, id, (poi) => {
+    const encounters = moveWithin(poi.encounters, encounterId, delta);
+    return encounters === poi.encounters ? poi : { ...poi, encounters };
+  });
+}
+
+/** What the table display may see: the visible encounters, in the GM's order. */
+export function partyVisibleEncounters(poi: Poi): readonly PoiEncounter[] {
+  return poi.encounters.filter((e) => e.visibleToParty);
 }

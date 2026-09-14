@@ -46,6 +46,7 @@ interface InspectorProps {
 
 export function PoiInspector({ poi, markers, revealed, chunkKnown, dispatch, onClose }: InspectorProps) {
   const [draft, setDraft] = useState('');
+  const [encounterDraft, setEncounterDraft] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const addNote = () => {
@@ -53,6 +54,13 @@ export function PoiInspector({ poi, markers, revealed, chunkKnown, dispatch, onC
     if (!text) return;
     dispatch({ kind: 'addNote', poiId: poi.id, text });
     setDraft('');
+  };
+
+  const addEncounter = () => {
+    const name = encounterDraft.trim();
+    if (!name) return;
+    dispatch({ kind: 'addEncounter', poiId: poi.id, name });
+    setEncounterDraft('');
   };
 
   return (
@@ -165,6 +173,73 @@ export function PoiInspector({ poi, markers, revealed, chunkKnown, dispatch, onC
           onKeyDown={(e) => { if (e.key === 'Enter') addNote(); }}
         />
         <button onClick={addNote} disabled={!draft.trim()}>Add</button>
+      </div>
+
+      {/*
+        Encounters. The same shape as notes on purpose (D-175): ordered, each one
+        individually visible, and the eye is again the only thing that decides
+        whether it reaches the table (R-85). No map yet — that is O-009, and an
+        entry here is the name it will hang off.
+      */}
+      <h2 style={{ marginTop: 12 }}>Encounters</h2>
+      {poi.encounters.length === 0 && <p className="hint">None yet.</p>}
+      <ul className="notes">
+        {poi.encounters.map((encounter, i) => (
+          <li key={encounter.id}>
+            <Tooltip
+              label={encounter.visibleToParty ? 'Players can see this' : 'GM only'}
+              placement="right"
+            >
+              <button
+                className={`quiet eye${encounter.visibleToParty ? ' shown' : ''}`}
+                aria-pressed={encounter.visibleToParty}
+                onClick={() => dispatch({
+                  kind: 'setEncounterVisible', poiId: poi.id, encounterId: encounter.id,
+                  visibleToParty: !encounter.visibleToParty,
+                })}
+              >
+                {encounter.visibleToParty ? '👁' : '🔒'}
+              </button>
+            </Tooltip>
+
+            <input
+              value={encounter.name}
+              onChange={(e) => dispatch({
+                kind: 'renameEncounter', poiId: poi.id, encounterId: encounter.id, name: e.target.value,
+              })}
+            />
+
+            <div className="note-actions">
+              <button
+                className="quiet"
+                disabled={i === 0}
+                title="Move up"
+                onClick={() => dispatch({ kind: 'moveEncounter', poiId: poi.id, encounterId: encounter.id, delta: -1 })}
+              >↑</button>
+              <button
+                className="quiet"
+                disabled={i === poi.encounters.length - 1}
+                title="Move down"
+                onClick={() => dispatch({ kind: 'moveEncounter', poiId: poi.id, encounterId: encounter.id, delta: 1 })}
+              >↓</button>
+              <button
+                className="quiet"
+                title="Delete encounter"
+                onClick={() => dispatch({ kind: 'removeEncounter', poiId: poi.id, encounterId: encounter.id })}
+              >×</button>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      <div className="row">
+        <input
+          placeholder="Add an encounter"
+          value={encounterDraft}
+          onChange={(e) => setEncounterDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') addEncounter(); }}
+        />
+        <button onClick={addEncounter} disabled={!encounterDraft.trim()}>Add</button>
       </div>
 
       <div className="row" style={{ marginTop: 10 }}>

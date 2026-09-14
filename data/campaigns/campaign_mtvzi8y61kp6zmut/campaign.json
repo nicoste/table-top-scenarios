@@ -22,7 +22,23 @@
    },
    "markerId": "marker:town",
    "encounters": [],
-   "notes": []
+   "notes": [
+    {
+     "id": "note_mu1fsjtebbamjq2h",
+     "text": "A beautiful city",
+     "visibleToParty": true
+    },
+    {
+     "id": "note_mu1fsu0a7tdy75bz",
+     "text": "I have a lot there",
+     "visibleToParty": false
+    },
+    {
+     "id": "note_mu1ftkohw8e8hgsj",
+     "text": "It has 4 plazas",
+     "visibleToParty": true
+    }
+   ]
   }
  ]
 }

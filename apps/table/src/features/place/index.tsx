@@ -25,16 +25,31 @@ export function PlaceCard({ place, markerName, onClose }: Props) {
         <h2>{place.name}</h2>
         {markerName && <p className="hint" style={{ margin: '0 0 8px' }}>{markerName}</p>}
 
-        {place.notes.length === 0 ? (
+        {place.notes.length === 0 && place.encounters.length === 0 && (
           <p className="hint" style={{ margin: 0 }}>
             Nothing is known about this place yet.
           </p>
-        ) : (
+        )}
+
+        {place.notes.length > 0 && (
           <ul className="notes-read">
             {place.notes.map((note) => (
               <li key={note.id}>{note.text}</li>
             ))}
           </ul>
+        )}
+
+        {/* Only the revealed ones ever arrive: the rest are stripped at the
+            boundary and were never sent (R-85, D-175). */}
+        {place.encounters.length > 0 && (
+          <>
+            <h2 style={{ marginTop: 12 }}>Encounters</h2>
+            <ul className="notes-read">
+              {place.encounters.map((encounter) => (
+                <li key={encounter.id}>{encounter.name}</li>
+              ))}
+            </ul>
+          </>
         )}
 
         <button style={{ marginTop: 10 }} onClick={onClose}>Close</button>

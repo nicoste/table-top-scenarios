@@ -68,12 +68,33 @@ export const PoiNoteWireSchema = z.object({
   visibleToParty: z.boolean(),
 });
 
+export const EncounterWireSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  visibleToParty: z.boolean(),
+});
+
+/**
+ * Accepts the pre-D-175 shape — a bare id string — and **normalises it away**.
+ *
+ * The tolerance belongs here and nowhere else. Leaving a `string | record`
+ * union in the wire type pushed a `typeof` check into the filter, both apps and
+ * the tests; parsing to one shape keeps the compatibility in the one place that
+ * knows about it (R-17, R-137). No campaign ever had a non-empty list, so this
+ * is theory rather than rescue, but it is the cheap kind.
+ */
+const EncounterFromWire = z.union([EncounterWireSchema, z.string()]).transform(
+  (entry) => (typeof entry === 'string'
+    ? { id: entry, name: entry, visibleToParty: false }
+    : entry),
+);
+
 export const PoiWireSchema = z.object({
   id: z.string(),
   name: z.string(),
   cell: PoiCellSchema,
   markerId: MarkerIdSchema,
-  encounters: z.array(z.string()),
+  encounters: z.array(EncounterFromWire).default([]),
   notes: z.array(PoiNoteWireSchema),
 });
 export type PoiWire = z.infer<typeof PoiWireSchema>;
@@ -252,7 +273,7 @@ export function encodePoi(poi: Poi): PoiWire {
     name: poi.name,
     cell: poi.cell,
     markerId: poi.markerId as string,
-    encounters: poi.encounters.map((e) => e as string),
+    encounters: poi.encounters.map((e) => ({ id: e.id as string, name: e.name, visibleToParty: e.visibleToParty })),
     notes: poi.notes.map((n) => ({ id: n.id, text: n.text, visibleToParty: n.visibleToParty })),
   };
 }
@@ -263,7 +284,11 @@ export function decodePoi(wire: PoiWire): Poi {
     name: wire.name,
     cell: wire.cell,
     markerId: parseMarkerId(wire.markerId),
-    encounters: wire.encounters.map((e) => e as Poi['encounters'][number]),
+    encounters: wire.encounters.map((e) => ({
+      id: e.id as Poi['encounters'][number]['id'],
+      name: e.name,
+      visibleToParty: e.visibleToParty,
+    })),
     notes: wire.notes.map((n): PoiNote => ({
       id: n.id as PoiNote['id'], text: n.text, visibleToParty: n.visibleToParty,
     })),

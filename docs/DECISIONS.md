@@ -2515,3 +2515,59 @@ by discipline — there is nothing it could send.
 This overrules the second half of R-134, where I wrote that the table's one
 interaction "stays the only one" and that it would not acquire a dock. It has a
 dock now. The half that mattered — no tool palette, no roster — still holds.
+
+---
+
+## Round 33 — encounters on a place
+
+### D-175 — Encounters are a named, individually visible list · `agreed`
+*"Add encounters to a POI, for now, just a list, with visibility checks, most
+likely the way notes work."*
+
+Built as notes' twin: ordered, the GM sorts them, each entry revealed or hidden
+on its own, new ones hidden by default (D-125). Add, rename, reveal, reorder,
+remove — the same five operations, and the same strip at the boundary, because
+the name of an unrevealed encounter is exactly the kind of spoiler R-85 exists
+for.
+
+`Poi.encounters` was already there as `EncounterId[]`, unused and unusable: an id
+with no name and no flag. It is now a record (R-143), which is also what the
+encounter **map** will attach to when O-009 lands — a name in a list can grow a
+grid.
+
+Campaign schema 2 → 3. Lossless in practice: nothing could ever create an
+encounter, so every stored list was empty.
+
+Two things fell out of doing it:
+
+**Tolerance belongs at the boundary, not in the types (R-137a).** My first cut
+typed the wire as `string | record` to accept the old shape, and the union
+immediately leaked `typeof` checks into the view filter, both apps and the tests.
+A Zod `.transform()` normalises on the way in, so one place knows the old shape
+existed.
+
+**Campaigns are stamped on adoption, like saves.** R-137 already said a stored
+record must not be written back claiming an older schema than its contents, and I
+had applied that to saves (D-159) and not to campaigns. Opening a v2 campaign now
+stamps it 3. Found by reading the file after the bump rather than by a test —
+which is the same way D-159 was found.
+
+**Verified** on a copy of the GM's real data: Casilda loaded from its v2 file,
+kept its notes, and the boundary sent the party "Bandits at the ford" while "The
+baron is a lich" never left the host. The player's panel showed notes then
+encounters, with no editable control in it and nothing but a Close button.
+
+**Not verified:** the GM-side encounters editor, eyeballed. A 13×14 click scan
+could not find the marker on that camera — the island sits under the dock — and
+the section mirrors the notes UI it was copied from. It typechecks and its
+intents are tested; the pixels are not.
+
+### O-024 — Screenshot coordinates are not page coordinates · `open (harness)`
+Worth writing down because it has cost time in three separate rounds. The
+Browser pane returns screenshots in its own frame (800×600 here) while the page's
+CSS pixels were 1024×768 — a factor of 1.28. Coordinates read off a screenshot
+and fed to synthetic pointer events land somewhere else entirely, which looked
+like picking bugs twice and a broken travel confirm once.
+
+Always read `canvas.getBoundingClientRect()` and scale, or find targets by
+probing and reading the DOM back rather than by measuring an image.
