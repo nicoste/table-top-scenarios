@@ -2710,3 +2710,87 @@ view-height clamp, still deferred here from D-033; the gesture that enters a map
 and what happens to the world view; who sets a map's bounds; where per-map fog
 lives, given discovery is world-scale; and whether enemy tokens exist in the
 first round at all.
+
+---
+
+## Round 36 — what an encounter map is
+
+### D-180 — Cutting planes, and the range that snaps to them · `agreed`
+**The GM's design, and better than any of the three options I put up.** I had
+framed it as a trade: one body per place (illustration, at the cost of forcing
+spatial coherence), one body per point of interest (freedom, at the cost of
+authoring a building's shell twice), or neighbouring levels as context (rejected —
+it needs the map-to-map connectors R-49 refuses). All three trade something away.
+
+The planes dissolve it instead:
+
+> *"What if we add cutting planes? Invisible planes added by the GM that will
+> affect how players see the world… the tool should behave as a double range
+> slider, where the GM can specify the steps/planes by presetting their Y values."*
+
+A tavern with a ground floor, an upper floor and a secret cellar is **one body**
+with planes at Y4, Y8 and Y12. Outside on the land the range is `[4, 20]` — the
+cellar hidden, the tavern visibly two storeys. Inside, `[4, 8]` stops the upper
+floor occluding the room. Upstairs, `[4, 12]` cuts the roof. In the cellar,
+`[0, 4]` cuts away the land above.
+
+So: the building is genuinely one model with three floors, nothing is authored
+twice, stairs are just geometry, and the flat one-map-per-point-of-interest list
+(D-178) is untouched.
+
+**It supersedes R-35 rather than implementing it.** R-35 clamped to a single
+upper bound, which can cut a roof away but cannot hide a cellar while the party
+stands on the grass above. The lower handle is the half a one-sided clamp misses,
+and it is the half the cellar case needs.
+
+Two things I decided rather than asked, both flagged: planes carry a **name** as
+well as a Y, because "Ground floor" on a slider step is legible and "8" is not;
+and planes are **authored** while the active range is **play state**, which is
+R-8 applied without a special case.
+
+### D-181 — Blocks are placed by face adjacency · `agreed`
+**Overrules my recommendation**, which was to paint on the top of the cutting
+range so one control did both jobs. The GM chose Minecraft-style: click the face
+of a block, the new one attaches there.
+
+Worth recording why my version was worse, now that I look at it: tying building to
+the *table's* cutting range would have coupled authoring to a play-state setting —
+move the range to show the players the cellar and you would silently change where
+your next click builds. Face adjacency has no such coupling.
+
+Noted so nobody reads it as a contradiction later: this does not violate R-42.
+That rule bans face-level *visibility*, where half-lit cubes look broken. Where a
+block goes is a different question (R-147).
+
+### D-182 — The GM sees the whole body; the table gets the range · `agreed`
+Also overrules my recommendation of a single shared view. The GM's reason is the
+right one and I had underweighted it: peeking at the cellar while the party is
+upstairs is simply what a GM does mid-session, and one shared range makes that
+impossible.
+
+The cost I flagged was two views to keep straight, and R-76's preview obligation
+becoming necessary rather than optional. Resolved with one view instead of two
+modes: the **GM console draws everything, fading what falls outside the range**.
+Same data, two renderings — absent on the table, dimmed on the console — so the
+GM can always see at a glance what the players are being shown, and there is no
+mode to forget you are in.
+
+### D-183 — Build the map before the planes · `agreed`
+Scope, from *"Lets focus on map building first, we can skip token vision and token
+placements for now."*
+
+**Round A — the map exists and can be built.** A point of interest gains a map;
+entering swaps the tool palette (R-148); blocks are placed and removed by face
+against a materials registry; the body grows horizontally with `+` and is capped
+in height; it persists; the table follows the GM into it.
+
+**Round B — the planes.** Add, name and move them; the two-sided range; faded
+on the console, absent on the table.
+
+Planes are designed now (R-146) and built second, because a slicing tool is only
+testable against something worth slicing. Vision, fog and tokens — R-40 through
+R-48 — sit out both rounds entirely.
+
+The **materials registry** (R-75) becomes a prerequisite in round A: blocks need
+appearance. It ships with `blocksSight` present and unused, since the field is
+already specified and leaving it out would mean editing every material later.

@@ -1717,3 +1717,58 @@ apps/host/src/
 > `load()` returns `null` rather than throwing for anything unreadable. It runs
 > inside an intent, and a store that throws takes the message handler with it;
 > null becomes a reason the GM can read (R-18).
+
+---
+
+## 6e. Encounter maps
+
+> **R-145.** A point of interest has **at most one map**, and a map is **one voxel
+> body** (D-178). A building's floors are levels of that body, not separate maps —
+> so stairs are geometry, and R-49's refusal to model map-to-map connectors holds
+> without needing to be defended.
+
+> **R-146.** **Cutting planes.** A map carries GM-authored planes, each with a
+> **Y value and a name** and nothing else — no X, no Z. They are the snap steps of
+> a **two-sided range**: everything outside `[lower, upper]` is not drawn.
+>
+> One range, two renderings:
+> - The **table display** draws only what is inside it. Outside is absent.
+> - The **GM console draws the whole body**, with out-of-range levels faded
+>   (D-182). The GM peeks into the cellar while the party is upstairs, and can
+>   always tell at a glance what the table is showing — which is R-76's preview
+>   obligation met by one view rather than a second mode.
+>
+> **This supersedes R-35**, which clamped to a single upper bound. One bound can
+> cut a roof away but cannot hide a cellar while the party stands on the grass
+> above it; both handles are needed, and the lower one is the half a clamp misses.
+>
+> Planes are **authored** (campaign); the active range is **play state** (save).
+> That is R-8 applied without special-casing: what the GM built versus where the
+> party currently is.
+>
+> A plane's Y is editable and the range **snaps to steps**, with the floor and
+> ceiling of the map always available as the outermost two. A map with no planes
+> has exactly one range: all of it.
+
+> **R-147.** Blocks are placed by **face adjacency** — click the face of an
+> existing block and the new one attaches there (D-181).
+>
+> This does **not** contradict R-42. That rule is about *visibility* granularity,
+> where face-level fog produces noisy half-lit geometry; picking a face to decide
+> where a block goes is a different question with a different answer.
+
+> **R-148.** **The toolset belongs to the surface, not to the app.** World tools
+> (paint terrain, height, places, travel) have no meaning inside a map, and map
+> tools have none outside it. Entering a map swaps the palette rather than growing
+> it — otherwise every new surface adds permanently to a list that is already five
+> long.
+
+> **R-149.** A new map starts as a **flat floor at Y0**, one material thick,
+> across its starting patch. Same reason a new chunk is created flat at height 0
+> and entirely water (R-78): an empty grid gives the GM nothing to click, and
+> face-adjacency placement needs a face to begin from.
+
+> **R-150.** A map **grows horizontally** with the same `+` affordance that grows
+> the world (R-79), and its **height is capped** by a constant. Growing in two
+> dimensions keeps one gesture familiar; an unbounded third would leave the camera
+> with no idea how much to draw.
