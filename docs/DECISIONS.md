@@ -190,6 +190,18 @@ Tabletop convention, and it makes the posture numbers land correctly: standing
 1.8 m needs `ceil(1.8/1.5)` = 2 cells of headroom, crouched 1.0 m needs 1. **This
 is my proposal, not your answer — confirm or change it.**
 
+**Correction (round 35).** Two things about this entry were wrong when audited:
+
+The **justification is dead.** It argues 1.5 m from posture arithmetic, and
+posture was retired by D-035 — R-40 has one eye height and no crouching. The
+number is unaffected and stands on a better reason: it is exactly 1/1000 of the
+1.5 km world cell (D-098), so the two scales relate by a round factor, and 5 ft
+is what published maps use.
+
+It was also never actually confirmed — the body asks for an answer the log never
+records. It is confirmed now **by implication**, because D-098 chose the world
+cell *as* 1000× this one; changing it would move the world scale with it.
+
 ### D-025 — Heights in metres, clearance derived · `superseded by D-035`
 All body and eye heights are metres; clearance is `ceil(height / cellSize)`. A
 refinement over the prototype, which stored heights in cells and thereby assumed
@@ -2634,3 +2646,67 @@ defaults to empty, so it parsed cleanly into a campaign with no places — silen
 loss wearing the face of success. The version is checked explicitly instead.
 
 Campaign schema 3 → 4, save schema 2 → 3.
+
+---
+
+## Round 35 — the audit, before designing maps
+
+### D-178 — One map per point of interest, in a flat list · `agreed`
+*"I like it in terms of organization, I don't think they add any to the users…
+some of them will be just 'church', others 'tavern keep' and 'tavern
+underground', and it will be easier to see it all at once."*
+
+**Overrules my recommendation**, which was a point of interest owning an ordered
+list of maps so a building's floors nested under it. The argument that changed my
+mind, in the GM's order:
+
+- **Scannable beats expandable.** One list of everything in a place is what the
+  panel is *for* — when authoring, and when players review where they have been.
+  A tree adds chrome to achieve what the list already does.
+- **The grouping mechanism already exists.** Points of interest are ordered and
+  the GM sorts them (D-175), so "tavern keep" and "tavern underground" sit
+  together by name and position.
+- **It costs nothing.** The flat model is exactly the shape shipped in D-175 — a
+  point of interest gains a map field. Nesting would have meant another schema
+  bump for organisation nobody asked to see.
+
+I had no cheaper UI for the nested version and did not invent one.
+
+### D-179 — The stale-rule audit · `agreed`
+Asked for before designing encounter maps, and it found more than expected.
+Twenty-two rules govern this area, most written in the prototype era, before
+three vocabulary changes and two scale changes.
+
+**The vision model survived intact** and is better than I remembered: binary
+visibility with no cover and no posture (R-40), multi-sample per cube so binary
+does not mean one ray (R-41), whole cubes never faces (R-42), sealed diagonal
+seams (R-44), blocks as the only occluders with `blocksSight` as a *material*
+property (R-74, R-75), cumulative Explored (R-45), omnidirectional per-token
+range (R-46). The best of it is R-43's rule of thumb — **see over one cube,
+blocked by two, and each cube of elevation buys one more cube of wall** — which
+is what makes elevation mean something without a posture model.
+
+**Fixed as stale:**
+- R-51 said a place sits on a **200 m** cell. It has been 1.5 km since D-098.
+- R-51 and R-59 still described a *place* owning maps; that moved to points of
+  interest in D-176 and flattened in D-178.
+- R-49 rewritten a third time, and the entry now says so rather than reading as
+  though it had always said this.
+- "20×20" chunks and cells in R-105, R-83 and the chunk definition — 30×30 since
+  D-103. R-83's legibility arithmetic recomputed (900 cells across is ~2 px per
+  cell, not 5) and R-53's pathfinding node count recomputed (810k, not 160k, with
+  the note that routes only cross Known chunks so the live graph is far smaller).
+- D-024's justification corrected: it argued 1.5 m from posture arithmetic that
+  D-035 deleted, and was never explicitly confirmed. Confirmed now by
+  implication, since D-098 chose the world cell as 1000× it.
+
+**Designed but unbuilt, and now known to be prerequisites:** the materials
+registry (R-75 — nothing can be transparent without it), and the depth-legibility
+trio R-34 ground stalk, R-35 view-height clamp, R-36 frontmost-non-faded picking.
+
+**Never decided at all:** how a three-floor building *looks* like three floors
+when one level is playable (the half of O-009 the flat list does not answer); the
+view-height clamp, still deferred here from D-033; the gesture that enters a map
+and what happens to the world view; who sets a map's bounds; where per-map fog
+lives, given discovery is world-scale; and whether enemy tokens exist in the
+first round at all.

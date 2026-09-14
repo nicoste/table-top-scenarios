@@ -316,7 +316,7 @@ Two cell sizes, both explicit, both stored on the campaign rather than hardcoded
 
 > **R-105.** World **bounds are a per-campaign setting**, defaulting to 30×30
 > chunks. The bound exists so the `+` affordance (R-79) terminates and coordinates
-> stay sane — not because 20×20 is a rule. Anything derived from it, such as where
+> stay sane — not because any particular bound is a rule. Anything derived from it, such as where
 > a new campaign's first chunk goes, is **computed from the bounds** rather than
 > hardcoded.
 
@@ -351,7 +351,7 @@ type MapRef =
 > visible. Zooming is *camera zoom* — it reveals no new information, so a chunk is
 > not a view.
 >
-> A **chunk** remains the unit of **authoring** (a 20×20 block the GM creates) and
+> A **chunk** remains the unit of **authoring** (a 30×30 block the GM creates) and
 > of **knowledge** (`Known` / `Unknown`). It is simply not a place you navigate to.
 > This removes a navigation level, a set of zoom clamps, and the question of what
 > "simplified" would have meant.
@@ -458,17 +458,19 @@ cube and a short far cube can land on the same pixels. These are not polish.
 
 ## 6c. A place owns points of interest; a point of interest owns its maps
 
-> **R-49.** A place holds an **ordered list of points of interest**, and it is a
-> *point of interest* that owns encounter maps. Dungeon levels, a realm's main
-> square and its market, a keep's courtyard and cellar — each is a point of
-> interest inside one place, and the tactical grid belongs to it (D-176).
+> **R-49.** A place holds an **ordered list of points of interest**, and each point
+> of interest has **at most one map** (D-178). A three-floor tavern is two or three
+> points of interest — "tavern keep", "tavern underground" — sitting next to each
+> other in that one list, not a nested tree.
 >
-> Originally this said a place holds the maps directly, because "place" and
-> "point of interest" were the same word. Splitting them put the map one level
-> down, where it belongs: you fight in the arena, not in the village.
+> Third wording of this rule, and worth saying so. It first read "a place holds an
+> ordered list of encounter maps", because place and point of interest were the
+> same word. D-176 split them and moved maps down a level. D-178 then flattened
+> it: one map each, because a single scannable list of everything in a place is
+> the job the panel does, and ordering already groups a building's floors.
 >
-> This still **replaces** the ad-hoc map-to-map linking of D-023: the place *is*
-> the container, so there is nothing to link. Navigation picks from a named list.
+> It still **replaces** the ad-hoc map-to-map linking of D-023: the place *is* the
+> container, so there is nothing to link. Navigation picks from a named list.
 > Connectors ("the stairs at C7 lead to Level 2") are deliberately not modelled —
 > the GM says so out loud (R-1, R-39).
 
@@ -485,11 +487,15 @@ cube and a short far cube can land on the same pixels. These are not polish.
 > deliberately not modelled yet (O-014). Building the single-cell case first keeps
 > travel targeting, marker placement and the tap gesture unambiguous.
 
-> **R-51.** A place's encounter maps have **no geometric relationship to its world
-> cell**, and the tool never implies one. A place sits on one 200 m cell; its
-> market map may be 150 m across; its dungeon may be larger than the realm above
-> it. This is an accepted abstraction, resolved by D-042 and never surfaced in
-> the UI.
+> **R-51.** A point of interest's map has **no geometric relationship to the world
+> cell its place sits on**, and the tool never implies one. A place occupies one
+> **1.5 km** cell (D-098); its market map may be 150 m across and its dungeon may
+> be larger than the realm above it. An accepted abstraction, resolved by D-042
+> and never surfaced in the UI.
+>
+> Originally worded as "a place's encounter maps" against a 200 m cell — both
+> stale: the cell became 1.5 km in D-098, and maps moved down to points of
+> interest in D-176/D-178.
 
 ---
 
@@ -554,8 +560,8 @@ cube and a short far cube can land on the same pixels. These are not polish.
 > **R-83.** A place's **marker and its name share a single zoom threshold** and
 > appear together. Below it, neither is drawn.
 >
-> The reason is arithmetic: zoomed out to 20×20 chunks you are looking at 400
-> cells across, which on a 1920 px screen is about **5 px per cell**. A miniature
+> The reason is arithmetic: zoomed out to the default 30×30 chunks you are looking
+> at 900 cells across, which on a 1920 px screen is about **2 px per cell**. A miniature
 > in one cell would be five pixels and a label would be soup. Above the threshold
 > the 3D miniature and its name are both legible; below it, neither earns the
 > pixels.
@@ -738,8 +744,10 @@ category (R-1), and squarely in scope.
 
 > **R-53.** The route is **weighted shortest path** over chunk columns, 8-way with
 > `√2` diagonal cost. Generic weighted pathfinding lives in `geometry`; paces,
-> difficulty semantics and the time formula live in `domain`. Nothing fancy: at
-> 200 m cells a 20×20 chunk world is 160k nodes, which Dijkstra handles trivially.
+> difficulty semantics and the time formula live in `domain`. Nothing fancy: a
+> default 30×30 chunk world of 30×30 cells each is 900² = **810k nodes**, which
+> Dijkstra handles in well under a second — and routes only cross `Known` chunks
+> (R-55), so the reachable graph is almost always a small fraction of that.
 
 > **R-54.** The calculator reports **total distance**, takes a **pace** from an
 > append-only registry (`pace:walk`, `pace:forced-march`, `pace:horse`,
@@ -1004,8 +1012,8 @@ D-035. Numbers are not reused; decisions cite them.
 > manifest, world, chunks, places, registries and every save stay hand-editable and
 > diffable. Voxel bodies use a per-32³-chunk **palette plus run-length encoding**.
 >
-> The reason is arithmetic: a campaign with ~20 places and a few levels each holds
-> several hundred thousand filled cubes. One JSON entry per cube is 10–35 MB;
+> The reason is arithmetic: a campaign with ~20 places, several points of interest
+> each and one map apiece holds several hundred thousand filled cubes. One JSON entry per cube is 10–35 MB;
 > palette+RLE puts the same content at 1–3 MB. Saves are small either way
 > (tokens, flags, overlay) so they stay plain JSON.
 

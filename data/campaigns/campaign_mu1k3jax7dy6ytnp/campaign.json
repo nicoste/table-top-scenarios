@@ -1,0 +1,45 @@
+{
+ "id": "campaign_mu1k3jax7dy6ytnp",
+ "schemaVersion": 4,
+ "name": "We Can Test Here",
+ "party": [
+  {
+   "id": "member_mu1k3jays1xlkow4",
+   "name": "player",
+   "colour": "#57d9a3",
+   "visionRange": 12
+  }
+ ],
+ "places": [
+  {
+   "id": "place_mu1k55pd362oxbn2",
+   "name": "Fisherton",
+   "cell": {
+    "cx": 15,
+    "cz": 15,
+    "x": 14,
+    "z": 11
+   },
+   "markerId": "marker:village",
+   "pois": [
+    {
+     "id": "poi_mu1k83lmyo6h2w37",
+     "name": "The Eight's Church",
+     "visibleToParty": true
+    }
+   ],
+   "notes": [
+    {
+     "id": "note_mu1k6cf76w9191n0",
+     "text": "A town of fishermen",
+     "visibleToParty": true
+    },
+    {
+     "id": "note_mu1k70vn4p0wo9xi",
+     "text": "They worship an octopus",
+     "visibleToParty": false
+    }
+   ]
+  }
+ ]
+}
