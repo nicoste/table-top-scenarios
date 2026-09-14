@@ -19,6 +19,11 @@ import { ChunkInspector } from '../features/visibility/index.js';
 import { ConnectBadge } from '../features/connect/index.js';
 import { Tooltip } from '@tt/ui';
 
+/** Mac shows ⌘, everything else Ctrl. Cosmetic: the binding accepts both (R-140). */
+const MOD = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
+  ? '\u2318'
+  : 'Ctrl+';
+
 interface Props {
   view: GmView | null;
   status: 'connecting' | 'open' | 'closed';
@@ -48,6 +53,16 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   const drag = useRef<{ startY: number; base: number; cell: { cx: number; cz: number; x: number; z: number } } | null>(null);
   const panning = useRef<{ x: number; y: number } | null>(null);
   const painting = useRef<string | null>(null);
+  /**
+   * Ties one gesture's intents together for undo (D-170). Generated per
+   * pointerdown; the host only ever compares it to the previous one, so any
+   * unique-enough string does.
+   */
+  const stroke = useRef<string | null>(null);
+  const newStroke = () => {
+    stroke.current = `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+    return stroke.current;
+  };
 
   const campaign = view?.campaign ?? null;
 
@@ -218,12 +233,13 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
 
       case 'paint':
         painting.current = cellKey(action.cell);
-        dispatch({ kind: 'paintTerrain', ...action.cell, terrainId, size: brush });
+        dispatch({ kind: 'paintTerrain', ...action.cell, terrainId, size: brush, stroke: newStroke() });
         e.currentTarget.setPointerCapture(e.pointerId);
         return;
 
       case 'raise':
         drag.current = { startY: e.clientY, base: heightAt(action.cell), cell: action.cell };
+        newStroke();
         e.currentTarget.setPointerCapture(e.pointerId);
         return;
 
@@ -276,7 +292,10 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
         stage.showHighlight(picked.column, heightAt(picked.column), brush);
         if (key !== painting.current) {
           painting.current = key;
-          dispatch({ kind: 'paintTerrain', ...picked.column, terrainId, size: brush });
+          dispatch({
+            kind: 'paintTerrain', ...picked.column, terrainId, size: brush,
+            ...(stroke.current ? { stroke: stroke.current } : {}),
+          });
         }
       }
       return;
@@ -286,7 +305,10 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       // Vertical drag, snapped to whole cubes (R-89). Up is higher.
       const steps = Math.round((drag.current.startY - e.clientY) / 18);
       const height = Math.max(0, Math.min(MAX_HEIGHT, drag.current.base + steps));
-      dispatch({ kind: 'setHeight', ...drag.current.cell, height, size: brush });
+      dispatch({
+        kind: 'setHeight', ...drag.current.cell, height, size: brush,
+        ...(stroke.current ? { stroke: stroke.current } : {}),
+      });
       stage.showHighlight(drag.current.cell, height, brush);
       return;
     }
@@ -297,7 +319,12 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     setHoverLabel(info ? `${info.terrain}, height ${info.height}` : null);
   };
 
-  const endGesture = () => { drag.current = null; panning.current = null; painting.current = null; };
+  const endGesture = () => {
+    drag.current = null;
+    panning.current = null;
+    painting.current = null;
+    stroke.current = null;
+  };
 
   const onWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
     e.preventDefault();
@@ -316,6 +343,16 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement | null)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+      // Undo comes *before* the modifier guard below, because it is the one
+      // shortcut that needs one. cmd on a Mac, ctrl elsewhere; shift redoes
+      // (R-140). preventDefault so the browser does not also undo something.
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && e.code === 'KeyZ') {
+        e.preventDefault();
+        dispatch({ kind: e.shiftKey ? 'redo' : 'undo' });
+        return;
+      }
+
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (!stage) return;
 
@@ -402,6 +439,29 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
               <h2>{campaign.name}</h2>
               <div className="row">
                 <button onClick={() => dispatch({ kind: 'closeCampaign' })}>← campaigns</button>
+                {/* Buttons as well as the shortcut: a keyboard-only feature is
+                    one nobody finds, and disabled states say when there is
+                    nothing left to take back (R-140). */}
+                <Tooltip label={`Undo — ${MOD}Z`} placement="bottom">
+                  <button
+                    className="quiet"
+                    disabled={!view?.canUndo}
+                    onClick={() => dispatch({ kind: 'undo' })}
+                    aria-label="Undo"
+                  >
+                    ↶
+                  </button>
+                </Tooltip>
+                <Tooltip label={`Redo — ${MOD}\u21e7Z`} placement="bottom">
+                  <button
+                    className="quiet"
+                    disabled={!view?.canRedo}
+                    onClick={() => dispatch({ kind: 'redo' })}
+                    aria-label="Redo"
+                  >
+                    ↷
+                  </button>
+                </Tooltip>
                 <Tooltip label="Save a copy as a new campaign" placement="bottom">
                   <button onClick={() => dispatch({ kind: 'duplicateCampaign', id: campaign.id })}>
                     Duplicate

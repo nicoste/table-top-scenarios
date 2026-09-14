@@ -8,6 +8,11 @@ import { MAX_HEIGHT, MAX_BRUSH } from '@tt/domain';
 const cell = { cx: z.number().int(), cz: z.number().int(), x: CellIndex, z: CellIndex };
 /** Brush footprint in cells per side. One intent per stroke, not one per cell. */
 const size = z.number().int().min(1).max(MAX_BRUSH).optional();
+/**
+ * Ties the intents of one drag together so undo treats them as a single action
+ * (D-170). Opaque to the host — it only ever compares it to the previous one.
+ */
+const stroke = z.string().min(1).max(64).optional();
 
 export const IntentSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('createCampaign'), name: z.string().min(1).max(80) }),
@@ -17,9 +22,9 @@ export const IntentSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('deleteCampaign'), id: z.string().min(1) }),
 
   z.object({ kind: z.literal('addChunk'), cx: z.number().int(), cz: z.number().int() }),
-  z.object({ kind: z.literal('paintTerrain'), ...cell, terrainId: TerrainIdSchema, size }),
-  z.object({ kind: z.literal('setHeight'), ...cell, height: z.number().int().min(0).max(MAX_HEIGHT), size }),
-  z.object({ kind: z.literal('raiseHeight'), ...cell, delta: z.number().int().min(-MAX_HEIGHT).max(MAX_HEIGHT), size }),
+  z.object({ kind: z.literal('paintTerrain'), ...cell, terrainId: TerrainIdSchema, size, stroke }),
+  z.object({ kind: z.literal('setHeight'), ...cell, height: z.number().int().min(0).max(MAX_HEIGHT), size, stroke }),
+  z.object({ kind: z.literal('raiseHeight'), ...cell, delta: z.number().int().min(-MAX_HEIGHT).max(MAX_HEIGHT), size, stroke }),
 
   z.object({ kind: z.literal('addMember'), name: z.string().max(40).optional() }),
   z.object({
@@ -55,6 +60,11 @@ export const IntentSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('moveParty'), cell: WorldCellSchema }),
   z.object({ kind: z.literal('movePartyMember'), memberId: z.string().min(1), cell: WorldCellSchema }),
   z.object({ kind: z.literal('setPartyTogether'), together: z.boolean() }),
+
+  // Undo and redo over authored content (D-169). GM only: the campaign is the
+  // GM's, and a shared history under one person's keyboard is a worse feature.
+  z.object({ kind: z.literal('undo') }),
+  z.object({ kind: z.literal('redo') }),
 
 ]);
 

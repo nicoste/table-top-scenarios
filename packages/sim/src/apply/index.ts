@@ -18,6 +18,7 @@ import {
 } from '@tt/domain';
 import type { HostState, Intent, Role } from '@tt/protocol';
 import { parseTerrainId, parseMarkerId } from '@tt/protocol';
+import { emptyHistory, remember, undone, redone } from '../history/index.js';
 
 /** Side effects `sim` asks the host to perform. It performs none itself. */
 export type Effect =
@@ -101,7 +102,42 @@ export function openedWith(
   };
 }
 
+/**
+ * Applies one intent, recording undo history around it.
+ *
+ * The snapshot is taken **here**, by comparing campaign identity before and
+ * after, rather than inside each handler. Two reasons: immutable edits mean
+ * identity changing *is* the definition of "the campaign was edited" (R-12), and
+ * a hook nobody has to remember cannot be forgotten when the twenty-ninth intent
+ * arrives (D-169, R-23b's lesson).
+ */
 export function apply(state: HostState, role: Role, intent: Intent, now: string): Applied {
+  const result = applyIntent(state, role, intent, now);
+  if (result.rejected) return result;
+
+  // Undo and redo write their own history; the hook below would otherwise see
+  // the campaign change and record stepping back as another edit.
+  if (intent.kind === 'undo' || intent.kind === 'redo') return result;
+
+  const before = state.active;
+  const after = result.state.active;
+
+  // A different campaign is open (created, opened, closed, duplicated, deleted):
+  // history belongs to one campaign, so it starts again rather than letting
+  // cmd+z reach back into a world the GM is no longer looking at.
+  if (before?.id !== after?.id) {
+    return { ...result, state: { ...result.state, history: emptyHistory() } };
+  }
+  if (!before || before === after) return result;
+
+  const stroke = 'stroke' in intent ? intent.stroke ?? null : null;
+  return {
+    ...result,
+    state: { ...result.state, history: remember(state.history, before, stroke) },
+  };
+}
+
+function applyIntent(state: HostState, role: Role, intent: Intent, now: string): Applied {
   if (!permitted(role, intent.kind)) {
     return reject(state, 'only the GM can do that');
   }
@@ -119,6 +155,7 @@ export function apply(state: HostState, role: Role, intent: Intent, now: string)
       const live = createLiveSave(campaign, now);
       return ok(
         {
+          ...state,
           campaigns: [...state.campaigns, { id: campaign.id, name: campaign.name }],
           active: campaign,
           activeSave: live,
@@ -130,6 +167,24 @@ export function apply(state: HostState, role: Role, intent: Intent, now: string)
     case 'openCampaign': {
       if (!state.campaigns.some((c) => c.id === intent.id)) return reject(state, 'no such campaign');
       return ok(state, [{ kind: 'loadCampaign', id: intent.id }]);
+    }
+
+    case 'undo':
+    case 'redo': {
+      if (!state.active) return reject(state, 'no campaign is open');
+      const stepped = intent.kind === 'undo'
+        ? undone(state.history, state.active)
+        : redone(state.history, state.active);
+      if (!stepped) {
+        return reject(state, intent.kind === 'undo' ? 'nothing to undo' : 'nothing to redo');
+      }
+      // The history is written here rather than by `apply`'s boundary hook,
+      // which would otherwise see the campaign change and record the undo
+      // itself as an edit.
+      return ok(
+        { ...state, active: stepped.campaign, history: stepped.history },
+        [{ kind: 'saveCampaign', campaign: stepped.campaign }],
+      );
     }
 
     case 'closeCampaign':
@@ -156,6 +211,7 @@ export function apply(state: HostState, role: Role, intent: Intent, now: string)
       const copyLive = createLiveSave(copy, now);
       return ok(
         {
+          ...state,
           campaigns: [...state.campaigns, { id: copy.id, name: copy.name }],
           active: null,
           activeSave: null,
@@ -169,6 +225,7 @@ export function apply(state: HostState, role: Role, intent: Intent, now: string)
       const closing = state.active?.id === intent.id;
       return ok(
         {
+          ...state,
           campaigns: state.campaigns.filter((c) => c.id !== intent.id),
           // Deleting the open campaign closes it rather than leaving a ghost.
           active: closing ? null : state.active,

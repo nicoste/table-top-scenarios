@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { apply } from '@tt/sim';
+import { apply, emptyHistory } from '@tt/sim';
 import { parseIntent, viewFor, IntentSchema } from '@tt/protocol';
 import type { HostState, Intent } from '@tt/protocol';
 import { chunkAt, columnAt, createCampaign, createLiveSave, liveSaveId, ORIGIN } from '@tt/domain';
 
 const NOW = '2026-01-01T00:00:00.000Z';
-const empty: HostState = { campaigns: [], active: null, activeSave: null };
+const empty: HostState = { campaigns: [], active: null, activeSave: null, history: emptyHistory() };
 
 function withCampaign(): HostState {
   const campaign = createCampaign('Ashfall');
@@ -14,6 +14,7 @@ function withCampaign(): HostState {
     campaigns: [{ id: campaign.id, name: campaign.name }],
     active: campaign,
     activeSave: live,
+    history: emptyHistory(),
   };
 }
 const run = (state: HostState, intent: Intent, role: 'gm' | 'table' = 'gm') => apply(state, role, intent, NOW);

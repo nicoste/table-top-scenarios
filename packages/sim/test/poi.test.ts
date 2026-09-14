@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { apply } from '@tt/sim';
+import { apply, emptyHistory } from '@tt/sim';
 import { viewFor, encodeCampaign } from '@tt/protocol';
 import type { HostState, Intent } from '@tt/protocol';
 import { createCampaign, createLiveSave, ORIGIN } from '@tt/domain';
@@ -12,6 +12,7 @@ function open(): HostState {
     campaigns: [{ id: campaign.id, name: campaign.name }],
     active: campaign,
     activeSave: live,
+    history: emptyHistory(),
   };
 }
 const run = (s: HostState, i: Intent, role: 'gm' | 'table' = 'gm') => apply(s, role, i, NOW);

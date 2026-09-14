@@ -2398,3 +2398,58 @@ Nothing in this repo can fix it. Two ways out:
 
 Left as an open item rather than "fixed" because the config is fine; the
 environment is what is missing a permission.
+
+---
+
+## Round 32 — undo
+
+### D-169 — Undo is snapshots of the campaign, taken at the boundary · `agreed`
+*"it happens that Im painting and I fail, and I do this cmd+z automatically and
+nothing happens."*
+
+Scope agreed as **authored content only** (R-140), which keeps undo the GM's
+alone and sidesteps the question the alternative raises: players can move the
+party, so a shared history under one person's keyboard would let cmd+z rewrite
+someone else's action.
+
+Two designs were considered. **Inverse intents** — record each edit's opposite
+and dispatch it — fails on the brush: undoing a 3×3 stroke over mixed terrain is
+"paint these nine cells back to their nine different terrains", which no intent
+expresses. **Snapshots** cost almost nothing here, because the domain is
+immutable with identity-preserving edits: an entry shares every chunk the edit
+did not touch (R-12). That the expensive-sounding option is the cheap one is a
+dividend of a decision made for unrelated reasons in round 2.
+
+The snapshot is taken by comparing campaign identity across `apply`, not in each
+handler (R-140a). It makes "an intent that changed nothing records nothing" fall
+out for free, and it cannot be forgotten when the next intent is added — which
+is exactly how D-162 slipped through.
+
+Also considered and rejected: doing undo *last* of the three features, on the
+grounds that every feature added first makes undo bigger. Snapshot history is
+intent-agnostic, so waiting buys nothing and costs a papercut every session.
+
+In-memory, fifty deep, gone on a host restart. Persisting an undo log is a new
+file format and a migration for something that matters for minutes.
+
+### D-170 — A drag is one undo · `agreed`
+The detail that decides whether the feature feels finished. Paint and height
+dispatch one intent per cell entered, so a stroke across twelve cells would take
+twelve presses to undo — technically correct and useless.
+
+The client tags one gesture's intents with a `stroke` id and only the first
+records history. The host keeps the id opaque and compares it with the previous
+one.
+
+The comparison requires a **non-null** id, and that is the trap: two separate
+single clicks both carry `undefined`, so a plain equality check would collapse
+unrelated edits into one. There is a test named for it.
+
+### D-171 — A returned POI comes back hidden · `agreed`
+Known edge, decided rather than discovered later. Deleting a POI also drops it
+from discovery (R-126), and undo does not restore play state — so undoing a
+deletion brings the place back **Hidden**, whatever it was before.
+
+Kept, because it errs the safe way. The project's bias throughout is that things
+are hidden until the GM says otherwise (D-121, D-125), and there is no undo for
+something the players have already read.

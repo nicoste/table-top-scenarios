@@ -3,7 +3,7 @@
 // next. The permission line is the other half (R-136).
 
 import { describe, it, expect } from 'vitest';
-import { apply } from '@tt/sim';
+import { apply, emptyHistory } from '@tt/sim';
 import { viewFor, IntentSchema } from '@tt/protocol';
 import type { HostState, Intent, TableView } from '@tt/protocol';
 import { createCampaign, createLiveSave, ORIGIN } from '@tt/domain';
@@ -19,6 +19,7 @@ function open(): HostState {
     campaigns: [{ id: campaign.id, name: campaign.name }],
     active: campaign,
     activeSave: createLiveSave(campaign, NOW),
+    history: emptyHistory(),
   };
 }
 
@@ -245,6 +246,6 @@ describe('what the table is told', () => {
   });
 
   it('sends no pawns when no campaign is on the table', () => {
-    expect(tableView({ campaigns: [], active: null, activeSave: null }).placement).toBeNull();
+    expect(tableView({ campaigns: [], active: null, activeSave: null, history: emptyHistory() }).placement).toBeNull();
   });
 });

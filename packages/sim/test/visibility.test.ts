@@ -2,7 +2,7 @@
 // assert on the actual wire payload rather than on intermediate objects.
 
 import { describe, it, expect } from 'vitest';
-import { apply } from '@tt/sim';
+import { apply, emptyHistory } from '@tt/sim';
 import { viewFor } from '@tt/protocol';
 import type { HostState, Intent } from '@tt/protocol';
 import { createCampaign, createLiveSave, ORIGIN } from '@tt/domain';
@@ -18,6 +18,7 @@ function open(): HostState {
     campaigns: [{ id: campaign.id, name: campaign.name }],
     active: campaign,
     activeSave: live,
+    history: emptyHistory(),
   };
 }
 

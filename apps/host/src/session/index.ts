@@ -5,7 +5,7 @@
 import type { CampaignStore, SaveStore } from '@tt/persistence';
 import type { HostState, Intent, Role, View } from '@tt/protocol';
 import { viewFor, liveSaveId } from '@tt/protocol';
-import { apply, openedWith } from '@tt/sim';
+import { apply, openedWith, emptyHistory } from '@tt/sim';
 
 /** Time is a port (R-98): `sim` has no clock, so the host supplies one. */
 export interface Clock { nowIso(): string }
@@ -25,7 +25,9 @@ export function createSession(
   connect: () => readonly string[],
   clock: Clock = systemClock,
 ): Session {
-  let state: HostState = { campaigns: store.list(), active: null, activeSave: null };
+  let state: HostState = {
+    campaigns: store.list(), active: null, activeSave: null, history: emptyHistory(),
+  };
 
   return {
     state: () => state,

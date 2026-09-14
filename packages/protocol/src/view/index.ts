@@ -13,12 +13,39 @@ export interface CampaignSummary {
   readonly name: string;
 }
 
+/**
+ * Undo history for the open campaign (D-169).
+ *
+ * The *shape* is here because `HostState` is protocol's to define; the rules for
+ * stepping through it are `sim`'s (R-100 runs domain → protocol → sim, so it
+ * cannot be the other way round).
+ *
+ * Holds whole campaigns, which is affordable only because the domain is
+ * immutable with identity-preserving edits (R-12) — and which is why it must
+ * **never** be serialised into a view. The GM console gets two booleans.
+ */
+export interface History {
+  /** Campaign states before each edit, oldest first. */
+  readonly past: readonly Campaign[];
+  /** States undone out of `past`, newest first, awaiting redo. */
+  readonly future: readonly Campaign[];
+  /** The gesture that produced the newest `past` entry, for coalescing. */
+  readonly stroke: string | null;
+}
+
 /** What the host knows. `sim` transforms this and nothing else. */
 export interface HostState {
   readonly campaigns: readonly CampaignSummary[];
   readonly active: Campaign | null;
   /** The live save for `active`, or null when no campaign is open. */
   readonly activeSave: Save | null;
+  /**
+   * Undo history for `active` (D-169).
+   *
+   * Holds whole campaigns, so it must **never** be serialised into a view — the
+   * GM console gets two booleans and nothing else.
+   */
+  readonly history: History;
 }
 
 export interface GmView {
@@ -26,6 +53,9 @@ export interface GmView {
   readonly campaigns: readonly CampaignSummary[];
   readonly campaign: CampaignWire | null;
   readonly save: SaveWire | null;
+  /** Whether cmd+z / cmd+shift+z have anywhere to go (D-169). */
+  readonly canUndo: boolean;
+  readonly canRedo: boolean;
   /** Addresses players connect to (R-93). */
   readonly connect: readonly string[];
 }
@@ -64,6 +94,8 @@ export function viewFor(role: Role, state: HostState, connect: readonly string[]
       campaigns: state.campaigns,
       campaign: state.active ? encodeCampaign(state.active) : null,
       save: state.activeSave ? encodeSave(state.activeSave) : null,
+      canUndo: state.history.past.length > 0,
+      canRedo: state.history.future.length > 0,
       connect,
     };
   }

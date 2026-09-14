@@ -1583,3 +1583,48 @@ apps/host/src/
 > Escape is the keyboard's "never mind" and right-click is the mouse's; a gesture
 > driven by the mouse should not require the other hand. Right-click during a
 > gesture cancels instead of doing its usual job (R-133's pan).
+
+---
+
+## 6c7. Undo
+
+> **R-140.** **Undo covers authored content and nothing else.** Terrain, heights,
+> places, notes, the roster — everything in the campaign. Play state is out:
+> discovery's toggles are their own undo (D-147), and party position belongs to
+> the players as much as the GM (R-136), so one person's cmd+z must not rewrite
+> what another did.
+>
+> This keeps undo purely the GM's, because only the GM edits the campaign.
+>
+> The history holds **whole campaign states**, which is affordable only because
+> the domain is immutable with identity-preserving edits (R-12): a paint stroke
+> rebuilds one chunk and shares the rest, so an entry costs about a chunk. Fifty
+> are kept. It is in-memory and does not survive a host restart.
+>
+> Because it holds campaigns it must **never** reach a view. The GM console is
+> told `canUndo` and `canRedo` and nothing more.
+>
+> Bound to cmd/ctrl+Z and cmd/ctrl+shift+Z, and **also to buttons**: a
+> keyboard-only feature is one nobody finds, and a disabled button says when
+> there is nothing left to take back. The binding is the one exception to the
+> shortcut handler's "ignore modifiers" guard (R-116), so it is checked first.
+
+> **R-140a.** The snapshot is taken at the **`apply` boundary**, by comparing
+> campaign identity before and after — not inside each handler.
+>
+> Two reasons. With immutable edits, identity changing *is* the definition of
+> "the campaign was edited", so the check is exact: an intent that changes
+> nothing records nothing, for free. And a hook nobody has to remember cannot be
+> forgotten when the twenty-ninth intent arrives — the lesson of D-166.
+>
+> Opening, closing, creating, duplicating or deleting a campaign **resets** the
+> history. It belongs to one campaign; cmd+z must not reach into a world the GM
+> is no longer looking at.
+
+> **R-140b.** A **drag is one action**. Paint and height dispatch one intent per
+> cell entered, so the client tags a gesture's intents with a `stroke` id and only
+> the first of them records history.
+>
+> The id is opaque to the host, which only compares it with the previous one. The
+> comparison must require a **non-null** id: two separate single clicks both carry
+> nothing, and treating that as a match would collapse unrelated edits into one.

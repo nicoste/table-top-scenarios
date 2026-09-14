@@ -23,5 +23,5 @@ export { viewFor } from './view/index.js';
  */
 export { liveSaveId } from '@tt/domain';
 export type {
-  Role, CampaignSummary, HostState, GmView, TableView, View, OutboundMessage,
+  Role, CampaignSummary, HostState, History, GmView, TableView, View, OutboundMessage,
 } from './view/index.js';
