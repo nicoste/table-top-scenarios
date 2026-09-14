@@ -3,7 +3,7 @@
 
 import { describe, it, expect } from 'vitest';
 import type { Cell, Pointed } from '@tt/client-core';
-import { clickAction, holdsSelection } from '@tt/client-core';
+import { clickAction, holdsSelection, tableAction } from '@tt/client-core';
 import type { Tool } from '@tt/client-core';
 
 const cell = (x: number, z: number): Cell => ({ cx: 15, cz: 15, x, z });
@@ -140,6 +140,45 @@ describe('which tool holds a selection (D-168)', () => {
         .map((pointed) => clickAction(tool, pointed, free).kind)
         .some((kind) => kind === 'selectPoi' || kind === 'selectChunk');
       expect(holdsSelection(tool), tool).toBe(canSelect);
+    }
+  });
+});
+
+describe('the table display has no tools, so the rule is different (D-174)', () => {
+  const onAPawn: Pointed = { ...EMPTY, pawn: { memberId: null }, cell: cell(7, 7) };
+  const onAPlace: Pointed = { ...EMPTY, poiId: 'poi_keep', cell: cell(5, 5) };
+
+  it('starts a move from a pawn', () => {
+    expect(tableAction(onAPawn, false)).toEqual({ kind: 'pickPawn', pawn: { memberId: null } });
+  });
+
+  it('selects a place', () => {
+    expect(tableAction(onAPlace, false)).toEqual({ kind: 'selectPoi', poiId: 'poi_keep' });
+  });
+
+  it('clears the selection on bare ground', () => {
+    // No chunk to inspect and no tool to go back to, so clicking nothing is the
+    // way out of a selection.
+    expect(tableAction({ ...EMPTY, cell: cell(1, 1) }, false)).toEqual({ kind: 'clearSelection' });
+    expect(tableAction(EMPTY, false)).toEqual({ kind: 'clearSelection' });
+  });
+
+  it('gives a travel in progress the click, whatever is under it', () => {
+    // "you tap on the player token, then selecting a place should keep going
+    // with the travel flow, not select the place."
+    for (const pointed of [onAPawn, onAPlace, EMPTY, { ...EMPTY, cell: cell(2, 2) }]) {
+      expect(tableAction(pointed, true)).toEqual({ kind: 'travel' });
+    }
+  });
+
+  it('never offers a player anything that edits the world', () => {
+    // Whatever is under the pointer, on either branch, the answer is one of
+    // four — and none of them paints, raises, places or selects a chunk (R-136).
+    const allowed = new Set(['nothing', 'travel', 'pickPawn', 'selectPoi', 'clearSelection']);
+    for (const aiming of [true, false]) {
+      for (const pointed of [onAPawn, onAPlace, EMPTY, { ...EMPTY, slot: { cx: 1, cz: 1 } }]) {
+        expect(allowed.has(tableAction(pointed, aiming).kind)).toBe(true);
+      }
     }
   });
 });

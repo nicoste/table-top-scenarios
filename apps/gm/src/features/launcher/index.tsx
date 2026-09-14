@@ -42,11 +42,16 @@ export function Launcher({ campaigns, dispatch }: Props) {
                   <>
                     <span className="nm">{c.name}</span>
                     {/* Duplicate lives in the open campaign, not here — sim
-                        cannot read the disk to copy something closed (R-97). */}
-                    <Tooltip label={`Delete “${c.name}”`} placement="top">
-                      <button className="quiet" onClick={() => setConfirming(c.id)}>×</button>
-                    </Tooltip>
+                        cannot read the disk to copy something closed (R-97).
+
+                        Open comes first and Delete is the quiet one: the common
+                        action should be the one the pointer reaches, and the
+                        destructive one should not sit where a mis-aimed click
+                        lands (D-173). */}
                     <button onClick={() => dispatch({ kind: 'openCampaign', id: c.id })}>Open</button>
+                    <Tooltip label={`Delete “${c.name}”`} placement="top">
+                      <button className="quiet" onClick={() => setConfirming(c.id)}>Delete</button>
+                    </Tooltip>
                   </>
                 )}
               </li>

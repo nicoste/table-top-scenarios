@@ -1524,8 +1524,11 @@ apps/host/src/
 > interactive with no tool to select, because there is nothing else there to click.
 > Same three-step sequence, different way in.
 >
-> This is the table display's **first interaction of any kind** (D-152). It stays
-> the only one: it does not acquire a tool palette, a dock, or a roster.
+> This was the table display's **first interaction of any kind** (D-152). I wrote
+> that it "stays the only one"; **overruled by D-174**, which adds selecting a
+> place to read what the party knows about it. What survives is the part that
+> mattered: no tool palette and no roster. A click on that screen means whatever
+> `tableAction` says, and a travel in progress outranks everything.
 
 > **R-136.** The permission line is **the party is the players', the world is the
 > GM's**. Anything about the party's own pawns — position, grouping — is open to
@@ -1628,3 +1631,17 @@ apps/host/src/
 > The id is opaque to the host, which only compares it with the previous one. The
 > comparison must require a **non-null** id: two separate single clicks both carry
 > nothing, and treating that as a match would collapse unrelated edits into one.
+
+> **R-141.** A selection on the table display is **re-resolved from the current
+> wire every render**, never held as a copy.
+>
+> The GM can hide a place, or delete it, while a player has it open. A cached
+> copy would leave its notes on the shared screen after the host stopped sending
+> them — turning a revoked secret into a visible one, which is the single thing
+> that screen must never do. The id is the only thing kept; if it is not in the
+> latest snapshot, the panel is gone.
+
+> **R-142.** A read-only panel takes **no `dispatch`**. Not "does not currently
+> send anything" — has no way to. Players do not write notes, reorder them,
+> rename a place or delete it, and the cheapest guarantee of that is a component
+> with nothing to send it through.

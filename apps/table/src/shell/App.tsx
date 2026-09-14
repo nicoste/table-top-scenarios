@@ -1,18 +1,22 @@
 // The table display: the shared screen everyone looks at. No tools, no campaign
 // list, no secrets (R-94).
 //
-// It has exactly **one** interaction: moving the party's own pawns (R-134,
-// D-152). There is no tool to select because there is nothing else here to
-// click. It does not grow a palette, a dock, or a roster.
+// Two interactions, both about looking and going: move the party's own pawns
+// (D-152), and select a place to read what the party knows about it (D-174).
+// Still no tool palette and no roster — a click means whatever `tableAction`
+// says it means, and a travel in progress outranks everything.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { decodeCampaign, decodePlacement } from '@tt/protocol';
 import { CHUNK_SIZE } from '@tt/domain';
 import type { Intent, TableView } from '@tt/protocol';
 import type { Travel } from '@tt/client-core';
-import { idle, pick, aim, ghostCell, canConfirm, travelIntent, travelPrompt } from '@tt/client-core';
+import {
+  idle, pick, aim, ghostCell, canConfirm, travelIntent, travelPrompt, tableAction,
+} from '@tt/client-core';
 import { defaultTarget, worldCentre } from '@tt/render';
 import { useStage } from '../scene/use-stage.js';
+import { PlaceCard } from '../features/place/index.js';
 
 interface Props {
   view: TableView | null;
@@ -29,7 +33,22 @@ export function App({ view, status, rejection, dispatch }: Props) {
   const openedId = useRef<string | null>(null);
   const drag = useRef<{ x: number; y: number; moved: boolean } | null>(null);
   const [travel, setTravel] = useState<Travel>(idle);
+  const [selectedPoi, setSelectedPoi] = useState<string | null>(null);
   const campaign = view?.campaign ?? null;
+
+  /**
+   * Resolved against the **current** wire every render, never cached.
+   *
+   * The GM can hide a place, or delete it, while a player has it open. Holding
+   * a copy would leave its notes on the shared screen after the host stopped
+   * sending them, which is the one thing this screen must never do (R-141).
+   */
+  const place = selectedPoi
+    ? campaign?.pois.find((poi) => poi.id === selectedPoi) ?? null
+    : null;
+  const markerName = place
+    ? campaign?.markers.find((m) => m.id === place.markerId)?.name ?? null
+    : null;
   const placementWire = view?.placement ?? null;
 
   const nameOf = useCallback(
@@ -72,11 +91,12 @@ export function App({ view, status, rejection, dispatch }: Props) {
     stage?.aimAt(ghostCell(travel));
   }, [travel, stage]);
 
-  // Escape cancels, wherever the pointer is (R-132).
+  // Escape cancels a move, or closes an open place (R-132, R-139).
   useEffect(() => {
-    if (travel.step !== 'aiming') return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.code === 'Escape') setTravel(idle);
+      if (event.code !== 'Escape') return;
+      if (travel.step === 'aiming') setTravel(idle);
+      else setSelectedPoi(null);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -104,15 +124,34 @@ export function App({ view, status, rejection, dispatch }: Props) {
   const onClick = (event: React.PointerEvent) => {
     if (!stage) return;
     const hit = stage.pick(event.clientX, event.clientY);
+    const action = tableAction(
+      { pawn: hit.pawn, poiId: hit.poiId, cell: hit.column, slot: hit.slot },
+      travel.step === 'aiming',
+    );
 
-    if (travel.step === 'aiming') {
-      // Second click confirms. Anything that is not a reachable cell cancels,
-      // rather than sending a move the host would refuse.
-      if (canConfirm(travel) && hit.column) dispatch(travelIntent(travel.pawn, hit.column));
-      setTravel(idle);
-      return;
+    switch (action.kind) {
+      case 'travel':
+        // Second click confirms. Anything that is not a reachable cell cancels,
+        // rather than sending a move the host would refuse. The `step` check is
+        // redundant at runtime — `tableAction` only answers 'travel' while
+        // aiming — but it is how the compiler narrows `travel` to that variant.
+        if (travel.step === 'aiming' && canConfirm(travel) && hit.column) {
+          dispatch(travelIntent(travel.pawn, hit.column));
+        }
+        setTravel(idle);
+        return;
+      case 'pickPawn':
+        setTravel(pick(action.pawn));
+        return;
+      case 'selectPoi':
+        setSelectedPoi(action.poiId);
+        return;
+      case 'clearSelection':
+        setSelectedPoi(null);
+        return;
+      default:
+        return;
     }
-    if (hit.pawn) setTravel(pick(hit.pawn));
   };
 
   const waiting = status !== 'open'
@@ -151,6 +190,10 @@ export function App({ view, status, rejection, dispatch }: Props) {
         <div className="launcher">
           <div className="card"><h1>{waiting.title}</h1><p>{waiting.body}</p></div>
         </div>
+      )}
+
+      {!waiting && place && (
+        <PlaceCard place={place} markerName={markerName} onClose={() => setSelectedPoi(null)} />
       )}
 
       {!waiting && <div className="badge">{campaign?.name}</div>}

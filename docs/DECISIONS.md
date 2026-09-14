@@ -2474,3 +2474,44 @@ one-column cell.
 Labels spelled out rather than iconic — "Back to main menu", "Duplicate
 campaign", "↶ Undo", "↷ Redo". The bare arrows were unreadable at that size, and
 at dock width there is room for words.
+
+### D-173 — Open before Delete, and Delete says so · `agreed`
+*"invert the order of the 'open' and 'x' button… I want to see 'open' and 'x',
+and also change 'x' by a 'delete'"*
+
+Open is the thing a GM does every session and it now comes first, where the
+pointer already is. Delete keeps the quiet styling, so the destructive action is
+not the visually obvious one sitting where a mis-aimed click lands, and it says
+*Delete* instead of an `×` that could be read as "close". The confirmation step
+(D-108) is unchanged.
+
+### D-174 — Players can select a place and read its notes · `agreed`
+*"Enable selection for players so they can see the notes of the places… Selection
+remains selected… players don't add anything neither reorder, is just
+informational."*
+
+Cheap, because the data already crosses the boundary: `viewFor` has always
+stripped notes that are not marked visible to the party (R-85), so the table has
+been receiving exactly the right subset and throwing it away. This round only
+renders it.
+
+Three things worth naming:
+
+**A travel in progress owns the click.** *"you tap on the player token, then
+selecting a place should keep going with the travel flow, not select the place."*
+So aiming short-circuits before anything else, and a POI under the pointer
+contributes its cell rather than itself — which `intendedCell` already arranged
+(D-163). The policy is `tableAction` in `client-core`, tested like the GM's
+matrix (R-23b), including a test that no branch of it can ever produce a
+world-editing action.
+
+**The selection is an id, re-resolved every render (R-141).** The GM can hide or
+delete a place while a player has it open; a cached copy would leave revoked
+notes on the shared screen. That is the failure mode this screen exists to avoid.
+
+**The panel takes no `dispatch` (R-142).** Read-only by construction rather than
+by discipline — there is nothing it could send.
+
+This overrules the second half of R-134, where I wrote that the table's one
+interaction "stays the only one" and that it would not acquire a dock. It has a
+dock now. The half that mattered — no tool palette, no roster — still holds.

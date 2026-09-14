@@ -91,3 +91,31 @@ export function clickAction(tool: Tool, pointed: Pointed, context: Context): Cli
       return nothing;
   }
 }
+
+/** What a click means on the table display, which has no tools (R-134). */
+export type TableAction =
+  | { readonly kind: 'nothing' }
+  | { readonly kind: 'travel' }
+  | { readonly kind: 'pickPawn'; readonly pawn: { readonly memberId: string | null } }
+  | { readonly kind: 'selectPoi'; readonly poiId: string }
+  | { readonly kind: 'clearSelection' };
+
+/**
+ * The table display's policy (D-174).
+ *
+ * A travel in progress owns the click completely — *"you tap on the player
+ * token, then selecting a place should keep going with the travel flow, not
+ * select the place"*. So aiming short-circuits before anything else is
+ * considered, and a POI under the pointer contributes its cell rather than
+ * itself (`intendedCell`, D-163).
+ *
+ * Otherwise: a pawn starts a move, a place is selected, and bare ground clears
+ * the selection. There is no chunk to inspect here and no tool to return to, so
+ * clicking nothing is the way out.
+ */
+export function tableAction(pointed: Pointed, aiming: boolean): TableAction {
+  if (aiming) return { kind: 'travel' };
+  if (pointed.pawn) return { kind: 'pickPawn', pawn: pointed.pawn };
+  if (pointed.poiId) return { kind: 'selectPoi', poiId: pointed.poiId };
+  return { kind: 'clearSelection' };
+}
