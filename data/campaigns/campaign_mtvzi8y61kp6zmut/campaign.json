@@ -10,5 +10,19 @@
    "visionRange": 12
   }
  ],
- "pois": []
+ "pois": [
+  {
+   "id": "poi_mtx1zcrptvcp0i1q",
+   "name": "Casilda",
+   "cell": {
+    "cx": 15,
+    "cz": 15,
+    "x": 15,
+    "z": 18
+   },
+   "markerId": "marker:town",
+   "encounters": [],
+   "notes": []
+  }
+ ]
 }

@@ -37,15 +37,15 @@
    ]
   },
   {
-   "id": "poi_mtw1awx8as7i6iaz",
-   "name": "New place",
+   "id": "poi_mtw99ji1znqwm91q",
+   "name": "Roque Fort",
    "cell": {
     "cx": 15,
     "cz": 15,
-    "x": 13,
-    "z": 14
+    "x": 8,
+    "z": 8
    },
-   "markerId": "marker:village",
+   "markerId": "marker:fort",
    "encounters": [],
    "notes": []
   }

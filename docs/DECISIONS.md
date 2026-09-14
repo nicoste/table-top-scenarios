@@ -2369,3 +2369,32 @@ drift the moment a sixth tool is added, in either direction: a tool that can
 select but not hold opens an inspector that the next render wipes, and one that
 holds but cannot select keeps a stale panel. Neither is reachable while the test
 stands.
+
+### O-023 — The Browser pane cannot launch the host itself · `open (environment, not code)`
+`.claude/launch.json` is correct and unusable on this machine. Starting it via
+the Browser pane's launcher dies before any project code runs:
+
+```
+Error: EPERM: process.cwd failed with error operation not permitted, uv_cwd
+```
+
+**Not** a missing directory — the message is *Operation not permitted*, not *No
+such file*. The launcher's subprocess is denied permission to read the working
+directory at all, so npm throws in its own bootstrap calling `process.cwd()`.
+
+Isolated with a controlled probe: the identical command serving from `/tmp`
+starts fine, and from `~/Documents/Projects/table-top-scenarios` it fails. That
+is macOS privacy protection on the Documents folder — the desktop app's spawned
+process has not been granted access to it. Wrapping the command in
+`sh -c 'cd <abs> && …'` does not help: the `cd` is refused for the same reason.
+
+Nothing in this repo can fix it. Two ways out:
+
+- Grant the app access — System Settings → Privacy & Security → Files and
+  Folders (or Full Disk Access) → allow Claude, then restart it.
+- Or keep doing what works: start the host from a shell (`npm run start`) and
+  point the Browser pane at `http://localhost:8080/gm/`. The shell has the
+  access the launcher lacks, and the pane needs no launcher to open a URL.
+
+Left as an open item rather than "fixed" because the config is fine; the
+environment is what is missing a permission.
