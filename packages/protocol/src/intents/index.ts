@@ -2,7 +2,7 @@
 // edge with Zod (R-17); trusted everywhere inside.
 
 import { z } from 'zod';
-import { CellIndex, TerrainIdSchema, MarkerIdSchema, PoiCellSchema, WorldCellSchema } from '../wire/index.js';
+import { CellIndex, TerrainIdSchema, MarkerIdSchema, PlaceCellSchema, WorldCellSchema } from '../wire/index.js';
 import { MAX_HEIGHT, MAX_BRUSH } from '@tt/domain';
 
 const cell = { cx: z.number().int(), cz: z.number().int(), x: CellIndex, z: CellIndex };
@@ -37,31 +37,31 @@ export const IntentSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('removeMember'), id: z.string().min(1) }),
 
   // Points of interest
-  z.object({ kind: z.literal('addPoi'), cell: PoiCellSchema, name: z.string().max(60).optional(), markerId: MarkerIdSchema.optional() }),
-  z.object({ kind: z.literal('renamePoi'), id: z.string().min(1), name: z.string().max(60) }),
-  z.object({ kind: z.literal('setPoiMarker'), id: z.string().min(1), markerId: MarkerIdSchema }),
-  z.object({ kind: z.literal('movePoi'), id: z.string().min(1), cell: PoiCellSchema }),
-  z.object({ kind: z.literal('removePoi'), id: z.string().min(1) }),
+  z.object({ kind: z.literal('addPlace'), cell: PlaceCellSchema, name: z.string().max(60).optional(), markerId: MarkerIdSchema.optional() }),
+  z.object({ kind: z.literal('renamePlace'), id: z.string().min(1), name: z.string().max(60) }),
+  z.object({ kind: z.literal('setPlaceMarker'), id: z.string().min(1), markerId: MarkerIdSchema }),
+  z.object({ kind: z.literal('movePlace'), id: z.string().min(1), cell: PlaceCellSchema }),
+  z.object({ kind: z.literal('removePlace'), id: z.string().min(1) }),
 
-  // Notes on a POI
-  z.object({ kind: z.literal('addNote'), poiId: z.string().min(1), text: z.string().min(1).max(2000), visibleToParty: z.boolean().optional() }),
-  z.object({ kind: z.literal('editNote'), poiId: z.string().min(1), noteId: z.string().min(1), text: z.string().max(2000) }),
-  z.object({ kind: z.literal('setNoteVisible'), poiId: z.string().min(1), noteId: z.string().min(1), visibleToParty: z.boolean() }),
-  z.object({ kind: z.literal('removeNote'), poiId: z.string().min(1), noteId: z.string().min(1) }),
-  z.object({ kind: z.literal('moveNote'), poiId: z.string().min(1), noteId: z.string().min(1), delta: z.number().int().min(-99).max(99) }),
+  // Notes on a place
+  z.object({ kind: z.literal('addNote'), placeId: z.string().min(1), text: z.string().min(1).max(2000), visibleToParty: z.boolean().optional() }),
+  z.object({ kind: z.literal('editNote'), placeId: z.string().min(1), noteId: z.string().min(1), text: z.string().max(2000) }),
+  z.object({ kind: z.literal('setNoteVisible'), placeId: z.string().min(1), noteId: z.string().min(1), visibleToParty: z.boolean() }),
+  z.object({ kind: z.literal('removeNote'), placeId: z.string().min(1), noteId: z.string().min(1) }),
+  z.object({ kind: z.literal('moveNote'), placeId: z.string().min(1), noteId: z.string().min(1), delta: z.number().int().min(-99).max(99) }),
 
-  // Encounters a place owns. Same shape as notes: ordered, individually visible
+  // Pois a place owns. Same shape as notes: ordered, individually visible
   // (D-175). GM only — this is authored content.
-  z.object({ kind: z.literal('addEncounter'), poiId: z.string().min(1), name: z.string().min(1).max(80), visibleToParty: z.boolean().optional() }),
-  z.object({ kind: z.literal('renameEncounter'), poiId: z.string().min(1), encounterId: z.string().min(1), name: z.string().min(1).max(80) }),
-  z.object({ kind: z.literal('setEncounterVisible'), poiId: z.string().min(1), encounterId: z.string().min(1), visibleToParty: z.boolean() }),
-  z.object({ kind: z.literal('removeEncounter'), poiId: z.string().min(1), encounterId: z.string().min(1) }),
-  z.object({ kind: z.literal('moveEncounter'), poiId: z.string().min(1), encounterId: z.string().min(1), delta: z.number().int().min(-99).max(99) }),
+  z.object({ kind: z.literal('addPoi'), placeId: z.string().min(1), name: z.string().min(1).max(80), visibleToParty: z.boolean().optional() }),
+  z.object({ kind: z.literal('renamePoi'), placeId: z.string().min(1), poiId: z.string().min(1), name: z.string().min(1).max(80) }),
+  z.object({ kind: z.literal('setPoiVisible'), placeId: z.string().min(1), poiId: z.string().min(1), visibleToParty: z.boolean() }),
+  z.object({ kind: z.literal('removePoi'), placeId: z.string().min(1), poiId: z.string().min(1) }),
+  z.object({ kind: z.literal('movePoi'), placeId: z.string().min(1), poiId: z.string().min(1), delta: z.number().int().min(-99).max(99) }),
 
   // What the party knows. GM-granted; no geometry at world scale (R-16).
   z.object({ kind: z.literal('setChunkKnown'), cx: z.number().int(), cz: z.number().int(), known: z.boolean() }),
-  z.object({ kind: z.literal('setPoiRevealed'), poiId: z.string().min(1), revealed: z.boolean() }),
-  z.object({ kind: z.literal('revealChunk'), cx: z.number().int(), cz: z.number().int(), withPois: z.boolean().optional() }),
+  z.object({ kind: z.literal('setPlaceRevealed'), placeId: z.string().min(1), revealed: z.boolean() }),
+  z.object({ kind: z.literal('revealChunk'), cx: z.number().int(), cz: z.number().int(), withPlaces: z.boolean().optional() }),
 
   // Where the party stands. Open to both seats: the party is the players' and
   // the world is the GM's (R-136).

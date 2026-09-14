@@ -1,4 +1,4 @@
-// POI markers: low-poly shapes built from the data-driven spec in `domain`
+// Place markers: low-poly shapes built from the data-driven spec in `domain`
 // (R-82), plus a name label. Both appear and disappear together (R-83).
 
 import {
@@ -18,10 +18,10 @@ import { surfaceAt } from '../world/index.js';
  */
 export const MARKER_ZOOM = 55;
 
-export interface PoiMarkers {
+export interface PlaceMarkers {
   readonly group: Group;
-  /** Which POI a picked object belongs to. */
-  poiOf(object: object): string | null;
+  /** Which place a picked object belongs to. */
+  placeOf(object: object): string | null;
   /**
    * Keeps name labels a constant size **on screen**.
    *
@@ -82,7 +82,7 @@ export function nameLabel(text: string): Label {
   return { sprite, aspect: canvas.width / canvas.height };
 }
 
-export function buildPoiMarkers(campaign: Campaign): PoiMarkers {
+export function buildPlaceMarkers(campaign: Campaign): PlaceMarkers {
   const group = new Group();
   const owners = new Map<object, string>();
   const geometries: BufferGeometry[] = [];
@@ -91,11 +91,11 @@ export function buildPoiMarkers(campaign: Campaign): PoiMarkers {
   const labels: Label[] = [];
   const colour = new Color();
 
-  for (const poi of campaign.pois) {
-    const marker: Marker | null = markerById(DEFAULT_MARKERS, poi.markerId);
-    const base = surfaceAt(campaign, poi.cell);
-    const x = poi.cell.cx * CHUNK_SIZE + poi.cell.x + 0.5;
-    const z = poi.cell.cz * CHUNK_SIZE + poi.cell.z + 0.5;
+  for (const place of campaign.places) {
+    const marker: Marker | null = markerById(DEFAULT_MARKERS, place.markerId);
+    const base = surfaceAt(campaign, place.cell);
+    const x = place.cell.cx * CHUNK_SIZE + place.cell.x + 0.5;
+    const z = place.cell.cz * CHUNK_SIZE + place.cell.z + 0.5;
 
     const pin = new Group();
     pin.position.set(x, base, z);
@@ -108,16 +108,16 @@ export function buildPoiMarkers(campaign: Campaign): PoiMarkers {
       const mesh = new Mesh(geometry, material);
       mesh.position.set(part.at[0], part.at[1], part.at[2]);
       pin.add(mesh);
-      owners.set(mesh, poi.id);
+      owners.set(mesh, place.id);
       geometries.push(geometry);
       materials.push(material);
       tallest = Math.max(tallest, part.at[1] + part.size[1] / 2);
     }
 
-    const name = nameLabel(poi.name);
+    const name = nameLabel(place.name);
     name.sprite.position.set(0, tallest + 0.45, 0);
     pin.add(name.sprite);
-    owners.set(name.sprite, poi.id);
+    owners.set(name.sprite, place.id);
     textures.push(name.sprite.material.map as CanvasTexture);
     materials.push(name.sprite.material);
     labels.push(name);
@@ -127,7 +127,7 @@ export function buildPoiMarkers(campaign: Campaign): PoiMarkers {
 
   return {
     group,
-    poiOf: (object) => owners.get(object) ?? null,
+    placeOf: (object) => owners.get(object) ?? null,
     scaleLabels(zoom, viewportHeightPx) {
       if (viewportHeightPx <= 0) return;
       const height = (LABEL_PIXELS / viewportHeightPx) * zoom;

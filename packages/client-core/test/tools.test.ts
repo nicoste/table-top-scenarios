@@ -7,31 +7,31 @@ import { clickAction, holdsSelection, tableAction } from '@tt/client-core';
 import type { Tool } from '@tt/client-core';
 
 const cell = (x: number, z: number): Cell => ({ cx: 15, cz: 15, x, z });
-const EMPTY: Pointed = { pawn: null, poiId: null, cell: null, slot: null };
+const EMPTY: Pointed = { pawn: null, placeId: null, cell: null, slot: null };
 const free = { occupied: () => false };
 const taken = { occupied: () => true };
 
 const ALL_TOOLS: Tool[] = ['select', 'paint', 'height', 'places', 'travel'];
 
 describe('the bug that produced the matrix', () => {
-  const onAMarker: Pointed = { ...EMPTY, poiId: 'poi_keep', cell: cell(5, 5) };
+  const onAMarker: Pointed = { ...EMPTY, placeId: 'poi_keep', cell: cell(5, 5) };
 
-  it('does not select a POI while painting', () => {
-    // "you can select POIs while you are attempting to paint. Discovered this
+  it('does not select a place while painting', () => {
+    // "you can select places while you are attempting to paint. Discovered this
     // while painting snow around the party token."
     expect(clickAction('paint', onAMarker, free)).toEqual({ kind: 'paint', cell: cell(5, 5) });
   });
 
-  it('does not select a POI while raising ground', () => {
+  it('does not select a place while raising ground', () => {
     expect(clickAction('height', onAMarker, free)).toEqual({ kind: 'raise', cell: cell(5, 5) });
   });
 
-  it('does not select a POI while travelling', () => {
+  it('does not select a place while travelling', () => {
     expect(clickAction('travel', onAMarker, free)).toEqual({ kind: 'nothing' });
   });
 
   it('still selects it with the neutral tool', () => {
-    expect(clickAction('select', onAMarker, free)).toEqual({ kind: 'selectPoi', poiId: 'poi_keep' });
+    expect(clickAction('select', onAMarker, free)).toEqual({ kind: 'selectPlace', placeId: 'poi_keep' });
   });
 });
 
@@ -68,15 +68,15 @@ describe('places', () => {
   it('ignores a marker under the pointer and looks at the cell', () => {
     // The marker's own cell is what `render` reports (D-163), so this is the
     // occupied case and the click is dropped.
-    expect(clickAction('places', { ...EMPTY, poiId: 'poi_keep', cell: cell(5, 5) }, taken))
+    expect(clickAction('places', { ...EMPTY, placeId: 'poi_keep', cell: cell(5, 5) }, taken))
       .toEqual({ kind: 'nothing' });
   });
 });
 
 describe('select', () => {
-  it('prefers a POI over its chunk', () => {
-    expect(clickAction('select', { ...EMPTY, poiId: 'poi_keep', cell: cell(5, 5) }, free))
-      .toEqual({ kind: 'selectPoi', poiId: 'poi_keep' });
+  it('prefers a place over its chunk', () => {
+    expect(clickAction('select', { ...EMPTY, placeId: 'poi_keep', cell: cell(5, 5) }, free))
+      .toEqual({ kind: 'selectPlace', placeId: 'poi_keep' });
   });
 
   it('selects the chunk from bare ground', () => {
@@ -95,7 +95,7 @@ describe('an empty slot is not a mode (R-79)', () => {
   });
 
   it('wins even when a marker is somehow also under the pointer', () => {
-    const both: Pointed = { ...EMPTY, poiId: 'poi_keep', slot: { cx: 16, cz: 15 } };
+    const both: Pointed = { ...EMPTY, placeId: 'poi_keep', slot: { cx: 16, cz: 15 } };
     expect(clickAction('select', both, free).kind).toBe('createChunk');
   });
 });
@@ -132,13 +132,13 @@ describe('which tool holds a selection (D-168)', () => {
     // also hold it, or its inspector opens and is wiped by the next render;
     // one that cannot select must not hold one, or a stale panel lingers.
     // This fails if only one of the two is updated.
-    const onAMarker: Pointed = { ...EMPTY, poiId: 'poi_keep', cell: cell(5, 5) };
+    const onAMarker: Pointed = { ...EMPTY, placeId: 'poi_keep', cell: cell(5, 5) };
     const onGround: Pointed = { ...EMPTY, cell: cell(5, 5) };
 
     for (const tool of ALL_TOOLS) {
       const canSelect = [onAMarker, onGround]
         .map((pointed) => clickAction(tool, pointed, free).kind)
-        .some((kind) => kind === 'selectPoi' || kind === 'selectChunk');
+        .some((kind) => kind === 'selectPlace' || kind === 'selectChunk');
       expect(holdsSelection(tool), tool).toBe(canSelect);
     }
   });
@@ -146,14 +146,14 @@ describe('which tool holds a selection (D-168)', () => {
 
 describe('the table display has no tools, so the rule is different (D-174)', () => {
   const onAPawn: Pointed = { ...EMPTY, pawn: { memberId: null }, cell: cell(7, 7) };
-  const onAPlace: Pointed = { ...EMPTY, poiId: 'poi_keep', cell: cell(5, 5) };
+  const onAPlace: Pointed = { ...EMPTY, placeId: 'poi_keep', cell: cell(5, 5) };
 
   it('starts a move from a pawn', () => {
     expect(tableAction(onAPawn, false)).toEqual({ kind: 'pickPawn', pawn: { memberId: null } });
   });
 
   it('selects a place', () => {
-    expect(tableAction(onAPlace, false)).toEqual({ kind: 'selectPoi', poiId: 'poi_keep' });
+    expect(tableAction(onAPlace, false)).toEqual({ kind: 'selectPlace', placeId: 'poi_keep' });
   });
 
   it('clears the selection on bare ground', () => {
@@ -174,7 +174,7 @@ describe('the table display has no tools, so the rule is different (D-174)', () 
   it('never offers a player anything that edits the world', () => {
     // Whatever is under the pointer, on either branch, the answer is one of
     // four — and none of them paints, raises, places or selects a chunk (R-136).
-    const allowed = new Set(['nothing', 'travel', 'pickPawn', 'selectPoi', 'clearSelection']);
+    const allowed = new Set(['nothing', 'travel', 'pickPawn', 'selectPlace', 'clearSelection']);
     for (const aiming of [true, false]) {
       for (const pointed of [onAPawn, onAPlace, EMPTY, { ...EMPTY, slot: { cx: 1, cz: 1 } }]) {
         expect(allowed.has(tableAction(pointed, aiming).kind)).toBe(true);

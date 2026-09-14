@@ -15,7 +15,7 @@ const versionOneSave = {
   schemaVersion: 1,
   label: 'Live',
   savedAt: AT,
-  discovery: { chunks: ['1,1'], pois: [] },
+  discovery: { chunks: ['1,1'], places: [] },
 };
 
 describe('a save written before the party could be placed', () => {

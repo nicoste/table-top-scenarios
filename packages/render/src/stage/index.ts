@@ -13,8 +13,8 @@ import type { CameraTarget } from '../camera/index.js';
 import { applyTarget, clampTarget, createCamera, defaultTarget, PITCH_STEPS, yawRadians } from '../camera/index.js';
 import type { ColumnAddress, WorldMeshes } from '../world/index.js';
 import { buildWorldMeshes, columnCentre, worldCentre, HEIGHT_SCALE } from '../world/index.js';
-import type { PoiMarkers } from '../pois/index.js';
-import { buildPoiMarkers, MARKER_ZOOM } from '../pois/index.js';
+import type { PlaceMarkers } from '../places/index.js';
+import { buildPlaceMarkers, MARKER_ZOOM } from '../places/index.js';
 import type { PartyPawns, PawnRef } from '../pawns/index.js';
 import { buildPartyPawns } from '../pawns/index.js';
 import { intendedCell } from '../picking/index.js';
@@ -31,7 +31,7 @@ export interface SlotAddress { readonly cx: number; readonly cz: number }
  */
 export interface Picked {
   readonly pawn: PawnRef | null;
-  readonly poiId: string | null;
+  readonly placeId: string | null;
   /** The cell, whatever is standing on it. */
   readonly column: ColumnAddress | null;
   /** An empty neighbouring slot where a chunk could be created. */
@@ -52,7 +52,7 @@ export class Stage {
   private readonly highlight: LineSegments;
   private readonly slots = new Group();
   private world: WorldMeshes | null = null;
-  private pois: PoiMarkers | null = null;
+  private places: PlaceMarkers | null = null;
   private pawns: PartyPawns | null = null;
   /** Held because pawns are rebuilt on their own schedule, not the world's. */
   private campaign: Campaign | null = null;
@@ -90,7 +90,7 @@ export class Stage {
 
   setCampaign(campaign: Campaign | null, recentre = false): void {
     if (this.world) { this.scene.remove(this.world.mesh); this.world.dispose(); this.world = null; }
-    if (this.pois) { this.scene.remove(this.pois.group); this.pois.dispose(); this.pois = null; }
+    if (this.places) { this.scene.remove(this.places.group); this.places.dispose(); this.places = null; }
     this.dropPawns();
     this.campaign = campaign;
     if (!campaign) this.setFogChunks([]);
@@ -106,8 +106,8 @@ export class Stage {
     this.world = buildWorldMeshes(campaign);
     this.scene.add(this.world.mesh);
 
-    this.pois = buildPoiMarkers(campaign);
-    this.scene.add(this.pois.group);
+    this.places = buildPlaceMarkers(campaign);
+    this.scene.add(this.places.group);
 
     this.campaign = campaign;
     this.rebuildPawns();
@@ -263,11 +263,11 @@ export class Stage {
       }
     }
 
-    let poiId: string | null = null;
-    if (this.pois && this.pois.group.visible) {
-      for (const hit of this.raycaster.intersectObjects(this.pois.group.children, true)) {
-        poiId = this.pois.poiOf(hit.object);
-        if (poiId) break;
+    let placeId: string | null = null;
+    if (this.places && this.places.group.visible) {
+      for (const hit of this.raycaster.intersectObjects(this.places.group.children, true)) {
+        placeId = this.places.placeOf(hit.object);
+        if (placeId) break;
       }
     }
 
@@ -278,7 +278,7 @@ export class Stage {
     }
     // Which cell that *meant* is a rule, and it lives in `picking` where it can
     // be tested without a GL context (R-87c, D-163).
-    const column = intendedCell({ pawn, poiId, rayCell }, this.campaign, this.placement);
+    const column = intendedCell({ pawn, placeId, rayCell }, this.campaign, this.placement);
 
     let slot: SlotAddress | null = null;
     if (!column) {
@@ -287,7 +287,7 @@ export class Stage {
       }
     }
 
-    return { pawn, poiId, column, slot };
+    return { pawn, placeId, column, slot };
   }
 
   /**
@@ -317,10 +317,10 @@ export class Stage {
   render(): void {
     this.syncCamera();
     // Markers and their names share one threshold and toggle together (R-83).
-    if (this.pois) {
-      this.pois.group.visible = this.target.zoom <= MARKER_ZOOM;
-      if (this.pois.group.visible) {
-        this.pois.scaleLabels(this.target.zoom, this.canvas.clientHeight || 1);
+    if (this.places) {
+      this.places.group.visible = this.target.zoom <= MARKER_ZOOM;
+      if (this.places.group.visible) {
+        this.places.scaleLabels(this.target.zoom, this.canvas.clientHeight || 1);
       }
     }
     // The party shares the threshold, so pawns and places come and go together.
@@ -337,7 +337,7 @@ export class Stage {
     instances--;
     this.setFogChunks([]);
     this.pawns?.dispose();
-    this.pois?.dispose();
+    this.places?.dispose();
     this.world?.dispose();
     this.renderer.dispose();
   }

@@ -43,7 +43,7 @@ export function ChunkInspector({ coord, known, poiCount, revealedPoiCount, dispa
 
       {poiCount > 0 && (
         <div className="row">
-          <button onClick={() => dispatch({ kind: 'revealChunk', cx: coord.cx, cz: coord.cz, withPois: true })}>
+          <button onClick={() => dispatch({ kind: 'revealChunk', cx: coord.cx, cz: coord.cz, withPlaces: true })}>
             Reveal chunk + places
           </button>
         </div>

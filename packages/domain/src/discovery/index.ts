@@ -5,35 +5,35 @@
 // by structural equality, so the `Set<ChunkCoord>` in the R-8 illustration would
 // silently hold duplicates. Strings are also what World.chunks already keys on.
 
-import type { PoiId } from '../ids/index.js';
+import type { PlaceId } from '../ids/index.js';
 import type { ChunkCoord } from '../world/index.js';
 import { chunkKey } from '../world/index.js';
 
 export interface Discovery {
   /** Chunks the party has been shown, by `chunkKey`. Known in R-16's sense. */
   readonly chunks: ReadonlySet<string>;
-  /** POIs the party has been shown. Revealed in R-16's sense. */
-  readonly pois: ReadonlySet<PoiId>;
+  /** places the party has been shown. Revealed in R-16's sense. */
+  readonly places: ReadonlySet<PlaceId>;
 }
 
 export function emptyDiscovery(): Discovery {
-  return { chunks: new Set(), pois: new Set() };
+  return { chunks: new Set(), places: new Set() };
 }
 
 export function isChunkKnown(discovery: Discovery, coord: ChunkCoord): boolean {
   return discovery.chunks.has(chunkKey(coord));
 }
 
-export function isPoiRevealed(discovery: Discovery, id: PoiId): boolean {
-  return discovery.pois.has(id);
+export function isPlaceRevealed(discovery: Discovery, id: PlaceId): boolean {
+  return discovery.places.has(id);
 }
 
 function withChunks(discovery: Discovery, chunks: ReadonlySet<string>): Discovery {
-  return { chunks, pois: discovery.pois };
+  return { chunks, places: discovery.places };
 }
 
-function withPois(discovery: Discovery, pois: ReadonlySet<PoiId>): Discovery {
-  return { chunks: discovery.chunks, pois };
+function withPlaces(discovery: Discovery, places: ReadonlySet<PlaceId>): Discovery {
+  return { chunks: discovery.chunks, places };
 }
 
 export function setChunkKnown(discovery: Discovery, coord: ChunkCoord, known: boolean): Discovery {
@@ -44,49 +44,49 @@ export function setChunkKnown(discovery: Discovery, coord: ChunkCoord, known: bo
   return withChunks(discovery, chunks);
 }
 
-export function setPoiRevealed(discovery: Discovery, id: PoiId, revealed: boolean): Discovery {
-  if (discovery.pois.has(id) === revealed) return discovery;
-  const pois = new Set(discovery.pois);
-  if (revealed) pois.add(id); else pois.delete(id);
-  return withPois(discovery, pois);
+export function setPlaceRevealed(discovery: Discovery, id: PlaceId, revealed: boolean): Discovery {
+  if (discovery.places.has(id) === revealed) return discovery;
+  const places = new Set(discovery.places);
+  if (revealed) places.add(id); else places.delete(id);
+  return withPlaces(discovery, places);
 }
 
-/** Reveals or hides several POIs at once — the GM revealing a chunk's contents. */
-export function setPoisRevealed(
+/** Reveals or hides several places at once — the GM revealing a chunk's contents. */
+export function setPlacesRevealed(
   discovery: Discovery,
-  ids: readonly PoiId[],
+  ids: readonly PlaceId[],
   revealed: boolean,
 ): Discovery {
   let next = discovery;
-  for (const id of ids) next = setPoiRevealed(next, id, revealed);
+  for (const id of ids) next = setPlaceRevealed(next, id, revealed);
   return next;
 }
 
 /**
- * A POI is on the table's screen only when its POI is Revealed **and** its chunk
+ * A place is on the table's screen only when its place is Revealed **and** its chunk
  * is Known.
  *
  * Both, never either. R-16 makes the two flags independent, which reads as "a
  * known chunk can still hold secrets" — but the same independence allows a
- * Revealed POI inside an Unknown chunk, and sending that would put a place, its
+ * Revealed place inside an Unknown chunk, and sending that would put a place, its
  * name and its position on screen inside a region the party has never seen
  * (D-132).
  */
-export function isPoiOnTable(
+export function isPlaceOnTable(
   discovery: Discovery,
-  poi: { readonly id: PoiId; readonly cell: { readonly cx: number; readonly cz: number } },
+  place: { readonly id: PlaceId; readonly cell: { readonly cx: number; readonly cz: number } },
 ): boolean {
-  return isPoiRevealed(discovery, poi.id)
-    && isChunkKnown(discovery, { cx: poi.cell.cx, cz: poi.cell.cz });
+  return isPlaceRevealed(discovery, place.id)
+    && isChunkKnown(discovery, { cx: place.cell.cx, cz: place.cell.cz });
 }
 
-export function discoveryToJSON(discovery: Discovery): { chunks: string[]; pois: string[] } {
-  return { chunks: [...discovery.chunks].sort(), pois: [...discovery.pois].sort() };
+export function discoveryToJSON(discovery: Discovery): { chunks: string[]; places: string[] } {
+  return { chunks: [...discovery.chunks].sort(), places: [...discovery.places].sort() };
 }
 
-export function discoveryFromJSON(json: { chunks?: string[]; pois?: string[] }): Discovery {
+export function discoveryFromJSON(json: { chunks?: string[]; places?: string[] }): Discovery {
   return {
     chunks: new Set(json.chunks ?? []),
-    pois: new Set((json.pois ?? []) as PoiId[]),
+    places: new Set((json.places ?? []) as PlaceId[]),
   };
 }

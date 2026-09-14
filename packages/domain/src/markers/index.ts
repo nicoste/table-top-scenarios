@@ -1,4 +1,4 @@
-// POI markers. Cosmetic only (R-82): a castle and a cave differ in what is
+// Place markers. Cosmetic only (R-82): a castle and a cave differ in what is
 // drawn and in nothing else.
 //
 // A marker is described as **data** — a few primitives with offsets — not as a
@@ -50,7 +50,7 @@ const marker = (value: string, name: string, parts: readonly MarkerPart[]): Mark
 
 /**
  * The starting set. Append-only (R-11): entries may be added, never renamed or
- * reordered, because POIs reference these ids.
+ * reordered, because places reference these ids.
  */
 export const DEFAULT_MARKERS: readonly Marker[] = [
   marker('village', 'Village', [
@@ -125,7 +125,7 @@ export const DEFAULT_MARKERS: readonly Marker[] = [
   ]),
 ];
 
-/** What a new POI gets before the GM picks something. */
+/** What a new place gets before the GM picks something. */
 export const DEFAULT_MARKER: MarkerId = registryId<'MarkerId'>('marker', 'village');
 
 export function markerById(markers: readonly Marker[], id: MarkerId): Marker | null {

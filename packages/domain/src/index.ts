@@ -6,7 +6,7 @@ export {
   isRegistryId, registryId, freshId,
 } from './ids/index.js';
 export type {
-  CampaignId, SaveId, MemberId, TerrainId, PoiId, NoteId, EncounterId, MarkerId,
+  CampaignId, SaveId, MemberId, TerrainId, PlaceId, NoteId, PoiId, MarkerId,
 } from './ids/index.js';
 
 export type { Terrain, Difficulty } from './terrain/index.js';
@@ -37,21 +37,21 @@ export {
 export type { Marker, MarkerPart, PartShape } from './markers/index.js';
 export { DEFAULT_MARKERS, DEFAULT_MARKER, markerById, isKnownMarker } from './markers/index.js';
 
-export type { Poi, PoiNote, PoiCell, PoiEncounter } from './poi/index.js';
+export type { Place, PlaceNote, PlaceCell, Poi } from './place/index.js';
 export {
-  MAX_POI_NAME, MAX_NOTE_TEXT, sameCell, poiGlobal, poiCellFromGlobal, isValidPoiCell,
-  poiAt, poiById, poisInChunk,
-  addPoi, renamePoi, setPoiMarker, movePoi, removePoi,
+  MAX_PLACE_NAME, MAX_NOTE_TEXT, sameCell, placeGlobal, placeCellFromGlobal, isValidPlaceCell,
+  placeAt, placeById, placesInChunk,
+  addPlace, renamePlace, setPlaceMarker, movePlace, removePlace,
   addNote, editNote, setNoteVisible, removeNote, moveNote, partyVisibleNotes,
-  MAX_ENCOUNTER_NAME, moveWithin,
-  addEncounter, renameEncounter, setEncounterVisible, removeEncounter, moveEncounter,
-  partyVisibleEncounters,
-} from './poi/index.js';
+  MAX_POI_NAME, moveWithin,
+  addPoi, renamePoi, setPoiVisible, removePoi, movePoi,
+  partyVisiblePois,
+} from './place/index.js';
 
 export type { Discovery } from './discovery/index.js';
 export {
-  emptyDiscovery, isChunkKnown, isPoiRevealed, setChunkKnown, setPoiRevealed,
-  setPoisRevealed, isPoiOnTable, discoveryToJSON, discoveryFromJSON,
+  emptyDiscovery, isChunkKnown, isPlaceRevealed, setChunkKnown, setPlaceRevealed,
+  setPlacesRevealed, isPlaceOnTable, discoveryToJSON, discoveryFromJSON,
 } from './discovery/index.js';
 
 export type { Save } from './save/index.js';

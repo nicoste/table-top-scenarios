@@ -4,16 +4,17 @@
 // way the campaign already does, so a GM cannot lose discovery by forgetting.
 // There is no second kind and no save/load verb anywhere in the UI (D-147).
 
-import type { CampaignId, SaveId, PoiId, MemberId } from '../ids/index.js';
+import type { CampaignId, SaveId, PlaceId, MemberId } from '../ids/index.js';
 import type { Discovery } from '../discovery/index.js';
 import { emptyDiscovery } from '../discovery/index.js';
 import type { Placement } from '../placement/index.js';
 import { emptyPlacement, prunePlacement } from '../placement/index.js';
 import type { Campaign } from '../campaign/index.js';
 
-// 2 adds `placement` (D-155). A version-1 save decodes with the party unplaced,
-// which is exactly right: it was written before the party could be placed.
-export const SAVE_SCHEMA_VERSION = 2;
+// 3 renames discovery's `pois` to `places`, following the campaign (D-176).
+// Like the campaign, there is no migration: the same field name meant a
+// different thing before, and guessing which is worse than starting clean.
+export const SAVE_SCHEMA_VERSION = 3;
 export const LIVE_LABEL = 'Live';
 
 export interface Save {
@@ -95,15 +96,15 @@ export function withPlacement(save: Save, placement: Placement): Save {
 }
 
 /**
- * Discovery can name a POI the GM has since deleted. That is tolerated rather
+ * Discovery can name a place the GM has since deleted. That is tolerated rather
  * than an error — the same tolerance R-9 gives a stale overlay entry — but
  * opening the campaign is a good moment to drop them so the set does not grow
  * forever.
  */
-export function pruneDiscovery(save: Save, livePoiIds: ReadonlySet<PoiId>): Save {
-  const pois = new Set([...save.discovery.pois].filter((id) => livePoiIds.has(id)));
-  if (pois.size === save.discovery.pois.size) return save;
-  return withDiscovery(save, { chunks: save.discovery.chunks, pois });
+export function pruneDiscovery(save: Save, livePlaceIds: ReadonlySet<PlaceId>): Save {
+  const places = new Set([...save.discovery.places].filter((id) => livePlaceIds.has(id)));
+  if (places.size === save.discovery.places.size) return save;
+  return withDiscovery(save, { chunks: save.discovery.chunks, places });
 }
 
 /** The same tolerance for a member who has left the roster (D-155). */

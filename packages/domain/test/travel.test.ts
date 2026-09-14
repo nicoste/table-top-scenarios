@@ -108,7 +108,7 @@ describe('the scales, derived so they cannot go stale', () => {
     expect(Math.abs(miles - 1)).toBeLessThan(0.07);
   });
 
-  it('makes a world cell exactly 1000 encounter cells', () => {
+  it('makes a world cell exactly 1000 poi cells', () => {
     expect(DEFAULT_METRES_PER_CELL / 1.5).toBe(1000);
   });
 

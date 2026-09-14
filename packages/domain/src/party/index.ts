@@ -1,5 +1,5 @@
 // Party members are campaign-level *definitions* (R-91). The GM edits the roster
-// once; members are instanced onto encounter maps on arrival.
+// once; members are instanced onto poi maps on arrival.
 
 import type { MemberId } from '../ids/index.js';
 import { freshId } from '../ids/index.js';

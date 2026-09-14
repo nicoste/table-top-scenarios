@@ -1,7 +1,7 @@
 // The party on the map: a chess pawn per member in that member's colour (D-083),
 // plus the translucent ghost that shows where a move would land (R-132).
 //
-// Same treatment as a POI marker and the same zoom threshold (R-90, R-83) — it
+// Same treatment as a place marker and the same zoom threshold (R-90, R-83) — it
 // differs in moving, and in being pickable on both screens.
 
 import {
@@ -11,7 +11,7 @@ import type { BufferGeometry, CanvasTexture, Material, Sprite } from 'three';
 import type { Campaign, PartyMember, Placement, WorldCell } from '@tt/domain';
 import { CHUNK_SIZE, pawns as pawnsOf } from '@tt/domain';
 import { surfaceAt } from '../world/index.js';
-import { LABEL_PIXELS, nameLabel } from '../pois/index.js';
+import { LABEL_PIXELS, nameLabel } from '../places/index.js';
 
 /** Which pawn was picked: a member, or the whole party travelling together. */
 export interface PawnRef {

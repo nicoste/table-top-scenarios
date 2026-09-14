@@ -1,9 +1,9 @@
-// The party roster: campaign-level definitions, instanced into encounter maps
+// The party roster: campaign-level definitions, instanced into poi maps
 // later (R-91). Plus where they are standing, which is play state (D-155).
 //
-// **No vision field here.** It is an encounter quantity — 12 cells at the
-// encounter cell (R-46a) — and beside a 1.5 km world cell it reads as 18 km of
-// sight. It stays in the model, unrendered, until encounters exist (R-135).
+// **No vision field here.** It is an poi quantity — 12 cells at the
+// poi cell (R-46a) — and beside a 1.5 km world cell it reads as 18 km of
+// sight. It stays in the model, unrendered, until pois exist (R-135).
 
 import type { Intent, PlacementWire } from '@tt/protocol';
 import type { CampaignWire } from '@tt/protocol';

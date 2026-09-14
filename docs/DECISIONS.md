@@ -13,7 +13,7 @@ Status: `agreed` · `proposed` (made unilaterally, awaiting confirmation) ·
 ### D-001 — TypeScript + three.js, not Unity · `agreed`
 It is a **tool**, not a game. The two things Unity gave the prototype most —
 physics raycasts as vision and scenes as maps — were both being discarded anyway.
-The remaining work is dominated by UI (world builder, encounter builder, POI
+The remaining work is dominated by UI (world builder, point of interest builder, place
 inspector, travel calculator, notes, palettes, campaign picker) and by
 persistence, where HTML/CSS and Node are simply better tools. Browser delivery
 also means the table display runs on whatever hardware is in the room.
@@ -36,7 +36,7 @@ filter on all future feature requests rather than a footnote.
 at voxel detail in the world view (see R-12 and D-010).
 
 ### D-005 — Discovery is GM-granted, not computed · `agreed`
-Players tap a POI, or the centre of a chunk they know nothing about. The actual
+Players tap a place, or the centre of a chunk they know nothing about. The actual
 scouting happens off-tool; the GM then reveals. No world-scale line of sight.
 Encoded as R-16.
 
@@ -48,7 +48,7 @@ D-006, D-007 and D-013 were approved on review. The rest still carry
 `proposed` and are open to challenge.
 
 ### D-006 — Campaign and save are separate stores · `agreed`
-Authored content (world, terrain, POIs, encounter maps, registries) lives in a
+Authored content (world, terrain, places, encounter maps, registries) lives in a
 campaign file. Play state (token positions, discovery, fog, notes) lives in a
 save that references the campaign by id and schema version.
 **Why:** if they share a file, saving a session forks the entire world and
@@ -59,7 +59,7 @@ like to reverse later.
 Chunk terrain (columnar) is a constrained case of a sparse voxel grid, so world
 and encounter maps share one implementation, one serialiser and one renderer.
 The world builder's brushes preserve the one-column-per-cell invariant; the
-encounter builder's do not. **Why:** the alternative is two of everything.
+point of interest builder's do not. **Why:** the alternative is two of everything.
 
 ### D-008 — GM console and table display are separate apps · `agreed`
 Not one app with `if (role === 'gm')`. `apps/gm` and `apps/table` share
@@ -97,7 +97,7 @@ checked it. Unchecked rules are decoration.
 common corruption bug in voxel projects and it is free to prevent now.
 
 ### D-014 — Branded id types · `proposed`
-`type PoiId = string & { __poi: true }`. **Why:** `PoiId` and `EncounterId` are
+`type PlaceId = string & { __poi: true }`. **Why:** `PlaceId` and `EncounterId` are
 both strings, and passing one where the other belongs should not compile.
 
 ### D-015 — Plain data + pure functions; no singletons · `proposed`
@@ -137,7 +137,7 @@ multipliers, and terrain cost derived from column height and colour?
 ### O-002 — Encounter map bounds · `resolved by D-022, D-023, D-024`
 Default footprint and vertical extent. The prototype used 26×26×12 and it felt
 small for a village, generous for a room. Is the encounter map the same 20×20 as
-a chunk, or its own size per POI?
+a chunk, or its own size per place?
 
 ### O-003 — Mid-session terrain editing · `resolved by D-020`
 See D-009. Does the GM ever reshape an encounter map while the party is standing
@@ -222,10 +222,10 @@ as a cautionary example of an unenforced rule.
 ### O-006 — Travel calculator specifics · `resolved by D-044`
 Pace presets (forced march / normal / cautious) as multipliers on 200 m cells?
 And should terrain cost be derived from column height and colour, or set by hand
-per POI-to-POI link?
+per place-to-place link?
 
 ### O-007 — Encounter map ↔ chunk relationship · `resolved by D-042`
-A POI sits on one 200 m world cell but its encounter map may be 150×150 m. Is
+A place sits on one 200 m world cell but its encounter map may be 150×150 m. Is
 that a deliberate abstraction we simply accept, or should the tool relate them?
 My instinct is accept it and never mention it again.
 
@@ -236,7 +236,7 @@ My instinct is accept it and never mention it again.
 ### D-029 — God view only, orthographic, stepped angles · `agreed`
 Nicolás: *"I imagine this tool always as a god view, isometric... it's fog of war
 shared by tokens, from an isometric view."* One camera rig across world, chunk
-and encounter; zooming in changes the `MapRef`, not the camera mode. Yaw in 45°
+and point of interest; zooming in changes the `MapRef`, not the camera mode. Yaw in 45°
 steps, pitch stepped 30/35/40/45. Orthographic is confirmed as the choice rather
 than the fallback: it keeps cube sizes and the grid legible at any zoom, and the
 Unity prototype already had it working. Encoded as R-29 through R-32.
@@ -358,7 +358,7 @@ protect. Expect this area to be revisited more than any other in the project.
 
 ---
 
-## Round 5 — knowledge, sight height, travel, POIs
+## Round 5 — knowledge, sight height, travel, places
 
 ### D-041 — Eye height is 1.2 × cell; one cube does not block, two do · `agreed`
 **Reverses my own R-43 from round 4.** I had proposed 0.9 cells so that a single
@@ -380,19 +380,19 @@ Formally: feet at height *f* sees over walls ≤ *f+1*, blocked by ≥ *f+2*.
 **R-43a** makes the ratio's `(1.0, 2.0)` bound a tested invariant, because either
 end silently destroys the rule.
 
-### D-042 — A POI's maps have no geometric relation to its world cell · `agreed`
-Answers **O-007**. A POI sits on one 200 m cell, may have a 3×3 footprint, and
+### D-042 — A place's maps have no geometric relation to its world cell · `agreed`
+Answers **O-007**. A place sits on one 200 m cell, may have a 3×3 footprint, and
 its market map may be 150 m across while its dungeon is bigger than the realm
 above it. Accepted abstraction, never surfaced in the UI, never validated.
 Encoded as R-50 and R-51.
 
-### D-043 — A POI owns an ordered list of encounter maps · `agreed`
-**Supersedes D-023.** Nicolás: *"the POI should handle a list of encounter maps...
-all floors for 1 POI. Also the reign example buys it, the main square, the market,
+### D-043 — A place owns an ordered list of encounter maps · `agreed`
+**Supersedes D-023.** Nicolás: *"the place should handle a list of encounter maps...
+all floors for 1 place. Also the reign example buys it, the main square, the market,
 etc."*
 
 This is a better model than the map-to-map linking I proposed for multi-level
-dungeons. The POI is the container, so there is nothing to link — dungeon floors
+dungeons. The place is the container, so there is nothing to link — dungeon floors
 and a realm's districts are the same structure. Navigation picks from a named
 list, and `MapRef` gains an `encounterId` (R-13).
 
@@ -420,7 +420,7 @@ the alternative leaks the terrain difficulty of land nobody has seen. Encoded as
 R-55. **Say if you would rather both screens show the true number.**
 
 ### D-046 — Chunk knowledge is two states; unknown hides terrain shape · `agreed`
-A chunk is `Unknown` or `Known`; a POI is `Hidden` or `Revealed`, independently,
+A chunk is `Unknown` or `Known`; a place is `Hidden` or `Revealed`, independently,
 so a known chunk can still hold secrets.
 
 The part worth confirming: an `Unknown` chunk renders as a **featureless
@@ -442,14 +442,14 @@ want it.
 ### D-048 — Unknown chunks are inert; the map grows through a four-step loop · `agreed`
 Nicolás: *"I think it could be better to forbid player to click on undiscovered
 chunks, instead of that, they travel to the edge of a known chunk, do the scout
-off-tool flow, the GM unveils the chunk with as many POIs are accurate, and then
+off-tool flow, the GM unveils the chunk with as many places are accurate, and then
 the players do a separated travel. Simpler, easier."*
 
 The loop (R-57):
 
 1. party travels to a cell at the edge of known territory
 2. scouting happens **off-tool**
-3. the GM reveals the adjacent chunk and whichever POIs are accurate
+3. the GM reveals the adjacent chunk and whichever places are accurate
 4. the party makes a **separate journey** into it
 
 Every step is an action the tool already has. No request affordance, no queue, no
@@ -472,8 +472,8 @@ clickable, not selectable, not a travel target (R-16a).
 
 ### D-049 — The party has a world-map position · `agreed`
 Implied by *"travel to the edge of a known chunk"*: the destination is a place, not
-only a POI. So the party is a marker at a chunk coordinate plus a cell, and travel
-targets are any cell in a `Known` chunk or a `Revealed` POI anchor. Time passing
+only a place. So the party is a marker at a chunk coordinate plus a cell, and travel
+targets are any cell in a `Known` chunk or a `Revealed` place anchor. Time passing
 stays off-tool — the tool moves the marker and reports distance and duration.
 Encoded as R-58.
 
@@ -506,18 +506,18 @@ withdrawn: every routed cell is known, so there is no estimate to diverge.
 
 ### D-051 — Hybrid storage: JSON structure, packed voxels, campaign as a directory · `agreed`
 **Supersedes D-016.** My original "JSON files on disk" did not survive the
-arithmetic: ~20 POIs with a few levels each is several hundred thousand filled
+arithmetic: ~20 places with a few levels each is several hundred thousand filled
 cubes, which is 10–35 MB as one JSON entry per cube, rewritten whole on every
 save.
 
-Structure stays JSON (manifest, world, POIs, registries, all saves); voxel bodies
+Structure stays JSON (manifest, world, places, registries, all saves); voxel bodies
 get a per-32³-chunk palette plus RLE, landing the same content at 1–3 MB. And a
 campaign becomes a **directory**, so editing one dungeon level rewrites one file.
 Encoded as R-59, R-60, R-61.
 
 ### D-033 — partly confirmed, clamp deferred
 Ground stalks and picking-ignores-faded-geometry are agreed and cheap. The
-**view-height clamp** is deferred: it is entangled with the encounter-map level
+**view-height clamp** is deferred: it is entangled with the point of interest-map level
 question now recorded as O-009.
 
 ---
@@ -543,7 +543,7 @@ The tension, stated plainly:
 
 So the same geometry is playable at one level and scenery at the others, and
 "which level am I resolving vision on" becomes the hard question. This blocks the
-view-height clamp (D-033), interacts with R-49 (a POI owns many maps) and with
+view-height clamp (D-033), interacts with R-49 (a place owns many maps) and with
 R-42 (whole-cube granularity).
 
 On hold at Nicolás's request until the remaining confirmations are done.
@@ -593,7 +593,7 @@ D-015 made concrete, and the direct fix for `Token.cs` calling
 Not chosen, and R-24 requires a decision before adding it. The internal structure
 above is framework-agnostic, so this can be answered late — but not never.
 
-The UI volume is large (two builders, POI inspector, travel, notes, palettes,
+The UI volume is large (two builders, place inspector, travel, notes, palettes,
 campaign picker, session control), and three.js owns the canvas regardless — the
 framework only draws the panels around it.
 
@@ -687,9 +687,9 @@ be anchored: I changed things that were already right rather than looking harder
 at the thing that was flagged.
 
 ### D-038 — rejected
-*"the encounter vision is calculated, the GM can reveal POIs or chunks in the
+*"the point of interest vision is calculated, the GM can reveal places or chunks in the
 world map only."* No manual fog painting on encounter maps. GM revelation is
-world-scale only — chunks and POIs. R-47 removed.
+world-scale only — chunks and places. R-47 removed.
 
 ### D-062 — The two revelation mechanisms stay separate · `agreed`
 I briefly merged R-15 and R-16 into one "revealed set with GM authorship and
@@ -720,7 +720,7 @@ than silently swapped, because nothing has been decided.
 
 ---
 
-## Round 11 — encounter vision
+## Round 11 — point of interest vision
 
 ### D-064 — Three cube fog states, Explored is cumulative · `agreed`
 *"stays dim — we remember it (b)."* R-45 stands exactly as it was. Worth noting:
@@ -775,9 +775,9 @@ rather than assumed.
 *"Yes, you are right, 60ft, 12 blocks!"* 60 ft at a 5 ft cell. Per token,
 GM-editable (R-46, R-46a).
 
-### D-069 — Build order is world first, encounter last · `agreed`
+### D-069 — Build order is world first, point of interest last · `agreed`
 *"I would rather work from easiest to hardest, I want to build from the world to
-the encounter."*
+the point of interest."*
 
 This supersedes the milestone sketch from round 1, which had v0.1 as a single
 encounter map end-to-end on the grounds that it de-risked the most. Wrong
@@ -791,7 +791,7 @@ Revised order:
 
 1. **World** — chunks, columns, the world builder, the isometric camera rig,
    chunk knowledge, save/load.
-2. **Navigation and travel** — the view stack, POI markers and reveal, distance,
+2. **Navigation and travel** — the view stack, place markers and reveal, distance,
    pace, time.
 3. **Encounter** — the voxel builder, tokens, calculated fog.
 
@@ -804,17 +804,17 @@ the books; they are simply not implemented until stage 3.
 
 ### D-070 — Two scales, not three. A chunk is not a view. · `proposed`
 Nicolás, thinking aloud: *"the world map should show the chunks as they are. The
-POIs are always visible too. What makes me think, whats the gain of the zoom
+places are always visible too. What makes me think, whats the gain of the zoom
 in..."*
 
 He answered his own question: nothing. If the world map already renders chunks as
-they are with POIs visible, zooming in adds magnification, not information — so
+they are with places visible, zooming in adds magnification, not information — so
 the chunk view was never a view. It was a leftover from assuming the world map had
 to be a *simplified* overview.
 
 A chunk stays the unit of **authoring** (a 20×20 block the GM creates) and of
 **knowledge** (`Known`/`Unknown`). It stops being a place you navigate to.
-`MapRef` drops to `world | encounter`, one navigation level and one set of zoom
+`MapRef` drops to `world | point of interest`, one navigation level and one set of zoom
 clamps disappear, and "what does simplified mean" stops being a question (R-13a,
 R-30).
 
@@ -855,7 +855,7 @@ the same state rather than two, and it means water is a terrain-palette entry at
 world scale as well (R-78, R-79).
 
 ### D-074 — Contextual tap: enter or travel · `agreed`
-*"a player will tap on a cell of the chunk or a POI, and depending on the party's
+*"a player will tap on a cell of the chunk or a place, and depending on the party's
 token position, it will ask for getting in or travel to it."* One gesture; the
 tool resolves it against the party's position (R-81).
 
@@ -867,7 +867,7 @@ tool resolves it against the party's position (R-81).
 *"The tallest might be up to what the chunk has as height or width, in our case, I
 think we said 200 cells."*
 
-I think 200 is a crossed wire: 200 was discussed for **encounter** maps (O-002),
+I think 200 is a crossed wire: 200 was discussed for **point of interest** maps (O-002),
 and separately **200 m** is the world cell size (D-021). No chunk dimension of 200
 was ever set — a chunk is 20×20 columns.
 
@@ -884,15 +884,15 @@ what you reached for. Confirm?
 
 ### D-075 — Column height caps at 20 · `agreed`
 4 km at 200 m per cell, matching the chunk's 20-cell width. The 200 figure was a
-crossed wire between encounter-map bounds and the world cell size (R-80).
+crossed wire between point of interest-map bounds and the world cell size (R-80).
 
 ---
 
-## Round 13 — POIs
+## Round 13 — places
 
-### D-076 — One cell per POI; footprint deferred · `agreed`
-*"Lets do 1 cell per POI now, in the future I would love to have an expand POI,
-where you can pick the cells associated to it."* `Poi.footprint` is removed from
+### D-076 — One cell per place; footprint deferred · `agreed`
+*"Lets do 1 cell per place now, in the future I would love to have an expand place,
+where you can pick the cells associated to it."* `Place.footprint` is removed from
 the model and recorded as O-014 rather than half-built. Single-cell keeps travel
 targeting, marker placement and the tap gesture unambiguous (R-50).
 
@@ -904,26 +904,26 @@ example. The concept survives as a future feature; the field does not exist yet.
 Names should be revealed at the same moment the 3D model is visible, they toggle
 together."*
 
-One threshold, both appear together. This also **refines round 12's "POIs are
+One threshold, both appear together. This also **refines round 12's "places are
 always visible"**: they are always *revealed* — never fogged — but not always
 *drawn*. Two different things (R-83, R-84).
 
 ### D-078 — Markers are cosmetic · `agreed`
-A castle, a cave and a forest differ only in which model is drawn. No POI type,
+A castle, a cave and a forest differ only in which model is drawn. No place type,
 no behaviour attached (R-82).
 
-### D-079 — POI notes: ordered, individually visible, host-filtered · `agreed`
-*"the GM should have the chance to add notes to each POI, sort them and mark them
-as visible/unvisible. When Players tap on a POI, a menu panel will appear showing
-the name and the visible info of that POI."*
+### D-079 — place notes: ordered, individually visible, host-filtered · `agreed`
+*"the GM should have the chance to add notes to each place, sort them and mark them
+as visible/unvisible. When Players tap on a place, a menu panel will appear showing
+the name and the visible info of that place."*
 
-An ordered `PoiNote[]`, each with `visibleToParty`. The GM adds, edits, reorders
+An ordered `PlaceNote[]`, each with `visibleToParty`. The GM adds, edits, reorders
 and toggles. Notes marked invisible are **stripped by `viewFor`** and never reach
 the table display — the same trust boundary as hidden tokens (R-85, R-19).
 
-Reading taken: *"sort them and mark them"* refers to the **notes**, not the POIs,
-since "the visible info of that POI" implies per-note visibility and POIs already
-have their own `Revealed` flag. Say if you meant sorting POIs in a GM list.
+Reading taken: *"sort them and mark them"* refers to the **notes**, not the places,
+since "the visible info of that place" implies per-note visibility and places already
+have their own `Revealed` flag. Say if you meant sorting places in a GM list.
 
 ### D-080 — "Visible" is three different concepts and gets three names · `agreed`
 Fell out of writing D-077 and D-079 together: `Revealed` (the party knows it
@@ -938,14 +938,14 @@ where changing the camera leaks a secret.
 
 ## Open
 
-### O-014 — Multi-cell POIs ("expand POI") · `open`
-Wanted, explicitly deferred. A tool to assign extra cells to an existing POI, for
+### O-014 — Multi-cell places ("expand place") · `open`
+Wanted, explicitly deferred. A tool to assign extra cells to an existing place, for
 a realm or a city spanning several 200 m cells. Needs answers on what the extra
 cells *do*: are they drawn differently, are they all valid travel targets, can
 footprints overlap. Not blocking anything.
 
 ### O-015 — Do token notes use the same structure? · `open`
-`PoiNote[]` is ordered with per-note visibility. `Token.notes` is currently a
+`PlaceNote[]` is ordered with per-note visibility. `Token.notes` is currently a
 single GM-only string ("internal notes to record hp or whatever"). Making them the
 same shape would be consistent and would let the GM show a token's name and one
 public line while keeping the rest private. Small, and not needed until stage 3.
@@ -963,12 +963,12 @@ which mode you are in (R-87 to R-89).
 Separating the two is what makes the water-at-height-0 start (D-073) work as a
 workflow: paint the coastline, then pull the mountains up out of the sea.
 
-### D-082 — The party marker is a moving, unclickable POI · `agreed`
+### D-082 — The party marker is a moving, unclickable place · `agreed`
 Same miniature treatment, same zoom threshold (R-83). Differs only in moving and
 in having no gesture attached (R-90).
 
 ### D-083 — Party members are campaign-level definitions · `agreed`
-*"These tokens are the one that then the GM can instance into the encounter
+*"These tokens are the one that then the GM can instance into the point of interest
 maps."* So `PartyMember` is a template — id, name, colour, vision range — edited
 once per campaign, instanced onto encounter maps on arrival. Identity survives
 every map they walk through (R-91). Rendered as a chess pawn in the member's
@@ -991,7 +991,7 @@ to see implemented."*
 | Domain | Campaign, World, Chunk, Column, Terrain palette, PartyMember |
 | Render | isometric rig, chunk heightmap meshes, water, snapped hover highlight, party miniature with zoom threshold |
 
-Explicitly **not** in v0.1: POIs, travel, chunk knowledge/fog, encounter maps of
+Explicitly **not** in v0.1: places, travel, chunk knowledge/fog, encounter maps of
 any kind, notes. Those are stages 2 and 3, and their rules stay on the books
 unimplemented.
 
@@ -1242,7 +1242,7 @@ and exactly 1000× the 1.5 m encounter cell. Consequences:
 
 - a chunk is 30 km, **roughly a day on foot** — a genuinely useful mental model
 - the default world is 600 × 600 km, about **15 days** across rather than two
-- a POI's encounter map now fits comfortably inside its cell, which quietly
+- a place's encounter map now fits comfortably inside its cell, which quietly
   removes the awkwardness D-042 had to wave away
 
 ### D-099 — Vertical scale is decoupled from horizontal · `agreed`
@@ -1381,7 +1381,7 @@ startup.
 *"be careful, it should count as a new campaign, no overlaping at all."*
 
 `duplicateCampaign` regenerates **every** id in the graph: the campaign, every
-party member, every POI, every note. A shallow copy with only a fresh campaign id
+party member, every place, every note. A shallow copy with only a fresh campaign id
 would leave member ids shared, and a save referencing them could later be read
 against the wrong campaign. The test asserts the intersection of the two id sets
 is empty rather than checking fields one by one, so ids added later are covered
@@ -1617,14 +1617,14 @@ R-117.
 
 ## Round 23 — points of interest
 
-### D-121 — POIs are withheld from the table display until `Revealed` exists · `agreed`
+### D-121 — places are withheld from the table display until `Revealed` exists · `agreed`
 Whether the party knows a place exists is **play state**, and play state lives in
 a save (R-8, R-16) — and saves are not built yet. So there is nowhere to put the
 flag this round.
 
-Sending POIs before the flag exists would put every secret the GM has written
-onto the players' screen, so `viewFor('table')` returns an empty POI list. A test
-asserts the table payload contains neither a POI name nor any note text, by any
+Sending places before the flag exists would put every secret the GM has written
+onto the players' screen, so `viewFor('table')` returns an empty place list. A test
+asserts the table payload contains neither a place name nor any note text, by any
 route. Withholding is the safe default; the markers appear on the table in the
 visibility round.
 
@@ -1641,17 +1641,17 @@ two cells tall, so a new marker cannot quietly overhang its neighbour.
 glTF assets can replace this later behind the same interface; nothing outside
 `render` knows how a marker is drawn (R-82).
 
-### D-123 — POIs are a flat list on the campaign, one per cell · `agreed`
-The docs said `Chunk.pois` and the code said `Campaign.pois`; the code was
-right, and the doc is fixed (R-118). A flat list makes "every POI" one read,
-finds a POI without knowing its chunk, and makes moving one across a chunk
+### D-123 — places are a flat list on the campaign, one per cell · `agreed`
+The docs said `Chunk.places` and the code said `Campaign.places`; the code was
+right, and the doc is fixed (R-118). A flat list makes "every place" one read,
+finds a place without knowing its chunk, and makes moving one across a chunk
 boundary a field change rather than a move between containers.
 
-**At most one POI per cell** (R-119), or the tap gesture (R-86) has no
+**At most one place per cell** (R-119), or the tap gesture (R-86) has no
 unambiguous answer.
 
 ### D-124 — Places is a third tool; tools move to 1/2/3 and brush to 4/5/6 · `agreed`
-Placing a POI needs its own mode, or a click in paint mode paints instead. Tools
+Placing a place needs its own mode, or a click in paint mode paints instead. Tools
 are now grouped on 1/2/3 and brush sizes on 4/5/6, which is more legible than
 tools on 1/2 with brush on 3/4/5.
 
@@ -1659,7 +1659,7 @@ The brush selector hides in Places mode — it does not apply, and offering it
 would be the same confusion D-110 fixed for terrain.
 
 **A marker click always means the place**, whatever the tool is, and switches to
-Places. Otherwise the only way to edit a POI would be to remember to change mode
+Places. Otherwise the only way to edit a place would be to remember to change mode
 first.
 
 ### D-125 — New notes are hidden by default · `agreed`
@@ -1696,26 +1696,26 @@ made by looking at it during real use rather than by me picking a number.
 ## Round 24 — labels, and the tool that was missing
 
 ### D-127 — A neutral `select` tool, and creation returns to it · `agreed`
-*"this POIs feature makes us identify a condition we need and was not there: the
+*"this places feature makes us identify a condition we need and was not there: the
 no-tool or pointer tool."*
 
 Right, and it was a gap in the design rather than a bug in the code. Every tool
 edited something, so there was no way to inspect a place without risking creating
-another, and nothing for an action to finish *into* — placing a POI left the
+another, and nothing for an action to finish *into* — placing a place left the
 Places tool armed, so the next click made another one while the marker list had
 already gone.
 
 - `select` is added as a fourth tool and is now the **default**, so opening a
   campaign cannot accidentally edit it (R-87a)
-- **after placing a POI the app returns to `select` with the new POI selected**
+- **after placing a place the app returns to `select` with the new place selected**
 - clicking a marker selects it **whatever the tool** and no longer switches to
   Places, which would have re-armed creation (R-87b)
 - in `select`, the hover outline is hidden — there is no edit to preview
 
-The interesting part is how the new POI gets selected: the **host** assigns the
+The interesting part is how the new place gets selected: the **host** assigns the
 id, so the client cannot know it when it dispatches. It remembers the *cell* it
-clicked instead and claims the POI that appears there in the next snapshot —
-which works only because there is at most one POI per cell (R-119). An invariant
+clicked instead and claims the place that appears there in the next snapshot —
+which works only because there is at most one place per cell (R-119). An invariant
 agreed for a different reason turned out to be the handle this needed.
 
 Tools are now 1–4 and brush sizes 5/6/7, with `[` and `]` kept as the
@@ -1776,7 +1776,7 @@ would churn the diff, and that campaign versioning is a product feature
 an inconvenience, hours of hand-built world are irreplaceable.
 
 With it ignored, a stray `rm -rf data` in a test-setup command destroyed two
-campaigns — islands, thirteen POIs, party, notes — with nothing to restore from.
+campaigns — islands, thirteen places, party, notes — with nothing to restore from.
 No git, no Trash (`rm -rf` bypasses it), no Time Machine destination configured.
 
 Now tracked, with only `.trash-*` ignored since the app already moves deletions
@@ -1793,11 +1793,11 @@ until someone decides otherwise. A test enumerates the intent kinds **from the
 protocol schema itself** and asserts every one is rejected for both `table` and
 `spectator`, so a newly added intent fails the test until it is classified (R-18a).
 
-### D-136 — A POI reaches the table only when its chunk is Known too · `agreed`
+### D-136 — A place reaches the table only when its chunk is Known too · `agreed`
 The one thing the design panel earned its keep on. Three independent critics each
 found the same HIGH leak in a different design: R-16 makes `Known` and `Revealed`
 independent, which I had written thinking only of *hidden inside known*. The same
-independence permits a **Revealed POI inside an Unknown chunk**, which would put a
+independence permits a **Revealed place inside an Unknown chunk**, which would put a
 place, its name and its position on screen inside a region the party has never
 seen.
 
@@ -1840,7 +1840,7 @@ Caught by `npm run arch`: my first host implementation imported `createLiveSave`
 `restoreInto` and `pruneDiscovery` from `domain`, which is both a forbidden edge
 (R-5) and game logic in the host (R-67).
 
-Deciding whether to reuse a stored save, mint a fresh one, or prune stale POI ids
+Deciding whether to reuse a stored save, mint a fresh one, or prune stale place ids
 is a rule. `sim` gained two pure functions, `openedWith` and `restoredWith`; the
 host reads files, hands the results over, and writes back what it is told to.
 `liveSaveId` is re-exported through `protocol` so the host can name a storage key
@@ -1960,7 +1960,7 @@ a test covers it.
 
 ### D-148 — The save is thin now and will not stay thin · `agreed`
 Worth writing down so nobody reads D-147 as "play state is simple". A save holds
-discovery only because encounters do not exist yet (O-009). Once tokens stand on
+discovery only because points of interest do not exist yet (O-009). Once tokens stand on
 an encounter map, play state includes their positions and per-token vision, and
 that all belongs in the same save. D-147 removes a feature, not the structure
 that will hold it.
@@ -2059,8 +2059,8 @@ together by hand is a smaller cost than a third concept in the data model.
 *"vision should be hidden in the party panel while in the world map, it will
 confuse the GMs or players if we end up showing it in both sides."*
 
-`visionRange` stays in `PartyMember` for encounters and stops being rendered in
-the party panel (R-135). It is an encounter quantity — 12 cells at the encounter
+`visionRange` stays in `PartyMember` for points of interest and stops being rendered in
+the party panel (R-135). It is an point of interest quantity — 12 cells at the point of interest
 cell (R-46a) — and beside a 1.5 km world cell it reads as 18 km of sight.
 
 ### D-155 — Token positions live in the save · `agreed`
@@ -2070,14 +2070,14 @@ campaign. A duplicated campaign therefore starts with the party unplaced, which 
 correct — the copy has not been played.
 
 Stale positions are pruned when the campaign opens, exactly as `pruneDiscovery`
-drops POI ids the GM deleted, for the same reason: a position for a member no
+drops place ids the GM deleted, for the same reason: a position for a member no
 longer on the roster.
 
 ### D-156 — The world cell type moves to `world/` · `agreed`
-`{cx, cz, x, z}` currently lives in `poi/` as `PoiCell`, with `isValidPoiCell`
-beside it. The party needs to name a cell too, and `party/` importing from `poi/`
+`{cx, cz, x, z}` currently lives in `place/` as `PlaceCell`, with `isValidPoiCell`
+beside it. The party needs to name a cell too, and `party/` importing from `place/`
 to say where someone is standing would be nonsense. Promoted to `world/` as
-`WorldCell` with one validity check; `PoiCell` becomes an alias.
+`WorldCell` with one validity check; `PlaceCell` becomes an alias.
 
 ### O-019 — Pathfinding on the world map · `open`
 Deferred from round 28 deliberately. A→Z is legal (D-151), so once positions
@@ -2172,12 +2172,12 @@ read badly on sand or snow. Worth a look once there is a snowy map to look at.
 ## Round 29 — picking belongs to the tool
 
 ### D-162 — `render` reports, the tool decides · `agreed`
-*"you can select POIs while you are attempting to paint. Discovered this while
+*"you can select places while you are attempting to paint. Discovered this while
 painting snow around the party token."*
 
 A real bug and a rule of mine behind it. R-87b said a marker click means the
 place **whatever the tool is**, justified by "otherwise the only way to edit a
-POI would be to remember to change mode first". That reason was already weak —
+place would be to remember to change mode first". That reason was already weak —
 Select is the default tool, so inspecting is the no-mode case — and the cost is
 that the map has spots you cannot paint.
 
@@ -2185,20 +2185,20 @@ Two changes, and the first is the real one:
 
 **`pick()` no longer picks a winner.** It resolved in precedence order and
 returned on the first hit, so a marker hit reported `column: null` — the terrain
-under a POI was not merely deprioritised, it was *unreachable*. Now pawn, POI,
+under a place was not merely deprioritised, it was *unreachable*. Now pawn, place,
 cell and slot resolve independently; the ray passes through a marker to the
 ground beneath it. Precedence was never `render`'s to decide.
 
 **Each tool names what it picks** (the table in R-87c), and ignores the rest.
 Paint and Height see only cells. Places sees only empty cells. Travel sees pawns,
-then cells while aiming. Select sees POIs, then chunks.
+then cells while aiming. Select sees places, then chunks.
 
 Two details worth recording:
 
-- **Chunk selection stays on Select**, though the request said "POIs only". It is
+- **Chunk selection stays on Select**, though the request said "places only". It is
   the only route to the Known toggle, and dropping it would have stranded the
   visibility workflow. Flagged rather than assumed — if the toggle moves
-  somewhere else, Select becomes POIs only.
+  somewhere else, Select becomes places only.
 - **A Places click on a taken cell is dropped, not dispatched.** Sending it would
   earn a rejection toast for obeying a rule (R-119). But a click that does
   nothing looks broken, so the hover readout says *"Already a place here"* before
@@ -2218,7 +2218,7 @@ and hits the neighbour. D-162 turned "clicking a marker selects it" into
 same bug.
 
 A pawn or marker now reports the cell it stands on, pawn first because it is
-drawn on top. That is what *"ignores any POI or token blocking the terrain"* has
+drawn on top. That is what *"ignores any place or token blocking the terrain"* has
 to mean: not that the thing is transparent to the ray, but that it does not stop
 you editing the ground it occupies.
 
@@ -2277,7 +2277,7 @@ what you have been doing."*
 
 **Partly, and the gap was systematic rather than random.** Audited honestly:
 
-Fixed *with* a test at the time — the prototype's vision leak, the revealed-POI
+Fixed *with* a test at the time — the prototype's vision leak, the revealed-place
 leak, fail-closed permissions, registries leaking into storage, the seat race and
 zombie sockets, the unstamped schema version, spectator scoping, and the marker
 blocking its own cell.
@@ -2359,7 +2359,7 @@ outlive the tool that opened it — describing something Paint cannot act on, an
 offering Delete and rename for a place the GM had moved past.
 
 Implemented as ownership rather than as a transition, which matters: clearing on
-*every* tool change would have broken D-127, where placing a POI switches to
+*every* tool change would have broken D-127, where placing a place switches to
 Select and pre-selects the new one. `holdsSelection(tool)` is the rule; the
 effect drops the selection whenever the active tool is not the one that owns it.
 
@@ -2445,8 +2445,8 @@ The comparison requires a **non-null** id, and that is the trap: two separate
 single clicks both carry `undefined`, so a plain equality check would collapse
 unrelated edits into one. There is a test named for it.
 
-### D-171 — A returned POI comes back hidden · `agreed`
-Known edge, decided rather than discovered later. Deleting a POI also drops it
+### D-171 — A returned place comes back hidden · `agreed`
+Known edge, decided rather than discovered later. Deleting a place also drops it
 from discovery (R-126), and undo does not restore play state — so undoing a
 deletion brings the place back **Hidden**, whatever it was before.
 
@@ -2499,7 +2499,7 @@ Three things worth naming:
 
 **A travel in progress owns the click.** *"you tap on the player token, then
 selecting a place should keep going with the travel flow, not select the place."*
-So aiming short-circuits before anything else, and a POI under the pointer
+So aiming short-circuits before anything else, and a place under the pointer
 contributes its cell rather than itself — which `intendedCell` already arranged
 (D-163). The policy is `tableAction` in `client-core`, tested like the GM's
 matrix (R-23b), including a test that no branch of it can ever produce a
@@ -2518,25 +2518,25 @@ dock now. The half that mattered — no tool palette, no roster — still holds.
 
 ---
 
-## Round 33 — encounters on a place
+## Round 33 — points of interest on a place
 
-### D-175 — Encounters are a named, individually visible list · `agreed`
-*"Add encounters to a POI, for now, just a list, with visibility checks, most
+### D-175 — Points of interest are a named, individually visible list · `agreed`
+*"Add points of interest to a place, for now, just a list, with visibility checks, most
 likely the way notes work."*
 
 Built as notes' twin: ordered, the GM sorts them, each entry revealed or hidden
 on its own, new ones hidden by default (D-125). Add, rename, reveal, reorder,
 remove — the same five operations, and the same strip at the boundary, because
-the name of an unrevealed encounter is exactly the kind of spoiler R-85 exists
+the name of an unrevealed point of interest is exactly the kind of spoiler R-85 exists
 for.
 
-`Poi.encounters` was already there as `EncounterId[]`, unused and unusable: an id
+`Place.points of interest` was already there as `EncounterId[]`, unused and unusable: an id
 with no name and no flag. It is now a record (R-143), which is also what the
-encounter **map** will attach to when O-009 lands — a name in a list can grow a
+point of interest **map** will attach to when O-009 lands — a name in a list can grow a
 grid.
 
 Campaign schema 2 → 3. Lossless in practice: nothing could ever create an
-encounter, so every stored list was empty.
+point of interest, so every stored list was empty.
 
 Two things fell out of doing it:
 
@@ -2555,9 +2555,9 @@ which is the same way D-159 was found.
 **Verified** on a copy of the GM's real data: Casilda loaded from its v2 file,
 kept its notes, and the boundary sent the party "Bandits at the ford" while "The
 baron is a lich" never left the host. The player's panel showed notes then
-encounters, with no editable control in it and nothing but a Close button.
+points of interest, with no editable control in it and nothing but a Close button.
 
-**Not verified:** the GM-side encounters editor, eyeballed. A 13×14 click scan
+**Not verified:** the GM-side points of interest editor, eyeballed. A 13×14 click scan
 could not find the marker on that camera — the island sits under the dock — and
 the section mirrors the notes UI it was copied from. It typechecks and its
 intents are tested; the pixels are not.
@@ -2571,3 +2571,66 @@ like picking bugs twice and a broken travel confirm once.
 
 Always read `canvas.getBoundingClientRect()` and scale, or find targets by
 probing and reading the DOM back rather than by measuring an image.
+
+---
+
+## Round 34 — the vocabulary
+
+### D-176 — Place, then point of interest · `agreed`
+*"instead of 'ENCOUNTERS', show 'Points of interest'… While creating the map, we
+add 'Places', so each option of that tool is a 'Place marker', then inside of a
+place we can have 1 or more POIs… Is it confusing or clarifying?"*
+
+Clarifying, and it fixed something already broken. Three reasons, in order of
+weight:
+
+**The code and the screen already disagreed.** The tool was labelled *Places*,
+the inspector header said *Place*, the table panel was `PlaceCard` — and the
+domain type was `Poi`. One concept, two names, depending on where you were
+reading. That is the exact shape of D-138, where `isKnown` meant "the GM authored
+this" in one place and "the party knows this" in another and I renamed it before
+it could cause the bug it was clearly going to cause. This had been sitting there
+since round 24.
+
+**"Encounter" was doing two jobs, and my own test data proved it.** I seeded
+"Bandits at the ford" (an event) and "The baron's study" (a location) into the
+same list without noticing. An arena is not an encounter; it is where one
+happens.
+
+**It gives the word back to what it named.** R-49 always said a place owns many
+encounter *maps*. Under the old vocabulary, shipping O-009 would have meant
+encounters owning encounter maps. Now a point of interest owns them, and R-49
+moved the ownership down a level with the rename: you fight in the arena, not in
+the village.
+
+Done as a **swap in two passes**, which is the only safe way: `Poi` → `Place`
+first, freeing the name, then the inner list into it. At no point did two
+concepts share an identifier. ~900 code references, ~330 doc mentions, zero
+typecheck errors after each pass, 370 tests green throughout — the tests are what
+made a rename this size a mechanical exercise rather than a gamble.
+
+`pointer` and `pointed` also contain "poi", so every replacement was anchored to
+a whole identifier. Nothing was a substring replace.
+
+### D-177 — No migration; old campaigns are refused, not guessed at · `agreed`
+*"no problem on doing new campaigns from scratch. I want full consistency from
+scratch."*
+
+Taken at face value, and it is the right call: the old files use `pois` for what
+is now `places`, so any tolerant reader would have to infer a field's meaning
+from its neighbours — the ambiguity the rename exists to delete.
+
+Two things this exposed, both worth fixing regardless of the rename:
+
+**`list()` did not validate at all.** It read `id` and `name` and offered the
+row, so an unreadable campaign would have been listed and then failed on Open.
+It now skips anything below the current schema.
+
+**`load()` threw, and would not have caught this anyway.** Throwing from a store
+inside an intent takes the whole message handler with it; it returns `null` now,
+which the host already turns into a readable rejection. And validation alone
+would *not* have rejected an old manifest: unknown keys are stripped and `places`
+defaults to empty, so it parsed cleanly into a campaign with no places — silent
+loss wearing the face of success. The version is checked explicitly instead.
+
+Campaign schema 3 → 4, save schema 2 → 3.

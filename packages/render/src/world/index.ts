@@ -50,7 +50,7 @@ function columnTop(height: number): number {
 
 /**
  * The height anything standing on a cell should sit at — markers, pawns, a
- * travel ghost. One definition, so a pawn never floats above the ground a POI
+ * travel ghost. One definition, so a pawn never floats above the ground a place
  * on the same cell is planted in.
  */
 export function surfaceAt(campaign: Campaign, cell: WorldCell): number {

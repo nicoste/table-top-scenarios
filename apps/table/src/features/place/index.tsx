@@ -9,10 +9,10 @@
 // visible to the party before it leaves the host (R-85), so a secret is not
 // merely unrendered, it was never sent.
 
-import type { PoiWire } from '@tt/protocol';
+import type { PlaceWire } from '@tt/protocol';
 
 interface Props {
-  place: PoiWire;
+  place: PlaceWire;
   /** What this marker is called, for a subtitle. Cosmetic only (R-82). */
   markerName: string | null;
   onClose: () => void;
@@ -25,7 +25,7 @@ export function PlaceCard({ place, markerName, onClose }: Props) {
         <h2>{place.name}</h2>
         {markerName && <p className="hint" style={{ margin: '0 0 8px' }}>{markerName}</p>}
 
-        {place.notes.length === 0 && place.encounters.length === 0 && (
+        {place.notes.length === 0 && place.pois.length === 0 && (
           <p className="hint" style={{ margin: 0 }}>
             Nothing is known about this place yet.
           </p>
@@ -41,12 +41,12 @@ export function PlaceCard({ place, markerName, onClose }: Props) {
 
         {/* Only the revealed ones ever arrive: the rest are stripped at the
             boundary and were never sent (R-85, D-175). */}
-        {place.encounters.length > 0 && (
+        {place.pois.length > 0 && (
           <>
-            <h2 style={{ marginTop: 12 }}>Encounters</h2>
+            <h2 style={{ marginTop: 12 }}>Points of interest</h2>
             <ul className="notes-read">
-              {place.encounters.map((encounter) => (
-                <li key={encounter.id}>{encounter.name}</li>
+              {place.pois.map((poi) => (
+                <li key={poi.id}>{poi.name}</li>
               ))}
             </ul>
           </>

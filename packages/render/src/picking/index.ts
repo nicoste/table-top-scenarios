@@ -12,7 +12,7 @@ import { pawns as pawnsOf } from '@tt/domain';
 export interface PickedThings {
   /** The pawn under the pointer, if any. `memberId: null` is the group pawn. */
   readonly pawn: { readonly memberId: string | null } | null;
-  readonly poiId: string | null;
+  readonly placeId: string | null;
   /** What the ray itself found: the ground visible *through* this pixel. */
   readonly rayCell: WorldCell | null;
 }
@@ -39,9 +39,9 @@ export function intendedCell(
       .find((pawn) => pawn.memberId === picked.pawn?.memberId);
     if (found) return found.cell;
   }
-  if (picked.poiId && campaign) {
-    const poi = campaign.pois.find((candidate) => candidate.id === picked.poiId);
-    if (poi) return poi.cell;
+  if (picked.placeId && campaign) {
+    const place = campaign.places.find((candidate) => candidate.id === picked.placeId);
+    if (place) return place.cell;
   }
   return picked.rayCell;
 }

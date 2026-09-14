@@ -12,7 +12,7 @@ function allIds(c: Campaign): string[] {
   return [
     c.id as string,
     ...c.party.map((m) => m.id as string),
-    ...c.pois.flatMap((p) => [p.id as string, ...p.notes.map((n) => n.id as string)]),
+    ...c.places.flatMap((p) => [p.id as string, ...p.notes.map((n) => n.id as string)]),
   ];
 }
 

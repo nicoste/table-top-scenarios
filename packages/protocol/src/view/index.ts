@@ -2,7 +2,7 @@
 // passes through viewFor, and there is no second route.
 
 import type { Campaign, Save } from '@tt/domain';
-import { isPoiOnTable, isChunkKnown, belongsTo, placementToJSON } from '@tt/domain';
+import { isPlaceOnTable, isChunkKnown, belongsTo, placementToJSON } from '@tt/domain';
 import type { CampaignWire, SaveWire, PlacementWire } from '../wire/index.js';
 import { encodeCampaign, encodeSave } from '../wire/index.js';
 
@@ -120,7 +120,7 @@ export function viewFor(role: Role, state: HostState, connect: readonly string[]
  *    live save id is derived from the campaign id, so a near-miss is plausible.
  * 2. That a campaign is open with a save. No save means nothing is shown, which
  *    keeps the safe default D-121 established.
- * 3. That `Revealed` alone qualifies a POI. A POI reaches the table only when its
+ * 3. That `Revealed` alone qualifies a place. A place reaches the table only when its
  *    chunk is Known **as well** (D-132) — the leak all three design critics found
  *    independently.
  */
@@ -137,18 +137,18 @@ function forTheTable(campaign: Campaign | null, save: Save | null): CampaignWire
   return {
     ...wire,
     world: { ...wire.world, chunks: known, unknownChunks: unknown },
-    pois: wire.pois
-      .filter((poi) => isPoiOnTable(save.discovery, {
-        id: poi.id as Parameters<typeof isPoiOnTable>[1]['id'],
-        cell: poi.cell,
+    places: wire.places
+      .filter((place) => isPlaceOnTable(save.discovery, {
+        id: place.id as Parameters<typeof isPlaceOnTable>[1]['id'],
+        cell: place.cell,
       }))
       // A revealed place still keeps its private notes private (R-85).
-      // Notes *and* encounters are stripped here. A secret is not merely
+      // Notes *and* pois are stripped here. A secret is not merely
       // unrendered on the table — it never leaves the host (R-85, D-175).
-      .map((poi) => ({
-        ...poi,
-        notes: poi.notes.filter((note) => note.visibleToParty),
-        encounters: poi.encounters.filter((e) => e.visibleToParty),
+      .map((place) => ({
+        ...place,
+        notes: place.notes.filter((note) => note.visibleToParty),
+        pois: place.pois.filter((e) => e.visibleToParty),
       })),
   };
 }

@@ -43,8 +43,8 @@ describe('creating a campaign (R-92)', () => {
     expect(createCampaign('a').id).not.toBe(createCampaign('b').id);
   });
 
-  it('starts with no POIs — those are stage 2', () => {
-    expect(createCampaign('Ashfall').pois).toEqual([]);
+  it('starts with no places — those are stage 2', () => {
+    expect(createCampaign('Ashfall').places).toEqual([]);
   });
 });
 

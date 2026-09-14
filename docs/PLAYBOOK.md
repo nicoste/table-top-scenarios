@@ -138,7 +138,7 @@ In a Workflow script that means `{ model: 'sonnet', effort: 'high' }` on every
 
 - files `kebab-case.ts` · types `PascalCase` · functions `camelCase`
 - registry ids are namespaced strings: `terrain:swamp` (R-11), never indices
-- ids are branded: `PoiId`, not `string` (R-10)
+- ids are branded: `PlaceId`, not `string` (R-10)
 - never call something `visible` — say `Revealed`, `visibleToParty`, or *drawn*
   (R-84); they are three different things
 - `index.ts` re-exports named symbols explicitly, never `export *`

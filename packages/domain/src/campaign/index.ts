@@ -6,18 +6,24 @@ import { freshId } from '../ids/index.js';
 import type { World, ChunkCoord } from '../world/index.js';
 import { emptyWorld, addChunk, centreOfBounds, DEFAULT_WORLD_BOUNDS } from '../world/index.js';
 import type { PartyMember } from '../party/index.js';
-import type { Poi } from '../poi/index.js';
+import type { Place } from '../place/index.js';
 import { startingParty } from '../party/index.js';
 
-// 3 turns a POI's `encounters` from bare ids into named, individually visible
-// records (D-175). Nothing ever wrote a non-empty one, so reading an older
-// campaign is lossless.
-export const SCHEMA_VERSION = 3;
+/**
+ * 4 renames the stored shape to match the vocabulary (D-176): the world map
+ * holds `places`, and each place holds `pois` — a church, a market, an arena.
+ *
+ * **No migration.** Earlier files used `pois` for what is now `places`, so a
+ * tolerant reader would have to guess which meaning a field had from its
+ * neighbours. The GM chose a clean break over that guesswork, so a
+ * pre-4 campaign simply does not load and is skipped (R-144).
+ */
+export const SCHEMA_VERSION = 4;
 
 /**
  * Stamps a campaign read from disk with the current schema (R-137).
  *
- * Reading an older one is tolerated — v2 had bare-id encounters, and they
+ * Reading an older one is tolerated — v2 had bare-id pois, and they
  * normalise to records on the way in. Writing it back still labelled v2 would
  * leave a file whose version does not describe its contents, and later code
  * will branch on that number. Same rule, same reason as `upgraded` for saves
@@ -35,7 +41,7 @@ export interface Campaign {
   readonly name: string;
   readonly world: World;
   readonly party: readonly PartyMember[];
-  readonly pois: readonly Poi[];
+  readonly places: readonly Place[];
   // No terrain registry. The palette is code (DEFAULT_TERRAIN), not campaign
   // data — see D-107. Ids are stable and cells reference them (R-11), but
   // colours and difficulties are tuning values, and storing them per campaign
@@ -72,8 +78,8 @@ export function uniqueCampaignName(existing: readonly string[], base: string): s
  * source (R-106).
  *
  * Every id in the graph is regenerated — the campaign, every party member, every
- * POI and every note. A shallow copy with only a fresh campaign id would leave
- * member and POI ids shared, and a save referencing them could then be read
+ * place and every note. A shallow copy with only a fresh campaign id would leave
+ * member and place ids shared, and a save referencing them could then be read
  * against the wrong campaign.
  *
  * The world is shared by reference on purpose: `World`, `Chunk` and `Column` are
@@ -91,10 +97,10 @@ export function duplicateCampaign(source: Campaign, name: string): Campaign {
     name: trimmed,
     world: source.world,
     party: source.party.map((member) => ({ ...member, id: freshId<'MemberId'>('member') })),
-    pois: source.pois.map((poi) => ({
-      ...poi,
-      id: freshId<'PoiId'>('poi'),
-      notes: poi.notes.map((note) => ({ ...note, id: freshId<'NoteId'>('note') })),
+    places: source.places.map((place) => ({
+      ...place,
+      id: freshId<'PlaceId'>('place'),
+      notes: place.notes.map((note) => ({ ...note, id: freshId<'NoteId'>('note') })),
     })),
   };
 }
@@ -112,6 +118,6 @@ export function createCampaign(name: string): Campaign {
     name: trimmed,
     world: addChunk(emptyWorld(DEFAULT_BOUNDS), ORIGIN),
     party: startingParty(),
-    pois: [],
+    places: [],
   };
 }

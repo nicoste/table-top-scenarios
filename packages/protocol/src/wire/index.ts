@@ -3,7 +3,7 @@
 
 import { z } from 'zod';
 import type {
-  Campaign, Chunk, Column, World, PartyMember, TerrainId, Poi, PoiNote, MarkerId, Save, Placement,
+  Campaign, Chunk, Column, World, PartyMember, TerrainId, Place, PlaceNote, MarkerId, Save, Placement,
 } from '@tt/domain';
 import {
   CHUNK_SIZE, DEFAULT_METRES_PER_LEVEL, DEFAULT_TERRAIN, DEFAULT_MARKERS,
@@ -17,7 +17,7 @@ export const ChunkCoordSchema = z.object({ cx: z.number().int(), cz: z.number().
 
 /**
  * A chunk on the wire: parallel arrays rather than 400 objects. Still plain
- * JSON, still stable string ids. Palette+RLE packing (R-59) is for encounter
+ * JSON, still stable string ids. Palette+RLE packing (R-59) is for poi
  * voxel bodies; a chunk is 400 columns and does not need it.
  */
 export const ChunkWireSchema = z.object({
@@ -56,19 +56,19 @@ export const MarkerWireSchema = z.object({
   })),
 });
 
-/** One world cell (D-156). `PoiCellSchema` is the same shape under its own name. */
+/** One world cell (D-156). `PlaceCellSchema` is the same shape under its own name. */
 export const WorldCellSchema = z.object({
   cx: z.number().int(), cz: z.number().int(), x: CellIndex, z: CellIndex,
 });
-export const PoiCellSchema = WorldCellSchema;
+export const PlaceCellSchema = WorldCellSchema;
 
-export const PoiNoteWireSchema = z.object({
+export const PlaceNoteWireSchema = z.object({
   id: z.string(),
   text: z.string(),
   visibleToParty: z.boolean(),
 });
 
-export const EncounterWireSchema = z.object({
+export const PoiWireSchema = z.object({
   id: z.string(),
   name: z.string(),
   visibleToParty: z.boolean(),
@@ -83,25 +83,25 @@ export const EncounterWireSchema = z.object({
  * knows about it (R-17, R-137). No campaign ever had a non-empty list, so this
  * is theory rather than rescue, but it is the cheap kind.
  */
-const EncounterFromWire = z.union([EncounterWireSchema, z.string()]).transform(
+const PoiFromWire = z.union([PoiWireSchema, z.string()]).transform(
   (entry) => (typeof entry === 'string'
     ? { id: entry, name: entry, visibleToParty: false }
     : entry),
 );
 
-export const PoiWireSchema = z.object({
+export const PlaceWireSchema = z.object({
   id: z.string(),
   name: z.string(),
-  cell: PoiCellSchema,
+  cell: PlaceCellSchema,
   markerId: MarkerIdSchema,
-  encounters: z.array(EncounterFromWire).default([]),
-  notes: z.array(PoiNoteWireSchema),
+  pois: z.array(PoiFromWire).default([]),
+  notes: z.array(PlaceNoteWireSchema),
 });
-export type PoiWire = z.infer<typeof PoiWireSchema>;
+export type PlaceWire = z.infer<typeof PlaceWireSchema>;
 
 export const DiscoveryWireSchema = z.object({
   chunks: z.array(z.string()).default([]),
-  pois: z.array(z.string()).default([]),
+  places: z.array(z.string()).default([]),
 });
 
 export const PlacementWireSchema = z.object({
@@ -162,7 +162,7 @@ export const CampaignWireSchema = z.object({
   terrain: z.array(TerrainWireSchema).default([]),
   /** Like terrain, code rather than campaign data (D-107): never stored. */
   markers: z.array(MarkerWireSchema).default([]),
-  pois: z.array(PoiWireSchema).default([]),
+  places: z.array(PlaceWireSchema).default([]),
 });
 export type CampaignWire = z.infer<typeof CampaignWireSchema>;
 
@@ -211,7 +211,7 @@ export function encodeCampaign(campaign: Campaign): CampaignWire {
         colour: part.colour,
       })),
     })),
-    pois: campaign.pois.map(encodePoi),
+    places: campaign.places.map(encodePoi),
   };
 }
 
@@ -267,30 +267,30 @@ export function decodePlacement(wire: PlacementWire | null): Placement {
   return placementFromJSON(wire ?? undefined);
 }
 
-export function encodePoi(poi: Poi): PoiWire {
+export function encodePoi(place: Place): PlaceWire {
   return {
-    id: poi.id,
-    name: poi.name,
-    cell: poi.cell,
-    markerId: poi.markerId as string,
-    encounters: poi.encounters.map((e) => ({ id: e.id as string, name: e.name, visibleToParty: e.visibleToParty })),
-    notes: poi.notes.map((n) => ({ id: n.id, text: n.text, visibleToParty: n.visibleToParty })),
+    id: place.id,
+    name: place.name,
+    cell: place.cell,
+    markerId: place.markerId as string,
+    pois: place.pois.map((e) => ({ id: e.id as string, name: e.name, visibleToParty: e.visibleToParty })),
+    notes: place.notes.map((n) => ({ id: n.id, text: n.text, visibleToParty: n.visibleToParty })),
   };
 }
 
-export function decodePoi(wire: PoiWire): Poi {
+export function decodePoi(wire: PlaceWire): Place {
   return {
-    id: wire.id as Poi['id'],
+    id: wire.id as Place['id'],
     name: wire.name,
     cell: wire.cell,
     markerId: parseMarkerId(wire.markerId),
-    encounters: wire.encounters.map((e) => ({
-      id: e.id as Poi['encounters'][number]['id'],
+    pois: wire.pois.map((e) => ({
+      id: e.id as Place['pois'][number]['id'],
       name: e.name,
       visibleToParty: e.visibleToParty,
     })),
-    notes: wire.notes.map((n): PoiNote => ({
-      id: n.id as PoiNote['id'], text: n.text, visibleToParty: n.visibleToParty,
+    notes: wire.notes.map((n): PlaceNote => ({
+      id: n.id as PlaceNote['id'], text: n.text, visibleToParty: n.visibleToParty,
     })),
   };
 }
@@ -343,6 +343,6 @@ export function decodeCampaign(wire: CampaignWire): Campaign {
       colour: m.colour,
       visionRange: m.visionRange,
     })),
-    pois: wire.pois.map(decodePoi),
+    places: wire.places.map(decodePoi),
   };
 }

@@ -65,7 +65,7 @@ export function createSession(
               campaign,
               saves.load(liveSaveId(campaign.id)),
               clock.nowIso(),
-              new Set(campaign.pois.map((poi) => poi.id)),
+              new Set(campaign.places.map((place) => place.id)),
             );
             state = opened.state;
             if (opened.toPersist) saves.save(opened.toPersist);

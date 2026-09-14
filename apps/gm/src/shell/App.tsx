@@ -14,7 +14,7 @@ import { useStage } from '../scene/use-stage.js';
 import { Launcher } from '../features/launcher/index.js';
 import { BuildWorldPanel } from '../features/build-world/index.js';
 import { PartyPanel } from '../features/party/index.js';
-import { PlacesPanel, PoiInspector } from '../features/poi/index.js';
+import { PlacesPanel, PlaceInspector } from '../features/place/index.js';
 import { ChunkInspector } from '../features/visibility/index.js';
 import { ConnectBadge } from '../features/connect/index.js';
 import { Tooltip } from '@tt/ui';
@@ -39,15 +39,15 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   const [hoverLabel, setHoverLabel] = useState<string | null>(null);
   const [brush, setBrush] = useState(1);
   const [markerId, setMarkerId] = useState('marker:village');
-  const [selectedPoi, setSelectedPoi] = useState<string | null>(null);
+  const [selectedPlace, setSelectedPlace] = useState<string | null>(null);
   const [selectedChunk, setSelectedChunk] = useState<{ cx: number; cz: number } | null>(null);
   const [travel, setTravel] = useState<Travel>(idle);
   /**
-   * The cell a POI was just placed on, waiting for the snapshot that will carry
+   * The cell a place was just placed on, waiting for the snapshot that will carry
    * it. The host assigns the id, so the client cannot know it in advance — but
-   * one POI per cell (R-119) makes the cell an unambiguous handle until then.
+   * one place per cell (R-119) makes the cell an unambiguous handle until then.
    */
-  const pendingPoiCell = useRef<string | null>(null);
+  const pendingPlaceCell = useRef<string | null>(null);
   const { setCanvas, stage } = useStage();
   const openedId = useRef<string | null>(null);
   const drag = useRef<{ startY: number; base: number; cell: { cx: number; cz: number; x: number; z: number } } | null>(null);
@@ -68,9 +68,9 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
 
   const cellKey = (c: { cx: number; cz: number; x: number; z: number }) => `${c.cx}:${c.cz}:${c.x}:${c.z}`;
   const memberName = (id: string) => campaign?.party.find((m) => m.id === id)?.name ?? null;
-  /** One POI per cell (R-119), checked on the wire form the app actually holds. */
+  /** One place per cell (R-119), checked on the wire form the app actually holds. */
   const occupied = (cell: { cx: number; cz: number; x: number; z: number }) =>
-    (campaign?.pois ?? []).some((poi) => sameWorldCell(poi.cell, cell));
+    (campaign?.places ?? []).some((place) => sameWorldCell(place.cell, cell));
   /**
    * Can the party stand here? The GM console draws unknown chunks too, with fog
    * over them, so the ground under the dark is real geometry and aims fine —
@@ -85,18 +85,18 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
 
   // Selection lives in view state, so a snapshot cannot close the panel the GM
   // is typing into (R-64). It is resolved against the latest campaign each
-  // render, so a deleted POI simply stops resolving.
-  const poi = campaign?.pois.find((p) => p.id === selectedPoi) ?? null;
+  // render, so a deleted place simply stops resolving.
+  const place = campaign?.places.find((p) => p.id === selectedPlace) ?? null;
 
   // Discovery lives in the save; the GM console shows it so the GM can see what
   // the players are missing.
   const knownChunks = new Set(view?.save?.discovery.chunks ?? []);
-  const revealedPois = new Set(view?.save?.discovery.pois ?? []);
+  const revealedPois = new Set(view?.save?.discovery.places ?? []);
   const unknownChunks = (campaign?.world.chunks ?? [])
     .filter((c) => !knownChunks.has(`${c.cx},${c.cz}`))
     .map((c) => ({ cx: c.cx, cz: c.cz }));
   const chunkPois = selectedChunk
-    ? (campaign?.pois ?? []).filter((p) => p.cell.cx === selectedChunk.cx && p.cell.cz === selectedChunk.cz)
+    ? (campaign?.places ?? []).filter((p) => p.cell.cx === selectedChunk.cx && p.cell.cz === selectedChunk.cz)
     : [];
 
   // Push server state into the Stage. Recentre only when a different campaign
@@ -135,7 +135,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   // (D-168). Only the neutral tool holds a selection.
   useEffect(() => {
     if (holdsSelection(tool)) return;
-    setSelectedPoi(null);
+    setSelectedPlace(null);
     setSelectedChunk(null);
   }, [tool]);
 
@@ -151,14 +151,14 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   }, [campaign]);
 
   useEffect(() => {
-    const waiting = pendingPoiCell.current;
+    const waiting = pendingPlaceCell.current;
     if (!waiting || !campaign) return;
-    const placed = campaign.pois.find(
+    const placed = campaign.places.find(
       (p) => `${p.cell.cx}:${p.cell.cz}:${p.cell.x}:${p.cell.z}` === waiting,
     );
     if (!placed) return;
-    pendingPoiCell.current = null;
-    setSelectedPoi(placed.id);
+    pendingPlaceCell.current = null;
+    setSelectedPlace(placed.id);
     // Drop to the neutral tool so the next click inspects rather than places
     // another one (D-127).
     setTool('select');
@@ -200,7 +200,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     // carries it out.
     const action = clickAction(tool, {
       pawn: picked.pawn,
-      poiId: picked.poiId,
+      placeId: picked.placeId,
       cell: picked.column,
       slot: picked.slot,
     }, { occupied });
@@ -214,20 +214,20 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
         setTravel(pick(action.pawn));
         return;
 
-      case 'selectPoi':
-        setSelectedPoi(action.poiId);
+      case 'selectPlace':
+        setSelectedPlace(action.placeId);
         setSelectedChunk(null);
         return;
 
       case 'selectChunk':
-        setSelectedPoi(null);
+        setSelectedPlace(null);
         setSelectedChunk(action.coord);
         return;
 
       case 'placePoi': {
         const { cx, cz, x, z } = action.cell;
-        pendingPoiCell.current = cellKey(action.cell);
-        dispatch({ kind: 'addPoi', cell: { cx, cz, x, z }, markerId });
+        pendingPlaceCell.current = cellKey(action.cell);
+        dispatch({ kind: 'addPlace', cell: { cx, cz, x, z }, markerId });
         return;
       }
 
@@ -382,7 +382,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
         case 'Escape':
           setTravel(idle);
           stage.showHighlight(null, 0);
-          setSelectedPoi(null);
+          setSelectedPlace(null);
           setSelectedChunk(null);
           return;
         default: break;
@@ -484,17 +484,17 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
           </div>
 
           <div className="dock dock-right">
-            {poi && (
-              <PoiInspector
-                poi={poi}
+            {place && (
+              <PlaceInspector
+                place={place}
                 markers={campaign.markers}
-                revealed={revealedPois.has(poi.id)}
-                chunkKnown={knownChunks.has(`${poi.cell.cx},${poi.cell.cz}`)}
+                revealed={revealedPois.has(place.id)}
+                chunkKnown={knownChunks.has(`${place.cell.cx},${place.cell.cz}`)}
                 dispatch={dispatch}
-                onClose={() => setSelectedPoi(null)}
+                onClose={() => setSelectedPlace(null)}
               />
             )}
-            {!poi && selectedChunk && (
+            {!place && selectedChunk && (
               <ChunkInspector
                 coord={selectedChunk}
                 known={knownChunks.has(`${selectedChunk.cx},${selectedChunk.cz}`)}

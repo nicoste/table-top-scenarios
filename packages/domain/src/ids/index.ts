@@ -1,4 +1,4 @@
-// Branded ids (R-10 / D-014). PoiId and EncounterId are both strings; passing
+// Branded ids (R-10 / D-014). PlaceId and PoiId are both strings; passing
 // one where the other belongs must not compile.
 
 declare const brand: unique symbol;
@@ -8,9 +8,9 @@ export type CampaignId = Brand<string, 'CampaignId'>;
 export type SaveId = Brand<string, 'SaveId'>;
 export type MemberId = Brand<string, 'MemberId'>;
 export type TerrainId = Brand<string, 'TerrainId'>;
-export type PoiId = Brand<string, 'PoiId'>;
+export type PlaceId = Brand<string, 'PlaceId'>;
 export type NoteId = Brand<string, 'NoteId'>;
-export type EncounterId = Brand<string, 'EncounterId'>;
+export type PoiId = Brand<string, 'PoiId'>;
 export type MarkerId = Brand<string, 'MarkerId'>;
 
 /** Registry ids are namespaced strings: `terrain:swamp`, never an index (R-11). */

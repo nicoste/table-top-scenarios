@@ -33,7 +33,7 @@ export function App({ view, status, rejection, dispatch }: Props) {
   const openedId = useRef<string | null>(null);
   const drag = useRef<{ x: number; y: number; moved: boolean } | null>(null);
   const [travel, setTravel] = useState<Travel>(idle);
-  const [selectedPoi, setSelectedPoi] = useState<string | null>(null);
+  const [selectedPlace, setSelectedPlace] = useState<string | null>(null);
   const campaign = view?.campaign ?? null;
 
   /**
@@ -43,8 +43,8 @@ export function App({ view, status, rejection, dispatch }: Props) {
    * a copy would leave its notes on the shared screen after the host stopped
    * sending them, which is the one thing this screen must never do (R-141).
    */
-  const place = selectedPoi
-    ? campaign?.pois.find((poi) => poi.id === selectedPoi) ?? null
+  const place = selectedPlace
+    ? campaign?.places.find((place) => place.id === selectedPlace) ?? null
     : null;
   const markerName = place
     ? campaign?.markers.find((m) => m.id === place.markerId)?.name ?? null
@@ -96,7 +96,7 @@ export function App({ view, status, rejection, dispatch }: Props) {
     const onKey = (event: KeyboardEvent) => {
       if (event.code !== 'Escape') return;
       if (travel.step === 'aiming') setTravel(idle);
-      else setSelectedPoi(null);
+      else setSelectedPlace(null);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -125,7 +125,7 @@ export function App({ view, status, rejection, dispatch }: Props) {
     if (!stage) return;
     const hit = stage.pick(event.clientX, event.clientY);
     const action = tableAction(
-      { pawn: hit.pawn, poiId: hit.poiId, cell: hit.column, slot: hit.slot },
+      { pawn: hit.pawn, placeId: hit.placeId, cell: hit.column, slot: hit.slot },
       travel.step === 'aiming',
     );
 
@@ -143,11 +143,11 @@ export function App({ view, status, rejection, dispatch }: Props) {
       case 'pickPawn':
         setTravel(pick(action.pawn));
         return;
-      case 'selectPoi':
-        setSelectedPoi(action.poiId);
+      case 'selectPlace':
+        setSelectedPlace(action.placeId);
         return;
       case 'clearSelection':
-        setSelectedPoi(null);
+        setSelectedPlace(null);
         return;
       default:
         return;
@@ -193,7 +193,7 @@ export function App({ view, status, rejection, dispatch }: Props) {
       )}
 
       {!waiting && place && (
-        <PlaceCard place={place} markerName={markerName} onClose={() => setSelectedPoi(null)} />
+        <PlaceCard place={place} markerName={markerName} onClose={() => setSelectedPlace(null)} />
       )}
 
       {!waiting && <div className="badge">{campaign?.name}</div>}

@@ -119,13 +119,13 @@ describe('a drag is one action (D-170)', () => {
 });
 
 describe('what counts as an edit', () => {
-  it('records a POI, its notes, and roster changes — not just terrain', () => {
+  it('records a place, its notes, and roster changes — not just terrain', () => {
     let state = open();
-    state = run(state, { kind: 'addPoi', cell: at(3, 3), name: 'Keep' }).state;
-    expect(state.active!.pois).toHaveLength(1);
+    state = run(state, { kind: 'addPlace', cell: at(3, 3), name: 'Keep' }).state;
+    expect(state.active!.places).toHaveLength(1);
 
     state = run(state, { kind: 'undo' }).state;
-    expect(state.active!.pois).toHaveLength(0);
+    expect(state.active!.places).toHaveLength(0);
 
     state = run(state, { kind: 'addMember' }).state;
     const party = state.active!.party.length;

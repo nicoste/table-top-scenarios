@@ -211,7 +211,7 @@ describe('the permission line (R-136)', () => {
     for (const intent of [
       { kind: 'setChunkKnown', cx: ORIGIN.cx, cz: ORIGIN.cz, known: false },
       { kind: 'paintTerrain', cx: ORIGIN.cx, cz: ORIGIN.cz, x: 0, z: 0, terrainId: 'terrain:rock' },
-      { kind: 'addPoi', cell: at(1, 1), name: 'Theirs now' },
+      { kind: 'addPlace', cell: at(1, 1), name: 'Theirs now' },
       { kind: 'addMember' },
     ] as Intent[]) {
       expect(run(state, intent, 'table').rejected).toBe('only the GM can do that');

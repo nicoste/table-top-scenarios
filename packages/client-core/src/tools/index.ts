@@ -2,7 +2,7 @@
 //
 // This was policy buried in a pointer handler in `apps/gm`, which R-23 exempts
 // from tests — so the matrix the GM specified had no test at all, and the bug it
-// was written to fix (selecting a POI while painting) could come back unnoticed.
+// was written to fix (selecting a place while painting) could come back unnoticed.
 // It is a decision table, not three.js, so it lives here and is tested.
 //
 // `render` reports what is under the pointer and this decides what it meant.
@@ -15,7 +15,7 @@ export interface Slot { readonly cx: number; readonly cz: number }
 
 export interface Pointed {
   readonly pawn: { readonly memberId: string | null } | null;
-  readonly poiId: string | null;
+  readonly placeId: string | null;
   readonly cell: Cell | null;
   readonly slot: Slot | null;
 }
@@ -23,7 +23,7 @@ export interface Pointed {
 export type ClickAction =
   | { readonly kind: 'nothing' }
   | { readonly kind: 'createChunk'; readonly slot: Slot }
-  | { readonly kind: 'selectPoi'; readonly poiId: string }
+  | { readonly kind: 'selectPlace'; readonly placeId: string }
   | { readonly kind: 'selectChunk'; readonly coord: Slot }
   | { readonly kind: 'pickPawn'; readonly pawn: { readonly memberId: string | null } }
   | { readonly kind: 'placePoi'; readonly cell: Cell }
@@ -33,7 +33,7 @@ export type ClickAction =
 const nothing: ClickAction = { kind: 'nothing' };
 
 export interface Context {
-  /** Does this cell already hold a POI? One per cell (R-119). */
+  /** Does this cell already hold a place? One per cell (R-119). */
   readonly occupied: (cell: Cell) => boolean;
 }
 
@@ -44,7 +44,7 @@ export interface Context {
  * something the tool cannot act on, and its buttons edit a thing the GM has
  * mentally moved on from (D-168).
  *
- * Deliberately **not** "clear on every tool change": placing a POI switches to
+ * Deliberately **not** "clear on every tool change": placing a place switches to
  * `select` and pre-selects the new one (D-127), and that must survive. The rule
  * is about which tool owns a selection, not about the transition.
  */
@@ -69,7 +69,7 @@ export function clickAction(tool: Tool, pointed: Pointed, context: Context): Cli
       return pointed.pawn ? { kind: 'pickPawn', pawn: pointed.pawn } : nothing;
 
     case 'select':
-      if (pointed.poiId) return { kind: 'selectPoi', poiId: pointed.poiId };
+      if (pointed.placeId) return { kind: 'selectPlace', placeId: pointed.placeId };
       // Bare ground selects its chunk, the only route to the Known toggle.
       return pointed.cell
         ? { kind: 'selectChunk', coord: { cx: pointed.cell.cx, cz: pointed.cell.cz } }
@@ -97,7 +97,7 @@ export type TableAction =
   | { readonly kind: 'nothing' }
   | { readonly kind: 'travel' }
   | { readonly kind: 'pickPawn'; readonly pawn: { readonly memberId: string | null } }
-  | { readonly kind: 'selectPoi'; readonly poiId: string }
+  | { readonly kind: 'selectPlace'; readonly placeId: string }
   | { readonly kind: 'clearSelection' };
 
 /**
@@ -106,7 +106,7 @@ export type TableAction =
  * A travel in progress owns the click completely — *"you tap on the player
  * token, then selecting a place should keep going with the travel flow, not
  * select the place"*. So aiming short-circuits before anything else is
- * considered, and a POI under the pointer contributes its cell rather than
+ * considered, and a place under the pointer contributes its cell rather than
  * itself (`intendedCell`, D-163).
  *
  * Otherwise: a pawn starts a move, a place is selected, and bare ground clears
@@ -116,6 +116,6 @@ export type TableAction =
 export function tableAction(pointed: Pointed, aiming: boolean): TableAction {
   if (aiming) return { kind: 'travel' };
   if (pointed.pawn) return { kind: 'pickPawn', pawn: pointed.pawn };
-  if (pointed.poiId) return { kind: 'selectPoi', poiId: pointed.poiId };
+  if (pointed.placeId) return { kind: 'selectPlace', placeId: pointed.placeId };
   return { kind: 'clearSelection' };
 }

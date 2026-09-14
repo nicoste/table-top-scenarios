@@ -22,14 +22,14 @@ function open(): HostState {
   };
 }
 
-/** A campaign with a POI carrying one public and one private note. */
+/** A campaign with a place carrying one public and one private note. */
 function seeded() {
   let state = open();
-  state = run(state, { kind: 'addPoi', cell: at(5, 6), name: 'Ashfall Keep' }).state;
-  const poiId = state.active!.pois[0]!.id;
-  state = run(state, { kind: 'addNote', poiId, text: 'Gate unbarred at dusk', visibleToParty: true }).state;
-  state = run(state, { kind: 'addNote', poiId, text: 'The baron is already dead' }).state;
-  return { state, poiId };
+  state = run(state, { kind: 'addPlace', cell: at(5, 6), name: 'Ashfall Keep' }).state;
+  const placeId = state.active!.places[0]!.id;
+  state = run(state, { kind: 'addNote', placeId, text: 'Gate unbarred at dusk', visibleToParty: true }).state;
+  state = run(state, { kind: 'addNote', placeId, text: 'The baron is already dead' }).state;
+  return { state, placeId };
 }
 
 const tableJson = (state: HostState) => JSON.stringify(viewFor('table', state));
@@ -73,66 +73,66 @@ describe('nothing reaches the table until the GM says so', () => {
   });
 });
 
-describe('a POI needs BOTH flags (D-132)', () => {
-  it('withholds a Revealed POI while its chunk is still Unknown', () => {
+describe('a place needs BOTH flags (D-132)', () => {
+  it('withholds a Revealed place while its chunk is still Unknown', () => {
     const start = seeded();
-    const { poiId } = start;
+    const { placeId } = start;
     let state = start.state;
-    state = run(state, { kind: 'setPoiRevealed', poiId, revealed: true }).state;
+    state = run(state, { kind: 'setPlaceRevealed', placeId, revealed: true }).state;
     // Revealed, but the chunk is not Known — this is the leak all three design
     // critics found independently.
-    expect(viewFor('table', state).campaign?.pois).toEqual([]);
+    expect(viewFor('table', state).campaign?.places).toEqual([]);
     expect(tableJson(state)).not.toContain('Ashfall Keep');
   });
 
-  it('withholds an unrevealed POI in a Known chunk', () => {
+  it('withholds an unrevealed place in a Known chunk', () => {
     let state = seeded().state;
     state = run(state, { kind: 'setChunkKnown', cx: ORIGIN.cx, cz: ORIGIN.cz, known: true }).state;
-    expect(viewFor('table', state).campaign?.pois).toEqual([]);
+    expect(viewFor('table', state).campaign?.places).toEqual([]);
     expect(tableJson(state)).not.toContain('Ashfall Keep');
   });
 
   it('shows it only when both are set', () => {
     const start = seeded();
-    const { poiId } = start;
+    const { placeId } = start;
     let state = start.state;
     state = run(state, { kind: 'setChunkKnown', cx: ORIGIN.cx, cz: ORIGIN.cz, known: true }).state;
-    state = run(state, { kind: 'setPoiRevealed', poiId, revealed: true }).state;
-    expect(viewFor('table', state).campaign?.pois).toHaveLength(1);
+    state = run(state, { kind: 'setPlaceRevealed', placeId, revealed: true }).state;
+    expect(viewFor('table', state).campaign?.places).toHaveLength(1);
     expect(tableJson(state)).toContain('Ashfall Keep');
   });
 
-  it('hides it again the moment the chunk is hidden, even though the POI stays Revealed', () => {
+  it('hides it again the moment the chunk is hidden, even though the place stays Revealed', () => {
     let state = seeded().state;
-    state = run(state, { kind: 'revealChunk', cx: ORIGIN.cx, cz: ORIGIN.cz, withPois: true }).state;
-    expect(viewFor('table', state).campaign?.pois).toHaveLength(1);
+    state = run(state, { kind: 'revealChunk', cx: ORIGIN.cx, cz: ORIGIN.cz, withPlaces: true }).state;
+    expect(viewFor('table', state).campaign?.places).toHaveLength(1);
     state = run(state, { kind: 'setChunkKnown', cx: ORIGIN.cx, cz: ORIGIN.cz, known: false }).state;
-    expect(viewFor('table', state).campaign?.pois).toEqual([]);
+    expect(viewFor('table', state).campaign?.places).toEqual([]);
   });
 });
 
-describe('notes are filtered even on a fully revealed POI (R-85)', () => {
+describe('notes are filtered even on a fully revealed place (R-85)', () => {
   it('sends the public note and not the private one', () => {
     const start = seeded();
-    const { poiId } = start;
+    const { placeId } = start;
     let state = start.state;
     state = run(state, { kind: 'setChunkKnown', cx: ORIGIN.cx, cz: ORIGIN.cz, known: true }).state;
-    state = run(state, { kind: 'setPoiRevealed', poiId, revealed: true }).state;
+    state = run(state, { kind: 'setPlaceRevealed', placeId, revealed: true }).state;
 
     const payload = tableJson(state);
     expect(payload).toContain('Gate unbarred at dusk');
     expect(payload).not.toContain('The baron is already dead');
-    expect(viewFor('table', state).campaign?.pois[0]?.notes).toHaveLength(1);
+    expect(viewFor('table', state).campaign?.places[0]?.notes).toHaveLength(1);
   });
 
   it('drops the note the instant the GM hides it again', () => {
     const start = seeded();
-    const { poiId } = start;
+    const { placeId } = start;
     let state = start.state;
-    state = run(state, { kind: 'revealChunk', cx: ORIGIN.cx, cz: ORIGIN.cz, withPois: true }).state;
-    const noteId = state.active!.pois[0]!.notes[0]!.id;
+    state = run(state, { kind: 'revealChunk', cx: ORIGIN.cx, cz: ORIGIN.cz, withPlaces: true }).state;
+    const noteId = state.active!.places[0]!.notes[0]!.id;
     expect(tableJson(state)).toContain('Gate unbarred at dusk');
-    state = run(state, { kind: 'setNoteVisible', poiId, noteId, visibleToParty: false }).state;
+    state = run(state, { kind: 'setNoteVisible', placeId, noteId, visibleToParty: false }).state;
     expect(tableJson(state)).not.toContain('Gate unbarred at dusk');
   });
 
@@ -147,7 +147,7 @@ describe('notes are filtered even on a fully revealed POI (R-85)', () => {
 describe('the table is never told what it cannot see', () => {
   it('receives no discovery data of its own', () => {
     let state = seeded().state;
-    state = run(state, { kind: 'revealChunk', cx: ORIGIN.cx, cz: ORIGIN.cz, withPois: true }).state;
+    state = run(state, { kind: 'revealChunk', cx: ORIGIN.cx, cz: ORIGIN.cz, withPlaces: true }).state;
     const view = viewFor('table', state);
     // Knowing WHICH chunks are Known is itself the answer to what is hidden.
     expect(view).not.toHaveProperty('save');
@@ -172,10 +172,10 @@ describe('the table is never told what it cannot see', () => {
 
 describe('discovery is guarded like everything else', () => {
   it('refuses every discovery intent from the table display', () => {
-    const { state, poiId } = seeded();
+    const { state, placeId } = seeded();
     const intents: Intent[] = [
       { kind: 'setChunkKnown', cx: ORIGIN.cx, cz: ORIGIN.cz, known: true },
-      { kind: 'setPoiRevealed', poiId, revealed: true },
+      { kind: 'setPlaceRevealed', placeId, revealed: true },
       { kind: 'revealChunk', cx: ORIGIN.cx, cz: ORIGIN.cz },
     ];
     for (const intent of intents) {
@@ -189,9 +189,9 @@ describe('discovery is guarded like everything else', () => {
       .toMatch(/does not exist/);
   });
 
-  it('refuses to reveal a POI that does not exist', () => {
+  it('refuses to reveal a place that does not exist', () => {
     const { state } = seeded();
-    expect(run(state, { kind: 'setPoiRevealed', poiId: 'ghost', revealed: true }).rejected)
+    expect(run(state, { kind: 'setPlaceRevealed', placeId: 'ghost', revealed: true }).rejected)
       .toMatch(/no such place/);
   });
 

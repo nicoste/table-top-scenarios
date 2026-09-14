@@ -1,7 +1,7 @@
-// The Places tool and the POI inspector (R-86, GM console side).
+// The Places tool and the place inspector (R-86, GM console side).
 
 import { useState } from 'react';
-import type { CampaignWire, Intent, PoiWire } from '@tt/protocol';
+import type { CampaignWire, Intent, PlaceWire } from '@tt/protocol';
 import { Tooltip } from '@tt/ui';
 
 interface ToolProps {
@@ -10,7 +10,7 @@ interface ToolProps {
   onMarker: (id: string) => void;
 }
 
-/** Which marker a newly placed POI gets. */
+/** Which marker a newly placed place gets. */
 export function PlacesPanel({ campaign, markerId, onMarker }: ToolProps) {
   return (
     <div className="card">
@@ -36,7 +36,7 @@ export function PlacesPanel({ campaign, markerId, onMarker }: ToolProps) {
 }
 
 interface InspectorProps {
-  poi: PoiWire;
+  place: PlaceWire;
   markers: CampaignWire['markers'];
   revealed: boolean;
   chunkKnown: boolean;
@@ -44,23 +44,23 @@ interface InspectorProps {
   onClose: () => void;
 }
 
-export function PoiInspector({ poi, markers, revealed, chunkKnown, dispatch, onClose }: InspectorProps) {
+export function PlaceInspector({ place, markers, revealed, chunkKnown, dispatch, onClose }: InspectorProps) {
   const [draft, setDraft] = useState('');
-  const [encounterDraft, setEncounterDraft] = useState('');
+  const [poiDraft, setPoiDraft] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const addNote = () => {
     const text = draft.trim();
     if (!text) return;
-    dispatch({ kind: 'addNote', poiId: poi.id, text });
+    dispatch({ kind: 'addNote', placeId: place.id, text });
     setDraft('');
   };
 
-  const addEncounter = () => {
-    const name = encounterDraft.trim();
+  const addPoi = () => {
+    const name = poiDraft.trim();
     if (!name) return;
-    dispatch({ kind: 'addEncounter', poiId: poi.id, name });
-    setEncounterDraft('');
+    dispatch({ kind: 'addPoi', placeId: place.id, name });
+    setPoiDraft('');
   };
 
   return (
@@ -68,22 +68,22 @@ export function PoiInspector({ poi, markers, revealed, chunkKnown, dispatch, onC
       <h2>Place</h2>
 
       <input
-        value={poi.name}
-        onChange={(e) => dispatch({ kind: 'renamePoi', id: poi.id, name: e.target.value })}
+        value={place.name}
+        onChange={(e) => dispatch({ kind: 'renamePlace', id: place.id, name: e.target.value })}
       />
 
       <label className="row" style={{ marginTop: 8 }}>
         <span className="lbl">marker</span>
         <select
-          value={poi.markerId}
-          onChange={(e) => dispatch({ kind: 'setPoiMarker', id: poi.id, markerId: e.target.value })}
+          value={place.markerId}
+          onChange={(e) => dispatch({ kind: 'setPlaceMarker', id: place.id, markerId: e.target.value })}
         >
           {markers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
         </select>
       </label>
 
       <p className="hint">
-        at chunk {poi.cell.cx},{poi.cell.cz} · cell {poi.cell.x},{poi.cell.z}
+        at chunk {place.cell.cx},{place.cell.cz} · cell {place.cell.x},{place.cell.z}
       </p>
 
       <div className="reveal">
@@ -94,7 +94,7 @@ export function PoiInspector({ poi, markers, revealed, chunkKnown, dispatch, onC
           <button
             className={revealed ? 'on' : ''}
             aria-pressed={revealed}
-            onClick={() => dispatch({ kind: 'setPoiRevealed', poiId: poi.id, revealed: !revealed })}
+            onClick={() => dispatch({ kind: 'setPlaceRevealed', placeId: place.id, revealed: !revealed })}
           >
             {revealed ? '👁 Revealed' : '🔒 Hidden'}
           </button>
@@ -110,9 +110,9 @@ export function PoiInspector({ poi, markers, revealed, chunkKnown, dispatch, onC
       )}
 
       <h2 style={{ marginTop: 12 }}>Notes</h2>
-      {poi.notes.length === 0 && <p className="hint">Nothing recorded yet.</p>}
+      {place.notes.length === 0 && <p className="hint">Nothing recorded yet.</p>}
       <ul className="notes">
-        {poi.notes.map((note, i) => (
+        {place.notes.map((note, i) => (
           <li key={note.id}>
             {/*
               The eye is the only thing that decides whether a note reaches the
@@ -126,7 +126,7 @@ export function PoiInspector({ poi, markers, revealed, chunkKnown, dispatch, onC
                 className={`quiet eye${note.visibleToParty ? ' shown' : ''}`}
                 aria-pressed={note.visibleToParty}
                 onClick={() => dispatch({
-                  kind: 'setNoteVisible', poiId: poi.id, noteId: note.id,
+                  kind: 'setNoteVisible', placeId: place.id, noteId: note.id,
                   visibleToParty: !note.visibleToParty,
                 })}
               >
@@ -138,7 +138,7 @@ export function PoiInspector({ poi, markers, revealed, chunkKnown, dispatch, onC
               rows={2}
               value={note.text}
               onChange={(e) => dispatch({
-                kind: 'editNote', poiId: poi.id, noteId: note.id, text: e.target.value,
+                kind: 'editNote', placeId: place.id, noteId: note.id, text: e.target.value,
               })}
             />
 
@@ -147,18 +147,18 @@ export function PoiInspector({ poi, markers, revealed, chunkKnown, dispatch, onC
                 className="quiet"
                 disabled={i === 0}
                 title="Move up"
-                onClick={() => dispatch({ kind: 'moveNote', poiId: poi.id, noteId: note.id, delta: -1 })}
+                onClick={() => dispatch({ kind: 'moveNote', placeId: place.id, noteId: note.id, delta: -1 })}
               >↑</button>
               <button
                 className="quiet"
-                disabled={i === poi.notes.length - 1}
+                disabled={i === place.notes.length - 1}
                 title="Move down"
-                onClick={() => dispatch({ kind: 'moveNote', poiId: poi.id, noteId: note.id, delta: 1 })}
+                onClick={() => dispatch({ kind: 'moveNote', placeId: place.id, noteId: note.id, delta: 1 })}
               >↓</button>
               <button
                 className="quiet"
                 title="Delete note"
-                onClick={() => dispatch({ kind: 'removeNote', poiId: poi.id, noteId: note.id })}
+                onClick={() => dispatch({ kind: 'removeNote', placeId: place.id, noteId: note.id })}
               >×</button>
             </div>
           </li>
@@ -176,36 +176,38 @@ export function PoiInspector({ poi, markers, revealed, chunkKnown, dispatch, onC
       </div>
 
       {/*
-        Encounters. The same shape as notes on purpose (D-175): ordered, each one
+        Pois. The same shape as notes on purpose (D-175): ordered, each one
         individually visible, and the eye is again the only thing that decides
         whether it reaches the table (R-85). No map yet — that is O-009, and an
         entry here is the name it will hang off.
       */}
-      <h2 style={{ marginTop: 12 }}>Encounters</h2>
-      {poi.encounters.length === 0 && <p className="hint">None yet.</p>}
+      <h2 style={{ marginTop: 12 }}>Points of interest</h2>
+      {place.pois.length === 0 && (
+        <p className="hint">None yet — a church, a market, an arena.</p>
+      )}
       <ul className="notes">
-        {poi.encounters.map((encounter, i) => (
-          <li key={encounter.id}>
+        {place.pois.map((poi, i) => (
+          <li key={poi.id}>
             <Tooltip
-              label={encounter.visibleToParty ? 'Players can see this' : 'GM only'}
+              label={poi.visibleToParty ? 'Players can see this' : 'GM only'}
               placement="right"
             >
               <button
-                className={`quiet eye${encounter.visibleToParty ? ' shown' : ''}`}
-                aria-pressed={encounter.visibleToParty}
+                className={`quiet eye${poi.visibleToParty ? ' shown' : ''}`}
+                aria-pressed={poi.visibleToParty}
                 onClick={() => dispatch({
-                  kind: 'setEncounterVisible', poiId: poi.id, encounterId: encounter.id,
-                  visibleToParty: !encounter.visibleToParty,
+                  kind: 'setPoiVisible', placeId: place.id, poiId: poi.id,
+                  visibleToParty: !poi.visibleToParty,
                 })}
               >
-                {encounter.visibleToParty ? '👁' : '🔒'}
+                {poi.visibleToParty ? '👁' : '🔒'}
               </button>
             </Tooltip>
 
             <input
-              value={encounter.name}
+              value={poi.name}
               onChange={(e) => dispatch({
-                kind: 'renameEncounter', poiId: poi.id, encounterId: encounter.id, name: e.target.value,
+                kind: 'renamePoi', placeId: place.id, poiId: poi.id, name: e.target.value,
               })}
             />
 
@@ -214,18 +216,18 @@ export function PoiInspector({ poi, markers, revealed, chunkKnown, dispatch, onC
                 className="quiet"
                 disabled={i === 0}
                 title="Move up"
-                onClick={() => dispatch({ kind: 'moveEncounter', poiId: poi.id, encounterId: encounter.id, delta: -1 })}
+                onClick={() => dispatch({ kind: 'movePoi', placeId: place.id, poiId: poi.id, delta: -1 })}
               >↑</button>
               <button
                 className="quiet"
-                disabled={i === poi.encounters.length - 1}
+                disabled={i === place.pois.length - 1}
                 title="Move down"
-                onClick={() => dispatch({ kind: 'moveEncounter', poiId: poi.id, encounterId: encounter.id, delta: 1 })}
+                onClick={() => dispatch({ kind: 'movePoi', placeId: place.id, poiId: poi.id, delta: 1 })}
               >↓</button>
               <button
                 className="quiet"
-                title="Delete encounter"
-                onClick={() => dispatch({ kind: 'removeEncounter', poiId: poi.id, encounterId: encounter.id })}
+                title="Delete point of interest"
+                onClick={() => dispatch({ kind: 'removePoi', placeId: place.id, poiId: poi.id })}
               >×</button>
             </div>
           </li>
@@ -234,19 +236,19 @@ export function PoiInspector({ poi, markers, revealed, chunkKnown, dispatch, onC
 
       <div className="row">
         <input
-          placeholder="Add an encounter"
-          value={encounterDraft}
-          onChange={(e) => setEncounterDraft(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') addEncounter(); }}
+          placeholder="Add a point of interest"
+          value={poiDraft}
+          onChange={(e) => setPoiDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') addPoi(); }}
         />
-        <button onClick={addEncounter} disabled={!encounterDraft.trim()}>Add</button>
+        <button onClick={addPoi} disabled={!poiDraft.trim()}>Add</button>
       </div>
 
       <div className="row" style={{ marginTop: 10 }}>
         <button onClick={onClose}>Done</button>
         {confirmDelete ? (
           <>
-            <button className="danger" onClick={() => { dispatch({ kind: 'removePoi', id: poi.id }); onClose(); }}>
+            <button className="danger" onClick={() => { dispatch({ kind: 'removePlace', id: place.id }); onClose(); }}>
               Delete place
             </button>
             <button onClick={() => setConfirmDelete(false)}>Keep</button>

@@ -3,19 +3,19 @@
 // argument and everything leaves as a return value.
 
 import type { Campaign, ChunkCoord, WorldCell } from '@tt/domain';
-import type { PartyMember, PoiId, NoteId, EncounterId, MemberId, Save } from '@tt/domain';
+import type { PartyMember, PlaceId, NoteId, PoiId, MemberId, Save } from '@tt/domain';
 import {
   createCampaign, duplicateCampaign, uniqueCampaignName, createMember, editMember, removeMember,
   addChunk, chunkAt, terrainById, isCreatableSlot, DEFAULT_TERRAIN,
   toGlobal, paintArea, setHeightArea, raiseArea,
-  addPoi, renamePoi, setPoiMarker, movePoi, removePoi, poiById, poiAt, isValidPoiCell,
+  addPlace, renamePlace, setPlaceMarker, movePlace, removePlace, placeById, placeAt, isValidPlaceCell,
   addNote, editNote, setNoteVisible, removeNote, moveNote, isKnownMarker,
-  addEncounter, renameEncounter, setEncounterVisible, removeEncounter, moveEncounter,
+  addPoi, renamePoi, setPoiVisible, removePoi, movePoi,
   createLiveSave, withDiscovery, withPlacement, touch, upgraded, upgradedCampaign, belongsTo,
   pruneDiscovery, pruneMembers,
   pawns, withGroupAt, withMemberAt, gathered, scattered,
   isValidWorldCell, chunkOf, isChunkKnown,
-  setChunkKnown, setPoiRevealed, setPoisRevealed, isAuthored, poisInChunk,
+  setChunkKnown, setPlaceRevealed, setPlacesRevealed, isAuthored, placesInChunk,
 } from '@tt/domain';
 import type { HostState, Intent, Role } from '@tt/protocol';
 import { parseTerrainId, parseMarkerId } from '@tt/protocol';
@@ -82,7 +82,7 @@ const OPEN_TO_THE_TABLE = new Set<Intent['kind']>([
  * The state that results from opening a campaign together with its live save.
  *
  * Pure, and deliberately here rather than in the host: choosing whether to reuse
- * a stored save, mint a fresh one, or prune stale POI ids from it is a rule, and
+ * a stored save, mint a fresh one, or prune stale place ids from it is a rule, and
  * rules do not live in `apps/host` (R-67). The host reads the files and hands
  * the results over.
  */
@@ -91,14 +91,14 @@ export function openedWith(
   stored: Campaign,
   storedSave: Save | null,
   savedAt: string,
-  poiIds: ReadonlySet<PoiId>,
+  placeIds: ReadonlySet<PlaceId>,
 ): { readonly state: HostState; readonly toPersist: Save | null } {
   // Stamped on adoption so the next write does not claim an older schema than
   // the data it holds (R-137).
   const campaign = upgradedCampaign(stored);
   const usable = storedSave && belongsTo(storedSave, campaign) ? storedSave : null;
   const save = usable
-    ? upgraded(pruneMembers(pruneDiscovery(usable, poiIds), new Set(campaign.party.map((m) => m.id))))
+    ? upgraded(pruneMembers(pruneDiscovery(usable, placeIds), new Set(campaign.party.map((m) => m.id))))
     : createLiveSave(campaign, savedAt);
   return {
     state: { ...state, active: campaign, activeSave: save },
@@ -333,108 +333,108 @@ function applyToPois(
   now: string,
 ): Applied {
   const reject_ = (reason: string): Applied => reject(state, reason);
-  const withPois = (pois: Campaign['pois']): Applied =>
-    (pois === campaign.pois ? ok(state) : commit({ ...campaign, pois }));
+  const withPlaces = (places: Campaign['places']): Applied =>
+    (places === campaign.places ? ok(state) : commit({ ...campaign, places }));
 
-  /** Every POI intent but `addPoi` names one, so resolve it once. */
-  const target = (id: string): PoiId | null => (poiById(campaign.pois, id as PoiId) ? (id as PoiId) : null);
+  /** Every place intent but `addPlace` names one, so resolve it once. */
+  const target = (id: string): PlaceId | null => (placeById(campaign.places, id as PlaceId) ? (id as PlaceId) : null);
 
   switch (intent.kind) {
-    case 'addPoi': {
-      if (!isValidPoiCell(intent.cell)) return reject_('that is not a cell in a chunk');
+    case 'addPlace': {
+      if (!isValidPlaceCell(intent.cell)) return reject_('that is not a cell in a chunk');
       if (!chunkAt(campaign.world, { cx: intent.cell.cx, cz: intent.cell.cz })) {
         return reject_('that chunk does not exist');
       }
-      if (poiAt(campaign.pois, intent.cell)) return reject_('there is already a place here');
+      if (placeAt(campaign.places, intent.cell)) return reject_('there is already a place here');
       if (intent.markerId && !isKnownMarker(parseMarkerId(intent.markerId))) {
         return reject_(`unknown marker: ${intent.markerId}`);
       }
       const marker = intent.markerId ? parseMarkerId(intent.markerId) : undefined;
-      return withPois(addPoi(campaign.pois, intent.cell, intent.name, marker));
+      return withPlaces(addPlace(campaign.places, intent.cell, intent.name, marker));
     }
 
-    case 'renamePoi': {
+    case 'renamePlace': {
       const id = target(intent.id);
       if (!id) return reject_('no such place');
-      return withPois(renamePoi(campaign.pois, id, intent.name));
+      return withPlaces(renamePlace(campaign.places, id, intent.name));
     }
 
-    case 'setPoiMarker': {
+    case 'setPlaceMarker': {
       const id = target(intent.id);
       if (!id) return reject_('no such place');
       const marker = parseMarkerId(intent.markerId);
       if (!isKnownMarker(marker)) return reject_(`unknown marker: ${intent.markerId}`);
-      return withPois(setPoiMarker(campaign.pois, id, marker));
+      return withPlaces(setPlaceMarker(campaign.places, id, marker));
     }
 
-    case 'movePoi': {
+    case 'movePlace': {
       const id = target(intent.id);
       if (!id) return reject_('no such place');
-      if (!isValidPoiCell(intent.cell)) return reject_('that is not a cell in a chunk');
+      if (!isValidPlaceCell(intent.cell)) return reject_('that is not a cell in a chunk');
       if (!chunkAt(campaign.world, { cx: intent.cell.cx, cz: intent.cell.cz })) {
         return reject_('that chunk does not exist');
       }
-      const occupant = poiAt(campaign.pois, intent.cell);
+      const occupant = placeAt(campaign.places, intent.cell);
       if (occupant && occupant.id !== id) return reject_('there is already a place there');
-      return withPois(movePoi(campaign.pois, id, intent.cell));
+      return withPlaces(movePlace(campaign.places, id, intent.cell));
     }
 
-    case 'removePoi': {
+    case 'removePlace': {
       const id = target(intent.id);
       if (!id) return reject_('no such place');
-      return withPois(removePoi(campaign.pois, id));
+      return withPlaces(removePlace(campaign.places, id));
     }
 
     case 'addNote': {
-      const id = target(intent.poiId);
+      const id = target(intent.placeId);
       if (!id) return reject_('no such place');
-      return withPois(addNote(campaign.pois, id, intent.text, intent.visibleToParty ?? false));
+      return withPlaces(addNote(campaign.places, id, intent.text, intent.visibleToParty ?? false));
     }
 
     case 'editNote':
     case 'setNoteVisible':
     case 'removeNote':
     case 'moveNote': {
-      const id = target(intent.poiId);
+      const id = target(intent.placeId);
       if (!id) return reject_('no such place');
-      const poi = poiById(campaign.pois, id);
-      if (!poi?.notes.some((note) => note.id === intent.noteId)) return reject_('no such note');
+      const place = placeById(campaign.places, id);
+      if (!place?.notes.some((note) => note.id === intent.noteId)) return reject_('no such note');
       const noteId = intent.noteId as NoteId;
       switch (intent.kind) {
-        case 'editNote': return withPois(editNote(campaign.pois, id, noteId, intent.text));
+        case 'editNote': return withPlaces(editNote(campaign.places, id, noteId, intent.text));
         case 'setNoteVisible':
-          return withPois(setNoteVisible(campaign.pois, id, noteId, intent.visibleToParty));
-        case 'removeNote': return withPois(removeNote(campaign.pois, id, noteId));
-        default: return withPois(moveNote(campaign.pois, id, noteId, intent.delta));
+          return withPlaces(setNoteVisible(campaign.places, id, noteId, intent.visibleToParty));
+        case 'removeNote': return withPlaces(removeNote(campaign.places, id, noteId));
+        default: return withPlaces(moveNote(campaign.places, id, noteId, intent.delta));
       }
     }
 
-    case 'addEncounter': {
-      const id = target(intent.poiId);
+    case 'addPoi': {
+      const id = target(intent.placeId);
       if (!id) return reject_('no such place');
-      return withPois(addEncounter(campaign.pois, id, intent.name, intent.visibleToParty ?? false));
+      return withPlaces(addPoi(campaign.places, id, intent.name, intent.visibleToParty ?? false));
     }
 
-    case 'renameEncounter':
-    case 'setEncounterVisible':
-    case 'removeEncounter':
-    case 'moveEncounter': {
-      const id = target(intent.poiId);
+    case 'renamePoi':
+    case 'setPoiVisible':
+    case 'removePoi':
+    case 'movePoi': {
+      const id = target(intent.placeId);
       if (!id) return reject_('no such place');
-      const poi = poiById(campaign.pois, id);
-      if (!poi?.encounters.some((e) => e.id === intent.encounterId)) {
-        return reject_('no such encounter');
+      const place = placeById(campaign.places, id);
+      if (!place?.pois.some((e) => e.id === intent.poiId)) {
+        return reject_('no such poi');
       }
-      const encounterId = intent.encounterId as EncounterId;
+      const poiId = intent.poiId as PoiId;
       switch (intent.kind) {
-        case 'renameEncounter':
-          return withPois(renameEncounter(campaign.pois, id, encounterId, intent.name));
-        case 'setEncounterVisible':
-          return withPois(setEncounterVisible(campaign.pois, id, encounterId, intent.visibleToParty));
-        case 'removeEncounter':
-          return withPois(removeEncounter(campaign.pois, id, encounterId));
+        case 'renamePoi':
+          return withPlaces(renamePoi(campaign.places, id, poiId, intent.name));
+        case 'setPoiVisible':
+          return withPlaces(setPoiVisible(campaign.places, id, poiId, intent.visibleToParty));
+        case 'removePoi':
+          return withPlaces(removePoi(campaign.places, id, poiId));
         default:
-          return withPois(moveEncounter(campaign.pois, id, encounterId, intent.delta));
+          return withPlaces(movePoi(campaign.places, id, poiId, intent.delta));
       }
     }
 
@@ -504,19 +504,19 @@ function applyToDiscovery(
       return commitDiscovery(setChunkKnown(save.discovery, coord, intent.known));
     }
 
-    case 'setPoiRevealed': {
-      const id = intent.poiId as PoiId;
-      if (!poiById(campaign.pois, id)) return reject(state, 'no such place');
-      return commitDiscovery(setPoiRevealed(save.discovery, id, intent.revealed));
+    case 'setPlaceRevealed': {
+      const id = intent.placeId as PlaceId;
+      if (!placeById(campaign.places, id)) return reject(state, 'no such place');
+      return commitDiscovery(setPlaceRevealed(save.discovery, id, intent.revealed));
     }
 
     case 'revealChunk': {
       const coord = { cx: intent.cx, cz: intent.cz };
       if (!isAuthored(campaign.world, coord)) return reject(state, 'that chunk does not exist');
       let discovery = setChunkKnown(save.discovery, coord, true);
-      if (intent.withPois) {
-        const ids = poisInChunk(campaign.pois, coord).map((poi) => poi.id);
-        discovery = setPoisRevealed(discovery, ids, true);
+      if (intent.withPlaces) {
+        const ids = placesInChunk(campaign.places, coord).map((place) => place.id);
+        discovery = setPlacesRevealed(discovery, ids, true);
       }
       return commitDiscovery(discovery);
     }

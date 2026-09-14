@@ -207,3 +207,44 @@ describe('deleting moves aside rather than unlinking (D-108)', () => {
     expect(store.list()).toEqual([]);
   });
 });
+
+describe('a campaign this build cannot read (R-144)', () => {
+  /** The pre-rename shape: `pois` meant places, each holding `encounters`. */
+  const legacyManifest = (id: string) => ({
+    id,
+    schemaVersion: 3,
+    name: 'Old Galia',
+    party: [],
+    pois: [{ id: 'poi_1', name: 'Casilda', cell: { cx: 15, cz: 15, x: 1, z: 1 }, markerId: 'marker:town', encounters: [], notes: [] }],
+  });
+
+  function writeLegacy(root: string, id: string): void {
+    const dir = join(root, id);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'campaign.json'), JSON.stringify(legacyManifest(id)), 'utf8');
+    writeFileSync(join(dir, 'world.json'), JSON.stringify({ bounds: { x: 30, z: 30 }, metresPerCell: 1500, metresPerLevel: 150, chunks: [] }), 'utf8');
+  }
+
+  it('is not listed, because a row you cannot open is worse than no row', () => {
+    const store = fileCampaignStore(root);
+    writeLegacy(root, 'campaign_old');
+    expect(store.list().map((c) => c.id)).not.toContain('campaign_old');
+  });
+
+  it('returns null rather than throwing, since this runs inside an intent', () => {
+    // A store that throws takes the message handler with it. Null becomes a
+    // rejection the GM can read.
+    const store = fileCampaignStore(root);
+    writeLegacy(root, 'campaign_old');
+    expect(store.load('campaign_old')).toBeNull();
+  });
+
+  it('still lists and loads a current one alongside it', () => {
+    const store = fileCampaignStore(root);
+    writeLegacy(root, 'campaign_old');
+    const fresh = createCampaign('Fresh');
+    store.save(fresh);
+    expect(store.list().map((c) => c.name)).toEqual(['Fresh']);
+    expect(store.load(fresh.id)?.name).toBe('Fresh');
+  });
+});

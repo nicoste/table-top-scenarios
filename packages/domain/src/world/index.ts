@@ -18,7 +18,7 @@ export const DEFAULT_WORLD_BOUNDS = { x: 30, z: 30 } as const;
  *
  * Two independent reasons for this number. It is within 7% of the 5e DMG's
  * *province scale* of one mile per hex — the finest scale any published map
- * uses — and it is exactly 1000x the 1.5 m encounter cell, so the two scales
+ * uses — and it is exactly 1000x the 1.5 m poi cell, so the two scales
  * relate by a round factor.
  */
 export const DEFAULT_METRES_PER_CELL = 1500;
@@ -50,8 +50,8 @@ export interface ChunkCoord {
 /**
  * One cell, addressed as the chunk it belongs to plus its offset inside it.
  *
- * This lives here rather than in `poi/` (D-156): it is a world coordinate, and
- * `party/` has to name one too. A party module importing from `poi/` to say
+ * This lives here rather than in `place/` (D-156): it is a world coordinate, and
+ * `party/` has to name one too. A party module importing from `place/` to say
  * where somebody is standing would be nonsense.
  */
 export interface WorldCell {
