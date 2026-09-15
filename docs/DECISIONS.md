@@ -3007,3 +3007,17 @@ the first click only asked about. So the pair renders `Delete` then `Keep`, and
 while armed. That is what makes it fit on one line: hiding ▣/↑/↓ leaves room,
 which beats the wrapped second line it replaces, and a row offering nothing but
 two words is unambiguous about what is being asked.
+
+### D-192 — The delete prompt names the thing, not its parts · `agreed`
+`Delete "The Eight's Church" and its map` became `Delete "The Eight's Church"`.
+The GM's reason: *"users won't get the difference."*
+
+They are right, and the phrasing was a leftover from when a map was optional.
+Now that every point of interest has one (D-187), "and its map" distinguishes
+nothing — there is no other kind of point of interest to contrast it with. A
+qualifier that is always true is noise, and on a warning it is worse than noise:
+it invites the reader to wonder which case they are in.
+
+The map is still the reason this delete asks at all (R-151). That reason belongs
+in the code's comment and in the rule, not in the sentence the GM reads at the
+moment they are trying to decide.

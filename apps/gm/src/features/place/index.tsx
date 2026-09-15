@@ -219,9 +219,11 @@ export function PlaceInspector({
             />
 
             <div className="note-actions">
-              {/* This one takes a built map with it (R-151). */}
+              {/* This one takes a built map with it (R-151) — which is why it
+                  asks, not something to say out loud. Every point of interest
+                  has a map, so naming it distinguishes nothing (D-192). */}
               <ConfirmDelete
-                label={`Delete "${poi.name}" and its map`}
+                label={`Delete "${poi.name}"`}
                 onConfirm={() => dispatch({ kind: 'removePoi', placeId: place.id, poiId: poi.id })}
               >
                 {/* Always there. A point of interest is created with its map, so
