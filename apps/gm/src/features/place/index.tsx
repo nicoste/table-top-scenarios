@@ -147,24 +147,26 @@ export function PlaceInspector({
             />
 
             <div className="note-actions">
-              <button
-                className="quiet"
-                disabled={i === 0}
-                title="Move up"
-                onClick={() => dispatch({ kind: 'moveNote', placeId: place.id, noteId: note.id, delta: -1 })}
-              >↑</button>
-              <button
-                className="quiet"
-                disabled={i === place.notes.length - 1}
-                title="Move down"
-                onClick={() => dispatch({ kind: 'moveNote', placeId: place.id, noteId: note.id, delta: 1 })}
-              >↓</button>
-              {/* Typed prose, and the × sits three pixels from the arrows
-                  that reorder the list (R-151). */}
+              {/* Typed prose, and the × sits three pixels from the arrows that
+                  reorder the list (R-151). The arrows go inside, so the question
+                  has the row to itself. */}
               <ConfirmDelete
                 label="Delete this note"
                 onConfirm={() => dispatch({ kind: 'removeNote', placeId: place.id, noteId: note.id })}
-              />
+              >
+                <button
+                  className="quiet"
+                  disabled={i === 0}
+                  title="Move up"
+                  onClick={() => dispatch({ kind: 'moveNote', placeId: place.id, noteId: note.id, delta: -1 })}
+                >↑</button>
+                <button
+                  className="quiet"
+                  disabled={i === place.notes.length - 1}
+                  title="Move down"
+                  onClick={() => dispatch({ kind: 'moveNote', placeId: place.id, noteId: note.id, delta: 1 })}
+                >↓</button>
+              </ConfirmDelete>
             </div>
           </li>
         ))}
@@ -217,28 +219,29 @@ export function PlaceInspector({
             />
 
             <div className="note-actions">
-              {/* Always there. A point of interest is created with its map, so
-                  there is no second step and nothing to ask about (D-187). */}
-              <Tooltip label={`Open the map of ${poi.name}`} placement="left">
-                <button className="quiet" onClick={() => onOpenMap(poi.id)}>▣ Map</button>
-              </Tooltip>
-              <button
-                className="quiet"
-                disabled={i === 0}
-                title="Move up"
-                onClick={() => dispatch({ kind: 'movePoi', placeId: place.id, poiId: poi.id, delta: -1 })}
-              >↑</button>
-              <button
-                className="quiet"
-                disabled={i === place.pois.length - 1}
-                title="Move down"
-                onClick={() => dispatch({ kind: 'movePoi', placeId: place.id, poiId: poi.id, delta: 1 })}
-              >↓</button>
               {/* This one takes a built map with it (R-151). */}
               <ConfirmDelete
                 label={`Delete "${poi.name}" and its map`}
                 onConfirm={() => dispatch({ kind: 'removePoi', placeId: place.id, poiId: poi.id })}
-              />
+              >
+                {/* Always there. A point of interest is created with its map, so
+                    there is no second step and nothing to ask about (D-187). */}
+                <Tooltip label={`Open the map of ${poi.name}`} placement="left">
+                  <button className="quiet" onClick={() => onOpenMap(poi.id)}>▣ Open Map</button>
+                </Tooltip>
+                <button
+                  className="quiet"
+                  disabled={i === 0}
+                  title="Move up"
+                  onClick={() => dispatch({ kind: 'movePoi', placeId: place.id, poiId: poi.id, delta: -1 })}
+                >↑</button>
+                <button
+                  className="quiet"
+                  disabled={i === place.pois.length - 1}
+                  title="Move down"
+                  onClick={() => dispatch({ kind: 'movePoi', placeId: place.id, poiId: poi.id, delta: 1 })}
+                >↓</button>
+              </ConfirmDelete>
             </div>
           </li>
         ))}

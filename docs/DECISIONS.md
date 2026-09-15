@@ -2981,3 +2981,29 @@ The lesson, again, is not about cameras. **Verification that only goes one way
 proves one direction.** D-186 entered a map and stopped; D-167 placed the party
 and never started from scratch; D-189's fixture never held a point of interest.
 Every time, the untried step is the broken one.
+
+### D-191 — The surface decides what is visible, and the question owns its row · `agreed`
+Three corrections to the round before it.
+
+**`setCampaign` now re-applies the surface.** It rebuilds the world mesh, the
+grid, the place markers and the pawns, and a rebuilt group is a new `Object3D`
+with `visible` true — so every one of them came back on screen inside an open
+map. It *looked* fine only because the console runs its campaign effect before
+its map effect, so `setMap` undid the damage in the same commit. That is an
+ordering accident, not a rule. There is now one `applySurface`, called from
+`setMap`, from `setCampaign` and from `rebuildPawns` (which `setPlacement` calls
+on its own, with no `setMap` behind it to clean up after).
+
+**"▣ Map" reads "▣ Open Map".** A noun on a button is a label; a verb is an
+offer.
+
+**The question takes the whole row, and "Keep" sits on the right.** The GM's
+reasoning, and it is better than the layout it replaces: *"as the 'x' is to the
+right, the option to the right must be the 'Keep' so double clicks won't
+accidentally delete them."* The row is right-aligned and the `×` is its right
+edge — put "Delete" there and the second click of a double-click destroys what
+the first click only asked about. So the pair renders `Delete` then `Keep`, and
+`ConfirmDelete` takes the row's other actions as **children** and drops them
+while armed. That is what makes it fit on one line: hiding ▣/↑/↓ leaves room,
+which beats the wrapped second line it replaces, and a row offering nothing but
+two words is unambiguous about what is being asked.

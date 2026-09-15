@@ -1832,3 +1832,9 @@ apps/host/src/
 > Turn and tilt (Q/E/R/F) therefore work on **both** surfaces. A tavern is where
 > turning matters most: a wall you built is between you and the room behind it.
 > The *tools* belong to the surface (R-148); the camera does not.
+>
+> And **every rebuild re-applies the surface** (D-191). A rebuilt group is a new
+> object with `visible` true, so anything that tears down and remakes the world's
+> meshes — a campaign change, a party move — puts them back on screen inside an
+> open map unless it says otherwise. One method does this, and every rebuild
+> calls it; relying on one effect running before another is not a rule.

@@ -123,11 +123,7 @@ button.quiet:hover { background: #3a2222; color: #ffc9c9; border-color: transpar
 }
 .notes .eye { font-size: 13px; padding: 3px 5px; line-height: 1; opacity: .55; }
 .notes .eye.shown { opacity: 1; }
-/* Wraps because a row's × turns into [Delete] [Keep] (R-151), and two words
-   do not fit beside the arrows in a 228px dock. */
-.notes .note-actions {
-  grid-column: 2; display: flex; flex-wrap: wrap; gap: 3px; justify-content: flex-end;
-}
+.notes .note-actions { grid-column: 2; display: flex; gap: 3px; justify-content: flex-end; }
 .notes .note-actions button { padding: 1px 6px; font-size: 11px; }
 .palette { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
 .palette button {

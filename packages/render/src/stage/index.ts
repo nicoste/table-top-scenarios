@@ -147,6 +147,31 @@ export class Stage {
     this.scene.add(this.grid);
 
     if (recentre) this.target = { ...this.target, focus: centre };
+
+    // Everything above is freshly built and therefore visible. If a map is the
+    // surface, it must not be.
+    this.applySurface();
+  }
+
+  /**
+   * Hides everything the world owns while a map is the surface (R-148).
+   *
+   * Called from every path that *rebuilds* one of these groups, not just from
+   * `setMap`. A rebuilt group is a new Object3D with `visible` true, so
+   * `setCampaign` and `rebuildPawns` used to put the world's terrain, grid,
+   * markers and pawns back on screen inside an open map. That it looked fine
+   * was an accident of effect ordering — the console happened to run its
+   * campaign effect before its map effect, so `setMap` undid the damage in the
+   * same commit. Ordering is not a rule, and this is (D-191).
+   */
+  private applySurface(): void {
+    const worldVisible = !this.showingMap;
+    if (this.world) this.world.mesh.visible = worldVisible;
+    if (this.places) this.places.group.visible = worldVisible;
+    if (this.pawns) this.pawns.group.visible = worldVisible;
+    this.slots.visible = worldVisible;
+    this.fog.visible = worldVisible;
+    if (this.grid) this.grid.visible = worldVisible;
   }
 
   private dropPawns(): void {
@@ -161,6 +186,7 @@ export class Stage {
     if (!this.campaign || !this.placement) return;
     this.pawns = buildPartyPawns(this.campaign, this.placement);
     this.scene.add(this.pawns.group);
+    this.applySurface();
   }
 
   /**
@@ -193,14 +219,6 @@ export class Stage {
       this.blocks = null;
     }
 
-    const worldVisible = map === null;
-    if (this.world) this.world.mesh.visible = worldVisible;
-    if (this.places) this.places.group.visible = worldVisible;
-    if (this.pawns) this.pawns.group.visible = worldVisible;
-    this.slots.visible = worldVisible;
-    this.fog.visible = worldVisible;
-    if (this.grid) this.grid.visible = worldVisible;
-
     const next = map ? key : null;
     const move = surfaceMove(this.surface, next);
     this.surface = next;
@@ -209,6 +227,7 @@ export class Stage {
       this.blocks = buildBlockBody(map, materials);
       this.scene.add(this.blocks.group);
     }
+    this.applySurface();
 
     if (move === 'frame' && map) {
       // A map is tens of cells where the world is hundreds, so the world's zoom
