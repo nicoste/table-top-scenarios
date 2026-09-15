@@ -14,7 +14,7 @@ New concepts get an entry here *before* they get an identifier.
 | **Column** | One chunk cell: a height and a colour. Terrain is columnar, not free voxels. |
 | **Place** | One cell of the world map that the GM has named: a village, a forest, a castle. Carries a **place marker**, notes, and its points of interest. This is what the Places tool creates. |
 | **Place marker** | The model drawn for a place — village, town, castle, cave. Cosmetic only (R-82); the tool attaches no meaning to the choice. |
-| **Point of interest** (POI) | Something *inside* a place: a church, a market, an arena. Named, ordered by the GM, individually visible to the party. Owns encounter maps once those exist (R-49, O-009). |
+| **Point of interest** (POI) | Something *inside* a place: a church, a market, an arena. Named, ordered by the GM, individually visible to the party. Owns **exactly one encounter map**, created with it — a point of interest without a body would be a label (R-49, R-145). |
 | **Encounter map** | The playable surface. A free-form sparse voxel grid where tokens move. Minecraft-shaped, not columnar. |
 | **Token** | A figure on an encounter map. Belongs to the **party** or to the **GM**. On the world map the party is drawn as a **pawn** instead (R-90). |
 | **Party** | The player-controlled side. One side, not N players — everyone shares the table display. |

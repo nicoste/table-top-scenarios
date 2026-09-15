@@ -5,9 +5,10 @@
 // a body — so none of it is sent (D-184).
 
 import { describe, it, expect } from 'vitest';
-import { apply, emptyHistory } from '@tt/sim';
+import { apply, emptyHistory, openedWith } from '@tt/sim';
 import { viewFor } from '@tt/protocol';
 import type { GmView, HostState, Intent, TableView } from '@tt/protocol';
+import type { Campaign } from '@tt/domain';
 import {
   createCampaign, createLiveSave, DEFAULT_MATERIALS, DEFAULT_FLOOR,
   MAP_PATCH, MAP_MAX_HEIGHT, ORIGIN,
@@ -18,7 +19,12 @@ const run = (s: HostState, i: Intent, role: 'gm' | 'table' = 'gm') => apply(s, r
 const cell = (x: number, z: number) => ({ cx: ORIGIN.cx, cz: ORIGIN.cz, x, z });
 const STONE = DEFAULT_MATERIALS.find((m) => m.name === 'Stone')!.id as string;
 
-/** A revealed place with one revealed point of interest, in a Known chunk. */
+/**
+ * A revealed place with one revealed point of interest, in a Known chunk.
+ *
+ * Its map comes with it — a point of interest is never mapless (D-187), which
+ * is why no test here has to create one first.
+ */
 function seeded() {
   const campaign = createCampaign('Ashfall');
   let state: HostState = {
@@ -38,37 +44,68 @@ function seeded() {
 
 const poiOf = (state: HostState) => state.active!.places[0]!.pois[0]!;
 
-describe('creating a map', () => {
-  it('starts as a floor, and only once', () => {
-    const { state, placeId, poiId } = seeded();
-    const made = run(state, { kind: 'addMap', placeId, poiId }).state;
-    expect(poiOf(made).map?.blocks.size).toBe(MAP_PATCH * MAP_PATCH);
-
-    // Asking twice must not wipe what is there.
-    const again = run(made, { kind: 'addMap', placeId, poiId });
-    expect(again.rejected).toBe('that point of interest already has a map');
+describe('a point of interest arrives with its map (D-187)', () => {
+  it('is a floor from the moment it is named, with no second step', () => {
+    const { state } = seeded();
+    expect(poiOf(state).map?.blocks.size).toBe(MAP_PATCH * MAP_PATCH);
   });
 
   it('rejects a place or point of interest that is not there', () => {
     const { state, placeId, poiId } = seeded();
-    expect(run(state, { kind: 'addMap', placeId: 'place_ghost', poiId }).rejected)
+    expect(run(state, { kind: 'setBlock', placeId: 'place_ghost', poiId, x: 0, y: 1, z: 0, materialId: STONE }).rejected)
       .toBe('no such place');
-    expect(run(state, { kind: 'addMap', placeId, poiId: 'poi_ghost' }).rejected)
+    expect(run(state, { kind: 'setBlock', placeId, poiId: 'poi_ghost', x: 0, y: 1, z: 0, materialId: STONE }).rejected)
       .toBe('no such point of interest');
   });
 
-  it('says so rather than going quiet when there is no map to edit (R-18)', () => {
+  it('fills in a map for one read from an older file, on the way in', () => {
+    // A campaign written before D-187 holds `map: null`. No schema bump went
+    // with the change, because a missing map announces itself — so the open
+    // boundary is where it is repaired (R-137a). Tested through the boundary
+    // the host actually uses, not through the helper behind it.
+    const { state, poiId } = seeded();
+    const mapless: Campaign = {
+      ...state.active!,
+      places: state.active!.places.map((place) => ({
+        ...place,
+        pois: place.pois.map((poi) => ({ ...poi, map: null })),
+      })),
+    };
+    const opened = openedWith(
+      { campaigns: [], active: null, activeSave: null, history: emptyHistory() },
+      mapless,
+      null,
+      NOW,
+      new Set(),
+    );
+    const poi = opened.state.active!.places[0]!.pois[0]!;
+    expect(poi.id).toBe(poiId);
+    expect(poi.name).toBe('The tavern');
+    expect(poi.map?.blocks.size).toBe(MAP_PATCH * MAP_PATCH);
+  });
+
+  it('says so rather than throwing if a mapless one ever reaches an edit (R-18)', () => {
+    // Unreachable through the intents, and deliberately still guarded: `map` is
+    // nullable because the *table* is sent none (D-184), and a narrowing that
+    // threw would take the message handler with it.
     const { state, placeId, poiId } = seeded();
-    expect(run(state, { kind: 'setBlock', placeId, poiId, x: 0, y: 1, z: 0, materialId: STONE }).rejected)
-      .toBe('that point of interest has no map yet');
+    const leaked: HostState = {
+      ...state,
+      active: {
+        ...state.active!,
+        places: state.active!.places.map((place) => ({
+          ...place,
+          pois: place.pois.map((poi) => ({ ...poi, map: null })),
+        })),
+      },
+    };
+    expect(run(leaked, { kind: 'setBlock', placeId, poiId, x: 0, y: 1, z: 0, materialId: STONE }).rejected)
+      .toBe('that point of interest has no map');
   });
 });
 
 describe('building', () => {
-  function withMap() {
-    const { state, placeId, poiId } = seeded();
-    return { state: run(state, { kind: 'addMap', placeId, poiId }).state, placeId, poiId };
-  }
+  const withMap = seeded;
 
   it('places and clears a block', () => {
     const { state, placeId, poiId } = withMap();
@@ -112,8 +149,7 @@ describe('undo covers map edits for free (R-140a)', () => {
     // new intent is undoable the moment it edits the campaign — nothing had to
     // be registered anywhere.
     const { state, placeId, poiId } = seeded();
-    let next = run(state, { kind: 'addMap', placeId, poiId }).state;
-    next = run(next, { kind: 'setBlock', placeId, poiId, x: 1, y: 1, z: 1, materialId: STONE }).state;
+    const next = run(state, { kind: 'setBlock', placeId, poiId, x: 1, y: 1, z: 1, materialId: STONE }).state;
     expect(poiOf(next).map!.blocks.has('1,1,1')).toBe(true);
 
     const undone = run(next, { kind: 'undo' }).state;
@@ -123,7 +159,7 @@ describe('undo covers map edits for free (R-140a)', () => {
 
   it('collapses a drag of blocks into one undo (R-140b)', () => {
     const { state, placeId, poiId } = seeded();
-    let next = run(state, { kind: 'addMap', placeId, poiId }).state;
+    let next = state;
     for (let x = 0; x < 5; x += 1) {
       next = run(next, {
         kind: 'setBlock', placeId, poiId, x, y: 1, z: 0, materialId: STONE, stroke: 'wall1',
@@ -141,8 +177,7 @@ describe('undo covers map edits for free (R-140a)', () => {
 describe('the boundary (D-184)', () => {
   it('sends the party a point of interest by name, with no body', () => {
     const { state, placeId, poiId } = seeded();
-    let next = run(state, { kind: 'addMap', placeId, poiId }).state;
-    next = run(next, { kind: 'setBlock', placeId, poiId, x: 1, y: 1, z: 1, materialId: STONE }).state;
+    const next = run(state, { kind: 'setBlock', placeId, poiId, x: 1, y: 1, z: 1, materialId: STONE }).state;
 
     const table = viewFor('table', next) as TableView;
     const poi = table.campaign!.places[0]!.pois[0]!;
@@ -155,8 +190,7 @@ describe('the boundary (D-184)', () => {
     // party has not found, and until the range exists there is no way to send
     // part of one (R-85).
     const { state, placeId, poiId } = seeded();
-    let next = run(state, { kind: 'addMap', placeId, poiId }).state;
-    next = run(next, { kind: 'setBlock', placeId, poiId, x: 7, y: 9, z: 7, materialId: STONE }).state;
+    const next = run(state, { kind: 'setBlock', placeId, poiId, x: 7, y: 9, z: 7, materialId: STONE }).state;
 
     const payload = JSON.stringify(viewFor('table', next));
     expect(payload).not.toContain('"blocks"');
@@ -165,8 +199,7 @@ describe('the boundary (D-184)', () => {
 
   it('still gives the GM the whole body (D-182)', () => {
     const { state, placeId, poiId } = seeded();
-    let next = run(state, { kind: 'addMap', placeId, poiId }).state;
-    next = run(next, { kind: 'setBlock', placeId, poiId, x: 7, y: 9, z: 7, materialId: STONE }).state;
+    const next = run(state, { kind: 'setBlock', placeId, poiId, x: 7, y: 9, z: 7, materialId: STONE }).state;
 
     const gm = viewFor('gm', next) as GmView;
     const poi = gm.campaign!.places[0]!.pois[0]!;
@@ -177,14 +210,37 @@ describe('the boundary (D-184)', () => {
 describe('a map is authored content, so the table seat cannot touch it (R-136)', () => {
   it('refuses every map intent from the table', () => {
     const { state, placeId, poiId } = seeded();
-    const withMap = run(state, { kind: 'addMap', placeId, poiId }).state;
+    const withMap = state;
     for (const intent of [
-      { kind: 'addMap', placeId, poiId },
       { kind: 'setBlock', placeId, poiId, x: 0, y: 1, z: 0, materialId: STONE },
       { kind: 'clearBlock', placeId, poiId, x: 0, y: 0, z: 0 },
       { kind: 'growMap', placeId, poiId, axis: 'x' },
     ] as Intent[]) {
       expect(run(withMap, intent, 'table').rejected, intent.kind).toBe('only the GM can do that');
     }
+  });
+});
+
+describe('deleting a point of interest (R-151)', () => {
+  it('takes its map with it', () => {
+    const { state, placeId, poiId } = seeded();
+    const gone = run(state, { kind: 'removePoi', placeId, poiId }).state;
+    expect(gone.active!.places[0]!.pois).toEqual([]);
+  });
+
+  it('is undoable, blocks and all — which is why the × only asks, it does not warn', () => {
+    // The confirmation in front of this is prevention, not the recovery: undo
+    // is bounded (R-140a) and cleared when the campaign changes, so "you can
+    // always take it back" is not a promise the GM should have to rely on.
+    const { state, placeId, poiId } = seeded();
+    const built = run(state, {
+      kind: 'setBlock', placeId, poiId, x: 4, y: 1, z: 4, materialId: STONE,
+    }).state;
+    const gone = run(built, { kind: 'removePoi', placeId, poiId }).state;
+    expect(gone.active!.places[0]!.pois).toEqual([]);
+
+    const back = run(gone, { kind: 'undo' }).state;
+    expect(poiOf(back).name).toBe('The tavern');
+    expect(poiOf(back).map!.blocks.get('4,1,4')).toBe(STONE);
   });
 });

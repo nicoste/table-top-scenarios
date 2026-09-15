@@ -3,3 +3,6 @@
 
 export { Tooltip } from './tooltip/index.js';
 export type { TooltipProps, Placement } from './tooltip/index.js';
+
+export { ConfirmDelete } from './confirm-delete/index.js';
+export type { ConfirmDeleteProps } from './confirm-delete/index.js';

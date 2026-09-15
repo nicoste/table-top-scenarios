@@ -65,6 +65,7 @@ export function MapPanel({
             : <>Click a block to remove it. Drag to clear several.</>}
         </p>
         <p className="readout">{hoverLabel ?? '—'}</p>
+        <p className="hint">1/2 tool · Q/E turn · R/F tilt · right-drag pan · wheel zoom · Esc leaves</p>
       </div>
 
       {tool === 'build' && (

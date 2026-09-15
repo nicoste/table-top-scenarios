@@ -2862,3 +2862,122 @@ with cmd+shift+z; erased with the readout saying *"Erase 9,1,7"* — the block h
 not its neighbour; stacked to Y2 by clicking the faces that appeared as blocks
 accumulated; and confirmed the table received `map: null` with no `"blocks"`
 anywhere in its payload. Read back off disk at campaign schema 4.
+
+### D-187 — A point of interest is created with its map · `agreed`
+The GM's words: *"We you create a POI, it should have a map, there should not be
+a '+ Map', a POI is nothing without a Map."*
+
+Right, and the lazy version was never a real choice. `+ Map` was a button with
+one possible answer, asked at a moment when the GM had just typed the name of a
+tavern. A point of interest is a place the party can walk into; the name is the
+label on the door.
+
+So `addPoi` creates the body, R-145 says **exactly** one rather than at most one,
+and the `addMap` intent is **deleted** — not kept for symmetry. Nothing can be
+mapless, so an intent to fix maplessness has no caller, and an unreachable branch
+in `apply` is a branch that rots. The inspector row is now always `▣ Map`.
+
+**No schema bump, deliberately.** A version number exists so code can branch on
+what the data cannot tell you, and a missing map tells you itself. So the read
+boundary repairs it instead (R-137a): `upgradedCampaign` fills any point of
+interest that arrives without a body, unconditionally rather than behind a
+version gate — a v4 file is already stamped v4, and gating would skip exactly the
+campaigns that need it. A floor is not an invention: there was no body to lose,
+and it is the same empty patch the `+ Map` button used to hand over.
+
+That also keeps the campaign the GM is working in alive. The previous two bumps
+broke old campaigns for a reason (D-177: the rename was genuinely ambiguous).
+This one is not ambiguous, so breaking anything would be gratuitous.
+
+The nullable type stays, and its meaning narrows to one thing: **this side was
+not told.** The table receives bodies stripped (D-184), and `decodeCampaign` runs
+on the table — so a non-nullable field would force the receiver to fabricate the
+geometry the boundary just denied it. The guard in `applyToMap` stays too, now
+unreachable and saying `'that point of interest has no map'` rather than
+`'…no map yet'`: a narrowing that threw would take the message handler with it,
+and if it ever fires the boundary leaked (R-18).
+
+### D-188 — The `×` asks first · `agreed`
+The GM's words: *"The 'x' icon needs a confirmation, deleting it by accident
+might be terrible."*
+
+Terrible is the right word now that the `×` takes a **built map** with it. It
+also sits three pixels from the arrows that reorder the same list, which is
+exactly how the wrong one gets clicked.
+
+Recorded as R-151 and enforced by `ConfirmDelete` in `@tt/ui`, not by each call
+site remembering — a rule that depends on being retyped lasts until the next list
+grows a `×`. The place and launcher deletes already asked; the note and the point
+of interest did not. Both do now, and the note got it without being asked for,
+because the reason is identical and typed prose is no cheaper to lose than a
+name.
+
+**Undo was already the recovery, and that is not the same thing.** `removePoi` is
+undoable — the snapshot is taken at the `apply` boundary (R-140a), so deleting a
+point of interest restores with its blocks intact, and there is now a test that
+says so. But history is bounded at 50 and cleared when the campaign changes, so
+"you can always take it back" is not a promise to hand the GM. The confirmation
+prevents; undo recovers. Both.
+
+What was **not** built: a policy table of what needs confirming. It would have
+had one meaningful row (blocks do not ask) and no second caller, and a table with
+one row is a constant wearing a costume. The exception lives in R-151's prose,
+where it is read by people rather than by code.
+
+### D-189 — A duplicated campaign was sharing its points of interest' ids · `agreed`
+Found while changing `addPoi`, not reported. `duplicateCampaign` renews the
+campaign id, every party member's, every place's and every note's — and never
+touched poi ids, from the day points of interest were added. Fixed; the map comes
+across by reference, which is safe because a map is immutable (R-12), but an id
+is identity (R-106).
+
+The interesting part is why no test caught it. There *was* a test — *"regenerates
+every id in the graph"* — reading ids out of a helper whose comment said "every
+identifier anywhere in a campaign" while listing places and notes and not pois.
+And it would still have passed after the helper was corrected, because the
+fixture it ran against was a campaign with **no places at all**.
+
+Two lies stacked: a helper that claimed completeness it did not have, and a
+fixture that made the assertion vacuous. This is the same shape as D-167 (the
+party could not be placed at all, and a test asserted the dead end) and the
+from-scratch failure in D-179 — *the path never exercised is the one that is
+broken*. The fixture now carries a place, a note, a point of interest and a
+block, and the test was confirmed to fail without the fix before being kept.
+
+### D-190 — Entering a map made three round-A bugs visible at once · `agreed`
+Found while verifying D-187, not reported. Every one of them needed the GM to
+*leave* a map, or to build in one after moving the camera — and round A's
+verification (D-186) did neither. It created a map, built in it, undid, and read
+the table's payload. It never came back out.
+
+Then a point of interest always had a map, entering and leaving became the normal
+loop, and all three surfaced in the first minute:
+
+1. **Leaving a map showed an empty world.** Nothing parked the world's framing,
+   so the camera stayed at the map's centre and zoom — empty space hundreds of
+   cells from the place the GM had been looking at. The world was drawn the whole
+   time. It just was not where the camera was pointed.
+2. **Every block re-framed the camera.** `setMap`'s `recentre` was `body !== null`
+   and the body is a new object on every render (D-185), so building at the edge
+   of a map fought a camera that kept snapping to the middle.
+3. **The render loop un-hid the world's markers.** It set visibility from the
+   zoom threshold alone (R-83), overriding what `setMap` had hidden on the very
+   next frame. A map's zoom is always under the threshold, so village markers and
+   party pawns were live inside every tavern — off-screen, and pickable.
+
+And one more, in the keyboard: the `keydown` effect listed only `[stage]` as its
+dependency, so the listener kept the `openMap` it was mounted with. Inside a map
+the digits and Escape ran the **world** branch — `1`/`2` never switched
+Build/Erase, Escape never left, and both silently changed the world tool behind
+the map. Fixed by adding the dependency; `Q/E/R/F` also moved out of the world's
+branch, since the camera belongs to no surface (R-152).
+
+Recorded as R-152 with the framing rule extracted to `packages/render/src/surface`
+and tested: `surfaceMove` and `showWorldMarkers` are four lines that were wrong
+in a file needing a WebGL context to run, which is what R-23b is for. Both tests
+name the bug they replace.
+
+The lesson, again, is not about cameras. **Verification that only goes one way
+proves one direction.** D-186 entered a map and stopped; D-167 placed the party
+and never started from scratch; D-189's fixture never held a point of interest.
+Every time, the untried step is the broken one.

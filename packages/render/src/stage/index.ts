@@ -11,6 +11,7 @@ import type { Campaign, EncounterMap, Material, Placement, WorldCell } from '@tt
 import { CHUNK_SIZE, brushCentreOffset } from '@tt/domain';
 import type { CameraTarget } from '../camera/index.js';
 import { applyTarget, clampTarget, createCamera, defaultTarget, PITCH_STEPS, yawRadians } from '../camera/index.js';
+import { surfaceMove, showWorldMarkers } from '../surface/index.js';
 import type { ColumnAddress, WorldMeshes } from '../world/index.js';
 import { buildWorldMeshes, columnCentre, worldCentre, HEIGHT_SCALE } from '../world/index.js';
 import type { PlaceMarkers } from '../places/index.js';
@@ -75,6 +76,20 @@ export class Stage {
    * hides the other's groups rather than layering them.
    */
   private blocks: BlockBody | null = null;
+  /**
+   * Which surface is on screen: `null` for the world, otherwise a map's key.
+   * Compared against the key `setMap` is handed, so the camera reacts to a
+   * change of surface and not to a change of body (R-152).
+   */
+  private surface: string | null = null;
+  /**
+   * The world's framing, parked while a map is open.
+   *
+   * Without it, leaving a map left the camera at the map's centre and its zoom,
+   * which in world coordinates is empty space hundreds of cells from the place
+   * the GM had been looking at — the world was still drawn, just nowhere near.
+   */
+  private parked: CameraTarget | null = null;
   private target: CameraTarget = defaultTarget();
 
   constructor(private readonly canvas: HTMLCanvasElement) {
@@ -166,8 +181,12 @@ export class Stage {
    * The world's groups are hidden rather than torn down, so leaving a map does
    * not pay to rebuild terrain the GM has not touched. A surface is one or the
    * other, never both (R-148).
+   *
+   * `key` identifies the *surface*, not the body. The body arrives new on every
+   * render, so keying the camera on it re-framed the map for every block placed
+   * (R-152). Pass the same key while the same map is open.
    */
-  setMap(map: EncounterMap | null, materials: readonly Material[], recentre = false): void {
+  setMap(map: EncounterMap | null, materials: readonly Material[], key: string | null = null): void {
     if (this.blocks) {
       this.scene.remove(this.blocks.group);
       this.blocks.dispose();
@@ -182,17 +201,26 @@ export class Stage {
     this.fog.visible = worldVisible;
     if (this.grid) this.grid.visible = worldVisible;
 
-    if (!map) return;
+    const next = map ? key : null;
+    const move = surfaceMove(this.surface, next);
+    this.surface = next;
 
-    this.blocks = buildBlockBody(map, materials);
-    this.scene.add(this.blocks.group);
+    if (map) {
+      this.blocks = buildBlockBody(map, materials);
+      this.scene.add(this.blocks.group);
+    }
 
-    if (recentre) {
+    if (move === 'frame' && map) {
       // A map is tens of cells where the world is hundreds, so the world's zoom
-      // would frame it as a speck. Fit the footprint with a margin.
+      // would frame it as a speck. Fit the footprint with a margin — and park
+      // the world's framing first, so leaving puts the GM back where they were.
+      this.parked ??= this.target;
       const centre = { x: map.size.x / 2, y: 0, z: map.size.z / 2 };
       const zoom = Math.max(map.size.x, map.size.z) * 1.6;
       this.target = { ...defaultTarget(centre), zoom };
+    } else if (move === 'restore') {
+      if (this.parked) this.target = this.parked;
+      this.parked = null;
     }
   }
 
@@ -382,19 +410,19 @@ export class Stage {
 
   render(): void {
     this.syncCamera();
-    // Markers and their names share one threshold and toggle together (R-83).
+    // Markers and their names share one threshold and toggle together (R-83),
+    // and neither belongs to a map's surface at all (R-148). This line used to
+    // check only the zoom, which quietly undid `setMap`'s hiding on the very
+    // next frame — a map's zoom is always under the threshold.
+    const markers = showWorldMarkers(this.showingMap, this.target.zoom, MARKER_ZOOM);
     if (this.places) {
-      this.places.group.visible = this.target.zoom <= MARKER_ZOOM;
-      if (this.places.group.visible) {
-        this.places.scaleLabels(this.target.zoom, this.canvas.clientHeight || 1);
-      }
+      this.places.group.visible = markers;
+      if (markers) this.places.scaleLabels(this.target.zoom, this.canvas.clientHeight || 1);
     }
     // The party shares the threshold, so pawns and places come and go together.
     if (this.pawns) {
-      this.pawns.group.visible = this.target.zoom <= MARKER_ZOOM;
-      if (this.pawns.group.visible) {
-        this.pawns.scaleLabels(this.target.zoom, this.canvas.clientHeight || 1);
-      }
+      this.pawns.group.visible = markers;
+      if (markers) this.pawns.scaleLabels(this.target.zoom, this.canvas.clientHeight || 1);
     }
     this.renderer.render(this.scene, this.camera);
   }

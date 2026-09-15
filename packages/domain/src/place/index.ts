@@ -40,11 +40,16 @@ export interface Poi {
   /** false = stripped by viewFor; never leaves the host (R-85). */
   readonly visibleToParty: boolean;
   /**
-   * Its map, or `null` until the GM makes one (R-145).
+   * Its map. Exactly one, created with the point of interest (R-145, D-187).
    *
-   * At most one, and a building's floors are levels of it rather than separate
-   * maps (D-178) — which is what lets stairs be geometry and keeps R-49's
-   * refusal to model map-to-map connectors intact.
+   * A building's floors are levels of that one body rather than separate maps
+   * (D-178) — which is what lets stairs be geometry and keeps R-49's refusal to
+   * model map-to-map connectors intact.
+   *
+   * Nullable for one reason only: `null` means *this side was not told*. The
+   * table receives every visible point of interest with its body stripped
+   * (D-184), and a receiver must not invent geometry it was denied. On the host
+   * an authored point of interest always has one.
    */
   readonly map: EncounterMap | null;
 }
@@ -255,8 +260,8 @@ export function partyVisibleNotes(place: Place): readonly PlaceNote[] {
 // -- pois --------------------------------------------------------------
 //
 // The same shape as notes, and deliberately so: an ordered list the GM sorts,
-// each entry individually visible or not. Nothing here knows about maps yet
-// (O-009); an entry is a name the map will hang off later.
+// each entry individually visible or not. Unlike a note, each one owns a map
+// from the moment it exists (D-187).
 
 function mapPoi(
   place: Place,
@@ -285,7 +290,10 @@ export function addPoi(
     ...place,
     pois: [
       ...place.pois,
-      { id: freshId<'PoiId'>('poi'), name: clean, visibleToParty, map: null },
+      // Born with its floor. A point of interest is a *place you can enter*;
+      // one without a body is a label, and the GM would only ever answer the
+      // same question again with a second click (D-187).
+      { id: freshId<'PoiId'>('poi'), name: clean, visibleToParty, map: createMap() },
     ],
   }));
 }
@@ -357,16 +365,6 @@ function mapOfPoi(
     }));
 }
 
-/** Creates the map, floor and all (R-149). Never replaces one that exists. */
-export function addMap(
-  places: readonly Place[],
-  placeId: PlaceId,
-  poiId: PoiId,
-): readonly Place[] {
-  return mapPlace(places, placeId, (place) =>
-    mapPoi(place, poiId, (poi) => (poi.map ? poi : { ...poi, map: createMap() })));
-}
-
 export function setMapBlock(
   places: readonly Place[],
   placeId: PlaceId,
@@ -393,6 +391,32 @@ export function growPoiMap(
   axis: 'x' | 'z',
 ): readonly Place[] {
   return mapOfPoi(places, placeId, poiId, (map) => growMap(map, axis));
+}
+
+/**
+ * Gives a body to any point of interest read without one (D-187).
+ *
+ * The tolerance R-137a asks for, at the boundary rather than carried inward: a
+ * campaign written before a map came with the name holds `map: null`, and the
+ * rest of the code is now entitled to assume otherwise. No schema bump goes
+ * with it, because a version number exists so code can branch on what the data
+ * cannot tell you — and a missing map says so itself.
+ *
+ * A floor is not an invention. There was no body to lose; this is the same
+ * empty patch the GM would have got from the `+ Map` button that used to be
+ * there. Identity-preserving, so a campaign that needs nothing is untouched.
+ */
+export function withPoiMaps(places: readonly Place[]): readonly Place[] {
+  let touched = false;
+  const next = places.map((place) => {
+    if (place.pois.every((poi) => poi.map)) return place;
+    touched = true;
+    return {
+      ...place,
+      pois: place.pois.map((poi) => (poi.map ? poi : { ...poi, map: createMap() })),
+    };
+  });
+  return touched ? next : places;
 }
 
 export function poiById(place: Place, poiId: PoiId): Poi | null {

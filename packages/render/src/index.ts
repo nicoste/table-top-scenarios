@@ -21,5 +21,8 @@ export type { Picked, SlotAddress } from './stage/index.js';
 export { intendedCell } from './picking/index.js';
 export type { PickedThings } from './picking/index.js';
 
+export { surfaceMove, showWorldMarkers } from './surface/index.js';
+export type { SurfaceMove } from './surface/index.js';
+
 export { buildBlockBody } from './blocks/index.js';
 export type { BlockBody, FacePick } from './blocks/index.js';

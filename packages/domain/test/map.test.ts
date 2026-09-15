@@ -1,8 +1,9 @@
 // The encounter map body (R-145, R-149, R-150).
 
 import { describe, it, expect } from 'vitest';
-import type { MaterialId } from '@tt/domain';
+import type { MaterialId, Place, PlaceCell } from '@tt/domain';
 import {
+  addPlace, addPoi, withPoiMaps,
   createMap, setBlock, clearBlock, growMap, blockAt, blockKey, parseBlockKey,
   inMap, topOfMap, mapToJSON, mapFromJSON,
   MAP_PATCH, MAP_MAX_HEIGHT, DEFAULT_FLOOR, DEFAULT_MATERIALS, isKnownMaterial,
@@ -157,5 +158,59 @@ describe('the materials registry (R-75)', () => {
     expect(byName('Glass').blocksSight).toBe(false);
     expect(byName('Water').blocksSight).toBe(false);
     expect(byName('Ice').blocksSight).toBe(false);
+  });
+});
+
+describe('a point of interest owns exactly one map (R-145, D-187)', () => {
+  const cell: PlaceCell = { cx: 3, cz: 4, x: 5, z: 6 };
+  const seeded = (): readonly Place[] => {
+    const places = addPlace([], cell, 'Casilda');
+    return addPoi(places, places[0]!.id, 'The tavern');
+  };
+
+  it('is created with the point of interest, not on a second request', () => {
+    const poi = seeded()[0]!.pois[0]!;
+    expect(poi.name).toBe('The tavern');
+    expect(poi.map?.blocks.size).toBe(MAP_PATCH * MAP_PATCH);
+    expect(blockAt(poi.map!, at(0, 0, 0))).toBe(DEFAULT_FLOOR);
+  });
+
+  it('gives each one its own body, so building in one leaves the other alone', () => {
+    let places = seeded();
+    const placeId = places[0]!.id;
+    places = addPoi(places, placeId, 'The cellar');
+    const [tavern, cellar] = places[0]!.pois;
+    expect(tavern!.map).not.toBe(cellar!.map);
+  });
+
+  describe('withPoiMaps, the boundary repair (R-137a)', () => {
+    it('fills in one read without a map, keeping its id and its name', () => {
+      const places = seeded();
+      const mapless = places.map((place) => ({
+        ...place,
+        pois: place.pois.map((poi) => ({ ...poi, map: null })),
+      }));
+      const fixed = withPoiMaps(mapless);
+      expect(fixed[0]!.pois[0]!.id).toBe(places[0]!.pois[0]!.id);
+      expect(fixed[0]!.pois[0]!.name).toBe('The tavern');
+      expect(fixed[0]!.pois[0]!.map?.blocks.size).toBe(MAP_PATCH * MAP_PATCH);
+    });
+
+    it('never touches a body that is already there', () => {
+      const places = seeded();
+      const built = places.map((place) => ({
+        ...place,
+        pois: place.pois.map((poi) => ({ ...poi, map: setBlock(poi.map!, at(1, 1, 1), STONE) })),
+      }));
+      const fixed = withPoiMaps(built);
+      expect(fixed).toBe(built);
+      expect(blockAt(fixed[0]!.pois[0]!.map!, at(1, 1, 1))).toBe(STONE);
+    });
+
+    it('preserves identity when every one already has a map (R-12)', () => {
+      const places = seeded();
+      expect(withPoiMaps(places)).toBe(places);
+      expect(withPoiMaps([])).toEqual([]);
+    });
   });
 });

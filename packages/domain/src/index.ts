@@ -55,7 +55,7 @@ export {
   MAX_POI_NAME, moveWithin,
   addPoi, renamePoi, setPoiVisible, removePoi, movePoi,
   partyVisiblePois,
-  addMap, setMapBlock, clearMapBlock, growPoiMap, poiById,
+  setMapBlock, clearMapBlock, growPoiMap, poiById, withPoiMaps,
 } from './place/index.js';
 
 export type { Discovery } from './discovery/index.js';

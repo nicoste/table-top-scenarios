@@ -11,7 +11,7 @@ import {
   addPlace, renamePlace, setPlaceMarker, movePlace, removePlace, placeById, placeAt, isValidPlaceCell,
   addNote, editNote, setNoteVisible, removeNote, moveNote, isKnownMarker,
   addPoi, renamePoi, setPoiVisible, removePoi, movePoi,
-  addMap, setMapBlock, clearMapBlock, growPoiMap, inMap, isKnownMaterial,
+  setMapBlock, clearMapBlock, growPoiMap, inMap, isKnownMaterial,
   poiById as poiOfPlace,
   createLiveSave, withDiscovery, withPlacement, touch, upgraded, upgradedCampaign, belongsTo,
   pruneDiscovery, pruneMembers,
@@ -440,7 +440,6 @@ function applyToPois(
       }
     }
 
-    case 'addMap':
     case 'setBlock':
     case 'clearBlock':
     case 'growMap':
@@ -487,7 +486,7 @@ function partyOccupies(state: HostState, campaign: Campaign, coord: ChunkCoord):
  */
 function applyToMap(
   campaign: Campaign,
-  intent: Extract<Intent, { kind: 'addMap' | 'setBlock' | 'clearBlock' | 'growMap' }>,
+  intent: Extract<Intent, { kind: 'setBlock' | 'clearBlock' | 'growMap' }>,
   withPlaces: (places: readonly Place[]) => Applied,
   reject_: (reason: string) => Applied,
 ): Applied {
@@ -498,12 +497,12 @@ function applyToMap(
   const poi = poiOfPlace(place, poiId);
   if (!poi) return reject_('no such point of interest');
 
-  if (intent.kind === 'addMap') {
-    if (poi.map) return reject_('that point of interest already has a map');
-    return withPlaces(addMap(campaign.places, placeId, poiId));
-  }
-  // The other three need one to exist. Saying so beats silently doing nothing.
-  if (!poi.map) return reject_('that point of interest has no map yet');
+  // Unreachable on the host: a point of interest is created with its map and
+  // anything read without one gains it at the open boundary (D-187). Kept
+  // because `map` is still nullable in the type — the table is sent none
+  // (D-184) — and a narrowing that throws would take the message handler with
+  // it. If this ever fires, the boundary leaked, so say so (R-18).
+  if (!poi.map) return reject_('that point of interest has no map');
 
   if (intent.kind === 'growMap') {
     return withPlaces(growPoiMap(campaign.places, placeId, poiId, intent.axis));

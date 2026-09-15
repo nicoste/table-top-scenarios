@@ -43,7 +43,7 @@ export function BuildWorldPanel({
               ⛰ Height
             </button>
           </Tooltip>
-          <Tooltip label="Place points of interest — key 4" placement="bottom" stretch>
+          <Tooltip label="Place markers on the world map — key 4" placement="bottom" stretch>
             <button className={tool === 'places' ? 'on' : ''} onClick={() => onTool('places')}>
               ⚑ Places
             </button>

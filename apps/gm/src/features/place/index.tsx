@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { CampaignWire, Intent, PlaceWire } from '@tt/protocol';
-import { Tooltip } from '@tt/ui';
+import { ConfirmDelete, Tooltip } from '@tt/ui';
 
 interface ToolProps {
   campaign: CampaignWire;
@@ -159,11 +159,12 @@ export function PlaceInspector({
                 title="Move down"
                 onClick={() => dispatch({ kind: 'moveNote', placeId: place.id, noteId: note.id, delta: 1 })}
               >↓</button>
-              <button
-                className="quiet"
-                title="Delete note"
-                onClick={() => dispatch({ kind: 'removeNote', placeId: place.id, noteId: note.id })}
-              >×</button>
+              {/* Typed prose, and the × sits three pixels from the arrows
+                  that reorder the list (R-151). */}
+              <ConfirmDelete
+                label="Delete this note"
+                onConfirm={() => dispatch({ kind: 'removeNote', placeId: place.id, noteId: note.id })}
+              />
             </div>
           </li>
         ))}
@@ -182,8 +183,8 @@ export function PlaceInspector({
       {/*
         Pois. The same shape as notes on purpose (D-175): ordered, each one
         individually visible, and the eye is again the only thing that decides
-        whether it reaches the table (R-85). No map yet — that is O-009, and an
-        entry here is the name it will hang off.
+        whether it reaches the table (R-85). Each one owns a map from the moment
+        it is named (D-187) — ▣ opens it.
       */}
       <h2 style={{ marginTop: 12 }}>Points of interest</h2>
       {place.pois.length === 0 && (
@@ -216,22 +217,11 @@ export function PlaceInspector({
             />
 
             <div className="note-actions">
-              {/* A map is created lazily: a point of interest is a name first and
-                  gains a body when the GM wants one (R-145). */}
-              {poi.map ? (
-                <Tooltip label={`Open the map of ${poi.name}`} placement="left">
-                  <button className="quiet" onClick={() => onOpenMap(poi.id)}>▣ Map</button>
-                </Tooltip>
-              ) : (
-                <Tooltip label={`Create a map for ${poi.name}`} placement="left">
-                  <button
-                    className="quiet"
-                    onClick={() => dispatch({ kind: 'addMap', placeId: place.id, poiId: poi.id })}
-                  >
-                    + Map
-                  </button>
-                </Tooltip>
-              )}
+              {/* Always there. A point of interest is created with its map, so
+                  there is no second step and nothing to ask about (D-187). */}
+              <Tooltip label={`Open the map of ${poi.name}`} placement="left">
+                <button className="quiet" onClick={() => onOpenMap(poi.id)}>▣ Map</button>
+              </Tooltip>
               <button
                 className="quiet"
                 disabled={i === 0}
@@ -244,11 +234,11 @@ export function PlaceInspector({
                 title="Move down"
                 onClick={() => dispatch({ kind: 'movePoi', placeId: place.id, poiId: poi.id, delta: 1 })}
               >↓</button>
-              <button
-                className="quiet"
-                title="Delete point of interest"
-                onClick={() => dispatch({ kind: 'removePoi', placeId: place.id, poiId: poi.id })}
-              >×</button>
+              {/* This one takes a built map with it (R-151). */}
+              <ConfirmDelete
+                label={`Delete "${poi.name}" and its map`}
+                onConfirm={() => dispatch({ kind: 'removePoi', placeId: place.id, poiId: poi.id })}
+              />
             </div>
           </li>
         ))}

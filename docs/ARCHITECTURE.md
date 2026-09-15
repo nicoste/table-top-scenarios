@@ -459,9 +459,9 @@ cube and a short far cube can land on the same pixels. These are not polish.
 ## 6c. A place owns points of interest; a point of interest owns its maps
 
 > **R-49.** A place holds an **ordered list of points of interest**, and each point
-> of interest has **at most one map** (D-178). A three-floor tavern is two or three
-> points of interest — "tavern keep", "tavern underground" — sitting next to each
-> other in that one list, not a nested tree.
+> of interest has **exactly one map**, created with it (D-178, D-187). A
+> three-floor tavern is two or three points of interest — "tavern keep", "tavern
+> underground" — sitting next to each other in that one list, not a nested tree.
 >
 > Third wording of this rule, and worth saying so. It first read "a place holds an
 > ordered list of encounter maps", because place and point of interest were the
@@ -1722,10 +1722,19 @@ apps/host/src/
 
 ## 6e. Encounter maps
 
-> **R-145.** A point of interest has **at most one map**, and a map is **one voxel
-> body** (D-178). A building's floors are levels of that body, not separate maps —
-> so stairs are geometry, and R-49's refusal to model map-to-map connectors holds
-> without needing to be defended.
+> **R-145.** A point of interest has **exactly one map**, created with it, and a
+> map is **one voxel body** (D-178, D-187). A building's floors are levels of that
+> body, not separate maps — so stairs are geometry, and R-49's refusal to model
+> map-to-map connectors holds without needing to be defended.
+>
+> *Exactly* one, not *at most* one. A point of interest is a place the party can
+> walk into; one without a body is a label, and making the GM ask for the map
+> separately only ever produced a second click with one possible answer (D-187).
+>
+> The type stays nullable for one reason, and it is not "not yet": `null` means
+> **this side was not told**. The table is sent every visible point of interest
+> with its body stripped (D-184), and a receiver must never invent geometry it was
+> denied. On the host, an authored point of interest always has one.
 
 > **R-146.** **Cutting planes.** A map carries GM-authored planes, each with a
 > **Y value and a name** and nothing else — no X, no Z. They are the snap steps of
@@ -1772,3 +1781,54 @@ apps/host/src/
 > the world (R-79), and its **height is capped** by a constant. Growing in two
 > dimensions keeps one gesture familiar; an unbounded third would leave the camera
 > with no idea how much to draw.
+
+---
+
+## 6f. Destroying things
+
+> **R-151.** **Every affordance that destroys authored content asks first.** A
+> `×` arms; a second, differently-labelled click commits. One click never deletes
+> a campaign, a place, a note or a point of interest.
+>
+> The named exception is a **block**: erase is a drag (R-140b), and a prompt per
+> block would make the tool unusable. A block is one stroke of work; the things
+> above took typing or building.
+>
+> **Undo is not the answer to this.** It is the recovery, and the confirmation is
+> the prevention. History is bounded (R-140a) and cleared when the active campaign
+> changes, so "you can always take it back" is not a promise the GM should have to
+> rely on — and the `×` sits a few pixels from the arrows that reorder the same
+> list, which is how the wrong one gets clicked in the first place.
+>
+> Enforced by a **component**, `ConfirmDelete` in `@tt/ui`, rather than by each
+> site remembering: a rule that depends on being retyped lasts until the next list
+> grows a `×`. The confirmation is view state and asks the host nothing until it
+> is confirmed (R-64).
+
+---
+
+## 6g. The camera across surfaces
+
+> **R-152.** **The camera belongs to no surface.** Entering a map frames it,
+> leaving it puts back the framing the world had, and *editing never moves it*.
+>
+> Three separate failures sat in the two lines that were supposed to do this, and
+> all three were invisible until a point of interest always had a map to enter
+> (D-190):
+>
+> - Framing keyed on the **body** rather than the **surface**. The console
+>   resolves the open map from the wire every render (D-185), so the camera was
+>   re-framed for every block placed — dragging the GM back to the middle while
+>   they built at the edge.
+> - Nothing **parked** the world's framing, so leaving a map left the camera at
+>   the map's centre and zoom. In world coordinates that is empty space hundreds
+>   of cells from where the GM had been: the world was still drawn, just nowhere
+>   near. It read as "the world is gone".
+> - The render loop set the world markers' visibility from the **zoom alone**,
+>   re-showing on the next frame what `setMap` had just hidden. A map's zoom is
+>   always under the threshold, so R-148's "one surface or the other" was true
+>   only until the next frame.
+>
+> Turn and tilt (Q/E/R/F) therefore work on **both** surfaces. A tavern is where
+> turning matters most: a wall you built is between you and the room behind it.
+> The *tools* belong to the surface (R-148); the camera does not.

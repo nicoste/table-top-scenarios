@@ -7,6 +7,7 @@ import type { World, ChunkCoord } from '../world/index.js';
 import { emptyWorld, addChunk, centreOfBounds, DEFAULT_WORLD_BOUNDS } from '../world/index.js';
 import type { PartyMember } from '../party/index.js';
 import type { Place } from '../place/index.js';
+import { withPoiMaps } from '../place/index.js';
 import { startingParty } from '../party/index.js';
 
 /**
@@ -21,18 +22,26 @@ import { startingParty } from '../party/index.js';
 export const SCHEMA_VERSION = 4;
 
 /**
- * Stamps a campaign read from disk with the current schema (R-137).
+ * Brings a campaign read from disk up to what the code now assumes (R-137).
  *
- * Reading an older one is tolerated — v2 had bare-id pois, and they
- * normalise to records on the way in. Writing it back still labelled v2 would
- * leave a file whose version does not describe its contents, and later code
- * will branch on that number. Same rule, same reason as `upgraded` for saves
- * (D-159).
+ * Two jobs, and the version check covers only the first.
+ *
+ * *Stamping.* Reading an older file is tolerated — v2 had bare-id pois, and
+ * they normalise to records on the way in. Writing it back still labelled v2
+ * would leave a file whose version does not describe its contents, and later
+ * code will branch on that number. Same rule, same reason as `upgraded` for
+ * saves (D-159).
+ *
+ * *Shape the version cannot express.* A point of interest now always owns a map
+ * (D-187), and a v4 file may hold one that does not. That is normalised
+ * unconditionally rather than behind a version gate, because the file is
+ * already stamped v4 and gating would leave the very campaigns that need it
+ * untouched. Identity-preserving both ways (R-12).
  */
 export function upgradedCampaign(campaign: Campaign): Campaign {
-  return campaign.schemaVersion === SCHEMA_VERSION
-    ? campaign
-    : { ...campaign, schemaVersion: SCHEMA_VERSION };
+  const places = withPoiMaps(campaign.places);
+  if (campaign.schemaVersion === SCHEMA_VERSION && places === campaign.places) return campaign;
+  return { ...campaign, schemaVersion: SCHEMA_VERSION, places };
 }
 
 export interface Campaign {
@@ -101,6 +110,10 @@ export function duplicateCampaign(source: Campaign, name: string): Campaign {
       ...place,
       id: freshId<'PlaceId'>('place'),
       notes: place.notes.map((note) => ({ ...note, id: freshId<'NoteId'>('note') })),
+      // Points of interest were left sharing their source's ids when they were
+      // added — the copy's map is carried over by reference, which is safe
+      // because a map is immutable (R-12), but an id is identity (R-106).
+      pois: place.pois.map((poi) => ({ ...poi, id: freshId<'PoiId'>('poi') })),
     })),
   };
 }

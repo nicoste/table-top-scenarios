@@ -160,8 +160,12 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   useEffect(() => {
     if (!stage) return;
     const body = openMapWire ? mapFromJSON(openMapWire) : null;
-    stage.setMap(body, DEFAULT_MATERIALS, body !== null);
-  }, [openMapWire, stage]);
+    // Keyed by which point of interest, not by the body: this effect reruns for
+    // every block placed, because the wire hands back a new object each time
+    // (D-185). The key is what tells the stage a *surface* changed, so the
+    // camera frames a map once on the way in and never again (R-152).
+    stage.setMap(body, DEFAULT_MATERIALS, openMap ? `${openMap.placeId}/${openMap.poiId}` : null);
+  }, [openMapWire, openMap, stage]);
 
   // A point of interest whose map the GM deleted, or which they removed
   // outright, must not leave the console stranded on a surface that is gone.
@@ -456,42 +460,54 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
         if (digit === '1') { setMapTool('build'); return; }
         if (digit === '2') { setMapTool('erase'); return; }
         if (e.code === 'Escape') { setOpenMap(null); return; }
-        return;
-      }
-      switch (digit) {
-        case '1': setTool('select'); return;
-        case '2': setTool('paint'); return;
-        case '3': setTool('height'); return;
-        case '4': setTool('places'); return;
-        case '5': setTool('travel'); return;
-        // Brush moved down one when travel took 5, so the digits still run
-        // left-to-right through the tools and then the brushes. `[` and `]` are
-        // the primary brush keys anyway.
-        case '6': setBrush(1); return;
-        case '7': setBrush(2); return;
-        case '8': setBrush(3); return;
-        default: break;
+      } else {
+        switch (digit) {
+          case '1': setTool('select'); return;
+          case '2': setTool('paint'); return;
+          case '3': setTool('height'); return;
+          case '4': setTool('places'); return;
+          case '5': setTool('travel'); return;
+          // Brush moved down one when travel took 5, so the digits still run
+          // left-to-right through the tools and then the brushes. `[` and `]`
+          // are the primary brush keys anyway.
+          case '6': setBrush(1); return;
+          case '7': setBrush(2); return;
+          case '8': setBrush(3); return;
+          default: break;
+        }
+
+        switch (e.code) {
+          case 'BracketLeft': setBrush((n) => clampBrush(n - 1)); return;
+          case 'BracketRight': setBrush((n) => clampBrush(n + 1)); return;
+          case 'Escape':
+            setTravel(idle);
+            stage.showHighlight(null, 0);
+            setSelectedPlace(null);
+            setSelectedChunk(null);
+            return;
+          default: break;
+        }
       }
 
+      // The camera belongs to no surface (R-152). This used to sit behind the
+      // world's branch, so inside a map Q/E/R/F did nothing at all — and a
+      // tavern is exactly where turning matters, since a wall you built is
+      // between you and the room behind it.
       switch (e.code) {
         case 'KeyQ': stage.rotate(-1); return;
         case 'KeyE': stage.rotate(1); return;
         case 'KeyR': stage.tilt(1); return;
         case 'KeyF': stage.tilt(-1); return;
-        case 'BracketLeft': setBrush((n) => clampBrush(n - 1)); return;
-        case 'BracketRight': setBrush((n) => clampBrush(n + 1)); return;
-        case 'Escape':
-          setTravel(idle);
-          stage.showHighlight(null, 0);
-          setSelectedPlace(null);
-          setSelectedChunk(null);
-          return;
         default: break;
       }
     };
     addEventListener('keydown', onKey);
     return () => removeEventListener('keydown', onKey);
-  }, [stage]);
+    // `openMap` belongs here. Without it the listener kept the value it was
+    // mounted with, so inside a map the digits and Escape ran the *world*
+    // branch: 1/2 never switched Build/Erase, Escape never left, and both
+    // quietly changed the world tool behind the map instead.
+  }, [stage, openMap]);
 
   return (
     <>
