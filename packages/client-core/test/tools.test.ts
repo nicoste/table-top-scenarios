@@ -3,7 +3,7 @@
 
 import { describe, it, expect } from 'vitest';
 import type { Cell, Pointed } from '@tt/client-core';
-import { clickAction, holdsSelection, tableAction } from '@tt/client-core';
+import { clickAction, holdsSelection, tableAction, mapAction } from '@tt/client-core';
 import type { Tool } from '@tt/client-core';
 
 const cell = (x: number, z: number): Cell => ({ cx: 15, cz: 15, x, z });
@@ -179,6 +179,34 @@ describe('the table display has no tools, so the rule is different (D-174)', () 
       for (const pointed of [onAPawn, onAPlace, EMPTY, { ...EMPTY, slot: { cx: 1, cz: 1 } }]) {
         expect(allowed.has(tableAction(pointed, aiming).kind)).toBe(true);
       }
+    }
+  });
+});
+
+describe('face adjacency inside a map (D-181)', () => {
+  const face = { block: { x: 3, y: 2, z: 5 }, adjacent: { x: 3, y: 3, z: 5 } };
+
+  it('builds against the face, not on the block that was hit', () => {
+    // Click the top of a block and the new one lands on top. Reading the wrong
+    // field of the same pick digs a hole where a wall should go.
+    expect(mapAction('build', face)).toEqual({ kind: 'place', at: { x: 3, y: 3, z: 5 } });
+  });
+
+  it('erases the block that was hit, not its neighbour', () => {
+    expect(mapAction('erase', face)).toEqual({ kind: 'erase', at: { x: 3, y: 2, z: 5 } });
+  });
+
+  it('means nothing when the pointer is over no face at all', () => {
+    expect(mapAction('build', null)).toEqual({ kind: 'nothing' });
+    expect(mapAction('erase', null)).toEqual({ kind: 'nothing' });
+  });
+
+  it('never confuses the two, whichever way the face points', () => {
+    for (const [dx, dy, dz] of [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]]) {
+      const block = { x: 4, y: 4, z: 4 };
+      const f = { block, adjacent: { x: 4 + dx!, y: 4 + dy!, z: 4 + dz! } };
+      expect(mapAction('build', f)).toEqual({ kind: 'place', at: f.adjacent });
+      expect(mapAction('erase', f)).toEqual({ kind: 'erase', at: block });
     }
   });
 });

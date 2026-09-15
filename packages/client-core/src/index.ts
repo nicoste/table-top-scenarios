@@ -4,10 +4,12 @@ export { connect } from './net/index.js';
 export type { Connection, Handlers } from './net/index.js';
 
 export { initialServerState, initialViewState } from './store/index.js';
-export type { ServerState, ViewState, Tool } from './store/index.js';
+export type { ServerState, ViewState, Tool, MapTool } from './store/index.js';
 
 export { idle, GROUP, pick, armed, aim, ghostCell, canConfirm, travelIntent, travelPrompt } from './travel/index.js';
 export type { Travel } from './travel/index.js';
 
-export { clickAction, holdsSelection, tableAction } from './tools/index.js';
-export type { ClickAction, TableAction, Pointed, Cell, Slot, Context } from './tools/index.js';
+export { clickAction, holdsSelection, tableAction, mapAction } from './tools/index.js';
+export type {
+  ClickAction, TableAction, MapAction, Pointed, Cell, Slot, Context,
+} from './tools/index.js';

@@ -4,6 +4,10 @@
 import type { MarkerId, NoteId, PlaceId, PoiId } from '../ids/index.js';
 import { freshId } from '../ids/index.js';
 import { DEFAULT_MARKER, isKnownMarker } from '../markers/index.js';
+import type { EncounterMap } from '../map/index.js';
+import { createMap, setBlock, clearBlock, growMap } from '../map/index.js';
+import type { BlockCoord } from '../map/index.js';
+import type { MaterialId } from '../ids/index.js';
 import type { ChunkCoord, GlobalCell, WorldCell } from '../world/index.js';
 import { toGlobal, fromGlobal, sameWorldCell, isValidWorldCell } from '../world/index.js';
 
@@ -35,6 +39,14 @@ export interface Poi {
   readonly name: string;
   /** false = stripped by viewFor; never leaves the host (R-85). */
   readonly visibleToParty: boolean;
+  /**
+   * Its map, or `null` until the GM makes one (R-145).
+   *
+   * At most one, and a building's floors are levels of it rather than separate
+   * maps (D-178) — which is what lets stairs be geometry and keeps R-49's
+   * refusal to model map-to-map connectors intact.
+   */
+  readonly map: EncounterMap | null;
 }
 
 export interface Place {
@@ -273,7 +285,7 @@ export function addPoi(
     ...place,
     pois: [
       ...place.pois,
-      { id: freshId<'PoiId'>('poi'), name: clean, visibleToParty },
+      { id: freshId<'PoiId'>('poi'), name: clean, visibleToParty, map: null },
     ],
   }));
 }
@@ -327,4 +339,62 @@ export function movePoi(
 /** What the table display may see: the visible pois, in the GM's order. */
 export function partyVisiblePois(place: Place): readonly Poi[] {
   return place.pois.filter((e) => e.visibleToParty);
+}
+
+// -- a point of interest's map -----------------------------------------------
+
+function mapOfPoi(
+  places: readonly Place[],
+  placeId: PlaceId,
+  poiId: PoiId,
+  change: (map: EncounterMap) => EncounterMap,
+): readonly Place[] {
+  return mapPlace(places, placeId, (place) =>
+    mapPoi(place, poiId, (poi) => {
+      if (!poi.map) return poi;
+      const next = change(poi.map);
+      return next === poi.map ? poi : { ...poi, map: next };
+    }));
+}
+
+/** Creates the map, floor and all (R-149). Never replaces one that exists. */
+export function addMap(
+  places: readonly Place[],
+  placeId: PlaceId,
+  poiId: PoiId,
+): readonly Place[] {
+  return mapPlace(places, placeId, (place) =>
+    mapPoi(place, poiId, (poi) => (poi.map ? poi : { ...poi, map: createMap() })));
+}
+
+export function setMapBlock(
+  places: readonly Place[],
+  placeId: PlaceId,
+  poiId: PoiId,
+  at: BlockCoord,
+  material: MaterialId,
+): readonly Place[] {
+  return mapOfPoi(places, placeId, poiId, (map) => setBlock(map, at, material));
+}
+
+export function clearMapBlock(
+  places: readonly Place[],
+  placeId: PlaceId,
+  poiId: PoiId,
+  at: BlockCoord,
+): readonly Place[] {
+  return mapOfPoi(places, placeId, poiId, (map) => clearBlock(map, at));
+}
+
+export function growPoiMap(
+  places: readonly Place[],
+  placeId: PlaceId,
+  poiId: PoiId,
+  axis: 'x' | 'z',
+): readonly Place[] {
+  return mapOfPoi(places, placeId, poiId, (map) => growMap(map, axis));
+}
+
+export function poiById(place: Place, poiId: PoiId): Poi | null {
+  return place.pois.find((poi) => poi.id === poiId) ?? null;
 }

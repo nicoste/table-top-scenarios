@@ -27,6 +27,15 @@ export const initialServerState: ServerState = {
  */
 export type Tool = 'select' | 'paint' | 'height' | 'places' | 'travel';
 
+/**
+ * Tools that exist only inside an encounter map (R-148).
+ *
+ * A separate type, not more members on `Tool`: world tools have no meaning in a
+ * map and map tools none outside it, so a single union would let the compiler
+ * accept "paint terrain" while standing in a tavern.
+ */
+export type MapTool = 'build' | 'erase';
+
 export interface ViewState {
   readonly camera: CameraTarget;
   readonly tool: Tool;

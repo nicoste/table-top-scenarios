@@ -3,6 +3,7 @@
 export {
   TerrainIdSchema, MarkerIdSchema, CellIndex, ChunkCoordSchema,
   MarkerWireSchema, PlaceCellSchema, WorldCellSchema, PlaceNoteWireSchema, PlaceWireSchema,
+  MapWireSchema, PoiWireSchema,
   encodePoi, decodePoi, parseMarkerId,
   DiscoveryWireSchema, PlacementWireSchema, SaveWireSchema, encodeSave, decodeSave,
   encodePlacement, decodePlacement,
@@ -10,7 +11,7 @@ export {
   encodeChunk, encodeWorld, encodeCampaign, decodeChunk, decodeWorld, decodeCampaign,
   parseTerrainId,
 } from './wire/index.js';
-export type { ChunkWire, CampaignWire, PlaceWire, SaveWire, PlacementWire } from './wire/index.js';
+export type { ChunkWire, CampaignWire, PlaceWire, SaveWire, PlacementWire, MapWire } from './wire/index.js';
 
 export { IntentSchema, parseIntent } from './intents/index.js';
 export type { Intent, IntentKind } from './intents/index.js';

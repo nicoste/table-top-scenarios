@@ -42,9 +42,13 @@ interface InspectorProps {
   chunkKnown: boolean;
   dispatch: (intent: Intent) => void;
   onClose: () => void;
+  /** Which map to open. Local view state, never on the wire (R-64, D-185). */
+  onOpenMap: (poiId: string) => void;
 }
 
-export function PlaceInspector({ place, markers, revealed, chunkKnown, dispatch, onClose }: InspectorProps) {
+export function PlaceInspector({
+  place, markers, revealed, chunkKnown, dispatch, onClose, onOpenMap,
+}: InspectorProps) {
   const [draft, setDraft] = useState('');
   const [poiDraft, setPoiDraft] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -212,6 +216,22 @@ export function PlaceInspector({ place, markers, revealed, chunkKnown, dispatch,
             />
 
             <div className="note-actions">
+              {/* A map is created lazily: a point of interest is a name first and
+                  gains a body when the GM wants one (R-145). */}
+              {poi.map ? (
+                <Tooltip label={`Open the map of ${poi.name}`} placement="left">
+                  <button className="quiet" onClick={() => onOpenMap(poi.id)}>▣ Map</button>
+                </Tooltip>
+              ) : (
+                <Tooltip label={`Create a map for ${poi.name}`} placement="left">
+                  <button
+                    className="quiet"
+                    onClick={() => dispatch({ kind: 'addMap', placeId: place.id, poiId: poi.id })}
+                  >
+                    + Map
+                  </button>
+                </Tooltip>
+              )}
               <button
                 className="quiet"
                 disabled={i === 0}

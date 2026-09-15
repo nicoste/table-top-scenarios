@@ -2584,6 +2584,17 @@ like picking bugs twice and a broken travel confirm once.
 Always read `canvas.getBoundingClientRect()` and scale, or find targets by
 probing and reading the DOM back rather than by measuring an image.
 
+**Second pitfall, found in round 37 and it cost the same time twice.** Reading
+host state through a `role=gm` socket **steals the GM seat** (R-127: the newest
+claim wins). The page under test is demoted mid-verification, its GM view goes
+null, and every subsequent gesture does nothing — which looks exactly like the
+feature being broken. It bit hardest on maps, because the table deliberately
+receives no map body (D-184), so a GM socket was the only obvious way to read
+one.
+
+Read from **disk** instead (the campaign manifest holds everything persisted), or
+from a `role=table` socket, which is not exclusive and steals nothing.
+
 ---
 
 ## Round 34 — the vocabulary
@@ -2794,3 +2805,60 @@ R-48 — sit out both rounds entirely.
 The **materials registry** (R-75) becomes a prerequisite in round A: blocks need
 appearance. It ships with `blocksSight` present and unused, since the field is
 already specified and leaving it out would mean editing every material later.
+
+---
+
+## Round 37 — the map, built
+
+### D-184 — A map body is not sent to the table yet · `agreed`
+Decided while wiring the boundary, and it changed the round's scope.
+
+D-183 said the table would follow the GM into a map. It should not, yet: a body
+can hold a cellar the party has not found, and **without the cutting range there
+is no way to send part of one**. R-85's standard is that a secret is never sent
+rather than merely unrendered, so sending a whole body and trusting the client to
+draw a slice would be exactly the leak this project keeps refusing.
+
+So in round A a revealed point of interest reaches the table **as a name**, with
+`map: null`, and the table keeps showing the world. Round B sends the slice,
+because by then there is a slice to send.
+
+Shipping the permissive version and tightening it later was the alternative. That
+is how a leak becomes permanent — nobody revisits a working screen.
+
+### D-185 — Which map is open is view state, not play state · `agreed`
+A candidate for the wire, and it should not be. Which surface the console is
+showing is the console's business (R-64), and the intents that edit a map name
+their place and point of interest themselves — so nothing about editing needs a
+"current map" on the host.
+
+It becomes play state in round B, when the table has to follow the GM into a map
+and both screens must agree on which one. Not before.
+
+Resolved from the current wire every render, never cached, for the same reason
+the table's place selection is (R-141): a map the GM deletes must not leave a
+stale body on screen.
+
+### D-186 — Round A, verified · `agreed`
+Built: the materials registry (R-75, finally — specified long ago and never
+made), the voxel body with a floored starting patch (R-149) growable in X and Z
+(R-150), face-adjacency placement and erasure (R-147), the map's own tool palette
+replacing the world's (R-148), and persistence.
+
+Two things came for free from earlier rounds, which is the clearest sign those
+decisions were right:
+
+- **Undo covered map edits without a line of new code.** The snapshot is taken by
+  comparing campaign identity across `apply` (R-140a), so a block edit was
+  undoable the moment it touched the campaign.
+- **A drag became one undo** the moment the client tagged the gesture, because
+  the coalescing rule was already general (R-140b).
+
+Verified on a throwaway host: created a map (16×16, 256-block floor), clicked the
+floor's top face and watched the readout say *"Build at 9,1,6"* before a stone
+block landed at exactly that cell; dragged a seven-block brick row sharing one
+stroke id; took the whole row back with one cmd+z (264 → 257) and restored it
+with cmd+shift+z; erased with the readout saying *"Erase 9,1,7"* — the block hit,
+not its neighbour; stacked to Y2 by clicking the faces that appeared as blocks
+accumulated; and confirmed the table received `map: null` with no `"blocks"`
+anywhere in its payload. Read back off disk at campaign schema 4.

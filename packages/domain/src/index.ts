@@ -6,7 +6,7 @@ export {
   isRegistryId, registryId, freshId,
 } from './ids/index.js';
 export type {
-  CampaignId, SaveId, MemberId, TerrainId, PlaceId, NoteId, PoiId, MarkerId,
+  CampaignId, SaveId, MemberId, TerrainId, PlaceId, NoteId, PoiId, MarkerId, MaterialId,
 } from './ids/index.js';
 
 export type { Terrain, Difficulty } from './terrain/index.js';
@@ -38,6 +38,15 @@ export type { Marker, MarkerPart, PartShape } from './markers/index.js';
 export { DEFAULT_MARKERS, DEFAULT_MARKER, markerById, isKnownMarker } from './markers/index.js';
 
 export type { Place, PlaceNote, PlaceCell, Poi } from './place/index.js';
+export type { Material } from './materials/index.js';
+export {
+  DEFAULT_MATERIALS, DEFAULT_FLOOR, materialById, isKnownMaterial, requireMaterial,
+} from './materials/index.js';
+export type { EncounterMap, BlockCoord, MapJSON } from './map/index.js';
+export {
+  MAP_PATCH, MAP_MAX_HEIGHT, blockKey, parseBlockKey, inMap, blockAt,
+  createMap, setBlock, clearBlock, growMap, topOfMap, mapToJSON, mapFromJSON,
+} from './map/index.js';
 export {
   MAX_PLACE_NAME, MAX_NOTE_TEXT, sameCell, placeGlobal, placeCellFromGlobal, isValidPlaceCell,
   placeAt, placeById, placesInChunk,
@@ -46,6 +55,7 @@ export {
   MAX_POI_NAME, moveWithin,
   addPoi, renamePoi, setPoiVisible, removePoi, movePoi,
   partyVisiblePois,
+  addMap, setMapBlock, clearMapBlock, growPoiMap, poiById,
 } from './place/index.js';
 
 export type { Discovery } from './discovery/index.js';

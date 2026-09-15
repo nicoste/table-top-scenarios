@@ -3,7 +3,7 @@
 // argument and everything leaves as a return value.
 
 import type { Campaign, ChunkCoord, WorldCell } from '@tt/domain';
-import type { PartyMember, PlaceId, NoteId, PoiId, MemberId, Save } from '@tt/domain';
+import type { PartyMember, PlaceId, NoteId, PoiId, MemberId, MaterialId, Save, Place } from '@tt/domain';
 import {
   createCampaign, duplicateCampaign, uniqueCampaignName, createMember, editMember, removeMember,
   addChunk, chunkAt, terrainById, isCreatableSlot, DEFAULT_TERRAIN,
@@ -11,6 +11,8 @@ import {
   addPlace, renamePlace, setPlaceMarker, movePlace, removePlace, placeById, placeAt, isValidPlaceCell,
   addNote, editNote, setNoteVisible, removeNote, moveNote, isKnownMarker,
   addPoi, renamePoi, setPoiVisible, removePoi, movePoi,
+  addMap, setMapBlock, clearMapBlock, growPoiMap, inMap, isKnownMaterial,
+  poiById as poiOfPlace,
   createLiveSave, withDiscovery, withPlacement, touch, upgraded, upgradedCampaign, belongsTo,
   pruneDiscovery, pruneMembers,
   pawns, withGroupAt, withMemberAt, gathered, scattered,
@@ -438,6 +440,12 @@ function applyToPois(
       }
     }
 
+    case 'addMap':
+    case 'setBlock':
+    case 'clearBlock':
+    case 'growMap':
+      return applyToMap(campaign, intent, withPlaces, reject_);
+
     default:
       return applyToDiscovery(state, campaign, intent, now);
   }
@@ -468,6 +476,48 @@ function partyOccupies(state: HostState, campaign: Campaign, coord: ChunkCoord):
   if (!state.activeSave) return false;
   return pawns(state.activeSave.placement, campaign.party)
     .some((pawn) => pawn.cell.cx === coord.cx && pawn.cell.cz === coord.cz);
+}
+
+/**
+ * A point of interest's map (D-183).
+ *
+ * Every one of these needs the same two lookups — is that place real, is that
+ * point of interest on it — so they share a branch rather than repeating the
+ * guard four times and getting it subtly different in one of them.
+ */
+function applyToMap(
+  campaign: Campaign,
+  intent: Extract<Intent, { kind: 'addMap' | 'setBlock' | 'clearBlock' | 'growMap' }>,
+  withPlaces: (places: readonly Place[]) => Applied,
+  reject_: (reason: string) => Applied,
+): Applied {
+  const placeId = intent.placeId as PlaceId;
+  const place = placeById(campaign.places, placeId);
+  if (!place) return reject_('no such place');
+  const poiId = intent.poiId as PoiId;
+  const poi = poiOfPlace(place, poiId);
+  if (!poi) return reject_('no such point of interest');
+
+  if (intent.kind === 'addMap') {
+    if (poi.map) return reject_('that point of interest already has a map');
+    return withPlaces(addMap(campaign.places, placeId, poiId));
+  }
+  // The other three need one to exist. Saying so beats silently doing nothing.
+  if (!poi.map) return reject_('that point of interest has no map yet');
+
+  if (intent.kind === 'growMap') {
+    return withPlaces(growPoiMap(campaign.places, placeId, poiId, intent.axis));
+  }
+
+  const at = { x: intent.x, y: intent.y, z: intent.z };
+  if (!inMap(poi.map, at)) return reject_('that is outside the map');
+
+  if (intent.kind === 'clearBlock') {
+    return withPlaces(clearMapBlock(campaign.places, placeId, poiId, at));
+  }
+  const materialId = intent.materialId as MaterialId;
+  if (!isKnownMaterial(materialId)) return reject_('unknown material');
+  return withPlaces(setMapBlock(campaign.places, placeId, poiId, at, materialId));
 }
 
 // -- what the party knows ---------------------------------------------------

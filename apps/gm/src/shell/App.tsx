@@ -2,20 +2,25 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { decodeCampaign, decodePlacement } from '@tt/protocol';
-import { CHUNK_SIZE, MAX_HEIGHT, clampBrush, creatableSlots, sameWorldCell } from '@tt/domain';
+import {
+  CHUNK_SIZE, MAX_HEIGHT, clampBrush, creatableSlots, sameWorldCell,
+  DEFAULT_MATERIALS, DEFAULT_FLOOR, mapFromJSON,
+} from '@tt/domain';
 import type { GmView, Intent } from '@tt/protocol';
 import { defaultTarget, worldCentre } from '@tt/render';
 import type { Tool, Travel } from '@tt/client-core';
 import {
   idle, pick, armed, aim, ghostCell, canConfirm, travelIntent, travelPrompt,
-  clickAction, holdsSelection,
+  clickAction, holdsSelection, mapAction,
 } from '@tt/client-core';
+import type { MapTool } from '@tt/client-core';
 import { useStage } from '../scene/use-stage.js';
 import { Launcher } from '../features/launcher/index.js';
 import { BuildWorldPanel } from '../features/build-world/index.js';
 import { PartyPanel } from '../features/party/index.js';
 import { PlacesPanel, PlaceInspector } from '../features/place/index.js';
 import { ChunkInspector } from '../features/visibility/index.js';
+import { MapPanel } from '../features/map/index.js';
 import { ConnectBadge } from '../features/connect/index.js';
 import { Tooltip } from '@tt/ui';
 
@@ -43,6 +48,14 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   const [selectedChunk, setSelectedChunk] = useState<{ cx: number; cz: number } | null>(null);
   const [travel, setTravel] = useState<Travel>(idle);
   /**
+   * Which map is open, if any. **View state, never on the wire** (R-64, D-185):
+   * which surface the console is showing is the console's business, and the
+   * intents that edit a map name their place and point of interest themselves.
+   */
+  const [openMap, setOpenMap] = useState<{ placeId: string; poiId: string } | null>(null);
+  const [mapTool, setMapTool] = useState<MapTool>('build');
+  const [materialId, setMaterialId] = useState<string>(DEFAULT_FLOOR);
+  /**
    * The cell a place was just placed on, waiting for the snapshot that will carry
    * it. The host assigns the id, so the client cannot know it in advance — but
    * one place per cell (R-119) makes the cell an unambiguous handle until then.
@@ -59,12 +72,29 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    * unique-enough string does.
    */
   const stroke = useRef<string | null>(null);
+  /** The current block gesture, so a drag across faces is one undo (R-140b). */
+  const blockStroke = useRef<string | null>(null);
+  /** The last cell a block gesture touched, so one drag does not re-send it. */
+  const lastBlock = useRef<string | null>(null);
   const newStroke = () => {
     stroke.current = `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
     return stroke.current;
   };
 
   const campaign = view?.campaign ?? null;
+
+  /**
+   * Resolved from the current wire every render, never cached — the same reason
+   * the table's selection is (R-141). A map the GM deletes, or a point of
+   * interest they remove, must not leave a stale body on screen.
+   */
+  const openPlace = openMap
+    ? campaign?.places.find((place) => place.id === openMap.placeId) ?? null
+    : null;
+  const openPoi = openMap && openPlace
+    ? openPlace.pois.find((poi) => poi.id === openMap.poiId) ?? null
+    : null;
+  const openMapWire = openPoi?.map ?? null;
 
   const cellKey = (c: { cx: number; cz: number; x: number; z: number }) => `${c.cx}:${c.cz}:${c.x}:${c.z}`;
   const memberName = (id: string) => campaign?.party.find((m) => m.id === id)?.name ?? null;
@@ -125,6 +155,20 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     stage?.aimAt(ghostCell(travel));
   }, [travel, stage]);
 
+  // The open map is its own surface (R-148). Passing null returns to the world,
+  // whose meshes were hidden rather than destroyed.
+  useEffect(() => {
+    if (!stage) return;
+    const body = openMapWire ? mapFromJSON(openMapWire) : null;
+    stage.setMap(body, DEFAULT_MATERIALS, body !== null);
+  }, [openMapWire, stage]);
+
+  // A point of interest whose map the GM deleted, or which they removed
+  // outright, must not leave the console stranded on a surface that is gone.
+  useEffect(() => {
+    if (openMap && !openMapWire) setOpenMap(null);
+  }, [openMap, openMapWire]);
+
   // With nothing on the board there is no pawn to pick up, so the sequence
   // starts itself (D-167).
   useEffect(() => {
@@ -183,6 +227,27 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       return;
     }
     const picked = stage.pick(e.clientX, e.clientY);
+
+    // Inside a map, the world's tool table does not apply at all (R-148).
+    if (openMap) {
+      const action = mapAction(mapTool, picked.face);
+      if (action.kind === 'place') {
+        blockStroke.current = newStroke();
+        dispatch({
+          kind: 'setBlock', placeId: openMap.placeId, poiId: openMap.poiId,
+          ...action.at, materialId, stroke: blockStroke.current,
+        });
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } else if (action.kind === 'erase') {
+        blockStroke.current = newStroke();
+        dispatch({
+          kind: 'clearBlock', placeId: openMap.placeId, poiId: openMap.poiId,
+          ...action.at, stroke: blockStroke.current,
+        });
+        e.currentTarget.setPointerCapture(e.pointerId);
+      }
+      return;
+    }
 
     // Mid-sequence, the click means confirm or cancel and nothing else (R-132).
     if (travel.step === 'aiming') {
@@ -250,6 +315,34 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
 
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!stage) return;
+
+    if (openMap) {
+      const picked = stage.pick(e.clientX, e.clientY);
+      const action = mapAction(mapTool, picked.face);
+      if (action.kind === 'nothing') { setHoverLabel(null); return; }
+
+      const key = `${action.at.x},${action.at.y},${action.at.z}`;
+      setHoverLabel(
+        action.kind === 'place'
+          ? `Build at ${key}`
+          : `Erase ${key}`,
+      );
+
+      // Dragging runs a row: each newly entered cell once, never the same one
+      // twice, which is what makes a wall one gesture and one undo (R-140b).
+      if (blockStroke.current === null || key === lastBlock.current) return;
+      lastBlock.current = key;
+      dispatch(action.kind === 'place'
+        ? {
+          kind: 'setBlock', placeId: openMap.placeId, poiId: openMap.poiId,
+          ...action.at, materialId, stroke: blockStroke.current,
+        }
+        : {
+          kind: 'clearBlock', placeId: openMap.placeId, poiId: openMap.poiId,
+          ...action.at, stroke: blockStroke.current,
+        });
+      return;
+    }
 
     if (travel.step === 'aiming') {
       const picked = stage.pick(e.clientX, e.clientY);
@@ -324,6 +417,8 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     panning.current = null;
     painting.current = null;
     stroke.current = null;
+    blockStroke.current = null;
+    lastBlock.current = null;
   };
 
   const onWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
@@ -357,6 +452,12 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       if (!stage) return;
 
       const digit = /^(?:Digit|Numpad)([1-9])$/.exec(e.code)?.[1];
+      if (openMap) {
+        if (digit === '1') { setMapTool('build'); return; }
+        if (digit === '2') { setMapTool('erase'); return; }
+        if (e.code === 'Escape') { setOpenMap(null); return; }
+        return;
+      }
       switch (digit) {
         case '1': setTool('select'); return;
         case '2': setTool('paint'); return;
@@ -432,7 +533,27 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
         <Launcher campaigns={view?.campaigns ?? []} dispatch={dispatch} />
       )}
 
-      {status === 'open' && seat === 'gm' && campaign && (
+      {status === 'open' && seat === 'gm' && campaign && openMapWire && openPlace && openPoi && (
+        <div className="dock">
+          <MapPanel
+            placeName={openPlace.name}
+            poiName={openPoi.name}
+            map={openMapWire}
+            tool={mapTool}
+            materials={DEFAULT_MATERIALS}
+            materialId={materialId}
+            hoverLabel={hoverLabel}
+            onTool={setMapTool}
+            onMaterial={setMaterialId}
+            onLeave={() => setOpenMap(null)}
+            dispatch={dispatch}
+            placeId={openPlace.id}
+            poiId={openPoi.id}
+          />
+        </div>
+      )}
+
+      {status === 'open' && seat === 'gm' && campaign && !openMapWire && (
         <>
           <div className="dock">
             <div className="card">
@@ -492,6 +613,10 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
                 chunkKnown={knownChunks.has(`${place.cell.cx},${place.cell.cz}`)}
                 dispatch={dispatch}
                 onClose={() => setSelectedPlace(null)}
+                onOpenMap={(poiId) => {
+                  setOpenMap({ placeId: place.id, poiId });
+                  setSelectedPlace(null);
+                }}
               />
             )}
             {!place && selectedChunk && (

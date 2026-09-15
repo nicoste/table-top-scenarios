@@ -8,7 +8,9 @@
 // `render` reports what is under the pointer and this decides what it meant.
 // Neither of them may assume the other's precedence.
 
-import type { Tool } from '../store/index.js';
+import type { MapTool, Tool } from '../store/index.js';
+import type { BlockCoord } from '@tt/domain';
+import type { FacePick } from '@tt/render';
 
 export interface Cell { readonly cx: number; readonly cz: number; readonly x: number; readonly z: number }
 export interface Slot { readonly cx: number; readonly cz: number }
@@ -118,4 +120,26 @@ export function tableAction(pointed: Pointed, aiming: boolean): TableAction {
   if (pointed.pawn) return { kind: 'pickPawn', pawn: pointed.pawn };
   if (pointed.placeId) return { kind: 'selectPlace', placeId: pointed.placeId };
   return { kind: 'clearSelection' };
+}
+
+/** What a click means inside an encounter map (D-181). */
+export type MapAction =
+  | { readonly kind: 'nothing' }
+  | { readonly kind: 'place'; readonly at: BlockCoord }
+  | { readonly kind: 'erase'; readonly at: BlockCoord };
+
+/**
+ * Face adjacency, and it is the whole of R-147 in four lines.
+ *
+ * Build acts on the cell **against** the face — click the top of a block and the
+ * new one lands on top of it. Erase acts on the block that was **hit**. Reading
+ * one from the other is the bug this function exists to prevent: they differ by
+ * exactly one step along the face normal, so a single wrong field digs a hole
+ * where a wall should go.
+ */
+export function mapAction(tool: MapTool, face: FacePick | null): MapAction {
+  if (!face) return { kind: 'nothing' };
+  return tool === 'build'
+    ? { kind: 'place', at: face.adjacent }
+    : { kind: 'erase', at: face.block };
 }

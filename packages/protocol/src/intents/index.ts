@@ -69,6 +69,13 @@ export const IntentSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('movePartyMember'), memberId: z.string().min(1), cell: WorldCellSchema }),
   z.object({ kind: z.literal('setPartyTogether'), together: z.boolean() }),
 
+  // A point of interest's map (D-183). Authored content, so GM only. `stroke`
+  // ties one drag into a single undo, exactly as it does for terrain (R-140b).
+  z.object({ kind: z.literal('addMap'), placeId: z.string().min(1), poiId: z.string().min(1) }),
+  z.object({ kind: z.literal('setBlock'), placeId: z.string().min(1), poiId: z.string().min(1), x: z.number().int(), y: z.number().int(), z: z.number().int(), materialId: z.string().min(1), stroke }),
+  z.object({ kind: z.literal('clearBlock'), placeId: z.string().min(1), poiId: z.string().min(1), x: z.number().int(), y: z.number().int(), z: z.number().int(), stroke }),
+  z.object({ kind: z.literal('growMap'), placeId: z.string().min(1), poiId: z.string().min(1), axis: z.enum(['x', 'z']) }),
+
   // Undo and redo over authored content (D-169). GM only: the campaign is the
   // GM's, and a shared history under one person's keyboard is a worse feature.
   z.object({ kind: z.literal('undo') }),

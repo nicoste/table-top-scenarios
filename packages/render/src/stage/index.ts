@@ -7,7 +7,7 @@ import {
   MeshBasicMaterial, PlaneGeometry, Raycaster, Scene, Vector2, WebGLRenderer, BoxGeometry,
   EdgesGeometry, LineSegments, LineBasicMaterial, Group,
 } from 'three';
-import type { Campaign, Placement, WorldCell } from '@tt/domain';
+import type { Campaign, EncounterMap, Material, Placement, WorldCell } from '@tt/domain';
 import { CHUNK_SIZE, brushCentreOffset } from '@tt/domain';
 import type { CameraTarget } from '../camera/index.js';
 import { applyTarget, clampTarget, createCamera, defaultTarget, PITCH_STEPS, yawRadians } from '../camera/index.js';
@@ -17,6 +17,8 @@ import type { PlaceMarkers } from '../places/index.js';
 import { buildPlaceMarkers, MARKER_ZOOM } from '../places/index.js';
 import type { PartyPawns, PawnRef } from '../pawns/index.js';
 import { buildPartyPawns } from '../pawns/index.js';
+import type { BlockBody, FacePick } from '../blocks/index.js';
+import { buildBlockBody } from '../blocks/index.js';
 import { intendedCell } from '../picking/index.js';
 
 export interface SlotAddress { readonly cx: number; readonly cz: number }
@@ -30,6 +32,12 @@ export interface SlotAddress { readonly cx: number; readonly cz: number }
  * hit ended the search.
  */
 export interface Picked {
+  /**
+   * The block face under the pointer, when a map is open (R-147). Carries both
+   * the block hit and the empty cell against that face, so placing and erasing
+   * read from one pick.
+   */
+  readonly face: FacePick | null;
   readonly pawn: PawnRef | null;
   readonly placeId: string | null;
   /** The cell, whatever is standing on it. */
@@ -61,6 +69,12 @@ export class Stage {
   private slotMeshes: { mesh: Mesh; coord: SlotAddress }[] = [];
   private fogMeshes: Mesh[] = [];
   private readonly fog = new Group();
+  /**
+   * The encounter map, when one is open. Mutually exclusive with the world
+   * (R-148): a surface is either the world or a map, never both, so opening one
+   * hides the other's groups rather than layering them.
+   */
+  private blocks: BlockBody | null = null;
   private target: CameraTarget = defaultTarget();
 
   constructor(private readonly canvas: HTMLCanvasElement) {
@@ -144,6 +158,47 @@ export class Stage {
   setPlacement(placement: Placement | null): void {
     this.placement = placement;
     this.rebuildPawns();
+  }
+
+  /**
+   * Opens an encounter map, or closes it and returns to the world.
+   *
+   * The world's groups are hidden rather than torn down, so leaving a map does
+   * not pay to rebuild terrain the GM has not touched. A surface is one or the
+   * other, never both (R-148).
+   */
+  setMap(map: EncounterMap | null, materials: readonly Material[], recentre = false): void {
+    if (this.blocks) {
+      this.scene.remove(this.blocks.group);
+      this.blocks.dispose();
+      this.blocks = null;
+    }
+
+    const worldVisible = map === null;
+    if (this.world) this.world.mesh.visible = worldVisible;
+    if (this.places) this.places.group.visible = worldVisible;
+    if (this.pawns) this.pawns.group.visible = worldVisible;
+    this.slots.visible = worldVisible;
+    this.fog.visible = worldVisible;
+    if (this.grid) this.grid.visible = worldVisible;
+
+    if (!map) return;
+
+    this.blocks = buildBlockBody(map, materials);
+    this.scene.add(this.blocks.group);
+
+    if (recentre) {
+      // A map is tens of cells where the world is hundreds, so the world's zoom
+      // would frame it as a speck. Fit the footprint with a margin.
+      const centre = { x: map.size.x / 2, y: 0, z: map.size.z / 2 };
+      const zoom = Math.max(map.size.x, map.size.z) * 1.6;
+      this.target = { ...defaultTarget(centre), zoom };
+    }
+  }
+
+  /** Whether a map is currently the surface, rather than the world. */
+  get showingMap(): boolean {
+    return this.blocks !== null;
   }
 
   /** Puts the travel ghost on a cell, or takes it off (R-132). */
@@ -255,6 +310,17 @@ export class Stage {
     );
     this.raycaster.setFromCamera(ndc, this.camera);
 
+    // A map is a different surface, not an overlay on the world (R-148), so it
+    // answers with a face and nothing else — there is no terrain column, no
+    // place marker and no chunk slot inside one.
+    if (this.blocks) {
+      for (const hit of this.raycaster.intersectObject(this.blocks.group, true)) {
+        const face = this.blocks.faceOf(hit);
+        if (face) return { face, pawn: null, placeId: null, column: null, slot: null };
+      }
+      return { face: null, pawn: null, placeId: null, column: null, slot: null };
+    }
+
     let pawn: PawnRef | null = null;
     if (this.pawns && this.pawns.group.visible) {
       for (const hit of this.raycaster.intersectObjects(this.pawns.group.children, true)) {
@@ -287,7 +353,7 @@ export class Stage {
       }
     }
 
-    return { pawn, placeId, column, slot };
+    return { face: null, pawn, placeId, column, slot };
   }
 
   /**
@@ -336,6 +402,7 @@ export class Stage {
   dispose(): void {
     instances--;
     this.setFogChunks([]);
+    this.blocks?.dispose();
     this.pawns?.dispose();
     this.places?.dispose();
     this.world?.dispose();

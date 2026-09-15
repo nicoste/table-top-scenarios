@@ -148,7 +148,14 @@ function forTheTable(campaign: Campaign | null, save: Save | null): CampaignWire
       .map((place) => ({
         ...place,
         notes: place.notes.filter((note) => note.visibleToParty),
-        pois: place.pois.filter((e) => e.visibleToParty),
+        // A revealed point of interest reaches the table as a *name*. Its map
+        // body is stripped, and not merely because the table has nothing to draw
+        // it with yet: without the cutting range (R-146) there is no way to
+        // withhold a secret cellar, and R-85's standard is that a secret is never
+        // sent rather than merely unrendered. Round B sends the slice (D-184).
+        pois: place.pois
+          .filter((e) => e.visibleToParty)
+          .map((e) => ({ ...e, map: null })),
       })),
   };
 }

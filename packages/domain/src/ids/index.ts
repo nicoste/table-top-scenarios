@@ -12,6 +12,7 @@ export type PlaceId = Brand<string, 'PlaceId'>;
 export type NoteId = Brand<string, 'NoteId'>;
 export type PoiId = Brand<string, 'PoiId'>;
 export type MarkerId = Brand<string, 'MarkerId'>;
+export type MaterialId = Brand<string, 'MaterialId'>;
 
 /** Registry ids are namespaced strings: `terrain:swamp`, never an index (R-11). */
 const REGISTRY_ID = /^[a-z][a-z0-9]*:[a-z0-9]+(-[a-z0-9]+)*$/;

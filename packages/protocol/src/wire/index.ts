@@ -7,7 +7,7 @@ import type {
 } from '@tt/domain';
 import {
   CHUNK_SIZE, DEFAULT_METRES_PER_LEVEL, DEFAULT_TERRAIN, DEFAULT_MARKERS,
-  chunkKey, registryId, discoveryToJSON, discoveryFromJSON,
+  chunkKey, registryId, discoveryToJSON, discoveryFromJSON, mapToJSON, mapFromJSON,
   placementToJSON, placementFromJSON,
 } from '@tt/domain';
 
@@ -68,10 +68,18 @@ export const PlaceNoteWireSchema = z.object({
   visibleToParty: z.boolean(),
 });
 
+export const MapWireSchema = z.object({
+  size: z.object({ x: z.number().int().positive(), z: z.number().int().positive() }),
+  /** `"x,y,z": materialId`. Sparse — an absent key is air. */
+  blocks: z.record(z.string(), z.string()).default({}),
+});
+export type MapWire = z.infer<typeof MapWireSchema>;
+
 export const PoiWireSchema = z.object({
   id: z.string(),
   name: z.string(),
   visibleToParty: z.boolean(),
+  map: MapWireSchema.nullable().default(null),
 });
 
 /**
@@ -85,7 +93,7 @@ export const PoiWireSchema = z.object({
  */
 const PoiFromWire = z.union([PoiWireSchema, z.string()]).transform(
   (entry) => (typeof entry === 'string'
-    ? { id: entry, name: entry, visibleToParty: false }
+    ? { id: entry, name: entry, visibleToParty: false, map: null }
     : entry),
 );
 
@@ -273,7 +281,12 @@ export function encodePoi(place: Place): PlaceWire {
     name: place.name,
     cell: place.cell,
     markerId: place.markerId as string,
-    pois: place.pois.map((e) => ({ id: e.id as string, name: e.name, visibleToParty: e.visibleToParty })),
+    pois: place.pois.map((e) => ({
+      id: e.id as string,
+      name: e.name,
+      visibleToParty: e.visibleToParty,
+      map: e.map ? mapToJSON(e.map) : null,
+    })),
     notes: place.notes.map((n) => ({ id: n.id, text: n.text, visibleToParty: n.visibleToParty })),
   };
 }
@@ -288,6 +301,7 @@ export function decodePoi(wire: PlaceWire): Place {
       id: e.id as Place['pois'][number]['id'],
       name: e.name,
       visibleToParty: e.visibleToParty,
+      map: mapFromJSON(e.map),
     })),
     notes: wire.notes.map((n): PlaceNote => ({
       id: n.id as PlaceNote['id'], text: n.text, visibleToParty: n.visibleToParty,
