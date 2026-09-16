@@ -7,7 +7,7 @@ import {
   MeshBasicMaterial, PlaneGeometry, Raycaster, Scene, Vector2, WebGLRenderer, BoxGeometry,
   EdgesGeometry, LineSegments, LineBasicMaterial, Group,
 } from 'three';
-import type { Campaign, EncounterMap, Material, Placement, WorldCell } from '@tt/domain';
+import type { BlockCoord, Campaign, EncounterMap, Material, Placement, WorldCell } from '@tt/domain';
 import { CHUNK_SIZE, brushCentreOffset } from '@tt/domain';
 import type { CameraTarget } from '../camera/index.js';
 import { applyTarget, clampTarget, createCamera, defaultTarget, PITCH_STEPS, yawRadians } from '../camera/index.js';
@@ -59,6 +59,8 @@ export class Stage {
   private readonly camera = createCamera();
   private readonly raycaster = new Raycaster();
   private readonly highlight: LineSegments;
+  /** The outline of the cube a click would add or remove (R-153). */
+  private readonly blockGhost: LineSegments;
   private readonly slots = new Group();
   private world: WorldMeshes | null = null;
   private places: PlaceMarkers | null = null;
@@ -112,7 +114,18 @@ export class Stage {
     );
     this.highlight.visible = false;
     this.highlight.renderOrder = 10;
-    this.scene.add(this.highlight, this.slots, this.fog);
+
+    // The same idea one surface down: white rather than the world's blue,
+    // because inside a map it is the *only* thing outlined and it marks a cube
+    // that is not there yet (R-153).
+    this.blockGhost = new LineSegments(
+      new EdgesGeometry(new BoxGeometry(1.02, 1.02, 1.02)),
+      new LineBasicMaterial({ color: 0xffffff, depthTest: false }),
+    );
+    this.blockGhost.visible = false;
+    this.blockGhost.renderOrder = 11;
+
+    this.scene.add(this.highlight, this.blockGhost, this.slots, this.fog);
 
     this.resize();
   }
@@ -172,6 +185,9 @@ export class Stage {
     this.slots.visible = worldVisible;
     this.fog.visible = worldVisible;
     if (this.grid) this.grid.visible = worldVisible;
+    // Always off: the next pointer move puts it back where it belongs, and an
+    // outline left over from the surface before is worse than none.
+    this.blockGhost.visible = false;
   }
 
   private dropPawns(): void {
@@ -421,6 +437,21 @@ export class Stage {
     this.highlight.scale.set(n, Math.max(top, 0.25), n);
   }
 
+  /**
+   * Outlines the cube a click would add or remove (R-153).
+   *
+   * The world's highlight cannot do this job: it sits on a *column* and stretches
+   * to its height, while a map's target is one cube anywhere in the air — which
+   * is the whole reason a map stores blocks and the world stores heights.
+   */
+  showBlockGhost(at: BlockCoord | null): void {
+    if (!at || !this.showingMap) { this.blockGhost.visible = false; return; }
+    this.blockGhost.visible = true;
+    // Blocks are addressed by their corner and the outline is centred, so add
+    // half a cell — the same half `buildBlockBody` adds to every instance.
+    this.blockGhost.position.set(at.x + 0.5, at.y + 0.5, at.z + 0.5);
+  }
+
   resize(): void {
     const w = this.canvas.clientWidth || 1;
     const h = this.canvas.clientHeight || 1;
@@ -448,6 +479,8 @@ export class Stage {
 
   dispose(): void {
     instances--;
+    this.blockGhost.geometry.dispose();
+    (this.blockGhost.material as LineBasicMaterial).dispose();
     this.setFogChunks([]);
     this.blocks?.dispose();
     this.pawns?.dispose();

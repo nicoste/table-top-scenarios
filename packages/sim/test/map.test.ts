@@ -157,19 +157,26 @@ describe('undo covers map edits for free (R-140a)', () => {
     expect(poiOf(undone).map).not.toBeNull();
   });
 
-  it('collapses a drag of blocks into one undo (R-140b)', () => {
+  it('gives each cube its own undo, because each cube is its own click (R-153)', () => {
+    // Blocks carry no stroke id: a map click is a click, not a gesture. The
+    // coalescing rule is still general at the boundary and the world's brush
+    // still uses it (R-140b, covered in history.test.ts) — a map simply never
+    // asks for it, so a wall of five is five presses back rather than one.
     const { state, placeId, poiId } = seeded();
     let next = state;
     for (let x = 0; x < 5; x += 1) {
-      next = run(next, {
-        kind: 'setBlock', placeId, poiId, x, y: 1, z: 0, materialId: STONE, stroke: 'wall1',
-      }).state;
+      next = run(next, { kind: 'setBlock', placeId, poiId, x, y: 1, z: 0, materialId: STONE }).state;
     }
     expect(poiOf(next).map!.blocks.has('4,1,0')).toBe(true);
 
-    const undone = run(next, { kind: 'undo' }).state;
+    const once = run(next, { kind: 'undo' }).state;
+    expect(poiOf(once).map!.blocks.has('4,1,0')).toBe(false);
+    expect(poiOf(once).map!.blocks.has('3,1,0')).toBe(true);
+
+    let back = once;
+    for (let i = 0; i < 4; i += 1) back = run(back, { kind: 'undo' }).state;
     for (let x = 0; x < 5; x += 1) {
-      expect(poiOf(undone).map!.blocks.has(`${x},1,0`), `block ${x}`).toBe(false);
+      expect(poiOf(back).map!.blocks.has(`${x},1,0`), `block ${x}`).toBe(false);
     }
   });
 });

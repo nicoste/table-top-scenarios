@@ -3,7 +3,7 @@
 
 import { describe, it, expect } from 'vitest';
 import type { Cell, Pointed } from '@tt/client-core';
-import { clickAction, holdsSelection, tableAction, mapAction } from '@tt/client-core';
+import { clickAction, holdsSelection, tableAction, mapAction, mapHover } from '@tt/client-core';
 import type { Tool } from '@tt/client-core';
 
 const cell = (x: number, z: number): Cell => ({ cx: 15, cz: 15, x, z });
@@ -207,6 +207,41 @@ describe('face adjacency inside a map (D-181)', () => {
       const f = { block, adjacent: { x: 4 + dx!, y: 4 + dy!, z: 4 + dz! } };
       expect(mapAction('build', f)).toEqual({ kind: 'place', at: f.adjacent });
       expect(mapAction('erase', f)).toEqual({ kind: 'erase', at: block });
+    }
+  });
+});
+
+describe('mapHover — what the GM is told is about to happen (R-153)', () => {
+  const face = { block: { x: 4, y: 1, z: 7 }, adjacent: { x: 4, y: 2, z: 7 } };
+
+  it('outlines the very cube a click would place', () => {
+    const hover = mapHover(mapAction('build', face));
+    expect(hover.ghost).toEqual(face.adjacent);
+    expect(hover.label).toBe('Build at 4,2,7');
+  });
+
+  it('outlines the block a click would remove, not the space beside it', () => {
+    // The off-by-one-along-the-normal that R-147 exists to prevent. Deriving
+    // both the words and the outline from one MapAction is what keeps the thing
+    // that lights up and the thing that changes the same thing.
+    const hover = mapHover(mapAction('erase', face));
+    expect(hover.ghost).toEqual(face.block);
+    expect(hover.label).toBe('Erase 4,1,7');
+  });
+
+  it('shows nothing when the pointer is over nothing', () => {
+    const hover = mapHover(mapAction('build', null));
+    expect(hover).toEqual({ label: null, ghost: null });
+  });
+
+  it('never disagrees with itself about which cube it means', () => {
+    for (const tool of ['build', 'erase'] as const) {
+      const action = mapAction(tool, face);
+      const hover = mapHover(action);
+      expect(hover.ghost, tool).toBe(action.kind === 'nothing' ? null : action.at);
+      expect(hover.label, tool).toContain(
+        `${hover.ghost!.x},${hover.ghost!.y},${hover.ghost!.z}`,
+      );
     }
   });
 });

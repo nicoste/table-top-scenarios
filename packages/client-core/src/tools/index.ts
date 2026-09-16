@@ -143,3 +143,26 @@ export function mapAction(tool: MapTool, face: FacePick | null): MapAction {
     ? { kind: 'place', at: face.adjacent }
     : { kind: 'erase', at: face.block };
 }
+
+export interface MapHover {
+  /** What the readout says, or `null` when the pointer is over nothing. */
+  readonly label: string | null;
+  /** The cube to outline, or `null` for none (R-153). */
+  readonly ghost: BlockCoord | null;
+}
+
+/**
+ * What the GM is told is about to happen — in words and as an outline.
+ *
+ * Both derived from the one `MapAction`, so the cube that lights up is by
+ * construction the cube the click edits. Computing the outline from the face
+ * and the readout from the action would be two chances to get the
+ * off-by-one-along-the-normal wrong (R-147), and only one of them would look
+ * wrong on screen.
+ */
+export function mapHover(action: MapAction): MapHover {
+  if (action.kind === 'nothing') return { label: null, ghost: null };
+  const { x, y, z } = action.at;
+  const verb = action.kind === 'place' ? 'Build at' : 'Erase';
+  return { label: `${verb} ${x},${y},${z}`, ghost: action.at };
+}

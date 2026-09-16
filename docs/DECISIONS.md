@@ -3021,3 +3021,39 @@ it invites the reader to wonder which case they are in.
 The map is still the reason this delete asks at all (R-151). That reason belongs
 in the code's comment and in the rule, not in the sentence the GM reads at the
 moment they are trying to decide.
+
+### D-193 — One click, one cube · `agreed`
+The GM: *"I don't think we should have the drag and paint in there, sometimes I
+create huge columns by accident. One click, one cube."*
+
+The accident is structural, not clumsiness. A block is placed against the face
+under the pointer, and **placing one changes which face that is**: the new cube
+presents its own top, so a pointer that has not moved at all is now aimed one
+level higher. Hold the button a moment too long, drift two pixels, and the drag
+climbs. The world's brush has no such feedback loop — painting a cell does not
+move the cell — which is why dragging is right there and wrong here.
+
+So a map drag edits nothing. Pointer-move only *shows* what a click would do,
+and each click is its own undo: no stroke id, five cubes are five presses back.
+R-140b keeps its generality at the boundary; a map just never asks for it.
+
+Erase lost its drag too, which was not literally requested. The same loop runs
+in reverse — removing a block exposes the one behind it — and "one click, one
+cube" is the rule the GM stated, not "one click, one cube when building".
+
+**And the cube is now outlined before it is touched**, which the GM asked for in
+the same breath: *"We need the wireframe to show where is the cube about to be
+placed... a white block sized wireframe of the 'upcoming' cube."* White rather
+than the world's blue, because inside a map it is the only thing outlined and it
+marks a cube that does not exist yet.
+
+The world's highlight could not be reused: it sits on a column and scales to its
+height (R-87), while a map's target is one cube anywhere in the air — the same
+distinction that makes the world store heights and a map store blocks. What the
+two *do* share is the obligation, so R-153 states it rather than leaving the map
+to invent its own answer.
+
+`mapHover` derives the outline and the readout from one `MapAction`, and is
+tested for the property that matters: the cube that lights up is the cube the
+click edits. Two separate computations would have been two chances at R-147's
+off-by-one along the face normal — and only one of them would have looked wrong.

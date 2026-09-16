@@ -1650,6 +1650,9 @@ apps/host/src/
 > The id is opaque to the host, which only compares it with the previous one. The
 > comparison must require a **non-null** id: two separate single clicks both carry
 > nothing, and treating that as a match would collapse unrelated edits into one.
+>
+> **Blocks do not use it** (R-153). The rule stays general at the boundary; a map
+> simply never sends a stroke, because there is no drag inside one.
 
 > **R-141.** A selection on the table display is **re-resolved from the current
 > wire every render**, never held as a copy.
@@ -1838,3 +1841,29 @@ apps/host/src/
 > meshes — a campaign change, a party move — puts them back on screen inside an
 > open map unless it says otherwise. One method does this, and every rebuild
 > calls it; relying on one effect running before another is not a rule.
+
+---
+
+## 6h. Building inside a map
+
+> **R-153.** **One click, one cube.** Inside a map, a pointer *drag* never edits
+> anything: no run of blocks, no swathe of erasure, and each cube is its own undo.
+>
+> The world's brush is the opposite on purpose (R-140b), and the difference is
+> not inconsistency. Painting terrain is a two-dimensional wash where the exact
+> boundary rarely matters; a block sits in three dimensions against a face, and
+> **the face the pointer is over changes as blocks appear**. A hand that drifts
+> during a click therefore climbs: each new cube presents its own top face, and
+> what the GM meant as one cube becomes a column (D-193).
+>
+> **The cube in question is outlined before it is touched** — a white,
+> cube-shaped wireframe at exactly the cell a click would edit: the empty cell
+> against the hovered face when building, the hovered block itself when erasing.
+> That is R-87's obligation carried down a surface, and the world's highlight
+> cannot serve: it sits on a *column* and stretches to its height, while a map's
+> target is one cube anywhere in the air.
+>
+> The outline and the readout are derived from **one** `MapAction`, so the cube
+> that lights up is by construction the cube the click edits. Computing them
+> separately is two chances to get R-147's off-by-one-along-the-normal wrong, and
+> only one of them would look wrong on screen.

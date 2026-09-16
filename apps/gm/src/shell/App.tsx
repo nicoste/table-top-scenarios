@@ -11,7 +11,7 @@ import { defaultTarget, worldCentre } from '@tt/render';
 import type { Tool, Travel } from '@tt/client-core';
 import {
   idle, pick, armed, aim, ghostCell, canConfirm, travelIntent, travelPrompt,
-  clickAction, holdsSelection, mapAction,
+  clickAction, holdsSelection, mapAction, mapHover,
 } from '@tt/client-core';
 import type { MapTool } from '@tt/client-core';
 import { useStage } from '../scene/use-stage.js';
@@ -72,10 +72,6 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    * unique-enough string does.
    */
   const stroke = useRef<string | null>(null);
-  /** The current block gesture, so a drag across faces is one undo (R-140b). */
-  const blockStroke = useRef<string | null>(null);
-  /** The last cell a block gesture touched, so one drag does not re-send it. */
-  const lastBlock = useRef<string | null>(null);
   const newStroke = () => {
     stroke.current = `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
     return stroke.current;
@@ -234,21 +230,19 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
 
     // Inside a map, the world's tool table does not apply at all (R-148).
     if (openMap) {
+      // One click, one cube (R-153). No pointer capture and no stroke id: the
+      // gesture ends where it started, and each cube is its own undo.
       const action = mapAction(mapTool, picked.face);
       if (action.kind === 'place') {
-        blockStroke.current = newStroke();
         dispatch({
           kind: 'setBlock', placeId: openMap.placeId, poiId: openMap.poiId,
-          ...action.at, materialId, stroke: blockStroke.current,
+          ...action.at, materialId,
         });
-        e.currentTarget.setPointerCapture(e.pointerId);
       } else if (action.kind === 'erase') {
-        blockStroke.current = newStroke();
         dispatch({
           kind: 'clearBlock', placeId: openMap.placeId, poiId: openMap.poiId,
-          ...action.at, stroke: blockStroke.current,
+          ...action.at,
         });
-        e.currentTarget.setPointerCapture(e.pointerId);
       }
       return;
     }
@@ -321,30 +315,13 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     if (!stage) return;
 
     if (openMap) {
+      // Moving the pointer inside a map only ever *shows* what a click would do
+      // (R-153). It used to build as it went, which turned a hand that drifted
+      // during a click into a column nobody asked for.
       const picked = stage.pick(e.clientX, e.clientY);
-      const action = mapAction(mapTool, picked.face);
-      if (action.kind === 'nothing') { setHoverLabel(null); return; }
-
-      const key = `${action.at.x},${action.at.y},${action.at.z}`;
-      setHoverLabel(
-        action.kind === 'place'
-          ? `Build at ${key}`
-          : `Erase ${key}`,
-      );
-
-      // Dragging runs a row: each newly entered cell once, never the same one
-      // twice, which is what makes a wall one gesture and one undo (R-140b).
-      if (blockStroke.current === null || key === lastBlock.current) return;
-      lastBlock.current = key;
-      dispatch(action.kind === 'place'
-        ? {
-          kind: 'setBlock', placeId: openMap.placeId, poiId: openMap.poiId,
-          ...action.at, materialId, stroke: blockStroke.current,
-        }
-        : {
-          kind: 'clearBlock', placeId: openMap.placeId, poiId: openMap.poiId,
-          ...action.at, stroke: blockStroke.current,
-        });
+      const hover = mapHover(mapAction(mapTool, picked.face));
+      setHoverLabel(hover.label);
+      stage.showBlockGhost(hover.ghost);
       return;
     }
 
@@ -421,8 +398,19 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     panning.current = null;
     painting.current = null;
     stroke.current = null;
-    blockStroke.current = null;
-    lastBlock.current = null;
+  };
+
+  /**
+   * The pointer left the canvas, so nothing is about to happen anywhere.
+   *
+   * Separate from `endGesture`, which also runs on pointer-up — clearing the
+   * outline there would blink it off under a stationary cursor after every
+   * click.
+   */
+  const onPointerLeave = () => {
+    endGesture();
+    setHoverLabel(null);
+    stage?.showBlockGhost(null);
   };
 
   const onWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
@@ -517,7 +505,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={endGesture}
-          onPointerLeave={endGesture}
+          onPointerLeave={onPointerLeave}
           onWheel={onWheel}
           onContextMenu={(e) => e.preventDefault()}
         />
