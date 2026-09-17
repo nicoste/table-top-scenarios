@@ -28,6 +28,22 @@ export function yawRadians(target: Pick<CameraTarget, 'yawStep'>): number {
   return ((YAW_OFFSET + step * (360 / YAW_STEPS)) * Math.PI) / 180;
 }
 
+/**
+ * Where **north** is on screen, in degrees clockwise from straight up (R-155).
+ *
+ * Under this projection that is simply the camera's azimuth. The camera sits at
+ * `focus + (sin y, ., cos y)` and looks inward, so screen-right is
+ * `(cos y, -sin y)` and screen-up is `(-sin y, -cos y)` in the ground plane.
+ * Project north, the direction `(0, -1)`, onto those two and you get
+ * `(sin y, cos y)` — a bearing of exactly `y`.
+ *
+ * Derived rather than tabulated because the tabulated version is four numbers
+ * that are right until someone changes `YAW_OFFSET`.
+ */
+export function northBearing(target: Pick<CameraTarget, 'yawStep'>): number {
+  return (yawRadians(target) * 180) / Math.PI;
+}
+
 export interface CameraTarget {
   focus: { x: number; y: number; z: number };
   zoom: number;      // world units visible vertically

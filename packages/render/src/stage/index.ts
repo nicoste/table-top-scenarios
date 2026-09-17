@@ -8,7 +8,7 @@ import {
   EdgesGeometry, LineSegments, LineBasicMaterial, Group,
 } from 'three';
 import type { BlockCoord, Campaign, EncounterMap, Material, Placement, WorldCell } from '@tt/domain';
-import { CHUNK_SIZE, brushCentreOffset } from '@tt/domain';
+import { CHUNK_SIZE, brushCentreOffset, mapCentre } from '@tt/domain';
 import type { CameraTarget } from '../camera/index.js';
 import { applyTarget, clampTarget, createCamera, defaultTarget, PITCH_STEPS, yawRadians } from '../camera/index.js';
 import { surfaceMove, showWorldMarkers } from '../surface/index.js';
@@ -93,6 +93,14 @@ export class Stage {
    */
   private parked: CameraTarget | null = null;
   private target: CameraTarget = defaultTarget();
+  /**
+   * Told whenever the camera moves, so an overlay can follow it (R-155).
+   *
+   * A callback rather than a getter the app polls: the compass must be right
+   * after a rotate, a map framing and a return to the world, and three of those
+   * happen inside this class without the app asking for anything.
+   */
+  private onCamera: ((target: CameraTarget) => void) | null = null;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     this.renderer = new WebGLRenderer({ canvas, antialias: true });
@@ -159,7 +167,7 @@ export class Stage {
     this.grid.position.set(centre.x, 0.01, centre.z);
     this.scene.add(this.grid);
 
-    if (recentre) this.target = { ...this.target, focus: centre };
+    if (recentre) this.setTarget({ ...this.target, focus: centre });
 
     // Everything above is freshly built and therefore visible. If a map is the
     // surface, it must not be.
@@ -250,11 +258,12 @@ export class Stage {
       // would frame it as a speck. Fit the footprint with a margin — and park
       // the world's framing first, so leaving puts the GM back where they were.
       this.parked ??= this.target;
-      const centre = { x: map.size.x / 2, y: 0, z: map.size.z / 2 };
+      const middle = mapCentre(map);
+      const centre = { x: middle.x, y: 0, z: middle.z };
       const zoom = Math.max(map.size.x, map.size.z) * 1.6;
-      this.target = { ...defaultTarget(centre), zoom };
+      this.setTarget({ ...defaultTarget(centre), zoom });
     } else if (move === 'restore') {
-      if (this.parked) this.target = this.parked;
+      if (this.parked) this.setTarget(this.parked);
       this.parked = null;
     }
   }
@@ -317,7 +326,19 @@ export class Stage {
     });
   }
 
-  setTarget(target: CameraTarget): void { this.target = clampTarget(target); }
+  setTarget(target: CameraTarget): void {
+    this.target = clampTarget(target);
+    this.onCamera?.(this.target);
+  }
+
+  /**
+   * Subscribes to camera movement, and fires once immediately so the caller
+   * starts in sync rather than a rotate behind. Pass `null` to unsubscribe.
+   */
+  watchCamera(cb: ((target: CameraTarget) => void) | null): void {
+    this.onCamera = cb;
+    cb?.(this.target);
+  }
   getTarget(): CameraTarget { return this.target; }
 
   nudgeZoom(factor: number): void {

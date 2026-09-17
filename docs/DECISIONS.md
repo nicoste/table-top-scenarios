@@ -3114,3 +3114,60 @@ top of a handler silently owns every control below it.** The camera check now
 comes first in pointer-move, which is what R-152 says out loud — the camera
 belongs to no surface — rather than something each handler is trusted to
 remember.
+
+### D-196 — A compass, and a rose to grow by · `agreed`
+*"I will love to have a floating compass middle bottom to know where is North.
+Rotating the camera confuses a little bit."*
+
+Built, in all four views, from one `@tt/ui` component (R-155). Two things worth
+recording about how.
+
+**The bearing is derived.** North's screen bearing under this projection is
+exactly the camera's azimuth: the camera sits at `focus + (sin y, ., cos y)` and
+looks inward, so screen-right is `(cos y, -sin y)`, screen-up is
+`(-sin y, -cos y)`, and north — the direction `(0, -1)` — projects to
+`(sin y, cos y)`, a bearing of `y`. The test checks that derivation against the
+projection rather than asserting four numbers, because a compass ninety degrees
+out is worse than no compass, and four numbers are only right until `YAW_OFFSET`
+changes.
+
+**The stage now reports camera movement** instead of being polled. Three of the
+moments the compass has to be right about — framing a map, returning to the
+world, a rotate — happen inside `Stage` without the app asking for anything, so
+`watchCamera` fires on every change and once on subscribe. Only the **yaw step**
+is kept in React state: panning fires on every pointer move, and re-rendering a
+console for a compass that did not change would be a frame's work per pixel.
+Every assignment to the camera target now funnels through `setTarget`, so
+nothing can move the camera quietly.
+
+**The expand rose.** *"The '+ East' and '+ South' are not really easy to
+understand. Can we add also the other directions?"* — they were not easy to
+understand because they were the only two the code could do: growing north or
+west meant renumbering every block, and my own comment called a renumber "how
+saved references rot".
+
+So the map got an **origin**. North and west now move it negative and every
+existing block keeps its coordinate. That is a shape change with no schema bump,
+for D-187's reason: a file without an origin can only be one that grew east and
+south, so `{0, 0}` is not a guess about it — it is what that map already meant.
+
+One word changed from the GM's wording: the label reads *"Expand the map to:"*
+rather than *"expand the terrain to:"*. Inside a point of interest there is no
+terrain — the world map has terrain with a difficulty, a map has materials — and
+D-176 was a large cleanup of exactly this kind of drift.
+
+### O-025 — Two rounds running, I verified against a stale host · `open`
+The host loads TypeScript at startup, so a change under `packages/` that it
+reads — protocol, sim, domain, persistence — does not reach it until it is
+restarted. O-024 recorded this. I then walked into it twice more: the bucket fill
+did nothing, and the expand rose did nothing, both because the host was started
+before the change.
+
+The good news is that the console **said so both times** and I did not look. The
+second time the toast read `axis: Required` — the old schema naming the field it
+wanted. That is R-18 working exactly as intended, and the failure was mine for
+treating "nothing happened" as a mystery rather than reading the screen.
+
+Standing order for myself: **restart the host as the first step of any browser
+verification that follows a change under `packages/`**, and when a gesture
+appears to do nothing, read the rejection before forming a theory.

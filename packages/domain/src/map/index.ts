@@ -32,11 +32,37 @@ export interface BlockCoord {
 }
 
 export interface EncounterMap {
-  /** Cells in X and Z. Grows with `+` (R-150); never shrinks below what exists. */
+  /**
+   * The lowest cell the map owns in X and Z (R-150).
+   *
+   * `{0, 0}` for a new map, and it goes **negative** when the GM expands north
+   * or west. This exists so that growing in those directions does not have to
+   * renumber every block that is already placed — a renumber is how saved
+   * references rot, and it would silently move a wall relative to anything that
+   * remembered where it was.
+   */
+  readonly origin: { readonly x: number; readonly z: number };
+  /** Cells in X and Z. Grows with the expand rose (R-150); never shrinks. */
   readonly size: { readonly x: number; readonly z: number };
   /** Filled cells only, keyed by `blockKey`. Absent means air. */
   readonly blocks: ReadonlyMap<string, MaterialId>;
 }
+
+/** Where the GM can extend a map. The world's compass, not the screen's. */
+export type Expand = 'north' | 'south' | 'east' | 'west';
+
+/**
+ * Which way each direction lies in cell space: north is **-Z**, east is **+X**.
+ *
+ * The same convention the compass draws (R-155) and the only one consistent with
+ * a right-handed Y-up scene where the camera's default azimuth is 45 degrees.
+ */
+const STEPS: Record<Expand, { readonly x: number; readonly z: number }> = {
+  north: { x: 0, z: -1 },
+  south: { x: 0, z: 1 },
+  east: { x: 1, z: 0 },
+  west: { x: -1, z: 0 },
+};
 
 export function blockKey(at: BlockCoord): string {
   return `${at.x},${at.y},${at.z}`;
@@ -53,8 +79,8 @@ export function parseBlockKey(key: string): BlockCoord | null {
 
 export function inMap(map: EncounterMap, at: BlockCoord): boolean {
   return Number.isInteger(at.x) && Number.isInteger(at.y) && Number.isInteger(at.z)
-    && at.x >= 0 && at.x < map.size.x
-    && at.z >= 0 && at.z < map.size.z
+    && at.x >= map.origin.x && at.x < map.origin.x + map.size.x
+    && at.z >= map.origin.z && at.z < map.origin.z + map.size.z
     && at.y >= 0 && at.y < MAP_MAX_HEIGHT;
 }
 
@@ -76,7 +102,7 @@ export function createMap(material: MaterialId = DEFAULT_FLOOR): EncounterMap {
       blocks.set(blockKey({ x, y: 0, z }), material);
     }
   }
-  return { size: { x: MAP_PATCH, z: MAP_PATCH }, blocks };
+  return { origin: { x: 0, z: 0 }, size: { x: MAP_PATCH, z: MAP_PATCH }, blocks };
 }
 
 /** Identity-preserving: placing what is already there returns the same map (R-12). */
@@ -102,26 +128,43 @@ export function clearBlock(map: EncounterMap, at: BlockCoord): EncounterMap {
 }
 
 /**
- * Extends the map by one patch along an axis (R-150).
+ * Extends the map by one patch in a compass direction (R-150).
  *
- * Only outward from the origin, which keeps the coordinate of every existing
- * block unchanged. Growing "west" would mean renumbering the whole body, and a
- * renumber is how saved references rot.
+ * North and west move the **origin** instead of renumbering the body. Every
+ * block keeps the coordinate it already had, whichever way the map grows — the
+ * alternative is shifting thousands of keys and hoping nothing remembered one.
  */
-export function growMap(map: EncounterMap, axis: 'x' | 'z'): EncounterMap {
-  const size = axis === 'x'
-    ? { x: map.size.x + MAP_PATCH, z: map.size.z }
-    : { x: map.size.x, z: map.size.z + MAP_PATCH };
+export function growMap(map: EncounterMap, towards: Expand): EncounterMap {
+  const step = STEPS[towards];
+  // A negative step pushes the origin out; a positive one only adds width.
+  const origin = {
+    x: map.origin.x + (step.x < 0 ? -MAP_PATCH : 0),
+    z: map.origin.z + (step.z < 0 ? -MAP_PATCH : 0),
+  };
+  const size = {
+    x: map.size.x + (step.x !== 0 ? MAP_PATCH : 0),
+    z: map.size.z + (step.z !== 0 ? MAP_PATCH : 0),
+  };
+
   // The new ground is floored, for the same reason the first patch is (R-149).
   const blocks = new Map(map.blocks);
-  const floor = map.blocks.get(blockKey({ x: 0, y: 0, z: 0 })) ?? DEFAULT_FLOOR;
-  for (let x = 0; x < size.x; x += 1) {
-    for (let z = 0; z < size.z; z += 1) {
-      if (x < map.size.x && z < map.size.z) continue;
+  const floor = map.blocks.get(blockKey({ x: map.origin.x, y: 0, z: map.origin.z }))
+    ?? DEFAULT_FLOOR;
+  const was = (x: number, z: number) =>
+    x >= map.origin.x && x < map.origin.x + map.size.x
+    && z >= map.origin.z && z < map.origin.z + map.size.z;
+  for (let x = origin.x; x < origin.x + size.x; x += 1) {
+    for (let z = origin.z; z < origin.z + size.z; z += 1) {
+      if (was(x, z)) continue;
       blocks.set(blockKey({ x, y: 0, z }), floor);
     }
   }
-  return { size, blocks };
+  return { origin, size, blocks };
+}
+
+/** The middle of the footprint, for framing a camera on it (R-152). */
+export function mapCentre(map: EncounterMap): { readonly x: number; readonly z: number } {
+  return { x: map.origin.x + map.size.x / 2, z: map.origin.z + map.size.z / 2 };
 }
 
 /**
@@ -209,6 +252,8 @@ export function topOfMap(map: EncounterMap): number {
 }
 
 export interface MapJSON {
+  /** Absent in files written before a map could grow north or west. */
+  origin?: { x: number; z: number };
   size: { x: number; z: number };
   /** `"x,y,z": materialId`. Sorted on the way out so an autosave does not churn. */
   blocks: Record<string, string>;
@@ -219,12 +264,20 @@ export function mapToJSON(map: EncounterMap): MapJSON {
   for (const key of [...map.blocks.keys()].sort()) {
     blocks[key] = map.blocks.get(key)!;
   }
-  return { size: { x: map.size.x, z: map.size.z }, blocks };
+  return {
+    origin: { x: map.origin.x, z: map.origin.z },
+    size: { x: map.size.x, z: map.size.z },
+    blocks,
+  };
 }
 
 export function mapFromJSON(json: MapJSON | undefined | null): EncounterMap | null {
   if (!json) return null;
   return {
+    // No schema bump for this either (D-187's reasoning): a file without an
+    // origin can only be one that grew in the two directions that never needed
+    // one, so `{0, 0}` is not a guess — it is what that map already meant.
+    origin: { x: json.origin?.x ?? 0, z: json.origin?.z ?? 0 },
     size: { x: json.size.x, z: json.size.z },
     blocks: new Map(Object.entries(json.blocks) as [string, MaterialId][]),
   };

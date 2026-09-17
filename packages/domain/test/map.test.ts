@@ -3,7 +3,7 @@
 import { describe, it, expect } from 'vitest';
 import type { MaterialId, Place, PlaceCell } from '@tt/domain';
 import {
-  addPlace, addPoi, withPoiMaps, fillRegion, fillMaterial,
+  addPlace, addPoi, withPoiMaps, fillRegion, fillMaterial, mapCentre,
   createMap, setBlock, clearBlock, growMap, blockAt, blockKey, parseBlockKey,
   inMap, topOfMap, mapToJSON, mapFromJSON,
   MAP_PATCH, MAP_MAX_HEIGHT, DEFAULT_FLOOR, DEFAULT_MATERIALS, isKnownMaterial,
@@ -80,24 +80,56 @@ describe('placing and clearing', () => {
 });
 
 describe('growing (R-150)', () => {
-  it('extends one axis by a patch and floors the new ground', () => {
-    const grown = growMap(createMap(), 'x');
+  it('extends east and south without moving the origin', () => {
+    const grown = growMap(createMap(), 'east');
+    expect(grown.origin).toEqual({ x: 0, z: 0 });
     expect(grown.size).toEqual({ x: MAP_PATCH * 2, z: MAP_PATCH });
     expect(blockAt(grown, at(MAP_PATCH, 0, 0))).toBe(DEFAULT_FLOOR);
     expect(inMap(grown, at(MAP_PATCH, 0, 0))).toBe(true);
   });
 
-  it('leaves every existing block at the coordinate it already had', () => {
-    // Growing outward from the origin only, because renumbering a body is how
-    // saved references rot.
-    const built = setBlock(createMap(), at(2, 3, 4), STONE);
-    const grown = growMap(growMap(built, 'x'), 'z');
-    expect(blockAt(grown, at(2, 3, 4))).toBe(STONE);
+  it('extends north and west by moving the origin negative', () => {
+    // The point of the origin. Renumbering the body instead would move every
+    // wall the GM built relative to anything that remembered where it was.
+    const grown = growMap(createMap(), 'west');
+    expect(grown.origin).toEqual({ x: -MAP_PATCH, z: 0 });
+    expect(grown.size).toEqual({ x: MAP_PATCH * 2, z: MAP_PATCH });
+    expect(inMap(grown, at(-1, 0, 0))).toBe(true);
+    expect(inMap(grown, at(-MAP_PATCH - 1, 0, 0))).toBe(false);
+    expect(blockAt(grown, at(-1, 0, 0))).toBe(DEFAULT_FLOOR);
+
+    const north = growMap(createMap(), 'north');
+    expect(north.origin).toEqual({ x: 0, z: -MAP_PATCH });
+    expect(blockAt(north, at(0, 0, -1))).toBe(DEFAULT_FLOOR);
   });
 
-  it('keeps the floor material the map was created with', () => {
-    const grown = growMap(createMap(STONE), 'z');
+  it('leaves every existing block at the coordinate it already had, any direction', () => {
+    const built = setBlock(createMap(), at(2, 3, 4), STONE);
+    let grown = built;
+    for (const towards of ['east', 'south', 'west', 'north'] as const) {
+      grown = growMap(grown, towards);
+      expect(blockAt(grown, at(2, 3, 4)), towards).toBe(STONE);
+    }
+    expect(grown.size).toEqual({ x: MAP_PATCH * 3, z: MAP_PATCH * 3 });
+    expect(grown.origin).toEqual({ x: -MAP_PATCH, z: -MAP_PATCH });
+  });
+
+  it('floors only the new ground, and keeps the floor material', () => {
+    const grown = growMap(createMap(STONE), 'south');
     expect(blockAt(grown, at(0, 0, MAP_PATCH))).toBe(STONE);
+    expect(grown.blocks.size).toBe(MAP_PATCH * MAP_PATCH * 2);
+  });
+
+  it('floors the new ground of a westward grow exactly once', () => {
+    const grown = growMap(growMap(createMap(), 'west'), 'west');
+    expect(grown.blocks.size).toBe(MAP_PATCH * MAP_PATCH * 3);
+    expect(grown.origin).toEqual({ x: -MAP_PATCH * 2, z: 0 });
+  });
+
+  it('centres on the middle of the footprint, wherever the origin is', () => {
+    expect(mapCentre(createMap())).toEqual({ x: MAP_PATCH / 2, z: MAP_PATCH / 2 });
+    const west = growMap(createMap(), 'west');
+    expect(mapCentre(west)).toEqual({ x: 0, z: MAP_PATCH / 2 });
   });
 });
 

@@ -42,11 +42,11 @@ export type { Material } from './materials/index.js';
 export {
   DEFAULT_MATERIALS, DEFAULT_FLOOR, materialById, isKnownMaterial, requireMaterial,
 } from './materials/index.js';
-export type { EncounterMap, BlockCoord, MapJSON } from './map/index.js';
+export type { EncounterMap, BlockCoord, Expand, MapJSON } from './map/index.js';
 export {
   MAP_PATCH, MAP_MAX_HEIGHT, blockKey, parseBlockKey, inMap, blockAt,
   createMap, setBlock, clearBlock, growMap, topOfMap, mapToJSON, mapFromJSON,
-  fillRegion, fillMaterial,
+  fillRegion, fillMaterial, mapCentre,
 } from './map/index.js';
 export {
   MAX_PLACE_NAME, MAX_NOTE_TEXT, sameCell, placeGlobal, placeCellFromGlobal, isValidPlaceCell,

@@ -5,7 +5,7 @@
 // gets a test is out here (R-23b).
 
 import { describe, it, expect } from 'vitest';
-import { surfaceMove, showWorldMarkers, MARKER_ZOOM } from '@tt/render';
+import { surfaceMove, showWorldMarkers, MARKER_ZOOM, northBearing, yawRadians } from '@tt/render';
 
 const TAVERN = 'place_1/poi_1';
 const CELLAR = 'place_1/poi_2';
@@ -47,5 +47,37 @@ describe('showWorldMarkers', () => {
     expect(showWorldMarkers(false, MARKER_ZOOM, MARKER_ZOOM)).toBe(true);
     expect(showWorldMarkers(false, MARKER_ZOOM - 1, MARKER_ZOOM)).toBe(true);
     expect(showWorldMarkers(false, MARKER_ZOOM + 1, MARKER_ZOOM)).toBe(false);
+  });
+});
+
+describe('northBearing (R-155)', () => {
+  it('is the camera azimuth, one bearing per yaw step', () => {
+    // Derived, not tabulated: the four numbers below are right only because
+    // YAW_OFFSET is 45 and there are four steps, and a table of them would go
+    // quietly wrong the day either changes.
+    expect(northBearing({ yawStep: 0 })).toBeCloseTo(45);
+    expect(northBearing({ yawStep: 1 })).toBeCloseTo(135);
+    expect(northBearing({ yawStep: 2 })).toBeCloseTo(225);
+    expect(northBearing({ yawStep: 3 })).toBeCloseTo(315);
+  });
+
+  it('agrees with the projection it claims to describe', () => {
+    // North is (0,-1) on the ground. Screen-right is (cos y, -sin y) and
+    // screen-up is (-sin y, -cos y), so north projects to (sin y, cos y) — a
+    // bearing of y clockwise from up. Checked here rather than trusted, because
+    // a compass that is 90 degrees out is worse than no compass.
+    for (const yawStep of [0, 1, 2, 3]) {
+      const y = yawRadians({ yawStep });
+      const screenX = 0 * Math.cos(y) - -1 * Math.sin(y);
+      const screenUp = -(0 * Math.sin(y) + -1 * Math.cos(y));
+      const bearing = (Math.atan2(screenX, screenUp) * 180) / Math.PI;
+      const expected = northBearing({ yawStep });
+      expect(((bearing - expected) % 360 + 360) % 360, `step ${yawStep}`).toBeCloseTo(0);
+    }
+  });
+
+  it('wraps a yaw step that ran past the last one', () => {
+    expect(northBearing({ yawStep: 4 })).toBeCloseTo(northBearing({ yawStep: 0 }));
+    expect(northBearing({ yawStep: -1 })).toBeCloseTo(northBearing({ yawStep: 3 }));
   });
 });

@@ -14,9 +14,10 @@ import type { Travel } from '@tt/client-core';
 import {
   idle, pick, aim, ghostCell, canConfirm, travelIntent, travelPrompt, tableAction,
 } from '@tt/client-core';
-import { defaultTarget, worldCentre } from '@tt/render';
+import { defaultTarget, worldCentre, northBearing } from '@tt/render';
 import { useStage } from '../scene/use-stage.js';
 import { PlaceCard } from '../features/place/index.js';
+import { Compass } from '@tt/ui';
 
 interface Props {
   view: TableView | null;
@@ -162,6 +163,19 @@ export function App({ view, status, rejection, dispatch }: Props) {
 
   const prompt = travelPrompt(travel, nameOf);
 
+  /**
+   * Which way the camera is facing, for the compass (R-155).
+   *
+   * Only the yaw step is kept, not the whole target: panning would otherwise
+   * re-render this component on every pointer move, and the compass does not
+   * care where the camera is, only which way it looks.
+   */
+  const [yawStep, setYawStep] = useState(0);
+  useEffect(() => {
+    stage?.watchCamera((target) => setYawStep(target.yawStep));
+    return () => stage?.watchCamera(null);
+  }, [stage]);
+
   return (
     <>
       <div className="stage">
@@ -195,6 +209,10 @@ export function App({ view, status, rejection, dispatch }: Props) {
       {!waiting && place && (
         <PlaceCard place={place} markerName={markerName} onClose={() => setSelectedPlace(null)} />
       )}
+
+      {/* The table can be read from any side of a physical table, so the
+          compass matters more here than on the console (R-155). */}
+      <Compass bearing={northBearing({ yawStep })} hidden={!!waiting} />
 
       {!waiting && <div className="badge">{campaign?.name}</div>}
       {!waiting && prompt && <div className="hints">{prompt}</div>}

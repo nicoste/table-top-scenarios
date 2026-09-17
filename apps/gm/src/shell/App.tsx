@@ -7,7 +7,7 @@ import {
   DEFAULT_MATERIALS, DEFAULT_FLOOR, mapFromJSON, fillRegion,
 } from '@tt/domain';
 import type { GmView, Intent } from '@tt/protocol';
-import { defaultTarget, worldCentre } from '@tt/render';
+import { defaultTarget, worldCentre, northBearing } from '@tt/render';
 import type { Tool, Travel } from '@tt/client-core';
 import {
   idle, pick, armed, aim, ghostCell, canConfirm, travelIntent, travelPrompt,
@@ -22,7 +22,7 @@ import { PlacesPanel, PlaceInspector } from '../features/place/index.js';
 import { ChunkInspector } from '../features/visibility/index.js';
 import { MapPanel } from '../features/map/index.js';
 import { ConnectBadge } from '../features/connect/index.js';
-import { Tooltip } from '@tt/ui';
+import { Compass, Tooltip } from '@tt/ui';
 
 /** Mac shows ⌘, everything else Ctrl. Cosmetic: the binding accepts both (R-140). */
 const MOD = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
@@ -72,6 +72,14 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    * unique-enough string does.
    */
   const stroke = useRef<string | null>(null);
+  /**
+   * Which way the camera is facing, for the compass (R-155).
+   *
+   * The yaw step alone, not the whole target: panning fires on every pointer
+   * move, and re-rendering the console for a compass that did not change would
+   * be a frame's work per pixel.
+   */
+  const [yawStep, setYawStep] = useState(0);
   /** The current brush gesture, so a drag of paint is one undo (R-140b). */
   const blockStroke = useRef<string | null>(null);
   /** The last block the brush touched, so one drag does not re-send it. */
@@ -166,6 +174,12 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     () => (openMapWire ? mapFromJSON(openMapWire) : null),
     [openMapWire],
   );
+
+  // The compass follows the camera, on both surfaces (R-152, R-155).
+  useEffect(() => {
+    stage?.watchCamera((target) => setYawStep(target.yawStep));
+    return () => stage?.watchCamera(null);
+  }, [stage]);
 
   // The open map is its own surface (R-148). Passing null returns to the world,
   // whose meshes were hidden rather than destroyed.
@@ -572,6 +586,13 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
           onContextMenu={(e) => e.preventDefault()}
         />
       </div>
+
+      {/* Both surfaces, and hidden only when a screen-filling card owns the
+          view — there is no north to point at on the launcher (R-155). */}
+      <Compass
+        bearing={northBearing({ yawStep })}
+        hidden={status !== 'open' || seat !== 'gm' || !campaign}
+      />
 
       {status !== 'open' && (
         <div className="launcher">

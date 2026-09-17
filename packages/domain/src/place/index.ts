@@ -6,6 +6,7 @@ import { freshId } from '../ids/index.js';
 import { DEFAULT_MARKER, isKnownMarker } from '../markers/index.js';
 import type { EncounterMap } from '../map/index.js';
 import { createMap, setBlock, clearBlock, growMap, fillMaterial } from '../map/index.js';
+import type { Expand } from '../map/index.js';
 import type { BlockCoord } from '../map/index.js';
 import type { MaterialId } from '../ids/index.js';
 import type { ChunkCoord, GlobalCell, WorldCell } from '../world/index.js';
@@ -399,9 +400,9 @@ export function growPoiMap(
   places: readonly Place[],
   placeId: PlaceId,
   poiId: PoiId,
-  axis: 'x' | 'z',
+  towards: Expand,
 ): readonly Place[] {
-  return mapOfPoi(places, placeId, poiId, (map) => growMap(map, axis));
+  return mapOfPoi(places, placeId, poiId, (map) => growMap(map, towards));
 }
 
 /**

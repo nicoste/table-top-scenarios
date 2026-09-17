@@ -506,7 +506,7 @@ function applyToMap(
   if (!poi.map) return reject_('that point of interest has no map');
 
   if (intent.kind === 'growMap') {
-    return withPlaces(growPoiMap(campaign.places, placeId, poiId, intent.axis));
+    return withPlaces(growPoiMap(campaign.places, placeId, poiId, intent.towards));
   }
 
   const at = { x: intent.x, y: intent.y, z: intent.z };

@@ -125,6 +125,15 @@ button.quiet:hover { background: #3a2222; color: #ffc9c9; border-color: transpar
 .notes .eye.shown { opacity: 1; }
 .notes .note-actions { grid-column: 2; display: flex; gap: 3px; justify-content: flex-end; }
 .notes .note-actions button { padding: 1px 6px; font-size: 11px; }
+/* The expand rose (R-150): four directions where they belong, with the
+   footprint in the middle so the size is read where the growing happens. */
+.rose { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; align-items: center; }
+.rose button { width: 100%; padding: 3px 4px; font-size: 11px; }
+.rose .mid {
+  text-align: center; font-size: 10.5px; color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+
 .palette { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
 .palette button {
   width: 100%; display: flex; align-items: center; gap: 8px;

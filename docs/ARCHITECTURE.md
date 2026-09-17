@@ -1780,10 +1780,20 @@ apps/host/src/
 > and entirely water (R-78): an empty grid gives the GM nothing to click, and
 > face-adjacency placement needs a face to begin from.
 
-> **R-150.** A map **grows horizontally** with the same `+` affordance that grows
-> the world (R-79), and its **height is capped** by a constant. Growing in two
-> dimensions keeps one gesture familiar; an unbounded third would leave the camera
-> with no idea how much to draw.
+> **R-150.** A map **grows horizontally in all four compass directions**, and its
+> **height is capped** by a constant. Growing in two dimensions keeps one gesture
+> familiar; an unbounded third would leave the camera with no idea how much to
+> draw.
+>
+> North and west grow by moving the map's **origin negative**, not by renumbering
+> the body (D-196). Every block keeps the coordinate it already had, whichever
+> way the map grows — the alternative is rewriting thousands of keys and hoping
+> nothing remembered one of them. The origin is therefore part of the map, and
+> `{0, 0}` is the right reading of a file that has none: such a file can only
+> have grown in the two directions that never needed one.
+>
+> The affordance is a **rose**, not a row: four directions are a compass, and the
+> compass on screen (R-155) is what tells the GM which way they are facing.
 
 ---
 
@@ -1893,3 +1903,30 @@ apps/host/src/
 > Starting from air does nothing. There is no material to match, and a fill that
 > began from nothing would have to guess what the GM meant (R-18: it is a no-op,
 > not a silent wrong answer).
+
+---
+
+## 6i. Knowing which way you are facing
+
+> **R-155.** **Every view that can be rotated shows a compass.** World map and
+> point-of-interest map, GM console and table display — four views, one
+> component, bottom centre (D-196).
+>
+> The camera is stepped and diagonal by design (R-31), so rotating cycles which
+> corner faces you and there is no permanent "up". That is the right trade for
+> readability and the wrong one for orientation, and a compass is what buys the
+> second back without giving up the first.
+>
+> The bearing is **derived, not tabulated**: under this projection a ground
+> direction's screen bearing equals the camera's azimuth, so north sits at the
+> yaw. Four hardcoded numbers would be correct until someone changed
+> `YAW_OFFSET`, and then quietly wrong.
+>
+> **Cameras are per client.** Each screen's camera is view state (R-64) and never
+> travels on the wire, so the GM turning their console does not move the table,
+> and vice versa. That is not a new rule — it is R-64 already being true — but it
+> is the property that makes rotation safe to offer on the table at all.
+>
+> Camera freedom on the table **cannot leak**: `viewFor` stripped every secret
+> before the table received anything (R-85). If an angle could reveal something,
+> the boundary would be what is wrong, not the camera.

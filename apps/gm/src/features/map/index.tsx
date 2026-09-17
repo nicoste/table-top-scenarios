@@ -112,20 +112,41 @@ export function MapPanel({
       <div className="card">
         <h2>Map</h2>
         <p className="hint" style={{ margin: '0 0 8px' }}>
-          {map.size.x}×{map.size.z} cells, {blocks} block{blocks === 1 ? '' : 's'},
-          up to {MAP_MAX_HEIGHT} high.
+          {blocks} block{blocks === 1 ? '' : 's'}, up to {MAP_MAX_HEIGHT} high.
         </p>
-        <div className="btn-grid tools">
-          <Tooltip label="Extend the map eastward" placement="bottom" stretch>
-            <button onClick={() => dispatch({ kind: 'growMap', placeId, poiId, axis: 'x' })}>
-              + East
+        <p className="lbl" style={{ margin: '0 0 6px' }}>Expand the map to:</p>
+        {/*
+          A rose rather than a row, because the four directions are a compass
+          and the compass on screen is what tells the GM which way they are
+          looking (R-155). The middle cell carries the footprint, so the size is
+          read where the growing happens.
+        */}
+        <div className="rose">
+          <span />
+          <Tooltip label="Add a patch of floor to the north" placement="top">
+            <button onClick={() => dispatch({ kind: 'growMap', placeId, poiId, towards: 'north' })}>
+              North
             </button>
           </Tooltip>
-          <Tooltip label="Extend the map southward" placement="bottom" stretch>
-            <button onClick={() => dispatch({ kind: 'growMap', placeId, poiId, axis: 'z' })}>
-              + South
+          <span />
+          <Tooltip label="Add a patch of floor to the west" placement="left">
+            <button onClick={() => dispatch({ kind: 'growMap', placeId, poiId, towards: 'west' })}>
+              West
             </button>
           </Tooltip>
+          <span className="mid">{map.size.x}×{map.size.z}</span>
+          <Tooltip label="Add a patch of floor to the east" placement="right">
+            <button onClick={() => dispatch({ kind: 'growMap', placeId, poiId, towards: 'east' })}>
+              East
+            </button>
+          </Tooltip>
+          <span />
+          <Tooltip label="Add a patch of floor to the south" placement="bottom">
+            <button onClick={() => dispatch({ kind: 'growMap', placeId, poiId, towards: 'south' })}>
+              South
+            </button>
+          </Tooltip>
+          <span />
         </div>
       </div>
     </>
