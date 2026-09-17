@@ -1930,3 +1930,39 @@ apps/host/src/
 > Camera freedom on the table **cannot leak**: `viewFor` stripped every secret
 > before the table received anything (R-85). If an angle could reveal something,
 > the boundary would be what is wrong, not the camera.
+
+> **R-156.** **The camera behaves identically on both screens, and it moves
+> smoothly.**
+>
+> *Parity.* Q/E turn, R/F tilt, right-drag pans, the wheel zooms — the same keys
+> doing the same things on the console and on the table, from **one table in
+> `client-core`** rather than two shells remembering the same four `case` labels
+> (D-197). The help line both screens print comes from the same module, so it
+> cannot describe controls the code does not implement. Tools are the opposite
+> and deliberately so: those belong to the surface and the seat (R-148).
+>
+> Keyed on `event.code`, the physical key. Q and E sit either side of W and must
+> stay there whatever the layout says.
+>
+> *Smoothness.* A turn **eases** between yaw steps instead of cutting. The steps
+> are 90 degrees apart and diagonal (R-31), so a cut gives no clue which way the
+> world went — the point of the transition is to show the direction, not to be
+> admired, which is why the time constant is short enough that the next keypress
+> never feels queued.
+>
+> Three things this has to get right, each with a test:
+> - **The short way round.** Turning from 315 to 45 must cross north forwards,
+>   not unwind three quarters backwards through the view just left.
+> - **Frame-rate independence.** The easing takes elapsed seconds, so a 120Hz
+>   display does not turn twice as fast as a 60Hz one.
+> - **Arrival.** An exponential approach never lands, so it snaps within a
+>   twentieth of a degree; a camera that is forever almost-still is a watcher
+>   notified forever.
+>
+> Only the **angles** ease. Focus follows a drag and must not lag behind the
+> hand, and zoom already arrives in small multiplicative steps.
+>
+> `pick` uses the **live** angles, never the target's: a click mid-turn has to
+> hit what is on screen, not where the turn is heading. And `pick` must never
+> advance the easing — it can run many times between frames, and a made-up `dt`
+> would make the turn's speed depend on how far the pointer moved.

@@ -10,6 +10,9 @@ export { idle, GROUP, pick, armed, aim, ghostCell, canConfirm, travelIntent, tra
 export type { Travel } from './travel/index.js';
 
 export { clickAction, holdsSelection, tableAction, mapAction, mapHover, mapDrags } from './tools/index.js';
+
+export { cameraAction, CAMERA_HINT } from './camera/index.js';
+export type { CameraAction } from './camera/index.js';
 export type {
   ClickAction, TableAction, MapAction, MapHover, Pointed, Cell, Slot, Context,
 } from './tools/index.js';

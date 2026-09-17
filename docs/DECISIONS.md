@@ -3171,3 +3171,54 @@ treating "nothing happened" as a mystery rather than reading the screen.
 Standing order for myself: **restart the host as the first step of any browser
 verification that follows a change under `packages/`**, and when a gesture
 appears to do nothing, read the rejection before forming a theory.
+
+### D-197 — Camera parity, and a turn you can follow · `agreed`
+*"Lets keep the GM and Player side in parity by having same key+mouse actions
+attached to the same actions for the camera behavior. Add the hints on a panel
+and that's it."*
+
+Done, and the parity is **structural rather than remembered**: `cameraAction`
+and `CAMERA_HINT` live in `client-core`, both shells call them, and one test
+holds the bindings and the help text to each other. The table had pan and zoom
+only; it now has the console's turn and tilt, from the same four lines of table.
+
+The table's hints bar shows the travel prompt when there is one and the camera
+legend otherwise. One bar, prompt wins — being told what a gesture will do
+outranks being reminded how to turn, and the table stays minimal (R-94).
+
+**And the rotation eases.** *"Is there a chance to do the rotation a little bit
+smooth? I mean, do a transition instead of a sudden change? It helps to clarify
+the rotation."* — exactly right about why: at 90 degrees a cut tells you the view
+changed but not which way it went, which is the confusion the compass was asked
+for in the first place (D-196). The two fixes are the same fix from both ends.
+
+The stage now keeps a **live** camera easing toward the stepped target, and three
+details needed care:
+
+- **The short way round.** 315 to 45 is one step clockwise; the naive version
+  unwinds three quarters backwards through the view the GM just left.
+  `nearestAngle` picks the equivalent representation nearest the current angle,
+  and the angle is kept *unwrapped* so the crossing is continuous.
+- **Frame-rate independence**, because `dt` is elapsed seconds. The exponential
+  composes exactly under repetition, so 30Hz and 240Hz agree to six decimals.
+- **Arrival**, because an exponential approach never lands. It snaps within a
+  twentieth of a degree, which is also what stops the compass being notified
+  forever.
+
+The compass reads the **live** bearing, not the target's, so the dial turns with
+the world. That is why `northBearing` now takes degrees rather than a step:
+mid-turn there is no step to speak of.
+
+`pick` was the subtle one. It shares `syncCamera` with `render` so a click
+mid-turn hits what is on screen, and it must *not* call the easing step — picks
+happen many times between frames, and feeding one a made-up `dt` would tie the
+turn's speed to how far the pointer moved.
+
+**A measurement mistake worth remembering:** my first check of this on the
+console read the compass as motionless and I nearly reported the console broken.
+The camera was turning fine; my sampling loop awaited `requestAnimationFrame`
+every iteration and starved React's commit, so the DOM I was reading lagged
+behind the scene. The `window.__stage` debug handle showed `yawStep` changing and
+the dial mid-turn, which settled it. **When the DOM and the scene disagree,
+suspect the instrument** — and sample with a timeout rather than a tight frame
+loop when the thing being measured is React-rendered.

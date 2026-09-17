@@ -22,26 +22,73 @@ export const YAW_OFFSET = 45;
  */
 export const PITCH_STEPS = [30, 35, 40, 45, 55, 65, 75] as const;
 
+/** The camera's yaw in degrees for a given step. */
+export function yawDegrees(target: Pick<CameraTarget, 'yawStep'>): number {
+  const step = ((target.yawStep % YAW_STEPS) + YAW_STEPS) % YAW_STEPS;
+  return YAW_OFFSET + step * (360 / YAW_STEPS);
+}
+
 /** The camera's yaw in radians, for anything that needs to move in its plane. */
 export function yawRadians(target: Pick<CameraTarget, 'yawStep'>): number {
-  const step = ((target.yawStep % YAW_STEPS) + YAW_STEPS) % YAW_STEPS;
-  return ((YAW_OFFSET + step * (360 / YAW_STEPS)) * Math.PI) / 180;
+  return (yawDegrees(target) * Math.PI) / 180;
 }
 
 /**
- * Where **north** is on screen, in degrees clockwise from straight up (R-155).
+ * How long the camera takes to settle into a new angle (R-156), as the time
+ * constant of an exponential approach — roughly a third of the way there per
+ * this many seconds.
  *
- * Under this projection that is simply the camera's azimuth. The camera sits at
+ * Short on purpose. The transition exists to show the GM *which way* the world
+ * turned, not to be admired; anything slower starts to feel like lag on the
+ * next keypress.
+ */
+export const TURN_TAU = 0.085;
+
+/**
+ * The representation of `goal` nearest to `current`, for an angle in degrees.
+ *
+ * Without this, turning from 315 to 45 eases the *long* way round: three
+ * quarters of a circle backwards, through the direction the GM just came from.
+ * Returns 405 instead, which is the same bearing and the short way.
+ */
+export function nearestAngle(goal: number, current: number): number {
+  return current + (((goal - current) % 360) + 540) % 360 - 180;
+}
+
+/**
+ * Eases `current` toward `goal` over `dt` seconds.
+ *
+ * Exponential rather than linear so the motion has no corners at either end,
+ * and frame-rate independent because the caller's `dt` is real elapsed time —
+ * a fixed step per frame would turn twice as fast on a 120Hz display.
+ *
+ * Snaps when it is within a twentieth of a degree: an approach never arrives,
+ * and a camera that is forever almost still is a render loop that never rests.
+ */
+export function approach(current: number, goal: number, dt: number, tau = TURN_TAU): number {
+  if (dt <= 0) return current;
+  const next = current + (goal - current) * (1 - Math.exp(-dt / tau));
+  return Math.abs(goal - next) < 0.05 ? goal : next;
+}
+
+/**
+ * Where **north** is on screen, in degrees clockwise from straight up (R-155),
+ * given the camera's azimuth in degrees.
+ *
+ * It is the azimuth itself, and that is a fact about this projection rather
+ * than a coincidence worth leaving implicit. The camera sits at
  * `focus + (sin y, ., cos y)` and looks inward, so screen-right is
  * `(cos y, -sin y)` and screen-up is `(-sin y, -cos y)` in the ground plane.
  * Project north, the direction `(0, -1)`, onto those two and you get
  * `(sin y, cos y)` — a bearing of exactly `y`.
  *
- * Derived rather than tabulated because the tabulated version is four numbers
- * that are right until someone changes `YAW_OFFSET`.
+ * A function rather than a comment at the call site because it is the one place
+ * that claim is written down, and the one place a test can hold it to account.
+ * It takes degrees rather than a step so it serves the eased camera mid-turn,
+ * where there is no step to speak of.
  */
-export function northBearing(target: Pick<CameraTarget, 'yawStep'>): number {
-  return (yawRadians(target) * 180) / Math.PI;
+export function northBearing(yawDeg: number): number {
+  return yawDeg;
 }
 
 export interface CameraTarget {
@@ -76,13 +123,24 @@ export function createCamera(): OrthographicCamera {
 
 const DISTANCE = 800; // orthographic: distance only affects clipping
 
-export function applyTarget(
+/** The camera as it is actually pointed: angles, not steps (R-156). */
+export interface CameraView {
+  focus: { x: number; y: number; z: number };
+  zoom: number;
+  yawDeg: number;
+  pitchDeg: number;
+}
+
+/**
+ * Points the camera. The one place the projection is computed, so a stepped
+ * target and an eased mid-turn view cannot end up framed differently.
+ */
+export function placeCamera(
   camera: OrthographicCamera,
-  target: CameraTarget,
+  view: CameraView,
   aspect: number,
 ): void {
-  const t = clampTarget(target);
-  const halfH = t.zoom / 2;
+  const halfH = view.zoom / 2;
   const halfW = halfH * aspect;
   camera.left = -halfW;
   camera.right = halfW;
@@ -90,14 +148,33 @@ export function applyTarget(
   camera.bottom = -halfH;
   camera.updateProjectionMatrix();
 
-  const yawRad = yawRadians(t);
-  const pitchRad = ((PITCH_STEPS[t.pitchStep] ?? 45) * Math.PI) / 180;
+  const yawRad = (view.yawDeg * Math.PI) / 180;
+  const pitchRad = (view.pitchDeg * Math.PI) / 180;
 
   const horizontal = Math.cos(pitchRad) * DISTANCE;
   camera.position.set(
-    t.focus.x + Math.sin(yawRad) * horizontal,
-    t.focus.y + Math.sin(pitchRad) * DISTANCE,
-    t.focus.z + Math.cos(yawRad) * horizontal,
+    view.focus.x + Math.sin(yawRad) * horizontal,
+    view.focus.y + Math.sin(pitchRad) * DISTANCE,
+    view.focus.z + Math.cos(yawRad) * horizontal,
   );
-  camera.lookAt(new Vector3(t.focus.x, t.focus.y, t.focus.z));
+  camera.lookAt(new Vector3(view.focus.x, view.focus.y, view.focus.z));
+}
+
+export function applyTarget(
+  camera: OrthographicCamera,
+  target: CameraTarget,
+  aspect: number,
+): void {
+  const t = clampTarget(target);
+  placeCamera(camera, {
+    focus: t.focus,
+    zoom: t.zoom,
+    yawDeg: yawDegrees(t),
+    pitchDeg: PITCH_STEPS[t.pitchStep] ?? 45,
+  }, aspect);
+}
+
+/** The pitch in degrees a target is asking for. */
+export function pitchDegrees(target: Pick<CameraTarget, 'pitchStep'>): number {
+  return PITCH_STEPS[Math.min(PITCH_STEPS.length - 1, Math.max(0, target.pitchStep))] ?? 45;
 }

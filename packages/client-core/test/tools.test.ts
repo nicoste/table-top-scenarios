@@ -3,7 +3,10 @@
 
 import { describe, it, expect } from 'vitest';
 import type { Cell, Pointed } from '@tt/client-core';
-import { clickAction, holdsSelection, tableAction, mapAction, mapHover, mapDrags } from '@tt/client-core';
+import {
+  clickAction, holdsSelection, tableAction, mapAction, mapHover, mapDrags,
+  cameraAction, CAMERA_HINT,
+} from '@tt/client-core';
 import type { Tool } from '@tt/client-core';
 
 const cell = (x: number, z: number): Cell => ({ cx: 15, cz: 15, x, z });
@@ -290,5 +293,37 @@ describe('the map toolset (R-153, R-154)', () => {
       expect(mapHover(mapAction(tool, face)).ghost, tool).toEqual(face.block);
     }
     expect(mapHover(mapAction('build', face)).ghost).toEqual(face.adjacent);
+  });
+});
+
+describe('the camera keys are the same on both screens (R-156)', () => {
+  it('binds turn and tilt, and nothing else', () => {
+    expect(cameraAction('KeyQ')).toEqual({ kind: 'turn', steps: -1 });
+    expect(cameraAction('KeyE')).toEqual({ kind: 'turn', steps: 1 });
+    expect(cameraAction('KeyR')).toEqual({ kind: 'tilt', steps: 1 });
+    expect(cameraAction('KeyF')).toEqual({ kind: 'tilt', steps: -1 });
+  });
+
+  it('turns are opposite and tilts are opposite', () => {
+    const q = cameraAction('KeyQ')!;
+    const e = cameraAction('KeyE')!;
+    expect(q.steps).toBe(-e.steps);
+    expect(cameraAction('KeyR')!.steps).toBe(-cameraAction('KeyF')!.steps);
+  });
+
+  it('leaves every key it does not own alone', () => {
+    // The digits are tools, which differ per surface and per seat (R-148), and
+    // Escape belongs to whatever is in progress.
+    for (const code of ['Digit1', 'Digit4', 'Escape', 'KeyZ', 'BracketLeft', 'KeyW']) {
+      expect(cameraAction(code), code).toBeNull();
+    }
+  });
+
+  it('describes the controls it actually implements', () => {
+    // The legend both screens print. If a binding moved and this did not, the
+    // help would be a lie on two screens at once.
+    for (const key of ['Q/E', 'R/F']) expect(CAMERA_HINT).toContain(key);
+    expect(CAMERA_HINT).toContain('pan');
+    expect(CAMERA_HINT).toContain('zoom');
   });
 });

@@ -7,11 +7,11 @@ import {
   DEFAULT_MATERIALS, DEFAULT_FLOOR, mapFromJSON, fillRegion,
 } from '@tt/domain';
 import type { GmView, Intent } from '@tt/protocol';
-import { defaultTarget, worldCentre, northBearing } from '@tt/render';
+import { defaultTarget, worldCentre } from '@tt/render';
 import type { Tool, Travel } from '@tt/client-core';
 import {
   idle, pick, armed, aim, ghostCell, canConfirm, travelIntent, travelPrompt,
-  clickAction, holdsSelection, mapAction, mapHover, mapDrags,
+  clickAction, holdsSelection, mapAction, mapHover, mapDrags, cameraAction, CAMERA_HINT,
 } from '@tt/client-core';
 import type { MapAction, MapTool } from '@tt/client-core';
 import { useStage } from '../scene/use-stage.js';
@@ -75,11 +75,11 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   /**
    * Which way the camera is facing, for the compass (R-155).
    *
-   * The yaw step alone, not the whole target: panning fires on every pointer
-   * move, and re-rendering the console for a compass that did not change would
-   * be a frame's work per pixel.
+   * The stage hands over the *live* bearing, so the dial moves with the world
+   * during a turn rather than jumping ahead of it (R-156). It arrives once per
+   * frame while turning and not at all otherwise, so a pan costs nothing.
    */
-  const [yawStep, setYawStep] = useState(0);
+  const [bearing, setBearing] = useState(0);
   /** The current brush gesture, so a drag of paint is one undo (R-140b). */
   const blockStroke = useRef<string | null>(null);
   /** The last block the brush touched, so one drag does not re-send it. */
@@ -177,7 +177,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
 
   // The compass follows the camera, on both surfaces (R-152, R-155).
   useEffect(() => {
-    stage?.watchCamera((target) => setYawStep(target.yawStep));
+    stage?.watchCamera(setBearing);
     return () => stage?.watchCamera(null);
   }, [stage]);
 
@@ -553,16 +553,15 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
         }
       }
 
-      // The camera belongs to no surface (R-152). This used to sit behind the
-      // world's branch, so inside a map Q/E/R/F did nothing at all — and a
-      // tavern is exactly where turning matters, since a wall you built is
-      // between you and the room behind it.
-      switch (e.code) {
-        case 'KeyQ': stage.rotate(-1); return;
-        case 'KeyE': stage.rotate(1); return;
-        case 'KeyR': stage.tilt(1); return;
-        case 'KeyF': stage.tilt(-1); return;
-        default: break;
+      // The camera belongs to no surface (R-152), and to no seat either: the
+      // table reads the same table (R-156). This used to sit behind the world's
+      // branch, so inside a map Q/E/R/F did nothing at all — and a tavern is
+      // exactly where turning matters, since a wall you built is between you
+      // and the room behind it.
+      const camera = cameraAction(e.code);
+      if (camera) {
+        if (camera.kind === 'turn') stage.rotate(camera.steps);
+        else stage.tilt(camera.steps);
       }
     };
     addEventListener('keydown', onKey);
@@ -590,7 +589,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       {/* Both surfaces, and hidden only when a screen-filling card owns the
           view — there is no north to point at on the launcher (R-155). */}
       <Compass
-        bearing={northBearing({ yawStep })}
+        bearing={bearing}
         hidden={status !== 'open' || seat !== 'gm' || !campaign}
       />
 
@@ -724,7 +723,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
           </div>
 
           <div className="hints">
-            1–5 tool · 6/7/8 or [ ] brush · Q/E turn · R/F tilt · right-drag pan · wheel zoom
+            1–5 tool · 6/7/8 or [ ] brush · {CAMERA_HINT}
           </div>
           <ConnectBadge urls={view?.connect ?? []} />
         </>

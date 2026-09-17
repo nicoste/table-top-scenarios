@@ -6,6 +6,7 @@
 
 import type { Intent, MapWire } from '@tt/protocol';
 import type { MapTool } from '@tt/client-core';
+import { CAMERA_HINT } from '@tt/client-core';
 import { MAP_MAX_HEIGHT } from '@tt/domain';
 import type { Material } from '@tt/domain';
 import { Tooltip } from '@tt/ui';
@@ -84,7 +85,7 @@ export function MapPanel({
           )}
         </p>
         <p className="readout">{hoverLabel ?? '—'}</p>
-        <p className="hint">1–4 tool · Q/E turn · R/F tilt · right-drag pan · wheel zoom · Esc leaves</p>
+        <p className="hint">1–4 tool · {CAMERA_HINT} · Esc leaves</p>
       </div>
 
       {tool !== 'erase' && (

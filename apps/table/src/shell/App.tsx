@@ -13,8 +13,9 @@ import type { Intent, TableView } from '@tt/protocol';
 import type { Travel } from '@tt/client-core';
 import {
   idle, pick, aim, ghostCell, canConfirm, travelIntent, travelPrompt, tableAction,
+  cameraAction, CAMERA_HINT,
 } from '@tt/client-core';
-import { defaultTarget, worldCentre, northBearing } from '@tt/render';
+import { defaultTarget, worldCentre } from '@tt/render';
 import { useStage } from '../scene/use-stage.js';
 import { PlaceCard } from '../features/place/index.js';
 import { Compass } from '@tt/ui';
@@ -92,16 +93,24 @@ export function App({ view, status, rejection, dispatch }: Props) {
     stage?.aimAt(ghostCell(travel));
   }, [travel, stage]);
 
-  // Escape cancels a move, or closes an open place (R-132, R-139).
+  // Escape cancels a move or closes an open place (R-132, R-139), and the
+  // camera keys are the console's, unchanged — one table decides both (R-156).
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      const camera = cameraAction(event.code);
+      if (camera && stage) {
+        if (camera.kind === 'turn') stage.rotate(camera.steps);
+        else stage.tilt(camera.steps);
+        return;
+      }
       if (event.code !== 'Escape') return;
       if (travel.step === 'aiming') setTravel(idle);
       else setSelectedPlace(null);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [travel.step]);
+  }, [travel.step, stage]);
 
   const onPointerMove = (event: React.PointerEvent) => {
     if (drag.current) {
@@ -166,13 +175,13 @@ export function App({ view, status, rejection, dispatch }: Props) {
   /**
    * Which way the camera is facing, for the compass (R-155).
    *
-   * Only the yaw step is kept, not the whole target: panning would otherwise
-   * re-render this component on every pointer move, and the compass does not
-   * care where the camera is, only which way it looks.
+   * The *live* bearing from the stage, so the dial turns with the world instead
+   * of jumping ahead of it (R-156). It arrives per frame while turning and not
+   * at all otherwise, so panning costs nothing.
    */
-  const [yawStep, setYawStep] = useState(0);
+  const [bearing, setBearing] = useState(0);
   useEffect(() => {
-    stage?.watchCamera((target) => setYawStep(target.yawStep));
+    stage?.watchCamera(setBearing);
     return () => stage?.watchCamera(null);
   }, [stage]);
 
@@ -212,10 +221,15 @@ export function App({ view, status, rejection, dispatch }: Props) {
 
       {/* The table can be read from any side of a physical table, so the
           compass matters more here than on the console (R-155). */}
-      <Compass bearing={northBearing({ yawStep })} hidden={!!waiting} />
+      <Compass bearing={bearing} hidden={!!waiting} />
 
       {!waiting && <div className="badge">{campaign?.name}</div>}
-      {!waiting && prompt && <div className="hints">{prompt}</div>}
+      {/*
+        One bar. A prompt outranks the legend, because being told what this
+        gesture will do matters more than being reminded how to turn — and the
+        table stays minimal either way (R-94).
+      */}
+      {!waiting && <div className="hints">{prompt ?? CAMERA_HINT}</div>}
       {rejection && <div className="toast">{rejection}</div>}
     </>
   );

@@ -10,7 +10,10 @@ import {
 import type { BlockCoord, Campaign, EncounterMap, Material, Placement, WorldCell } from '@tt/domain';
 import { CHUNK_SIZE, brushCentreOffset, mapCentre } from '@tt/domain';
 import type { CameraTarget } from '../camera/index.js';
-import { applyTarget, clampTarget, createCamera, defaultTarget, PITCH_STEPS, yawRadians } from '../camera/index.js';
+import {
+  approach, clampTarget, createCamera, defaultTarget, nearestAngle, northBearing,
+  PITCH_STEPS, pitchDegrees, placeCamera, yawDegrees, yawRadians,
+} from '../camera/index.js';
 import { surfaceMove, showWorldMarkers } from '../surface/index.js';
 import type { ColumnAddress, WorldMeshes } from '../world/index.js';
 import { buildWorldMeshes, columnCentre, worldCentre, HEIGHT_SCALE } from '../world/index.js';
@@ -100,7 +103,18 @@ export class Stage {
    * after a rotate, a map framing and a return to the world, and three of those
    * happen inside this class without the app asking for anything.
    */
-  private onCamera: ((target: CameraTarget) => void) | null = null;
+  private onCamera: ((bearing: number) => void) | null = null;
+  /**
+   * Where the camera actually points, easing toward the target's angles (R-156).
+   *
+   * Separate from `target` because a stepped target is where the GM asked to be
+   * and this is where the camera has got to. Only the two angles are eased:
+   * focus follows a drag and must not lag behind the hand, and zoom already
+   * arrives in small multiplicative steps.
+   */
+  private live = { yawDeg: yawDegrees(defaultTarget()), pitchDeg: pitchDegrees(defaultTarget()) };
+  /** Last frame's timestamp, so the easing is in seconds and not in frames. */
+  private lastFrame = 0;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     this.renderer = new WebGLRenderer({ canvas, antialias: true });
@@ -328,16 +342,19 @@ export class Stage {
 
   setTarget(target: CameraTarget): void {
     this.target = clampTarget(target);
-    this.onCamera?.(this.target);
   }
 
   /**
-   * Subscribes to camera movement, and fires once immediately so the caller
-   * starts in sync rather than a rotate behind. Pass `null` to unsubscribe.
+   * Subscribes to where north is, and fires once immediately so the caller
+   * starts in sync rather than a turn behind. Pass `null` to unsubscribe.
+   *
+   * The *live* bearing, not the target's: during a turn it arrives once per
+   * frame, so a compass drawn from it moves with the world instead of snapping
+   * ahead of it (R-155, R-156).
    */
-  watchCamera(cb: ((target: CameraTarget) => void) | null): void {
+  watchCamera(cb: ((bearing: number) => void) | null): void {
     this.onCamera = cb;
-    cb?.(this.target);
+    cb?.(northBearing(this.live.yawDeg));
   }
   getTarget(): CameraTarget { return this.target; }
 
@@ -372,15 +389,42 @@ export class Stage {
   }
 
   /**
-   * Puts the camera where the target says, and makes its world matrix current.
+   * Moves the camera toward the angles the target asks for (R-156).
    *
-   * Both `render` and `pick` do this. Picking must never depend on a frame
-   * having been drawn first: `requestAnimationFrame` does not fire while the tab
-   * or pane is hidden, so a pick could otherwise raycast through a camera left
-   * at a stale position and silently return the wrong cell — or none at all.
+   * Called from `render` and nowhere else. `pick` must not advance it: a pick
+   * can happen many times between frames, and feeding it a made-up `dt` would
+   * make the turn's speed depend on how much the pointer moved.
+   */
+  private advance(dt: number): void {
+    const goalYaw = nearestAngle(yawDegrees(this.target), this.live.yawDeg);
+    const yawDeg = approach(this.live.yawDeg, goalYaw, dt);
+    const pitchDeg = approach(this.live.pitchDeg, pitchDegrees(this.target), dt);
+    if (yawDeg === this.live.yawDeg && pitchDeg === this.live.pitchDeg) return;
+    this.live = { yawDeg, pitchDeg };
+    // Only while it is actually turning, so a pan or a zoom costs a watcher
+    // nothing.
+    this.onCamera?.(northBearing(yawDeg));
+  }
+
+  /**
+   * Puts the camera where it currently *points*, and makes its world matrix
+   * current.
+   *
+   * Both `render` and `pick` do this, and both must use the same angles: a pick
+   * mid-turn has to hit what is on screen, not where the turn is heading.
+   * Picking must also never depend on a frame having been drawn first —
+   * `requestAnimationFrame` does not fire while the tab or pane is hidden, so a
+   * pick could otherwise raycast through a stale camera and silently return the
+   * wrong cell, or none at all.
    */
   private syncCamera(): void {
-    applyTarget(this.camera, this.target, this.aspect());
+    const t = clampTarget(this.target);
+    placeCamera(this.camera, {
+      focus: t.focus,
+      zoom: t.zoom,
+      yawDeg: this.live.yawDeg,
+      pitchDeg: this.live.pitchDeg,
+    }, this.aspect());
     this.camera.updateMatrixWorld();
   }
 
@@ -480,6 +524,12 @@ export class Stage {
   }
 
   render(): void {
+    const now = performance.now();
+    // First frame has no previous one to measure against; a zero `dt` leaves the
+    // camera exactly where it starts, which is what an unstarted turn means.
+    const dt = this.lastFrame === 0 ? 0 : (now - this.lastFrame) / 1000;
+    this.lastFrame = now;
+    this.advance(dt);
     this.syncCamera();
     // Markers and their names share one threshold and toggle together (R-83),
     // and neither belongs to a map's surface at all (R-148). This line used to
