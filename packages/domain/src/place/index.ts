@@ -5,7 +5,7 @@ import type { MarkerId, NoteId, PlaceId, PoiId } from '../ids/index.js';
 import { freshId } from '../ids/index.js';
 import { DEFAULT_MARKER, isKnownMarker } from '../markers/index.js';
 import type { EncounterMap } from '../map/index.js';
-import { createMap, setBlock, clearBlock, growMap } from '../map/index.js';
+import { createMap, setBlock, clearBlock, growMap, fillMaterial } from '../map/index.js';
 import type { BlockCoord } from '../map/index.js';
 import type { MaterialId } from '../ids/index.js';
 import type { ChunkCoord, GlobalCell, WorldCell } from '../world/index.js';
@@ -382,6 +382,17 @@ export function clearMapBlock(
   at: BlockCoord,
 ): readonly Place[] {
   return mapOfPoi(places, placeId, poiId, (map) => clearBlock(map, at));
+}
+
+/** Repaints a connected same-material region of a point of interest's map (R-154). */
+export function fillPoiMaterial(
+  places: readonly Place[],
+  placeId: PlaceId,
+  poiId: PoiId,
+  at: BlockCoord,
+  material: MaterialId,
+): readonly Place[] {
+  return mapOfPoi(places, placeId, poiId, (map) => fillMaterial(map, at, material));
 }
 
 export function growPoiMap(

@@ -3,7 +3,7 @@
 import { describe, it, expect } from 'vitest';
 import type { MaterialId, Place, PlaceCell } from '@tt/domain';
 import {
-  addPlace, addPoi, withPoiMaps,
+  addPlace, addPoi, withPoiMaps, fillRegion, fillMaterial,
   createMap, setBlock, clearBlock, growMap, blockAt, blockKey, parseBlockKey,
   inMap, topOfMap, mapToJSON, mapFromJSON,
   MAP_PATCH, MAP_MAX_HEIGHT, DEFAULT_FLOOR, DEFAULT_MATERIALS, isKnownMaterial,
@@ -212,5 +212,81 @@ describe('a point of interest owns exactly one map (R-145, D-187)', () => {
       expect(withPoiMaps(places)).toBe(places);
       expect(withPoiMaps([])).toEqual([]);
     });
+  });
+});
+
+describe('the bucket fill (R-154)', () => {
+  const GRASS = DEFAULT_MATERIALS.find((m) => m.name === 'Grass')!.id;
+
+  it('repaints the block clicked and its same-material neighbours', () => {
+    // A three-block run of stone in the air, floor untouched below it.
+    let map = createMap();
+    for (let x = 0; x < 3; x += 1) map = setBlock(map, at(x, 1, 0), STONE);
+
+    const filled = fillMaterial(map, at(1, 1, 0), GRASS);
+    for (let x = 0; x < 3; x += 1) expect(blockAt(filled, at(x, 1, 0)), `x${x}`).toBe(GRASS);
+    // The floor is a different material, so the fill did not fall through it.
+    expect(blockAt(filled, at(1, 0, 0))).toBe(DEFAULT_FLOOR);
+  });
+
+  it('stops at a block of another material', () => {
+    let map = createMap();
+    for (let x = 0; x < 5; x += 1) map = setBlock(map, at(x, 1, 0), STONE);
+    map = setBlock(map, at(2, 1, 0), GRASS); // a seam across the run
+
+    const filled = fillMaterial(map, at(0, 1, 0), GRASS);
+    expect(blockAt(filled, at(1, 1, 0))).toBe(GRASS);
+    expect(blockAt(filled, at(3, 1, 0)), 'beyond the seam').toBe(STONE);
+    expect(blockAt(filled, at(4, 1, 0)), 'beyond the seam').toBe(STONE);
+  });
+
+  it('does not leak through a diagonal seam (R-44)', () => {
+    // Two stone blocks touching only along an edge. A fill that used 18 or 26
+    // neighbours would cross a wall the GM built as solid.
+    let map = createMap();
+    map = setBlock(map, at(1, 1, 1), STONE);
+    map = setBlock(map, at(2, 2, 1), STONE);
+
+    const filled = fillMaterial(map, at(1, 1, 1), GRASS);
+    expect(blockAt(filled, at(1, 1, 1))).toBe(GRASS);
+    expect(blockAt(filled, at(2, 2, 1))).toBe(STONE);
+  });
+
+  it('walks in all three dimensions, not just along the ground', () => {
+    let map = createMap();
+    for (let y = 1; y <= 4; y += 1) map = setBlock(map, at(3, y, 3), STONE);
+    const filled = fillMaterial(map, at(3, 4, 3), GRASS);
+    for (let y = 1; y <= 4; y += 1) expect(blockAt(filled, at(3, y, 3)), `y${y}`).toBe(GRASS);
+  });
+
+  it('fills the whole floor when the floor is what was clicked', () => {
+    const filled = fillMaterial(createMap(), at(0, 0, 0), STONE);
+    expect(filled.blocks.size).toBe(MAP_PATCH * MAP_PATCH);
+    for (const material of filled.blocks.values()) expect(material).toBe(STONE);
+  });
+
+  it('never adds or removes a block, only repaints', () => {
+    const map = setBlock(createMap(), at(5, 1, 5), STONE);
+    const filled = fillMaterial(map, at(0, 0, 0), STONE);
+    expect(filled.blocks.size).toBe(map.blocks.size);
+  });
+
+  it('does nothing from air, or from outside the map', () => {
+    const map = createMap();
+    expect(fillMaterial(map, at(0, 5, 0), STONE)).toBe(map);
+    expect(fillMaterial(map, at(99, 0, 0), STONE)).toBe(map);
+    expect(fillRegion(map, at(0, 5, 0))).toEqual([]);
+  });
+
+  it('preserves identity when the region is already that material (R-12)', () => {
+    const map = createMap();
+    expect(fillMaterial(map, at(0, 0, 0), DEFAULT_FLOOR)).toBe(map);
+  });
+
+  it('reports the region so the console can say how big the fill is', () => {
+    let map = createMap();
+    for (let x = 0; x < 4; x += 1) map = setBlock(map, at(x, 2, 0), STONE);
+    expect(fillRegion(map, at(2, 2, 0))).toHaveLength(4);
+    expect(fillRegion(map, at(0, 0, 0))).toHaveLength(MAP_PATCH * MAP_PATCH);
   });
 });

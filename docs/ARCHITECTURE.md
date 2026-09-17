@@ -1846,15 +1846,19 @@ apps/host/src/
 
 ## 6h. Building inside a map
 
-> **R-153.** **One click, one cube.** Inside a map, a pointer *drag* never edits
-> anything: no run of blocks, no swathe of erasure, and each cube is its own undo.
+> **R-153.** **A gesture may drag only if it does not move its own target.**
 >
-> The world's brush is the opposite on purpose (R-140b), and the difference is
-> not inconsistency. Painting terrain is a two-dimensional wash where the exact
-> boundary rarely matters; a block sits in three dimensions against a face, and
-> **the face the pointer is over changes as blocks appear**. A hand that drifts
-> during a click therefore climbs: each new cube presents its own top face, and
-> what the GM meant as one cube becomes a column (D-193).
+> That is the test, and it is not "is the tool destructive". **Build** and
+> **erase** change the geometry, so the face under a stationary pointer is a
+> different face a moment later: a build drag climbs its own cubes, an erase drag
+> eats into what it exposes. For those two, one click is one cube, and each cube
+> is its own undo (D-193). **Paint** changes only a material, so the block under
+> the pointer stays exactly where it was — it drags, and the whole drag is one
+> undo under one stroke id (R-140b), which is the same rule and the same reason
+> as the world's terrain brush (D-194).
+>
+> **Fill** is excluded for a different reason: it is already a bulk action, and
+> dragging one would fire a whole region per cell entered.
 >
 > **The cube in question is outlined before it is touched** — a white,
 > cube-shaped wireframe at exactly the cell a click would edit: the empty cell
@@ -1867,3 +1871,25 @@ apps/host/src/
 > that lights up is by construction the cube the click edits. Computing them
 > separately is two chances to get R-147's off-by-one-along-the-normal wrong, and
 > only one of them would look wrong on screen.
+
+> **R-154.** **The bucket fills a connected region, through faces, by material.**
+> Clicking a block repaints every block reachable from it through blocks of the
+> **same material** — the 3D reading of a paint bucket (D-194).
+>
+> *Faces only*, the same six neighbours a block is placed by (R-147), and the 3D
+> reading of a 2D bucket's four. Two cubes touching along an edge are a diagonal
+> seam, which R-44 already treats as sealed; a fill that leaked through one would
+> cross a wall the GM built as solid.
+>
+> A fill **never adds or removes a block**. Only materials change, so the shape
+> of the building is the same after it as before — which is what makes it safe to
+> give a one-click tool this much reach.
+>
+> It is **one intent**, so it is one undo without a stroke id. And because one
+> click can rewrite a wing of a building, the console **counts the region on
+> hover and says the number** before the GM commits: the outline can only mark
+> where a fill starts, not how far it goes.
+>
+> Starting from air does nothing. There is no material to match, and a fill that
+> began from nothing would have to guess what the GM meant (R-18: it is a no-op,
+> not a silent wrong answer).

@@ -46,6 +46,7 @@ export type { EncounterMap, BlockCoord, MapJSON } from './map/index.js';
 export {
   MAP_PATCH, MAP_MAX_HEIGHT, blockKey, parseBlockKey, inMap, blockAt,
   createMap, setBlock, clearBlock, growMap, topOfMap, mapToJSON, mapFromJSON,
+  fillRegion, fillMaterial,
 } from './map/index.js';
 export {
   MAX_PLACE_NAME, MAX_NOTE_TEXT, sameCell, placeGlobal, placeCellFromGlobal, isValidPlaceCell,
@@ -55,7 +56,7 @@ export {
   MAX_POI_NAME, moveWithin,
   addPoi, renamePoi, setPoiVisible, removePoi, movePoi,
   partyVisiblePois,
-  setMapBlock, clearMapBlock, growPoiMap, poiById, withPoiMaps,
+  setMapBlock, clearMapBlock, fillPoiMaterial, growPoiMap, poiById, withPoiMaps,
 } from './place/index.js';
 
 export type { Discovery } from './discovery/index.js';

@@ -124,6 +124,80 @@ export function growMap(map: EncounterMap, axis: 'x' | 'z'): EncounterMap {
   return { size, blocks };
 }
 
+/**
+ * The six cells sharing a face with this one.
+ *
+ * Faces, not edges or corners — the same adjacency a block is *placed* by
+ * (R-147), and the 3D reading of a 2D paint bucket's four neighbours. Two cubes
+ * touching only along an edge are a diagonal seam, which R-44 treats as sealed;
+ * a fill that leaked through one would cross a wall the GM built as solid.
+ */
+const FACE_NEIGHBOURS: readonly (readonly [number, number, number])[] = [
+  [1, 0, 0], [-1, 0, 0],
+  [0, 1, 0], [0, -1, 0],
+  [0, 0, 1], [0, 0, -1],
+];
+
+/**
+ * Every block reachable from `at` through blocks of the same material (R-154).
+ *
+ * The region a bucket fill would repaint. Returned rather than applied so the
+ * console can say how many blocks are about to change *before* the GM commits
+ * to it — a fill is one click that can rewrite a wing of a building.
+ *
+ * Empty when the cell is air or outside the map: there is no material to match,
+ * and a fill that started from nothing would have to guess what the GM meant.
+ *
+ * Breadth-first with an explicit queue, not recursion. A region can be the
+ * whole body — tens of thousands of cells at the largest footprint — and the
+ * recursive version of this function is a stack overflow waiting for a big
+ * enough tavern.
+ */
+export function fillRegion(map: EncounterMap, at: BlockCoord): readonly BlockCoord[] {
+  const seed = blockAt(map, at);
+  if (!seed) return [];
+
+  const region: BlockCoord[] = [];
+  const seen = new Set<string>([blockKey(at)]);
+  const queue: BlockCoord[] = [at];
+
+  while (queue.length > 0) {
+    const cell = queue.pop()!;
+    region.push(cell);
+    for (const [dx, dy, dz] of FACE_NEIGHBOURS) {
+      const next = { x: cell.x + dx, y: cell.y + dy, z: cell.z + dz };
+      const key = blockKey(next);
+      if (seen.has(key)) continue;
+      // `inMap` is checked before the material so a fill cannot walk out of the
+      // footprint into coordinates the map does not own.
+      if (!inMap(map, next) || map.blocks.get(key) !== seed) continue;
+      seen.add(key);
+      queue.push(next);
+    }
+  }
+  return region;
+}
+
+/**
+ * Repaints the connected region at `at` (R-154). Identity-preserving (R-12).
+ *
+ * Only the *material* changes: a fill never adds or removes a block, so the
+ * shape of the building is the same after it as before. That is what makes it
+ * safe to hand a one-click tool this much reach.
+ */
+export function fillMaterial(
+  map: EncounterMap,
+  at: BlockCoord,
+  material: MaterialId,
+): EncounterMap {
+  if (blockAt(map, at) === material) return map;
+  const region = fillRegion(map, at);
+  if (region.length === 0) return map;
+  const blocks = new Map(map.blocks);
+  for (const cell of region) blocks.set(blockKey(cell), material);
+  return { ...map, blocks };
+}
+
 /** The highest filled Y, or -1 for a map with nothing in it. */
 export function topOfMap(map: EncounterMap): number {
   let top = -1;

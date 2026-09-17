@@ -58,17 +58,36 @@ export function MapPanel({
               ⌫ Erase
             </button>
           </Tooltip>
+          <Tooltip label="Repaint blocks without moving them — key 3" placement="bottom" stretch>
+            <button className={tool === 'paint' ? 'on' : ''} onClick={() => onTool('paint')}>
+              ✏ Paint
+            </button>
+          </Tooltip>
+          <Tooltip
+            label="Repaint every block joined to the one you click, of the same material — key 4"
+            placement="bottom"
+            stretch
+          >
+            <button className={tool === 'fill' ? 'on' : ''} onClick={() => onTool('fill')}>
+              ◍ Fill
+            </button>
+          </Tooltip>
         </div>
         <p className="hint">
-          {tool === 'build'
-            ? <>Click a block&apos;s face; the new one lands against it. One click, one cube.</>
-            : <>Click a block to remove it. One click, one cube.</>}
+          {tool === 'build' && <>Click a block&apos;s face; the new one lands against it. One click, one cube.</>}
+          {tool === 'erase' && <>Click a block to remove it. One click, one cube.</>}
+          {/* The one map tool that drags, because it does not move its own
+              target the way build and erase do (R-153). */}
+          {tool === 'paint' && <>Click a block to repaint it, or drag the brush across several. Nothing moves.</>}
+          {tool === 'fill' && (
+            <>Click a block: everything joined to it of the same material is repainted. The readout says how many.</>
+          )}
         </p>
         <p className="readout">{hoverLabel ?? '—'}</p>
-        <p className="hint">1/2 tool · Q/E turn · R/F tilt · right-drag pan · wheel zoom · Esc leaves</p>
+        <p className="hint">1–4 tool · Q/E turn · R/F tilt · right-drag pan · wheel zoom · Esc leaves</p>
       </div>
 
-      {tool === 'build' && (
+      {tool !== 'erase' && (
         <div className="card">
           <h2>Material</h2>
           <ul className="palette">

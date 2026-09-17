@@ -1,19 +1,19 @@
 // The GM console shell: launcher until a campaign is open, then the world.
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { decodeCampaign, decodePlacement } from '@tt/protocol';
 import {
   CHUNK_SIZE, MAX_HEIGHT, clampBrush, creatableSlots, sameWorldCell,
-  DEFAULT_MATERIALS, DEFAULT_FLOOR, mapFromJSON,
+  DEFAULT_MATERIALS, DEFAULT_FLOOR, mapFromJSON, fillRegion,
 } from '@tt/domain';
 import type { GmView, Intent } from '@tt/protocol';
 import { defaultTarget, worldCentre } from '@tt/render';
 import type { Tool, Travel } from '@tt/client-core';
 import {
   idle, pick, armed, aim, ghostCell, canConfirm, travelIntent, travelPrompt,
-  clickAction, holdsSelection, mapAction, mapHover,
+  clickAction, holdsSelection, mapAction, mapHover, mapDrags,
 } from '@tt/client-core';
-import type { MapTool } from '@tt/client-core';
+import type { MapAction, MapTool } from '@tt/client-core';
 import { useStage } from '../scene/use-stage.js';
 import { Launcher } from '../features/launcher/index.js';
 import { BuildWorldPanel } from '../features/build-world/index.js';
@@ -72,6 +72,10 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    * unique-enough string does.
    */
   const stroke = useRef<string | null>(null);
+  /** The current brush gesture, so a drag of paint is one undo (R-140b). */
+  const blockStroke = useRef<string | null>(null);
+  /** The last block the brush touched, so one drag does not re-send it. */
+  const lastBlock = useRef<string | null>(null);
   const newStroke = () => {
     stroke.current = `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
     return stroke.current;
@@ -151,17 +155,29 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     stage?.aimAt(ghostCell(travel));
   }, [travel, stage]);
 
+  /**
+   * The open map as domain data.
+   *
+   * Decoded once per wire change and shared: the stage draws it, and the fill
+   * tool needs it to count the region under the pointer before the GM clicks
+   * (R-154). Decoding twice would mean two bodies that can disagree.
+   */
+  const openBody = useMemo(
+    () => (openMapWire ? mapFromJSON(openMapWire) : null),
+    [openMapWire],
+  );
+
   // The open map is its own surface (R-148). Passing null returns to the world,
   // whose meshes were hidden rather than destroyed.
   useEffect(() => {
     if (!stage) return;
-    const body = openMapWire ? mapFromJSON(openMapWire) : null;
+    const body = openBody;
     // Keyed by which point of interest, not by the body: this effect reruns for
     // every block placed, because the wire hands back a new object each time
     // (D-185). The key is what tells the stage a *surface* changed, so the
     // camera frames a map once on the way in and never again (R-152).
     stage.setMap(body, DEFAULT_MATERIALS, openMap ? `${openMap.placeId}/${openMap.poiId}` : null);
-  }, [openMapWire, openMap, stage]);
+  }, [openBody, openMap, stage]);
 
   // A point of interest whose map the GM deleted, or which they removed
   // outright, must not leave the console stranded on a surface that is gone.
@@ -213,6 +229,38 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     [columnInfo],
   );
 
+  /**
+   * Performs a map action, whatever the tool decided it was.
+   *
+   * One place rather than a branch in pointer-down and another in pointer-move,
+   * because the brush runs through both and the two copies would drift.
+   */
+  const mapEdit = (action: MapAction, stroke: string | null) => {
+    if (!openMap || action.kind === 'nothing') return;
+    const where = { placeId: openMap.placeId, poiId: openMap.poiId, ...action.at };
+    const tagged = stroke ? { stroke } : {};
+    switch (action.kind) {
+      case 'place':
+        dispatch({ kind: 'setBlock', ...where, materialId, ...tagged });
+        return;
+      case 'paint':
+        // The same intent as `place`, deliberately: `setBlock` replaces the
+        // material of a block that is already there, and paint only ever
+        // targets a block the GM can see. What differs is the *cell* the tool
+        // chose — the block itself rather than the space against its face.
+        dispatch({ kind: 'setBlock', ...where, materialId, ...tagged });
+        return;
+      case 'erase':
+        dispatch({ kind: 'clearBlock', ...where, ...tagged });
+        return;
+      case 'fill':
+        // No stroke: a fill is already one intent covering a whole region, so
+        // it is one undo without any help.
+        dispatch({ kind: 'fillMaterial', ...where, materialId });
+        return;
+    }
+  };
+
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!stage || !campaign) return;
     if (e.button === 2 || e.button === 1) {
@@ -230,20 +278,15 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
 
     // Inside a map, the world's tool table does not apply at all (R-148).
     if (openMap) {
-      // One click, one cube (R-153). No pointer capture and no stroke id: the
-      // gesture ends where it started, and each cube is its own undo.
       const action = mapAction(mapTool, picked.face);
-      if (action.kind === 'place') {
-        dispatch({
-          kind: 'setBlock', placeId: openMap.placeId, poiId: openMap.poiId,
-          ...action.at, materialId,
-        });
-      } else if (action.kind === 'erase') {
-        dispatch({
-          kind: 'clearBlock', placeId: openMap.placeId, poiId: openMap.poiId,
-          ...action.at,
-        });
+      // Only the brush keeps acting as the pointer moves (R-153), and when it
+      // does the whole drag is one undo, so the stroke id is generated here.
+      if (mapDrags(mapTool) && action.kind !== 'nothing') {
+        blockStroke.current = newStroke();
+        lastBlock.current = null;
+        e.currentTarget.setPointerCapture(e.pointerId);
       }
+      mapEdit(action, blockStroke.current);
       return;
     }
 
@@ -314,14 +357,35 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!stage) return;
 
+    // Before any surface branch, because the camera belongs to no surface
+    // (R-152). It sat below the map branch, so a right-drag inside a map armed
+    // a pan that no move ever applied — the third time an early return here
+    // has swallowed a camera control.
+    if (panning.current) {
+      stage.pan(e.clientX - panning.current.x, e.clientY - panning.current.y);
+      panning.current = { x: e.clientX, y: e.clientY };
+      return;
+    }
+
     if (openMap) {
-      // Moving the pointer inside a map only ever *shows* what a click would do
-      // (R-153). It used to build as it went, which turned a hand that drifted
-      // during a click into a column nobody asked for.
       const picked = stage.pick(e.clientX, e.clientY);
-      const hover = mapHover(mapAction(mapTool, picked.face));
+      const action = mapAction(mapTool, picked.face);
+      const region = action.kind === 'fill' && openBody
+        ? fillRegion(openBody, action.at).length
+        : undefined;
+      const hover = mapHover(action, region);
       setHoverLabel(hover.label);
       stage.showBlockGhost(hover.ghost);
+
+      // Build and erase only ever *show* what a click would do (R-153): they
+      // move their own target, so a hand that drifts mid-click would climb.
+      // The brush does not, so it paints every new block it crosses — once
+      // each, under the one stroke id that makes the drag a single undo.
+      if (blockStroke.current === null || action.kind === 'nothing') return;
+      const key = `${action.at.x},${action.at.y},${action.at.z}`;
+      if (key === lastBlock.current) return;
+      lastBlock.current = key;
+      mapEdit(action, blockStroke.current);
       return;
     }
 
@@ -329,12 +393,6 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       const picked = stage.pick(e.clientX, e.clientY);
       setTravel((current) => aim(current, picked.column, standable(picked.column)));
       stage.showHighlight(picked.column, picked.column ? heightAt(picked.column) : 0, 1);
-      return;
-    }
-
-    if (panning.current) {
-      stage.pan(e.clientX - panning.current.x, e.clientY - panning.current.y);
-      panning.current = { x: e.clientX, y: e.clientY };
       return;
     }
 
@@ -398,6 +456,8 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     panning.current = null;
     painting.current = null;
     stroke.current = null;
+    blockStroke.current = null;
+    lastBlock.current = null;
   };
 
   /**
@@ -447,6 +507,8 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       if (openMap) {
         if (digit === '1') { setMapTool('build'); return; }
         if (digit === '2') { setMapTool('erase'); return; }
+        if (digit === '3') { setMapTool('paint'); return; }
+        if (digit === '4') { setMapTool('fill'); return; }
         if (e.code === 'Escape') { setOpenMap(null); return; }
       } else {
         switch (digit) {

@@ -3057,3 +3057,60 @@ to invent its own answer.
 tested for the property that matters: the cube that lights up is the cube the
 click edits. Two separate computations would have been two chances at R-147's
 off-by-one along the face normal — and only one of them would have looked wrong.
+
+### D-194 — A brush and a bucket, inside the map · `agreed`
+The GM asked for two things: *"a brush to 'paint' in the material we want, the GM
+can drag"*, and a bucket that *"takes the previous color of the block we touched
+and does a recursive search for blocks of the same color that were neighbours of
+the previous sample, like the bucket tool of 'Paint' but for 3D."*
+
+Both built. Yes, doable — and the description was already the algorithm.
+
+**The brush drags, and that is not a reversal of D-193.** It sharpened the rule
+instead. What made a build drag dangerous was never the dragging; it was that
+*placing a block changes which face the pointer is over*, so a stationary hand
+ends up aimed a level higher and the gesture climbs its own cubes. Paint changes
+a material and nothing else, so its target does not move under it. R-153 now
+states the real test — **a gesture may drag only if it does not move its own
+target** — and build, erase, paint and the world's terrain brush all fall out of
+it correctly rather than each being decided by hand.
+
+Paint reuses `setBlock`: the domain already replaces the material of a block that
+is there (R-12), and paint only ever targets a block the GM can see. What differs
+between build and paint is not the intent, it is the *cell the tool chose* — the
+block itself rather than the space against its face. One `mapEdit` performs every
+map action, because the brush runs through both pointer-down and pointer-move and
+two copies of that switch would drift.
+
+**The bucket, decided:**
+
+- **Connected, not global.** "Recursive search of neighbours" is a flood, so one
+  stone wall repaints without touching the stone floor across the room. A global
+  replace is a different tool and nobody has asked for it.
+- **Faces only** — six neighbours, not eighteen or twenty-six. A 2D bucket uses
+  four, not eight, for the same reason: blocks meeting at an edge are a diagonal
+  seam (R-44), and leaking through one crosses a wall the GM built as solid.
+- **Breadth-first with an explicit queue**, not recursion. A region can be the
+  whole body, which at the largest footprint is tens of thousands of cells — the
+  recursive version is a stack overflow waiting for a big enough tavern.
+- **It returns the region as well as applying it**, so the readout can say *"Fill
+  from 5,1,3 — 42 blocks"* before the click. The outline marks where a fill
+  starts; it cannot show how far one reaches, and a one-click tool with that much
+  reach should not be silent about its size.
+- **One intent, one undo.** No stroke id needed.
+
+The material palette now shows for build, paint and fill, and hides for erase —
+three of the four tools need a target material, and the panel offering one to a
+tool that ignores it was the sort of thing that teaches a GM to distrust the UI.
+
+### D-195 — The pan was the third camera control an early return swallowed · `agreed`
+*"I can't move around the camera as we do in the world map."* Right-drag armed
+`panning` in pointer-down, and then the map branch in pointer-move returned
+before the `panning` check ever ran. Zoom worked (its own handler); turn and tilt
+had been fixed the same way in D-190; pan was the one left.
+
+Three of three. The lesson is not about panning: **a surface branch placed at the
+top of a handler silently owns every control below it.** The camera check now
+comes first in pointer-move, which is what R-152 says out loud — the camera
+belongs to no surface — rather than something each handler is trusted to
+remember.

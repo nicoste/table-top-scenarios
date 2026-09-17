@@ -3,7 +3,7 @@
 
 import { describe, it, expect } from 'vitest';
 import type { Cell, Pointed } from '@tt/client-core';
-import { clickAction, holdsSelection, tableAction, mapAction, mapHover } from '@tt/client-core';
+import { clickAction, holdsSelection, tableAction, mapAction, mapHover, mapDrags } from '@tt/client-core';
 import type { Tool } from '@tt/client-core';
 
 const cell = (x: number, z: number): Cell => ({ cx: 15, cz: 15, x, z });
@@ -243,5 +243,52 @@ describe('mapHover — what the GM is told is about to happen (R-153)', () => {
         `${hover.ghost!.x},${hover.ghost!.y},${hover.ghost!.z}`,
       );
     }
+  });
+});
+
+describe('the map toolset (R-153, R-154)', () => {
+  const face = { block: { x: 4, y: 1, z: 7 }, adjacent: { x: 4, y: 2, z: 7 } };
+
+  it('gives build the empty cell and every other tool the block itself', () => {
+    // The off-by-one-along-the-normal, once per tool. Build is the only one that
+    // acts on a cell that is not there yet; paint and fill act on what you see,
+    // which is where erase already acted.
+    expect(mapAction('build', face)).toEqual({ kind: 'place', at: face.adjacent });
+    expect(mapAction('erase', face)).toEqual({ kind: 'erase', at: face.block });
+    expect(mapAction('paint', face)).toEqual({ kind: 'paint', at: face.block });
+    expect(mapAction('fill', face)).toEqual({ kind: 'fill', at: face.block });
+  });
+
+  it('does nothing for any tool when the pointer is over nothing', () => {
+    for (const tool of ['build', 'erase', 'paint', 'fill'] as const) {
+      expect(mapAction(tool, null), tool).toEqual({ kind: 'nothing' });
+    }
+  });
+
+  it('lets only the brush drag', () => {
+    // The test is whether the gesture moves its own target, not whether it is
+    // destructive. Build climbs its own cubes and erase eats into what it
+    // exposes; paint leaves the geometry exactly where it was. Fill is out for
+    // the other reason: it is already a bulk action.
+    expect(mapDrags('paint')).toBe(true);
+    expect(mapDrags('build')).toBe(false);
+    expect(mapDrags('erase')).toBe(false);
+    expect(mapDrags('fill')).toBe(false);
+  });
+
+  it('says how many blocks a fill would repaint, and only for a fill', () => {
+    expect(mapHover(mapAction('fill', face), 42).label).toBe('Fill from 4,1,7 — 42 blocks');
+    expect(mapHover(mapAction('fill', face), 1).label).toBe('Fill from 4,1,7 — 1 block');
+    // The count is the client's to compute, so the label must survive not
+    // having it rather than printing "undefined blocks".
+    expect(mapHover(mapAction('fill', face)).label).toBe('Fill from 4,1,7');
+    expect(mapHover(mapAction('paint', face), 42).label).toBe('Paint 4,1,7');
+  });
+
+  it('outlines the block each tool would touch', () => {
+    for (const tool of ['erase', 'paint', 'fill'] as const) {
+      expect(mapHover(mapAction(tool, face)).ghost, tool).toEqual(face.block);
+    }
+    expect(mapHover(mapAction('build', face)).ghost).toEqual(face.adjacent);
   });
 });

@@ -251,3 +251,43 @@ describe('deleting a point of interest (R-151)', () => {
     expect(poiOf(back).map!.blocks.get('4,1,4')).toBe(STONE);
   });
 });
+
+describe('the bucket fill through sim (R-154)', () => {
+  const GRASS = DEFAULT_MATERIALS.find((m) => m.name === 'Grass')!.id as string;
+
+  it('repaints the region the GM clicked, in one undo', () => {
+    const { state, placeId, poiId } = seeded();
+    const filled = run(state, {
+      kind: 'fillMaterial', placeId, poiId, x: 0, y: 0, z: 0, materialId: GRASS,
+    }).state;
+    // The whole floor, and nothing added or removed.
+    expect(poiOf(filled).map!.blocks.size).toBe(MAP_PATCH * MAP_PATCH);
+    for (const material of poiOf(filled).map!.blocks.values()) expect(material).toBe(GRASS);
+
+    // One intent, so one press takes all 256 back — no stroke id needed.
+    const undone = run(filled, { kind: 'undo' }).state;
+    expect(poiOf(undone).map!.blocks.get('0,0,0')).toBe(DEFAULT_FLOOR);
+    expect(poiOf(undone).map!.blocks.get('15,0,15')).toBe(DEFAULT_FLOOR);
+  });
+
+  it('refuses a material nobody registered', () => {
+    const { state, placeId, poiId } = seeded();
+    expect(run(state, {
+      kind: 'fillMaterial', placeId, poiId, x: 0, y: 0, z: 0, materialId: 'material:unobtanium',
+    }).rejected).toBe('unknown material');
+  });
+
+  it('says so rather than going quiet outside the map (R-18)', () => {
+    const { state, placeId, poiId } = seeded();
+    expect(run(state, {
+      kind: 'fillMaterial', placeId, poiId, x: MAP_PATCH, y: 0, z: 0, materialId: STONE,
+    }).rejected).toBe('that is outside the map');
+  });
+
+  it('is authored content, so the table seat cannot fill (R-136)', () => {
+    const { state, placeId, poiId } = seeded();
+    expect(run(state, {
+      kind: 'fillMaterial', placeId, poiId, x: 0, y: 0, z: 0, materialId: STONE,
+    }, 'table').rejected).toBe('only the GM can do that');
+  });
+});

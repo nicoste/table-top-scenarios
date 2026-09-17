@@ -11,7 +11,7 @@ import {
   addPlace, renamePlace, setPlaceMarker, movePlace, removePlace, placeById, placeAt, isValidPlaceCell,
   addNote, editNote, setNoteVisible, removeNote, moveNote, isKnownMarker,
   addPoi, renamePoi, setPoiVisible, removePoi, movePoi,
-  setMapBlock, clearMapBlock, growPoiMap, inMap, isKnownMaterial,
+  setMapBlock, clearMapBlock, fillPoiMaterial, growPoiMap, inMap, isKnownMaterial,
   poiById as poiOfPlace,
   createLiveSave, withDiscovery, withPlacement, touch, upgraded, upgradedCampaign, belongsTo,
   pruneDiscovery, pruneMembers,
@@ -442,6 +442,7 @@ function applyToPois(
 
     case 'setBlock':
     case 'clearBlock':
+    case 'fillMaterial':
     case 'growMap':
       return applyToMap(campaign, intent, withPlaces, reject_);
 
@@ -486,7 +487,7 @@ function partyOccupies(state: HostState, campaign: Campaign, coord: ChunkCoord):
  */
 function applyToMap(
   campaign: Campaign,
-  intent: Extract<Intent, { kind: 'setBlock' | 'clearBlock' | 'growMap' }>,
+  intent: Extract<Intent, { kind: 'setBlock' | 'clearBlock' | 'fillMaterial' | 'growMap' }>,
   withPlaces: (places: readonly Place[]) => Applied,
   reject_: (reason: string) => Applied,
 ): Applied {
@@ -516,6 +517,9 @@ function applyToMap(
   }
   const materialId = intent.materialId as MaterialId;
   if (!isKnownMaterial(materialId)) return reject_('unknown material');
+  if (intent.kind === 'fillMaterial') {
+    return withPlaces(fillPoiMaterial(campaign.places, placeId, poiId, at, materialId));
+  }
   return withPlaces(setMapBlock(campaign.places, placeId, poiId, at, materialId));
 }
 

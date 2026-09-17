@@ -126,7 +126,9 @@ export function tableAction(pointed: Pointed, aiming: boolean): TableAction {
 export type MapAction =
   | { readonly kind: 'nothing' }
   | { readonly kind: 'place'; readonly at: BlockCoord }
-  | { readonly kind: 'erase'; readonly at: BlockCoord };
+  | { readonly kind: 'erase'; readonly at: BlockCoord }
+  | { readonly kind: 'paint'; readonly at: BlockCoord }
+  | { readonly kind: 'fill'; readonly at: BlockCoord };
 
 /**
  * Face adjacency, and it is the whole of R-147 in four lines.
@@ -139,9 +141,33 @@ export type MapAction =
  */
 export function mapAction(tool: MapTool, face: FacePick | null): MapAction {
   if (!face) return { kind: 'nothing' };
-  return tool === 'build'
-    ? { kind: 'place', at: face.adjacent }
-    : { kind: 'erase', at: face.block };
+  // Build is the only tool that acts on the *empty* cell. The other three act on
+  // the block you can see, which is the one under the pointer.
+  switch (tool) {
+    case 'build': return { kind: 'place', at: face.adjacent };
+    case 'erase': return { kind: 'erase', at: face.block };
+    case 'paint': return { kind: 'paint', at: face.block };
+    case 'fill': return { kind: 'fill', at: face.block };
+  }
+}
+
+/**
+ * May a drag of this tool keep acting, or is one click one action (R-153)?
+ *
+ * The test is not "is it destructive" but **does the gesture move its own
+ * target**. Build and erase change the geometry, so the face under a stationary
+ * pointer is a different face a moment later: a build drag climbs its own
+ * cubes, an erase drag eats into what it exposes. Paint changes only a
+ * material, so the block under the pointer stays exactly where it was — which
+ * is what makes dragging a brush safe here and is the same reason the world's
+ * terrain brush drags (R-140b).
+ *
+ * Fill is excluded for a different reason: it is already a bulk action. One
+ * click can repaint a wing of a building, and dragging one would fire another
+ * whole region per cell entered.
+ */
+export function mapDrags(tool: MapTool): boolean {
+  return tool === 'paint';
 }
 
 export interface MapHover {
@@ -160,9 +186,21 @@ export interface MapHover {
  * off-by-one-along-the-normal wrong (R-147), and only one of them would look
  * wrong on screen.
  */
-export function mapHover(action: MapAction): MapHover {
+const VERBS: Record<Exclude<MapAction['kind'], 'nothing'>, string> = {
+  place: 'Build at',
+  erase: 'Erase',
+  paint: 'Paint',
+  fill: 'Fill from',
+};
+
+export function mapHover(action: MapAction, region?: number): MapHover {
   if (action.kind === 'nothing') return { label: null, ghost: null };
   const { x, y, z } = action.at;
-  const verb = action.kind === 'place' ? 'Build at' : 'Erase';
-  return { label: `${verb} ${x},${y},${z}`, ghost: action.at };
+  const where = `${VERBS[action.kind]} ${x},${y},${z}`;
+  // A fill says how much it is about to repaint, because one click can reach a
+  // long way and the outline can only mark where it starts (R-154).
+  const label = action.kind === 'fill' && region !== undefined
+    ? `${where} — ${region} block${region === 1 ? '' : 's'}`
+    : where;
+  return { label, ghost: action.at };
 }
