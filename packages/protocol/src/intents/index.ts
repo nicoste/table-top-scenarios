@@ -74,7 +74,7 @@ export const IntentSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('setBlock'), placeId: z.string().min(1), poiId: z.string().min(1), x: z.number().int(), y: z.number().int(), z: z.number().int(), materialId: z.string().min(1), stroke }),
   z.object({ kind: z.literal('clearBlock'), placeId: z.string().min(1), poiId: z.string().min(1), x: z.number().int(), y: z.number().int(), z: z.number().int(), stroke }),
   z.object({ kind: z.literal('fillMaterial'), placeId: z.string().min(1), poiId: z.string().min(1), x: z.number().int(), y: z.number().int(), z: z.number().int(), materialId: z.string().min(1) }),
-  z.object({ kind: z.literal('growMap'), placeId: z.string().min(1), poiId: z.string().min(1), towards: z.enum(['north', 'south', 'east', 'west']) }),
+  z.object({ kind: z.literal('growMap'), placeId: z.string().min(1), poiId: z.string().min(1), towards: z.enum(['northeast', 'southeast', 'southwest', 'northwest']) }),
 
   // Undo and redo over authored content (D-169). GM only: the campaign is the
   // GM's, and a shared history under one person's keyboard is a worse feature.

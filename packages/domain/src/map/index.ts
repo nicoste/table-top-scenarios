@@ -35,11 +35,11 @@ export interface EncounterMap {
   /**
    * The lowest cell the map owns in X and Z (R-150).
    *
-   * `{0, 0}` for a new map, and it goes **negative** when the GM expands north
-   * or west. This exists so that growing in those directions does not have to
-   * renumber every block that is already placed — a renumber is how saved
-   * references rot, and it would silently move a wall relative to anything that
-   * remembered where it was.
+   * `{0, 0}` for a new map, and it goes **negative** when the GM expands
+   * north-east or north-west. This exists so that growing in those directions
+   * does not have to renumber every block that is already placed — a renumber is
+   * how saved references rot, and it would silently move a wall relative to
+   * anything that remembered where it was.
    */
   readonly origin: { readonly x: number; readonly z: number };
   /** Cells in X and Z. Grows with the expand rose (R-150); never shrinks. */
@@ -48,20 +48,29 @@ export interface EncounterMap {
   readonly blocks: ReadonlyMap<string, MaterialId>;
 }
 
-/** Where the GM can extend a map. The world's compass, not the screen's. */
-export type Expand = 'north' | 'south' | 'east' | 'west';
+/**
+ * Where the GM can extend a map — the **intercardinals**, and that is not a
+ * quirk of naming (D-198).
+ *
+ * North is the `(-1, -1)` diagonal of the cell grid, chosen so that it points
+ * straight up in the view a campaign opens on. The camera is deliberately
+ * diagonal to the grid (R-31) so the ground reads as a diamond, which means the
+ * grid's *axes* are what run diagonally on screen. Naming them north-east and
+ * so on is the arrangement that puts every label where the growth appears.
+ */
+export type Expand = 'northeast' | 'southeast' | 'southwest' | 'northwest';
 
 /**
- * Which way each direction lies in cell space: north is **-Z**, east is **+X**.
+ * Which way each direction lies in cell space.
  *
- * The same convention the compass draws (R-155) and the only one consistent with
- * a right-handed Y-up scene where the camera's default azimuth is 45 degrees.
+ * Read it off the screen at the default view: `-Z` climbs to the upper right,
+ * `+X` falls to the lower right, and the other two mirror them.
  */
 const STEPS: Record<Expand, { readonly x: number; readonly z: number }> = {
-  north: { x: 0, z: -1 },
-  south: { x: 0, z: 1 },
-  east: { x: 1, z: 0 },
-  west: { x: -1, z: 0 },
+  northeast: { x: 0, z: -1 },
+  southeast: { x: 1, z: 0 },
+  southwest: { x: 0, z: 1 },
+  northwest: { x: -1, z: 0 },
 };
 
 export function blockKey(at: BlockCoord): string {
@@ -130,9 +139,10 @@ export function clearBlock(map: EncounterMap, at: BlockCoord): EncounterMap {
 /**
  * Extends the map by one patch in a compass direction (R-150).
  *
- * North and west move the **origin** instead of renumbering the body. Every
- * block keeps the coordinate it already had, whichever way the map grows — the
- * alternative is shifting thousands of keys and hoping nothing remembered one.
+ * The two directions that run toward lower coordinates move the **origin**
+ * instead of renumbering the body. Every block keeps the coordinate it already
+ * had, whichever way the map grows — the alternative is shifting thousands of
+ * keys and hoping nothing remembered one.
  */
 export function growMap(map: EncounterMap, towards: Expand): EncounterMap {
   const step = STEPS[towards];
@@ -252,7 +262,7 @@ export function topOfMap(map: EncounterMap): number {
 }
 
 export interface MapJSON {
-  /** Absent in files written before a map could grow north or west. */
+  /** Absent in files written before a map could grow toward lower cells. */
   origin?: { x: number; z: number };
   size: { x: number; z: number };
   /** `"x,y,z": materialId`. Sorted on the way out so an autosave does not churn. */
@@ -271,14 +281,73 @@ export function mapToJSON(map: EncounterMap): MapJSON {
   };
 }
 
+/**
+ * The footprint a map should have: one that contains every block it holds, is
+ * never smaller than the one it declared, and moves as little as possible
+ * (R-157).
+ *
+ * A map should never hold a block outside its own bounds, and one was found that
+ * did: 64 by 64 of floor running from -16 to 47 on a map whose stored origin
+ * said zero (D-199). `inMap` rejects those cells, so the GM could see that floor
+ * and not erase it, paint it or fill through it.
+ *
+ * Two repairs, and which one applies is decided by the blocks:
+ *
+ * - **Slide**, when the blocks fit inside the declared size. That was the case
+ *   found: the size was right and only the origin had gone missing, so the
+ *   footprint moves to sit over the work and keeps its width. Widening instead
+ *   would invent empty footprint on the far side — in-bounds cells with no
+ *   floor under them, which R-149 says a map does not have.
+ * - **Widen**, when the blocks genuinely span more than the declared size.
+ *   Exactly to the blocks, since that is the smallest honest answer.
+ *
+ * It never *shrinks*. A map dug hollow still owns the ground it was given:
+ * growing is the GM's decision, and erasing a corner is not a request to give
+ * it back. Between the blocks and the bookkeeping, the blocks are the work.
+ */
+export function enclosing(
+  origin: { readonly x: number; readonly z: number },
+  size: { readonly x: number; readonly z: number },
+  blocks: ReadonlyMap<string, MaterialId>,
+): { origin: { x: number; z: number }; size: { x: number; z: number } } {
+  let minX = Infinity;
+  let minZ = Infinity;
+  let maxX = -Infinity;
+  let maxZ = -Infinity;
+  for (const key of blocks.keys()) {
+    const at = parseBlockKey(key);
+    if (!at) continue;
+    if (at.x < minX) minX = at.x;
+    if (at.z < minZ) minZ = at.z;
+    if (at.x > maxX) maxX = at.x;
+    if (at.z > maxZ) maxZ = at.z;
+  }
+  // Nothing in it to be outside of.
+  if (minX === Infinity) return { origin: { x: origin.x, z: origin.z }, size: { x: size.x, z: size.z } };
+
+  const axis = (from: number, width: number, low: number, high: number) => {
+    const span = high - low + 1;
+    if (span > width) return { from: low, width: span };
+    if (low < from) return { from: low, width };
+    if (high >= from + width) return { from: high - width + 1, width };
+    return { from, width };
+  };
+
+  const x = axis(origin.x, size.x, minX, maxX);
+  const z = axis(origin.z, size.z, minZ, maxZ);
+  return { origin: { x: x.from, z: z.from }, size: { x: x.width, z: z.width } };
+}
+
 export function mapFromJSON(json: MapJSON | undefined | null): EncounterMap | null {
   if (!json) return null;
-  return {
-    // No schema bump for this either (D-187's reasoning): a file without an
-    // origin can only be one that grew in the two directions that never needed
-    // one, so `{0, 0}` is not a guess — it is what that map already meant.
+  const blocks = new Map(Object.entries(json.blocks) as [string, MaterialId][]);
+  // No schema bump for the origin (D-187's reasoning): a file without one can
+  // only be a map that grew in the two directions that never needed it, so
+  // `{0, 0}` is not a guess — it is what that map already meant. And whatever
+  // the file claims, the footprint is widened to hold what is actually in it.
+  const declared = {
     origin: { x: json.origin?.x ?? 0, z: json.origin?.z ?? 0 },
     size: { x: json.size.x, z: json.size.z },
-    blocks: new Map(Object.entries(json.blocks) as [string, MaterialId][]),
   };
+  return { ...enclosing(declared.origin, declared.size, blocks), blocks };
 }

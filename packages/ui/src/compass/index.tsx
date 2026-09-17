@@ -69,6 +69,20 @@ export function Compass({ bearing, hidden = false }: CompassProps) {
           disagreeing about the same fact.
         */}
         <g transform={`rotate(${bearing} ${C} ${C})`}>
+          {/*
+            Ticks on the intercardinals. They are where the grid's axes run, so
+            they are the only directions a map can actually be extended toward
+            (D-198) — worth marking, not worth four more letters at this size.
+          */}
+          {[45, 135, 225, 315].map((deg) => (
+            <line
+              key={deg}
+              x1={C} y1={6} x2={C} y2={10}
+              stroke="#4a5364"
+              strokeWidth={1.5}
+              transform={`rotate(${deg} ${C} ${C})`}
+            />
+          ))}
           {/* North: warm and solid. South: the same shape, dark, so the two
               halves read as one needle rather than two arrows. */}
           <path d={`M${C} 19 L${C + 4.5} ${C + 1} L${C} ${C - 1} L${C - 4.5} ${C + 1} Z`} fill="#ff8f6b" />

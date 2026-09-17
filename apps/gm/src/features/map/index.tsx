@@ -11,6 +11,20 @@ import { MAP_MAX_HEIGHT } from '@tt/domain';
 import type { Material } from '@tt/domain';
 import { Tooltip } from '@tt/ui';
 
+/**
+ * The four directions a map can grow, in the order they are laid out: the top
+ * row is the two northerly ones, the bottom row the two southerly.
+ *
+ * Abbreviated on the button because four two-word labels do not fit a 228px
+ * dock, and spelled out in the tooltip because "SE" is only obvious once.
+ */
+const EXPANSIONS = [
+  { towards: 'northwest', short: 'NW', long: 'north-west' },
+  { towards: 'northeast', short: 'NE', long: 'north-east' },
+  { towards: 'southwest', short: 'SW', long: 'south-west' },
+  { towards: 'southeast', short: 'SE', long: 'south-east' },
+] as const;
+
 interface Props {
   /** Which point of interest's map this is — for the heading. */
   readonly placeName: string;
@@ -117,37 +131,22 @@ export function MapPanel({
         </p>
         <p className="lbl" style={{ margin: '0 0 6px' }}>Expand the map to:</p>
         {/*
-          A rose rather than a row, because the four directions are a compass
-          and the compass on screen is what tells the GM which way they are
-          looking (R-155). The middle cell carries the footprint, so the size is
-          read where the growing happens.
+          A rose, and the four buttons sit at its *corners* because that is
+          where the map actually grows on screen (D-198). The camera is
+          diagonal to the grid by design (R-31), so the grid's axes run
+          corner-to-corner in the view — a button labelled "East" on the right
+          hand side was pointing at the wrong place. The middle carries the
+          footprint, so the size is read where the growing happens.
         */}
         <div className="rose">
-          <span />
-          <Tooltip label="Add a patch of floor to the north" placement="top">
-            <button onClick={() => dispatch({ kind: 'growMap', placeId, poiId, towards: 'north' })}>
-              North
-            </button>
-          </Tooltip>
-          <span />
-          <Tooltip label="Add a patch of floor to the west" placement="left">
-            <button onClick={() => dispatch({ kind: 'growMap', placeId, poiId, towards: 'west' })}>
-              West
-            </button>
-          </Tooltip>
+          {EXPANSIONS.map(({ towards, short, long }) => (
+            <Tooltip key={towards} label={`Add a patch of floor to the ${long}`} placement="left">
+              <button onClick={() => dispatch({ kind: 'growMap', placeId, poiId, towards })}>
+                {short}
+              </button>
+            </Tooltip>
+          ))}
           <span className="mid">{map.size.x}×{map.size.z}</span>
-          <Tooltip label="Add a patch of floor to the east" placement="right">
-            <button onClick={() => dispatch({ kind: 'growMap', placeId, poiId, towards: 'east' })}>
-              East
-            </button>
-          </Tooltip>
-          <span />
-          <Tooltip label="Add a patch of floor to the south" placement="bottom">
-            <button onClick={() => dispatch({ kind: 'growMap', placeId, poiId, towards: 'south' })}>
-              South
-            </button>
-          </Tooltip>
-          <span />
         </div>
       </div>
     </>

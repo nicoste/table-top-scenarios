@@ -3,7 +3,7 @@
 import { describe, it, expect } from 'vitest';
 import type { MaterialId, Place, PlaceCell } from '@tt/domain';
 import {
-  addPlace, addPoi, withPoiMaps, fillRegion, fillMaterial, mapCentre,
+  addPlace, addPoi, withPoiMaps, fillRegion, fillMaterial, mapCentre, enclosing,
   createMap, setBlock, clearBlock, growMap, blockAt, blockKey, parseBlockKey,
   inMap, topOfMap, mapToJSON, mapFromJSON,
   MAP_PATCH, MAP_MAX_HEIGHT, DEFAULT_FLOOR, DEFAULT_MATERIALS, isKnownMaterial,
@@ -79,34 +79,52 @@ describe('placing and clearing', () => {
   });
 });
 
-describe('growing (R-150)', () => {
-  it('extends east and south without moving the origin', () => {
-    const grown = growMap(createMap(), 'east');
-    expect(grown.origin).toEqual({ x: 0, z: 0 });
-    expect(grown.size).toEqual({ x: MAP_PATCH * 2, z: MAP_PATCH });
-    expect(blockAt(grown, at(MAP_PATCH, 0, 0))).toBe(DEFAULT_FLOOR);
-    expect(inMap(grown, at(MAP_PATCH, 0, 0))).toBe(true);
+describe('growing (R-150, D-198)', () => {
+  it('extends the two directions that add width, leaving the origin alone', () => {
+    // South-east is +X and south-west is +Z: both grow away from the origin,
+    // so nothing has to move.
+    const se = growMap(createMap(), 'southeast');
+    expect(se.origin).toEqual({ x: 0, z: 0 });
+    expect(se.size).toEqual({ x: MAP_PATCH * 2, z: MAP_PATCH });
+    expect(blockAt(se, at(MAP_PATCH, 0, 0))).toBe(DEFAULT_FLOOR);
+    expect(inMap(se, at(MAP_PATCH, 0, 0))).toBe(true);
+
+    const sw = growMap(createMap(), 'southwest');
+    expect(sw.origin).toEqual({ x: 0, z: 0 });
+    expect(sw.size).toEqual({ x: MAP_PATCH, z: MAP_PATCH * 2 });
   });
 
-  it('extends north and west by moving the origin negative', () => {
+  it('extends the northerly two by moving the origin negative', () => {
     // The point of the origin. Renumbering the body instead would move every
     // wall the GM built relative to anything that remembered where it was.
-    const grown = growMap(createMap(), 'west');
-    expect(grown.origin).toEqual({ x: -MAP_PATCH, z: 0 });
-    expect(grown.size).toEqual({ x: MAP_PATCH * 2, z: MAP_PATCH });
-    expect(inMap(grown, at(-1, 0, 0))).toBe(true);
-    expect(inMap(grown, at(-MAP_PATCH - 1, 0, 0))).toBe(false);
-    expect(blockAt(grown, at(-1, 0, 0))).toBe(DEFAULT_FLOOR);
+    const nw = growMap(createMap(), 'northwest');
+    expect(nw.origin).toEqual({ x: -MAP_PATCH, z: 0 });
+    expect(nw.size).toEqual({ x: MAP_PATCH * 2, z: MAP_PATCH });
+    expect(inMap(nw, at(-1, 0, 0))).toBe(true);
+    expect(inMap(nw, at(-MAP_PATCH - 1, 0, 0))).toBe(false);
+    expect(blockAt(nw, at(-1, 0, 0))).toBe(DEFAULT_FLOOR);
 
-    const north = growMap(createMap(), 'north');
-    expect(north.origin).toEqual({ x: 0, z: -MAP_PATCH });
-    expect(blockAt(north, at(0, 0, -1))).toBe(DEFAULT_FLOOR);
+    const ne = growMap(createMap(), 'northeast');
+    expect(ne.origin).toEqual({ x: 0, z: -MAP_PATCH });
+    expect(blockAt(ne, at(0, 0, -1))).toBe(DEFAULT_FLOOR);
+  });
+
+  it('puts each direction on the axis it appears to run along on screen', () => {
+    // Read off the default view: -Z climbs to the upper right, +X falls to the
+    // lower right (D-198). Getting this pair the wrong way round would send the
+    // map off in a direction the GM did not click.
+    expect(growMap(createMap(), 'northeast').origin.z).toBe(-MAP_PATCH);
+    expect(growMap(createMap(), 'northeast').origin.x).toBe(0);
+    expect(growMap(createMap(), 'northwest').origin.x).toBe(-MAP_PATCH);
+    expect(growMap(createMap(), 'northwest').origin.z).toBe(0);
+    expect(growMap(createMap(), 'southeast').size.x).toBe(MAP_PATCH * 2);
+    expect(growMap(createMap(), 'southwest').size.z).toBe(MAP_PATCH * 2);
   });
 
   it('leaves every existing block at the coordinate it already had, any direction', () => {
     const built = setBlock(createMap(), at(2, 3, 4), STONE);
     let grown = built;
-    for (const towards of ['east', 'south', 'west', 'north'] as const) {
+    for (const towards of ['southeast', 'southwest', 'northwest', 'northeast'] as const) {
       grown = growMap(grown, towards);
       expect(blockAt(grown, at(2, 3, 4)), towards).toBe(STONE);
     }
@@ -115,21 +133,21 @@ describe('growing (R-150)', () => {
   });
 
   it('floors only the new ground, and keeps the floor material', () => {
-    const grown = growMap(createMap(STONE), 'south');
+    const grown = growMap(createMap(STONE), 'southwest');
     expect(blockAt(grown, at(0, 0, MAP_PATCH))).toBe(STONE);
     expect(grown.blocks.size).toBe(MAP_PATCH * MAP_PATCH * 2);
   });
 
-  it('floors the new ground of a westward grow exactly once', () => {
-    const grown = growMap(growMap(createMap(), 'west'), 'west');
+  it('floors the new ground of a north-west grow exactly once', () => {
+    const grown = growMap(growMap(createMap(), 'northwest'), 'northwest');
     expect(grown.blocks.size).toBe(MAP_PATCH * MAP_PATCH * 3);
     expect(grown.origin).toEqual({ x: -MAP_PATCH * 2, z: 0 });
   });
 
   it('centres on the middle of the footprint, wherever the origin is', () => {
     expect(mapCentre(createMap())).toEqual({ x: MAP_PATCH / 2, z: MAP_PATCH / 2 });
-    const west = growMap(createMap(), 'west');
-    expect(mapCentre(west)).toEqual({ x: 0, z: MAP_PATCH / 2 });
+    const nw = growMap(createMap(), 'northwest');
+    expect(mapCentre(nw)).toEqual({ x: 0, z: MAP_PATCH / 2 });
   });
 });
 
@@ -320,5 +338,81 @@ describe('the bucket fill (R-154)', () => {
     for (let x = 0; x < 4; x += 1) map = setBlock(map, at(x, 2, 0), STONE);
     expect(fillRegion(map, at(2, 2, 0))).toHaveLength(4);
     expect(fillRegion(map, at(0, 0, 0))).toHaveLength(MAP_PATCH * MAP_PATCH);
+  });
+});
+
+describe('a map never holds a block outside its own bounds (R-157)', () => {
+  it('slides a footprint that lost its origin, keeping its size', () => {
+    // The state found in a live campaign: 64 by 64 of floor running from -16 to
+    // 47, on a map whose stored origin said zero. The size was right, the
+    // blocks were right, only the origin had gone missing — so `inMap` rejected
+    // a quarter of the floor and the GM could not touch it.
+    const blocks = new Map<string, MaterialId>();
+    for (let x = -16; x < 48; x += 1) {
+      for (let z = -16; z < 48; z += 1) blocks.set(blockKey(at(x, 0, z)), DEFAULT_FLOOR);
+    }
+    const fixed = enclosing({ x: 0, z: 0 }, { x: 64, z: 64 }, blocks);
+    expect(fixed.origin).toEqual({ x: -16, z: -16 });
+    // Not 80: widening would add sixteen columns of in-bounds cells with no
+    // floor under them, which is not what the GM grew.
+    expect(fixed.size).toEqual({ x: 64, z: 64 });
+  });
+
+  it('widens only when the blocks genuinely span more than the declared size', () => {
+    const blocks = new Map<string, MaterialId>();
+    for (let x = -2; x < 20; x += 1) blocks.set(blockKey(at(x, 0, 0)), DEFAULT_FLOOR);
+    const fixed = enclosing({ x: 0, z: 0 }, { x: 16, z: 16 }, blocks);
+    expect(fixed.origin.x).toBe(-2);
+    expect(fixed.size.x).toBe(22);
+    // The axis with nothing wrong is left exactly as declared.
+    expect(fixed.origin.z).toBe(0);
+    expect(fixed.size.z).toBe(16);
+  });
+
+  it('leaves a footprint that already contains its blocks alone', () => {
+    const map = setBlock(createMap(), at(3, 4, 5), STONE);
+    const fixed = enclosing(map.origin, map.size, map.blocks);
+    expect(fixed.origin).toEqual({ x: 0, z: 0 });
+    expect(fixed.size).toEqual({ x: MAP_PATCH, z: MAP_PATCH });
+  });
+
+  it('never shrinks a footprint to fit its blocks', () => {
+    // A map dug hollow still owns the ground it was given: growing is the GM's
+    // decision and erasing a corner is not a request to give it back.
+    const dug = clearBlock(createMap(), at(0, 0, 0));
+    const fixed = enclosing(dug.origin, dug.size, dug.blocks);
+    expect(fixed.size).toEqual({ x: MAP_PATCH, z: MAP_PATCH });
+  });
+
+  it('keeps an empty map exactly as declared', () => {
+    const fixed = enclosing({ x: 4, z: 4 }, { x: 8, z: 8 }, new Map());
+    expect(fixed).toEqual({ origin: { x: 4, z: 4 }, size: { x: 8, z: 8 } });
+  });
+
+  it('repairs on the way in, so what is read back is editable', () => {
+    const blocks: Record<string, string> = {};
+    for (let x = -3; x < 5; x += 1) blocks[`${x},0,0`] = DEFAULT_FLOOR;
+    const read = mapFromJSON({ size: { x: 5, z: 1 }, blocks })!;
+    expect(read.origin).toEqual({ x: -3, z: 0 });
+    for (let x = -3; x < 5; x += 1) {
+      expect(inMap(read, at(x, 0, 0)), `x${x}`).toBe(true);
+    }
+  });
+
+  it('growing never produces a block outside the footprint, any direction', () => {
+    // The invariant the repair exists to protect. Checked for every direction
+    // and every combination of two, because the pair that moves the origin is
+    // the one that could leave a strip behind.
+    const DIRS = ['northeast', 'southeast', 'southwest', 'northwest'] as const;
+    for (const first of DIRS) {
+      for (const second of DIRS) {
+        const map = growMap(growMap(createMap(), first), second);
+        for (const key of map.blocks.keys()) {
+          expect(inMap(map, parseBlockKey(key)!), `${first}+${second} ${key}`).toBe(true);
+        }
+        expect(enclosing(map.origin, map.size, map.blocks).origin, `${first}+${second}`)
+          .toEqual(map.origin);
+      }
+    }
   });
 });

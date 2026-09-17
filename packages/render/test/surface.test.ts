@@ -53,36 +53,60 @@ describe('showWorldMarkers', () => {
   });
 });
 
-describe('northBearing (R-155)', () => {
-  it('is the camera azimuth, one bearing per yaw step', () => {
-    // Derived, not tabulated: the four numbers below are right only because
-    // YAW_OFFSET is 45 and there are four steps, and a table of them would go
-    // quietly wrong the day either changes.
-    expect(northBearing(yawDegrees({ yawStep: 0 }))).toBeCloseTo(45);
-    expect(northBearing(yawDegrees({ yawStep: 1 }))).toBeCloseTo(135);
-    expect(northBearing(yawDegrees({ yawStep: 2 }))).toBeCloseTo(225);
-    expect(northBearing(yawDegrees({ yawStep: 3 }))).toBeCloseTo(315);
+describe('northBearing (R-155, D-198)', () => {
+  it('points straight up in the view a campaign opens on', () => {
+    // The whole reason north is the (-1,-1) diagonal: at the default yaw the
+    // needle is vertical, which is what the GM asked for.
+    expect(northBearing(yawDegrees({ yawStep: 0 }))).toBeCloseTo(0);
+  });
+
+  it('turns a quarter with the camera, one bearing per step', () => {
+    // Derived, not tabulated: these are right only because YAW_OFFSET is 45 and
+    // there are four steps, and a table of them would go quietly wrong the day
+    // either changes.
+    expect(northBearing(yawDegrees({ yawStep: 1 }))).toBeCloseTo(90);
+    expect(northBearing(yawDegrees({ yawStep: 2 }))).toBeCloseTo(180);
+    expect(northBearing(yawDegrees({ yawStep: 3 }))).toBeCloseTo(270);
   });
 
   it('agrees with the projection it claims to describe', () => {
-    // North is (0,-1) on the ground. Screen-right is (cos y, -sin y) and
-    // screen-up is (-sin y, -cos y), so north projects to (sin y, cos y) — a
-    // bearing of y clockwise from up. Checked here rather than trusted, because
-    // a compass that is 90 degrees out is worse than no compass.
+    // Screen-right is (cos y, -sin y) and screen-up is (-sin y, -cos y), so a
+    // ground direction (dx, dz) lands at atan2(dx cos y - dz sin y,
+    // -(dx sin y + dz cos y)). Checked against north's own vector rather than
+    // trusted, because a compass 90 degrees out is worse than no compass.
+    const NORTH = { dx: -1, dz: -1 };
     for (const yawStep of [0, 1, 2, 3]) {
       const y = yawRadians({ yawStep });
-      const screenX = 0 * Math.cos(y) - -1 * Math.sin(y);
-      const screenUp = -(0 * Math.sin(y) + -1 * Math.cos(y));
+      const screenX = NORTH.dx * Math.cos(y) - NORTH.dz * Math.sin(y);
+      const screenUp = -(NORTH.dx * Math.sin(y) + NORTH.dz * Math.cos(y));
       const bearing = (Math.atan2(screenX, screenUp) * 180) / Math.PI;
       const expected = northBearing(yawDegrees({ yawStep }));
       expect(((bearing - expected) % 360 + 360) % 360, `step ${yawStep}`).toBeCloseTo(0);
     }
   });
 
+  it('puts the grid axes on the intercardinals, which is what the rose grows along', () => {
+    // -Z is north-east and +X is south-east, at the default view and at every
+    // other, because both the compass and the axes turn with the camera.
+    const axes = { northeast: { dx: 0, dz: -1 }, southeast: { dx: 1, dz: 0 } };
+    for (const yawStep of [0, 1, 2, 3]) {
+      const y = yawRadians({ yawStep });
+      const north = northBearing(yawDegrees({ yawStep }));
+      for (const [name, d] of Object.entries(axes)) {
+        const screenX = d.dx * Math.cos(y) - d.dz * Math.sin(y);
+        const screenUp = -(d.dx * Math.sin(y) + d.dz * Math.cos(y));
+        const bearing = (Math.atan2(screenX, screenUp) * 180) / Math.PI;
+        const fromNorth = ((bearing - north) % 360 + 360) % 360;
+        expect(fromNorth, `${name} at step ${yawStep}`)
+          .toBeCloseTo(name === 'northeast' ? 45 : 135);
+      }
+    }
+  });
+
   it('holds mid-turn, where there is no step to speak of (R-156)', () => {
     // The reason it takes degrees: the eased camera spends most of a turn
     // between two steps, and the compass has to be right there too.
-    expect(northBearing(87.3)).toBeCloseTo(87.3);
+    expect(northBearing(87.3)).toBeCloseTo(42.3);
   });
 
   it('wraps a yaw step that ran past the last one', () => {

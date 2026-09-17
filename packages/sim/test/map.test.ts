@@ -137,17 +137,17 @@ describe('building', () => {
 
   it('grows the footprint and floors the new ground', () => {
     const { state, placeId, poiId } = withMap();
-    const grown = run(state, { kind: 'growMap', placeId, poiId, towards: 'east' }).state;
+    const grown = run(state, { kind: 'growMap', placeId, poiId, towards: 'southeast' }).state;
     expect(poiOf(grown).map!.size).toEqual({ x: MAP_PATCH * 2, z: MAP_PATCH });
     expect(poiOf(grown).map!.blocks.get(`${MAP_PATCH},0,0`)).toBe(DEFAULT_FLOOR);
   });
 
-  it('grows north and west by moving the origin, not the blocks', () => {
+  it('grows the northerly directions by moving the origin, not the blocks', () => {
     const { state, placeId, poiId } = withMap();
     const built = run(state, {
       kind: 'setBlock', placeId, poiId, x: 3, y: 1, z: 3, materialId: STONE,
     }).state;
-    const grown = run(built, { kind: 'growMap', placeId, poiId, towards: 'north' }).state;
+    const grown = run(built, { kind: 'growMap', placeId, poiId, towards: 'northeast' }).state;
     expect(poiOf(grown).map!.origin).toEqual({ x: 0, z: -MAP_PATCH });
     // The wall is where the GM left it, which is the whole point.
     expect(poiOf(grown).map!.blocks.get('3,1,3')).toBe(STONE);
@@ -233,7 +233,7 @@ describe('a map is authored content, so the table seat cannot touch it (R-136)',
     for (const intent of [
       { kind: 'setBlock', placeId, poiId, x: 0, y: 1, z: 0, materialId: STONE },
       { kind: 'clearBlock', placeId, poiId, x: 0, y: 0, z: 0 },
-      { kind: 'growMap', placeId, poiId, towards: 'east' },
+      { kind: 'growMap', placeId, poiId, towards: 'southeast' },
     ] as Intent[]) {
       expect(run(withMap, intent, 'table').rejected, intent.kind).toBe('only the GM can do that');
     }

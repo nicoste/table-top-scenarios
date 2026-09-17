@@ -125,12 +125,18 @@ button.quiet:hover { background: #3a2222; color: #ffc9c9; border-color: transpar
 .notes .eye.shown { opacity: 1; }
 .notes .note-actions { grid-column: 2; display: flex; gap: 3px; justify-content: flex-end; }
 .notes .note-actions button { padding: 1px 6px; font-size: 11px; }
-/* The expand rose (R-150): four directions where they belong, with the
-   footprint in the middle so the size is read where the growing happens. */
-.rose { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; align-items: center; }
-.rose button { width: 100%; padding: 3px 4px; font-size: 11px; }
+/* The expand rose (R-150, D-198): the four intercardinals at the corners of a
+   2x2, which is where the map grows on screen, and the footprint centred over
+   the whole thing so the size is read where the growing happens. */
+.rose {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 3px;
+  position: relative; place-items: stretch;
+}
+.rose button { width: 100%; padding: 6px 4px; font-size: 11px; }
 .rose .mid {
-  text-align: center; font-size: 10.5px; color: var(--dim);
+  position: absolute; inset: 0; display: grid; place-items: center;
+  pointer-events: none;
+  font-size: 10.5px; color: var(--ink); text-shadow: 0 0 5px #171b22, 0 0 3px #171b22;
   font-variant-numeric: tabular-nums;
 }
 

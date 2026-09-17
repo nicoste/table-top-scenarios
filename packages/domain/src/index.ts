@@ -46,7 +46,7 @@ export type { EncounterMap, BlockCoord, Expand, MapJSON } from './map/index.js';
 export {
   MAP_PATCH, MAP_MAX_HEIGHT, blockKey, parseBlockKey, inMap, blockAt,
   createMap, setBlock, clearBlock, growMap, topOfMap, mapToJSON, mapFromJSON,
-  fillRegion, fillMaterial, mapCentre,
+  fillRegion, fillMaterial, mapCentre, enclosing,
 } from './map/index.js';
 export {
   MAX_PLACE_NAME, MAX_NOTE_TEXT, sameCell, placeGlobal, placeCellFromGlobal, isValidPlaceCell,

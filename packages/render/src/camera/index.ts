@@ -75,12 +75,19 @@ export function approach(current: number, goal: number, dt: number, tau = TURN_T
  * Where **north** is on screen, in degrees clockwise from straight up (R-155),
  * given the camera's azimuth in degrees.
  *
- * It is the azimuth itself, and that is a fact about this projection rather
- * than a coincidence worth leaving implicit. The camera sits at
- * `focus + (sin y, ., cos y)` and looks inward, so screen-right is
- * `(cos y, -sin y)` and screen-up is `(-sin y, -cos y)` in the ground plane.
- * Project north, the direction `(0, -1)`, onto those two and you get
- * `(sin y, cos y)` — a bearing of exactly `y`.
+ * It is the azimuth less the yaw offset, which is a fact about this projection
+ * and not a coincidence worth leaving implicit.
+ *
+ * The camera sits at `focus + (sin y, ., cos y)` and looks inward, so
+ * screen-right is `(cos y, -sin y)` and screen-up is `(-sin y, -cos y)` in the
+ * ground plane. A ground direction `(dx, dz)` therefore lands at
+ * `atan2(dx cos y - dz sin y, -(dx sin y + dz cos y))`.
+ *
+ * North is the `(-1, -1)` diagonal of the cell grid (D-198), so that comes out
+ * as `atan2(sin y - cos y, sin y + cos y)`, and since
+ * `sin y - cos y = sqrt2 sin(y - 45)` and `sin y + cos y = sqrt2 cos(y - 45)`,
+ * the bearing is exactly `y - 45` — zero at the default view, which is the
+ * whole point of choosing that diagonal.
  *
  * A function rather than a comment at the call site because it is the one place
  * that claim is written down, and the one place a test can hold it to account.
@@ -88,7 +95,7 @@ export function approach(current: number, goal: number, dt: number, tau = TURN_T
  * where there is no step to speak of.
  */
 export function northBearing(yawDeg: number): number {
-  return yawDeg;
+  return yawDeg - YAW_OFFSET;
 }
 
 export interface CameraTarget {

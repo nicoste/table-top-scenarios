@@ -1785,15 +1785,20 @@ apps/host/src/
 > familiar; an unbounded third would leave the camera with no idea how much to
 > draw.
 >
-> North and west grow by moving the map's **origin negative**, not by renumbering
-> the body (D-196). Every block keeps the coordinate it already had, whichever
-> way the map grows — the alternative is rewriting thousands of keys and hoping
-> nothing remembered one of them. The origin is therefore part of the map, and
-> `{0, 0}` is the right reading of a file that has none: such a file can only
-> have grown in the two directions that never needed one.
+> The four are the **intercardinals** (D-198), because the grid's axes are what
+> run diagonally on screen.
 >
-> The affordance is a **rose**, not a row: four directions are a compass, and the
-> compass on screen (R-155) is what tells the GM which way they are facing.
+> The two that head toward lower coordinates grow by moving the map's **origin
+> negative**, not by renumbering the body (D-196). Every block keeps the
+> coordinate it already had, whichever way the map grows — the alternative is
+> rewriting thousands of keys and hoping nothing remembered one of them. The
+> origin is therefore part of the map, and `{0, 0}` is the right reading of a
+> file that has none: such a file can only have grown in the two directions that
+> never needed one.
+>
+> The affordance is a **rose**, and its buttons sit at the **corners** of a
+> square, which is where the map grows on screen. A button labelled "East" down
+> the right-hand side was pointing at the wrong place.
 
 ---
 
@@ -1917,10 +1922,16 @@ apps/host/src/
 > readability and the wrong one for orientation, and a compass is what buys the
 > second back without giving up the first.
 >
-> The bearing is **derived, not tabulated**: under this projection a ground
-> direction's screen bearing equals the camera's azimuth, so north sits at the
-> yaw. Four hardcoded numbers would be correct until someone changed
-> `YAW_OFFSET`, and then quietly wrong.
+> **North is the `(-1, -1)` diagonal of the cell grid** (D-198), chosen so the
+> needle points straight up in the view a campaign opens on. That is not a
+> compromise: the camera is diagonal to the grid on purpose (R-31), so *something*
+> has to be diagonal, and it is better that the grid's axes are named
+> north-east and south-east than that north points into a corner of the screen.
+>
+> The bearing is **derived, not tabulated**: it is the camera's azimuth less the
+> yaw offset, which falls out of projecting that diagonal onto the screen axes.
+> Four hardcoded numbers would be correct until someone changed `YAW_OFFSET`, and
+> then quietly wrong.
 >
 > **Cameras are per client.** Each screen's camera is view state (R-64) and never
 > travels on the wire, so the GM turning their console does not move the table,
@@ -1966,3 +1977,26 @@ apps/host/src/
 > hit what is on screen, not where the turn is heading. And `pick` must never
 > advance the easing — it can run many times between frames, and a made-up `dt`
 > would make the turn's speed depend on how far the pointer moved.
+
+> **R-157.** **A map never holds a block outside its own footprint**, and the read
+> boundary makes that true rather than assuming it.
+>
+> One was found that did: 64 by 64 of floor running from -16 to 47, on a map
+> whose stored origin said zero (D-199). `inMap` rejects such cells, so the GM
+> could see that floor and not erase it, paint it or fill through it — visible
+> scenery that refuses to be edited, with no error to explain itself.
+>
+> On read, the footprint is repaired by the blocks, not the other way round:
+> - **Slide** when the blocks fit inside the declared size — the size was right
+>   and the origin had gone missing, so the footprint moves over the work and
+>   keeps its width. Widening instead invents in-bounds cells with no floor under
+>   them, which R-149 says a map does not have.
+> - **Widen** only when the blocks genuinely span more than the declared size,
+>   and exactly to the blocks.
+> - **Never shrink.** A map dug hollow still owns the ground it was given;
+>   erasing a corner is not a request to give it back.
+>
+> Between the blocks and the bookkeeping, **the blocks are the work**. That is
+> the whole rule, and it is the same instinct as R-137a: repair at the boundary
+> from what the data can tell you, rather than carrying a contradiction inward
+> where every reader has to cope with it.

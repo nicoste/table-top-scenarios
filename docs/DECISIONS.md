@@ -3222,3 +3222,75 @@ behind the scene. The `window.__stage` debug handle showed `yawStep` changing an
 the dial mid-turn, which settled it. **When the DOM and the scene disagree,
 suspect the instrument** — and sample with a timeout rather than a tight frame
 loop when the thing being measured is React-rendered.
+
+### D-198 — North points up, so the grid's axes are the intercardinals · `agreed`
+*"Can we call North what right now is North-West? Because it's the original
+rotation, and that way North 'points up'. Would that imply any issue?"*
+
+Yes to the rename, no real issue, and it fixes something that was already wrong.
+
+North is now the `(-1, -1)` diagonal of the cell grid. The consequence is not a
+side effect to be tolerated, it is the interesting part: the camera is 45 degrees
+off the grid **on purpose** (R-31) so the ground reads as a diamond, which means
+the grid's *axes* are what run diagonally on screen. Something has to be
+diagonal. Naming the axes north-east and south-east is strictly better than
+having north point into a corner of the screen, because a GM reads "up" far more
+often than they read a coordinate.
+
+**And it exposed a lie in the rose.** The buttons used to read North / South /
+East / West laid out as a cross — but "East" is `+X`, which at the default view
+extends the map toward the *upper right*, not the right. The label and the arrow
+of the eye disagreed. Now the four buttons are NW / NE / SW / SE at the corners
+of a square, which is exactly where each one pushes the edge on screen, with the
+footprint centred over them. The rose is a small picture of the map.
+
+Nothing else moved:
+
+- **No data.** Direction names live in the `Expand` type and the intent enum;
+  neither is persisted. Maps store an origin, a size and blocks, all in cell
+  coordinates, which are untouched.
+- **The bearing is still derived.** `northBearing` becomes `yaw - YAW_OFFSET`,
+  and the derivation is in the comment: projecting `(-1, -1)` onto screen-right
+  and screen-up gives `atan2(sin y - cos y, sin y + cos y)`, which is `y - 45`.
+- **The compass grew ticks** on the intercardinals, since those are the only
+  directions a map can be extended toward. Four more letters would not fit at
+  64px; four marks do.
+
+A test now pins the pair that would be invisible if swapped: `-Z` is north-east
+and `+X` is south-east, at every yaw step. Getting those the wrong way round
+would send the map off in a direction the GM did not click, and the rose would
+still look plausible.
+
+### D-199 — A live map was holding 1792 blocks it said were not there · `agreed`
+Found while verifying D-198, in the GM's own church map. Its stored footprint was
+`origin {0, 0}, size 64x64`; its blocks ran from -16 to 47 on both axes. So the
+size was right, the blocks were right, and the **origin had gone missing** —
+leaving 1792 cells of floor outside the map's own bounds.
+
+That is not cosmetic. `inMap` rejects anything outside the footprint, so a
+quarter of that floor was visible and **un-editable**: erase refused it, paint
+refused it, and a bucket fill would not cross into it. The GM would have hit this
+as "that part of my map is stuck", with no message to explain why, because from
+the host's point of view nothing was wrong — it was correctly refusing edits
+outside a map that had lied about its own size.
+
+**I could not determine which build produced it.** Both committed versions of
+`mapToJSON` write the origin and both readers parse it, and the growth that would
+have set it is refused by any mismatched host. My honest position is that I do
+not know, and the archaeology was costing more than the fix.
+
+So the fix is a guard rather than a patch: R-157, at the read boundary, repairs
+the footprint from the blocks. **Slide** when they fit inside the declared size —
+which is what this case needed, and what recovers the GM's map exactly as they
+grew it — **widen** only when they genuinely span more, and **never shrink**,
+because a map dug hollow still owns its ground.
+
+Two tests carry it: the exact state found in the wild, and the invariant that
+growing in any direction, or any two in sequence, never leaves a block outside
+the footprint. The second is the one that matters going forward — if the cause
+was in `growMap`, it now cannot recur silently.
+
+The lesson for me is smaller and duller than the bug: in the previous round I
+checked this map's `origin`, `size` and block *count* after growing and undoing,
+and all three looked right. I never checked whether the blocks were **inside**
+the footprint. A count is not an invariant.
