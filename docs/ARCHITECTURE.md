@@ -1743,12 +1743,15 @@ apps/host/src/
 > **Y value and a name** and nothing else — no X, no Z. They are the snap steps of
 > a **two-sided range**: everything outside `[lower, upper]` is not drawn.
 >
-> One range, two renderings:
-> - The **table display** draws only what is inside it. Outside is absent.
-> - The **GM console draws the whole body**, with out-of-range levels faded
->   (D-182). The GM peeks into the cellar while the party is upstairs, and can
->   always tell at a glance what the table is showing — which is R-76's preview
->   obligation met by one view rather than a second mode.
+> One range, two renderings, and both are built (D-200):
+> - The **table display** draws only what is inside it, because only that was
+>   sent. Outside is **absent from the payload**, not merely undrawn (R-85).
+> - The **GM console draws the whole body**, with out-of-range levels faded to
+>   28% (D-182). The GM peeks into the cellar while the party is upstairs, and
+>   can always tell at a glance what the table is showing — which is R-76's
+>   preview obligation met by one view rather than a second mode. Dimmed rather
+>   than hidden because the GM still has to build in there, and clicking a face
+>   they cannot see is how a wall ends up one level off.
 >
 > **This supersedes R-35**, which clamped to a single upper bound. One bound can
 > cut a roof away but cannot hide a cellar while the party stands on the grass
@@ -2000,3 +2003,40 @@ apps/host/src/
 > the whole rule, and it is the same instinct as R-137a: repair at the boundary
 > from what the data can tell you, rather than carrying a contradiction inward
 > where every reader has to cope with it.
+
+---
+
+## 6j. The party in a map
+
+> **R-158.** **The party is either on the world or in one point of interest's
+> map**, and which it is, is **play state** (D-200).
+>
+> This is what D-185 deferred: the open map was the console's private business
+> until the table had to follow the GM into a tavern, and two screens cannot
+> agree on which one from view state.
+>
+> - **Open** stays the console's own (R-64). The GM can look into a cellar to
+>   build it while the party waits outside, and a map the party has never heard
+>   of can still be opened — otherwise no tavern could be built before it is
+>   found.
+> - **Inside** is play state, written to the save, and **remembered**: a reload
+>   puts the party back in the room they were in. The GM's words: *"once they
+>   are in, we should keep them."*
+> - Opening a map **takes the party in when it can**, which is the GM's
+>   described flow, and simply opens it when it cannot.
+>
+> **The party may only be taken somewhere they can see.** Revealed, chunk Known,
+> point of interest shown — the same condition the boundary uses to decide
+> whether the table receives it at all, so "you cannot walk them into a room they
+> cannot see" and "the table gets this" are one predicate rather than two that
+> can disagree. Refused with a reason, never silently (R-18), and the console
+> checks before asking so a GM building a hidden tavern is not shown a rejection
+> on every open.
+>
+> **The table is told where the party is by being sent geometry for exactly one
+> map and nothing for the rest.** Not by a flag it has to interpret: a screen
+> that cannot be given the wrong room cannot draw one (R-85).
+>
+> `inside` is **pruned at the open boundary** when the map it names is gone.
+> Deleting a point of interest with the party standing in it would otherwise
+> leave the table pointed at nothing.

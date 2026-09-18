@@ -7,6 +7,9 @@ import { DEFAULT_MARKER, isKnownMarker } from '../markers/index.js';
 import type { EncounterMap } from '../map/index.js';
 import { createMap, setBlock, clearBlock, growMap, fillMaterial } from '../map/index.js';
 import type { Expand } from '../map/index.js';
+import type { PlaneId } from '../ids/index.js';
+import { addPlane, renamePlane, movePlane, removePlane } from '../planes/index.js';
+import { MAP_MAX_HEIGHT } from '../map/index.js';
 import type { BlockCoord } from '../map/index.js';
 import type { MaterialId } from '../ids/index.js';
 import type { ChunkCoord, GlobalCell, WorldCell } from '../world/index.js';
@@ -429,6 +432,62 @@ export function withPoiMaps(places: readonly Place[]): readonly Place[] {
     };
   });
   return touched ? next : places;
+}
+
+// -- a map's cutting planes (R-146) -------------------------------------------
+//
+// Four wrappers over the same `mapOfPoi` the block edits use, so a plane edit is
+// identity-preserving and undoable for exactly the same reason they are.
+
+export function addPoiPlane(
+  places: readonly Place[],
+  placeId: PlaceId,
+  poiId: PoiId,
+  name: string,
+  y: number,
+): readonly Place[] {
+  return mapOfPoi(places, placeId, poiId, (map) => {
+    const planes = addPlane(map.planes, name, y, MAP_MAX_HEIGHT);
+    return planes === map.planes ? map : { ...map, planes };
+  });
+}
+
+export function renamePoiPlane(
+  places: readonly Place[],
+  placeId: PlaceId,
+  poiId: PoiId,
+  planeId: PlaneId,
+  name: string,
+): readonly Place[] {
+  return mapOfPoi(places, placeId, poiId, (map) => {
+    const planes = renamePlane(map.planes, planeId, name);
+    return planes === map.planes ? map : { ...map, planes };
+  });
+}
+
+export function movePoiPlane(
+  places: readonly Place[],
+  placeId: PlaceId,
+  poiId: PoiId,
+  planeId: PlaneId,
+  y: number,
+): readonly Place[] {
+  return mapOfPoi(places, placeId, poiId, (map) => {
+    const planes = movePlane(map.planes, planeId, y, MAP_MAX_HEIGHT);
+    return planes === map.planes ? map : { ...map, planes };
+  });
+}
+
+export function removePoiPlane(
+  places: readonly Place[],
+  placeId: PlaceId,
+  poiId: PoiId,
+  planeId: PlaneId,
+): readonly Place[] {
+  return mapOfPoi(places, placeId, poiId, (map) => {
+    const planes = removePlane(map.planes, planeId);
+    return planes === map.planes ? map : { ...map, planes };
+  });
 }
 
 export function poiById(place: Place, poiId: PoiId): Poi | null {

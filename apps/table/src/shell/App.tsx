@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { decodeCampaign, decodePlacement } from '@tt/protocol';
-import { CHUNK_SIZE } from '@tt/domain';
+import { CHUNK_SIZE, DEFAULT_MATERIALS, mapFromJSON } from '@tt/domain';
 import type { Intent, TableView } from '@tt/protocol';
 import type { Travel } from '@tt/client-core';
 import {
@@ -53,6 +53,19 @@ export function App({ view, status, rejection, dispatch }: Props) {
     : null;
   const placementWire = view?.placement ?? null;
 
+  /**
+   * The map the party has been taken into, if any (R-158).
+   *
+   * Found by looking for the one point of interest that came with a body. The
+   * table is not told *where the party is* as a fact — it is told by being sent
+   * geometry for exactly one place and nothing for the rest, which means this
+   * screen cannot get it wrong and cannot be asked to draw a room it was not
+   * given (R-85).
+   */
+  const insideWire = campaign?.places
+    .flatMap((p) => p.pois.map((poi) => ({ place: p, poi })))
+    .find(({ poi }) => poi.map !== null) ?? null;
+
   const nameOf = useCallback(
     (id: string) => campaign?.party.find((m) => m.id === id)?.name ?? null,
     [campaign],
@@ -92,6 +105,23 @@ export function App({ view, status, rejection, dispatch }: Props) {
   useEffect(() => {
     stage?.aimAt(ghostCell(travel));
   }, [travel, stage]);
+
+  /**
+   * Follow the GM into a map, and back out (R-158).
+   *
+   * No range is passed: the table was sent only the slice, so there is nothing
+   * out of range for it to fade. The console is the screen that draws the whole
+   * body and dims the rest (D-182).
+   */
+  useEffect(() => {
+    if (!stage) return;
+    const body = insideWire?.poi.map ? mapFromJSON(insideWire.poi.map) : null;
+    stage.setMap(
+      body,
+      DEFAULT_MATERIALS,
+      insideWire ? `${insideWire.place.id}/${insideWire.poi.id}` : null,
+    );
+  }, [stage, insideWire?.place.id, insideWire?.poi.id, insideWire?.poi.map]);
 
   // Escape cancels a move or closes an open place (R-132, R-139), and the
   // camera keys are the console's, unchanged — one table decides both (R-156).
@@ -215,7 +245,7 @@ export function App({ view, status, rejection, dispatch }: Props) {
         </div>
       )}
 
-      {!waiting && place && (
+      {!waiting && !insideWire && place && (
         <PlaceCard place={place} markerName={markerName} onClose={() => setSelectedPlace(null)} />
       )}
 

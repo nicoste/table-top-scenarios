@@ -2,8 +2,8 @@
 // passes through viewFor, and there is no second route.
 
 import type { Campaign, Save } from '@tt/domain';
-import { isPlaceOnTable, isChunkKnown, belongsTo, placementToJSON } from '@tt/domain';
-import type { CampaignWire, SaveWire, PlacementWire } from '../wire/index.js';
+import { isPlaceOnTable, isChunkKnown, belongsTo, placementToJSON, sliceOf, mapToJSON } from '@tt/domain';
+import type { CampaignWire, SaveWire, PlacementWire, MapWire } from '../wire/index.js';
 import { encodeCampaign, encodeSave } from '../wire/index.js';
 
 export type Role = 'gm' | 'table' | 'spectator';
@@ -124,6 +124,35 @@ export function viewFor(role: Role, state: HostState, connect: readonly string[]
  *    chunk is Known **as well** (D-132) — the leak all three design critics found
  *    independently.
  */
+/**
+ * The body the table may have of one point of interest, or `null` (R-158).
+ *
+ * Three conditions, and the order is the argument:
+ *
+ * 1. **The party is in this map.** Not "the GM is looking at it" — the console
+ *    can wander into a cellar to build while the party waits outside, and that
+ *    must not put the cellar on the table.
+ * 2. **Only the blocks inside the range.** A filter, not a flag: the levels the
+ *    GM cut away are absent from the payload, because R-85's standard is that a
+ *    secret is never sent rather than merely undrawn.
+ * 3. **Everything else gets nothing.** A tavern the party has not entered is a
+ *    name on the table and no geometry at all, which is the same answer this
+ *    function has always given and the reason there was nothing to leak before.
+ */
+function bodyForTheTable(
+  campaign: Campaign,
+  save: Save,
+  placeId: string,
+  poiId: string,
+): MapWire | null {
+  const inside = save.inside;
+  if (!inside || inside.placeId !== placeId || inside.poiId !== poiId) return null;
+  const place = campaign.places.find((candidate) => candidate.id === placeId);
+  const poi = place?.pois.find((candidate) => candidate.id === poiId);
+  if (!poi?.map) return null;
+  return mapToJSON(sliceOf(poi.map, inside.range));
+}
+
 function forTheTable(campaign: Campaign | null, save: Save | null): CampaignWire | null {
   if (!campaign || !save) return null;
   if (!belongsTo(save, campaign)) return null;
@@ -148,14 +177,12 @@ function forTheTable(campaign: Campaign | null, save: Save | null): CampaignWire
       .map((place) => ({
         ...place,
         notes: place.notes.filter((note) => note.visibleToParty),
-        // A revealed point of interest reaches the table as a *name*. Its map
-        // body is stripped, and not merely because the table has nothing to draw
-        // it with yet: without the cutting range (R-146) there is no way to
-        // withhold a secret cellar, and R-85's standard is that a secret is never
-        // sent rather than merely unrendered. Round B sends the slice (D-184).
+        // A revealed point of interest reaches the table as a *name*, and gets
+        // a body only when the party is standing in it — and then only the band
+        // the GM has cut to (R-158, and D-184 finally answered).
         pois: place.pois
           .filter((e) => e.visibleToParty)
-          .map((e) => ({ ...e, map: null })),
+          .map((e) => ({ ...e, map: bodyForTheTable(campaign, save, place.id, e.id) })),
       })),
   };
 }

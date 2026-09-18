@@ -1,0 +1,226 @@
+// Cutting planes and the level range (R-146).
+//
+// The GM's own design, and the reason it is a *range* rather than a clamp: one
+// upper bound can cut a roof away but cannot hide a cellar while the party
+// stands on the grass above it. Both handles are needed, and the lower one is
+// the half a clamp misses.
+//
+// Two halves that live in different places (R-8):
+//   - The **planes** are authored. They belong to the map, they have names the
+//     GM chose, and they are the snap steps the range moves between.
+//   - The **range** is play state. It is where the party's attention is right
+//     now, which is a fact about this session and not about the building.
+//
+// Nothing here knows about vision. The range decides which *levels* the table
+// is shown at all; what the party can see *within* those levels is a later
+// layer (R-40 to R-45), and it narrows rather than widens — a token can never
+// see a level the GM has cut away.
+
+import type { PlaneId } from '../ids/index.js';
+import { freshId } from '../ids/index.js';
+
+/**
+ * A named horizontal cut. **Y and nothing else** — no X, no Z (R-146).
+ *
+ * The GM's words: *"Every plane has just a Y component (X and Z are not needed
+ * at all)."* A plane is a floor level, and a floor is the whole footprint.
+ */
+export interface CuttingPlane {
+  readonly id: PlaneId;
+  readonly name: string;
+  /** Strictly inside the body: a cut at the floor or the ceiling cuts nothing. */
+  readonly y: number;
+}
+
+/**
+ * Which levels are drawn, as a **half-open** band: `lower <= y < upper`.
+ *
+ * Half-open because a plane is the boundary *between* two levels, not a level
+ * of its own. With planes at 4, 8 and 12 the GM's worked example reads exactly
+ * as they wrote it: `[4, cap]` is the building without its cellar, `[4, 8]` the
+ * ground floor, `[4, 12]` ground plus upstairs, and `[0, 4]` the cellar alone.
+ */
+export interface LevelRange {
+  readonly lower: number;
+  readonly upper: number;
+}
+
+export const MAX_PLANE_NAME = 40;
+
+function cleanName(name: string, fallback: string): string {
+  return name.trim().slice(0, MAX_PLANE_NAME) || fallback;
+}
+
+/** By Y, so the list reads bottom-to-top and the steps need no second sort. */
+function ordered(planes: readonly CuttingPlane[]): readonly CuttingPlane[] {
+  return [...planes].sort((a, b) => a.y - b.y);
+}
+
+/**
+ * Is this a Y a plane could sit at, given the body's height?
+ *
+ * Strictly between floor and ceiling. Both ends are already steps (R-146), so a
+ * plane there would add nothing and would give the GM a named cut that does not
+ * cut.
+ */
+export function validPlaneY(y: number, cap: number): boolean {
+  return Number.isInteger(y) && y > 0 && y < cap;
+}
+
+export function planeAt(planes: readonly CuttingPlane[], y: number): CuttingPlane | null {
+  return planes.find((plane) => plane.y === y) ?? null;
+}
+
+export function planeById(planes: readonly CuttingPlane[], id: PlaneId): CuttingPlane | null {
+  return planes.find((plane) => plane.id === id) ?? null;
+}
+
+/**
+ * Adds a plane. Refuses a second one at the same Y.
+ *
+ * Two planes on one level would collapse into a single step, leaving the GM a
+ * name in the list that no range can ever select — and the list and the steps
+ * are meant to be the same thing read two ways.
+ */
+export function addPlane(
+  planes: readonly CuttingPlane[],
+  name: string,
+  y: number,
+  cap: number,
+): readonly CuttingPlane[] {
+  if (!validPlaneY(y, cap) || planeAt(planes, y)) return planes;
+  return ordered([
+    ...planes,
+    { id: freshId<'PlaneId'>('plane'), name: cleanName(name, `Level ${y}`), y },
+  ]);
+}
+
+export function renamePlane(
+  planes: readonly CuttingPlane[],
+  id: PlaneId,
+  name: string,
+): readonly CuttingPlane[] {
+  const clean = cleanName(name, '');
+  if (!clean) return planes;
+  let touched = false;
+  const next = planes.map((plane) => {
+    if (plane.id !== id || plane.name === clean) return plane;
+    touched = true;
+    return { ...plane, name: clean };
+  });
+  return touched ? next : planes;
+}
+
+/** Moves a plane to another level, unless one is already there. */
+export function movePlane(
+  planes: readonly CuttingPlane[],
+  id: PlaneId,
+  y: number,
+  cap: number,
+): readonly CuttingPlane[] {
+  if (!validPlaneY(y, cap)) return planes;
+  // Occupied by another plane, or this one is already there: either way there is
+  // nothing to do, and returning the same array keeps identity (R-12).
+  if (planeAt(planes, y)) return planes;
+  let touched = false;
+  const next = planes.map((plane) => {
+    if (plane.id !== id) return plane;
+    touched = true;
+    return { ...plane, y };
+  });
+  return touched ? ordered(next) : planes;
+}
+
+export function removePlane(
+  planes: readonly CuttingPlane[],
+  id: PlaneId,
+): readonly CuttingPlane[] {
+  const next = planes.filter((plane) => plane.id !== id);
+  return next.length === planes.length ? planes : next;
+}
+
+/**
+ * The values a range's handles may take: every plane, plus the floor and the
+ * ceiling, which are **always** available as the outermost two (R-146).
+ *
+ * A map with no planes therefore has exactly one range — all of it — which is
+ * the right answer for a body nobody has divided yet, and it is derived rather
+ * than special-cased.
+ */
+export function planeSteps(
+  // Heights, not identities: the console reads these straight off the wire,
+  // where an id is a plain string.
+  planes: readonly { readonly y: number }[],
+  cap: number,
+): readonly number[] {
+  const steps = new Set<number>([0, cap]);
+  for (const plane of planes) if (validPlaneY(plane.y, cap)) steps.add(plane.y);
+  return [...steps].sort((a, b) => a - b);
+}
+
+export function fullRange(cap: number): LevelRange {
+  return { lower: 0, upper: cap };
+}
+
+/**
+ * Pulls a range onto the nearest steps, and guarantees it selects something.
+ *
+ * The handles are snapped independently and then ordered, so a GM who drags the
+ * bottom past the top gets the band they clearly meant rather than an empty one.
+ * An empty range would hide the whole map with no hint of why.
+ */
+export function snapRange(
+  planes: readonly CuttingPlane[],
+  range: LevelRange,
+  cap: number,
+): LevelRange {
+  const steps = planeSteps(planes, cap);
+  const nearest = (value: number) => steps.reduce(
+    (best, step) => (Math.abs(step - value) < Math.abs(best - value) ? step : best),
+    steps[0] ?? 0,
+  );
+  let lower = nearest(range.lower);
+  let upper = nearest(range.upper);
+  if (lower === upper) {
+    // Both handles landed on the same step. Open it downward when there is room
+    // below and upward otherwise, so there is always a level in view.
+    const at = steps.indexOf(lower);
+    if (at > 0) lower = steps[at - 1]!;
+    else upper = steps[1] ?? cap;
+  }
+  if (lower > upper) [lower, upper] = [upper, lower];
+  return { lower, upper };
+}
+
+/** Is this level inside the band? Half-open, so a plane belongs to what is above it. */
+export function inRange(range: LevelRange, y: number): boolean {
+  return y >= range.lower && y < range.upper;
+}
+
+export function sameRange(a: LevelRange, b: LevelRange): boolean {
+  return a.lower === b.lower && a.upper === b.upper;
+}
+
+/** Whether a range selects the whole body, for a UI that wants to say so. */
+export function isFullRange(range: LevelRange, cap: number): boolean {
+  return range.lower <= 0 && range.upper >= cap;
+}
+
+export interface PlaneJSON {
+  id: string;
+  name: string;
+  y: number;
+}
+
+export function planesToJSON(planes: readonly CuttingPlane[]): PlaneJSON[] {
+  return ordered(planes).map((plane) => ({ id: plane.id as string, name: plane.name, y: plane.y }));
+}
+
+export function planesFromJSON(json: readonly PlaneJSON[] | undefined | null): readonly CuttingPlane[] {
+  if (!json) return [];
+  return ordered(json.map((plane) => ({
+    id: plane.id as PlaneId,
+    name: plane.name,
+    y: plane.y,
+  })));
+}

@@ -3,7 +3,8 @@
 
 import { z } from 'zod';
 import type {
-  Campaign, Chunk, Column, World, PartyMember, TerrainId, Place, PlaceNote, MarkerId, Save, Placement,
+  Campaign, Chunk, Column, World, PartyMember, TerrainId, Place, PlaceNote, MarkerId, Save,
+  Placement, Inside,
 } from '@tt/domain';
 import {
   CHUNK_SIZE, DEFAULT_METRES_PER_LEVEL, DEFAULT_TERRAIN, DEFAULT_MARKERS,
@@ -69,9 +70,21 @@ export const PlaceNoteWireSchema = z.object({
 });
 
 export const MapWireSchema = z.object({
+  /** Absent in a map written before it could grow toward lower cells (R-150). */
+  origin: z.object({ x: z.number().int(), z: z.number().int() }).optional(),
   size: z.object({ x: z.number().int().positive(), z: z.number().int().positive() }),
   /** `"x,y,z": materialId`. Sparse — an absent key is air. */
   blocks: z.record(z.string(), z.string()).default({}),
+  /**
+   * The GM's named cuts (R-146). Sent to the table as well as the console: a
+   * level called "cellar" is not itself a secret, what is in it is, and the
+   * table needs the names to label the band it is being shown.
+   */
+  planes: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    y: z.number().int(),
+  })).default([]),
 });
 export type MapWire = z.infer<typeof MapWireSchema>;
 
@@ -130,6 +143,16 @@ export const SaveWireSchema = z.object({
   discovery: DiscoveryWireSchema,
   // Absent in a schema-version-1 save, which decodes with the party unplaced.
   placement: PlacementWireSchema.default({ together: true, at: null, members: {} }),
+  /**
+   * Absent in any save written before the party could go into a map, which
+   * decodes as the party being out on the world — what that save meant. No
+   * schema bump for the same reason as D-187: the absence says it itself.
+   */
+  inside: z.object({
+    placeId: z.string(),
+    poiId: z.string(),
+    range: z.object({ lower: z.number().int(), upper: z.number().int() }),
+  }).nullable().default(null),
 });
 export type SaveWire = z.infer<typeof SaveWireSchema>;
 
@@ -247,6 +270,13 @@ export function encodeSave(save: Save): SaveWire {
     savedAt: save.savedAt,
     discovery: discoveryToJSON(save.discovery),
     placement: placementToJSON(save.placement),
+    inside: save.inside
+      ? {
+        placeId: save.inside.placeId as string,
+        poiId: save.inside.poiId as string,
+        range: { lower: save.inside.range.lower, upper: save.inside.range.upper },
+      }
+      : null,
   };
 }
 
@@ -260,6 +290,13 @@ export function decodeSave(wire: SaveWire): Save {
     savedAt: wire.savedAt,
     discovery: discoveryFromJSON(wire.discovery),
     placement: placementFromJSON(wire.placement),
+    inside: wire.inside
+      ? {
+        placeId: wire.inside.placeId as Inside['placeId'],
+        poiId: wire.inside.poiId as Inside['poiId'],
+        range: wire.inside.range,
+      }
+      : null,
   };
 }
 

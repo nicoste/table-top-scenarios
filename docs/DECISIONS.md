@@ -3294,3 +3294,64 @@ The lesson for me is smaller and duller than the bug: in the previous round I
 checked this map's `origin`, `size` and block *count* after growing and undoing,
 and all three looked right. I never checked whether the blocks were **inside**
 the footprint. A count is not an invariant.
+
+### D-200 — The party goes in, and the table finally sees a map · `agreed`
+Round B, and the answer to D-184 after four rounds of deferral. The GM's brief:
+*"when a GM open a map, the party goes in, they will see what the tokens can
+see, so the GM will need to add the tokens in the future when the scene is ready,
+once they are in, we should keep them (like the world map, that has a different
+behavior for the initial state when there is no party in the map)."*
+
+**What the range is for, and what it is not.** Two layers, and this round builds
+the outer one:
+
+- The **range** decides which *levels* the table is shown at all. GM-authored
+  cuts, GM-chosen band. Built now.
+- **Vision** (R-40 to R-45) will decide which cells *within* those levels the
+  party has actually seen. It narrows and never widens: a token will never see a
+  level the GM has cut away.
+
+So "they will see what the tokens can see" is the destination, and until tokens
+exist the honest intermediate is that the table is shown the band — which is
+precisely what R-146 always said the range was for. This round is not a
+placeholder for vision; it is the layer vision sits on.
+
+**Open is not inside.** The GM's sentence describes running a scene, and taken
+literally it would have broken prepping one: the enter guard requires the place
+to be Revealed, so if opening *were* entering, a GM could not open a tavern the
+party has not found — which is how every map in this campaign was built. So they
+are separate, and opening takes the party in *when it can*. The common case is
+the GM's sentence; the prep case still works; and the map panel says which state
+it is in rather than leaving the GM to infer it. Closing the map does **not**
+bring the party out — the console going back to the world is the GM looking
+around, not the party leaving the room.
+
+**One predicate, two users.** `isPoiOnTable` is what the boundary uses to decide
+whether the table receives a point of interest, and what the enter guard uses to
+decide whether the party may be taken into it. Written once, so "you cannot walk
+them into a room they cannot see" cannot drift from "the table gets this".
+
+**The table is told nothing; it is *shown*.** It finds the open map by looking
+for the one point of interest that came with a body. There is no "you are in
+tavern X" field to misread, and no room it could draw that it was not given.
+
+**The initial-state difference the GM asked for** is where tokens will go. On the
+world map the first gesture *places* the party because there is no pawn to pick
+up (D-167); inside a map, the analogous thing is a token that is not there yet.
+For now entering is the whole of it, and `inside` is the shape a token round
+slots into.
+
+Three things the compiler and the tests caught on the way, each worth a line:
+
+- **A save change with no write.** My three new branches mutated the save and
+  never emitted `saveSave`, so entering a map would have looked right and been
+  gone on reload. `commitSave` was a closure inside the discovery handler; it is
+  now module-level, because the second caller for it nearly shipped without one.
+- **`pruneInside` sat unused** until the compiler said so — the prune I had
+  written for exactly the case of deleting a point of interest under the party's
+  feet was never wired to the open boundary.
+- **One written shape, one tolerated shape.** `MapJSON` is what is always
+  written; `MapJSONIn` is what may arrive, with `origin` and `planes` optional.
+  Neither absence needed a schema bump for D-187's reason — an older file says
+  what it means — but a single type carrying both directions was what made the
+  compiler shout about `exactOptionalPropertyTypes`, and it was right to.

@@ -4,12 +4,15 @@
 // way the campaign already does, so a GM cannot lose discovery by forgetting.
 // There is no second kind and no save/load verb anywhere in the UI (D-147).
 
-import type { CampaignId, SaveId, PlaceId, MemberId } from '../ids/index.js';
+import type { CampaignId, SaveId, PlaceId, PoiId, MemberId } from '../ids/index.js';
 import type { Discovery } from '../discovery/index.js';
 import { emptyDiscovery } from '../discovery/index.js';
 import type { Placement } from '../placement/index.js';
 import { emptyPlacement, prunePlacement } from '../placement/index.js';
 import type { Campaign } from '../campaign/index.js';
+import type { LevelRange } from '../planes/index.js';
+import { fullRange, sameRange } from '../planes/index.js';
+import { MAP_MAX_HEIGHT } from '../map/index.js';
 
 // 3 renames discovery's `pois` to `places`, following the campaign (D-176).
 // Like the campaign, there is no migration: the same field name meant a
@@ -28,8 +31,34 @@ export interface Save {
   /** ISO-8601. Supplied by the host: `domain` and `sim` have no clock (R-97). */
   readonly savedAt: string;
   readonly discovery: Discovery;
-  /** Where the party is standing (D-155). */
+  /** Where the party is standing on the world map (D-155). */
   readonly placement: Placement;
+  /**
+   * The map the party has gone into, or `null` for out on the world (R-158).
+   *
+   * Play state, and the reason the open map stopped being the console's private
+   * business (D-185 said this round would take it): the table has to follow the
+   * GM into a tavern, and two screens cannot agree on which one from view state.
+   *
+   * It is **remembered**, so a reload puts the party back in the room they were
+   * in rather than out on the grass. The GM's words: *"once they are in, we
+   * should keep them."*
+   */
+  readonly inside: Inside | null;
+}
+
+/**
+ * The party, in one point of interest's map, looking at one band of it.
+ *
+ * The range rides along with the location rather than being remembered per
+ * point of interest, because a range is only meaningful while somebody is
+ * standing in the map it cuts. Leaving and coming back starts from the whole
+ * body, which is also the honest default for a scene the GM is setting up again.
+ */
+export interface Inside {
+  readonly placeId: PlaceId;
+  readonly poiId: PoiId;
+  readonly range: LevelRange;
 }
 
 /**
@@ -53,6 +82,7 @@ export function createLiveSave(campaign: Campaign, savedAt: string): Save {
     savedAt,
     discovery: emptyDiscovery(),
     placement: emptyPlacement(),
+    inside: null,
   };
 }
 
@@ -93,6 +123,38 @@ export function withDiscovery(save: Save, discovery: Discovery): Save {
 
 export function withPlacement(save: Save, placement: Placement): Save {
   return save.placement === placement ? save : { ...save, placement };
+}
+
+/** Takes the party into a map, at the whole of it (R-158). */
+export function enteringMap(save: Save, placeId: PlaceId, poiId: PoiId): Save {
+  if (save.inside && save.inside.placeId === placeId && save.inside.poiId === poiId) return save;
+  return { ...save, inside: { placeId, poiId, range: fullRange(MAP_MAX_HEIGHT) } };
+}
+
+/** Brings them back out to the world map. */
+export function leavingMap(save: Save): Save {
+  return save.inside === null ? save : { ...save, inside: null };
+}
+
+/** Moves the band the table is shown. No-op when the party is out (R-158). */
+export function withRange(save: Save, range: LevelRange): Save {
+  if (!save.inside || sameRange(save.inside.range, range)) return save;
+  return { ...save, inside: { ...save.inside, range } };
+}
+
+/**
+ * Drops `inside` when the map it names is gone.
+ *
+ * A point of interest the GM deleted while the party stood in it would
+ * otherwise leave the table pointed at nothing, with no way back to the world
+ * short of the GM noticing. Same tolerance, same reason, as `pruneDiscovery`.
+ */
+export function pruneInside(
+  save: Save,
+  live: (placeId: PlaceId, poiId: PoiId) => boolean,
+): Save {
+  if (!save.inside) return save;
+  return live(save.inside.placeId, save.inside.poiId) ? save : { ...save, inside: null };
 }
 
 /**

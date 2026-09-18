@@ -103,6 +103,16 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     ? openPlace.pois.find((poi) => poi.id === openMap.poiId) ?? null
     : null;
   const openMapWire = openPoi?.map ?? null;
+  /**
+   * Where the party is, and the band the table is being shown (R-158).
+   *
+   * Play state, unlike `openMap` — which stays the console's own business, so a
+   * GM can build a tavern the party has not found. The two coincide most of the
+   * time because opening a map takes the party in when it can (D-200).
+   */
+  const inside = view?.save?.inside ?? null;
+  const partyHere = !!inside && !!openMap
+    && inside.placeId === openMap.placeId && inside.poiId === openMap.poiId;
 
   const cellKey = (c: { cx: number; cz: number; x: number; z: number }) => `${c.cx}:${c.cz}:${c.x}:${c.z}`;
   const memberName = (id: string) => campaign?.party.find((m) => m.id === id)?.name ?? null;
@@ -175,6 +185,27 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     [openMapWire],
   );
 
+  /**
+   * Opening a map takes the party in — *"when a GM open a map, the party goes
+   * in"* — but only when they could see it anyway (R-158).
+   *
+   * The check is here rather than left to the host's rejection because the
+   * console knows the answer: dispatching an intent it can see will be refused
+   * would put a toast on screen every time the GM opened a map they are still
+   * building. The host still guards it; this only avoids asking.
+   */
+  useEffect(() => {
+    if (!openMap || !openPlace || !openPoi) return;
+    if (inside?.placeId === openMap.placeId && inside?.poiId === openMap.poiId) return;
+    const onTable = revealedPois.has(openPlace.id)
+      && knownChunks.has(`${openPlace.cell.cx},${openPlace.cell.cz}`)
+      && openPoi.visibleToParty;
+    if (onTable) dispatch({ kind: 'enterMap', placeId: openMap.placeId, poiId: openMap.poiId });
+    // `inside` is deliberately *not* a dependency: this fires when the GM opens
+    // a map, and must not fire again when the party's own state changes under
+    // it — otherwise bringing them out would immediately put them back.
+  }, [openMap, openPlace?.id, openPoi?.id, openPoi?.visibleToParty]);
+
   // The compass follows the camera, on both surfaces (R-152, R-155).
   useEffect(() => {
     stage?.watchCamera(setBearing);
@@ -190,8 +221,13 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     // every block placed, because the wire hands back a new object each time
     // (D-185). The key is what tells the stage a *surface* changed, so the
     // camera frames a map once on the way in and never again (R-152).
-    stage.setMap(body, DEFAULT_MATERIALS, openMap ? `${openMap.placeId}/${openMap.poiId}` : null);
-  }, [openBody, openMap, stage]);
+    stage.setMap(
+      body,
+      DEFAULT_MATERIALS,
+      openMap ? `${openMap.placeId}/${openMap.poiId}` : null,
+      partyHere ? inside!.range : null,
+    );
+  }, [openBody, openMap, stage, partyHere, inside?.range.lower, inside?.range.upper]);
 
   // A point of interest whose map the GM deleted, or which they removed
   // outright, must not leave the console stranded on a surface that is gone.
@@ -629,6 +665,13 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
             materials={DEFAULT_MATERIALS}
             materialId={materialId}
             hoverLabel={hoverLabel}
+            partyHere={partyHere}
+            partyCanSee={
+              revealedPois.has(openPlace.id)
+              && knownChunks.has(`${openPlace.cell.cx},${openPlace.cell.cz}`)
+              && openPoi.visibleToParty
+            }
+            range={partyHere ? inside!.range : null}
             onTool={setMapTool}
             onMaterial={setMaterialId}
             onLeave={() => setOpenMap(null)}

@@ -16,8 +16,8 @@ import {
   Object3D, Vector3,
 } from 'three';
 import type { Intersection } from 'three';
-import type { BlockCoord, EncounterMap, Material } from '@tt/domain';
-import { parseBlockKey } from '@tt/domain';
+import type { BlockCoord, EncounterMap, LevelRange, Material } from '@tt/domain';
+import { parseBlockKey, inRange } from '@tt/domain';
 
 /** Where a click on a block face means a new block should go (R-147). */
 export interface FacePick {
@@ -44,7 +44,24 @@ export interface BlockBody {
 
 const CUBE = 1;
 
-export function buildBlockBody(map: EncounterMap, materials: readonly Material[]): BlockBody {
+/**
+ * How far an out-of-range level is faded on the GM console (R-146, D-182).
+ *
+ * Dimmed, not hidden. The console draws the **whole** body so the GM can peek
+ * into the cellar while the party is upstairs, and the fade is what tells them
+ * at a glance which part the table is being shown — R-76's preview obligation
+ * met by one view rather than a second mode.
+ *
+ * Not so dark that geometry disappears: the GM still has to be able to build in
+ * there, and clicking a face they cannot see is how a wall ends up one level off.
+ */
+const CUT_AWAY = 0.28;
+
+export function buildBlockBody(
+  map: EncounterMap,
+  materials: readonly Material[],
+  range: LevelRange | null = null,
+): BlockBody {
   const group = new Group();
   const geometry = new BoxGeometry(CUBE, CUBE, CUBE);
   const material = new MeshLambertMaterial();
@@ -55,7 +72,11 @@ export function buildBlockBody(map: EncounterMap, materials: readonly Material[]
   for (const [key, materialId] of map.blocks) {
     const at = parseBlockKey(key);
     if (!at) continue;
-    entries.push({ at, colour: colours.get(materialId as string) ?? fallback });
+    const colour = (colours.get(materialId as string) ?? fallback).clone();
+    // A null range means "no band is set", not "nothing is in range" — the world
+    // view and the table both hand over exactly what they want drawn.
+    if (range && !inRange(range, at.y)) colour.multiplyScalar(CUT_AWAY);
+    entries.push({ at, colour });
   }
 
   const mesh = new InstancedMesh(geometry, material, Math.max(1, entries.length));

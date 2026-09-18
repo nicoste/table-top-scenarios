@@ -4,12 +4,13 @@
 // height, places and travel have no meaning inside a tavern, and leaving them on
 // screen would offer four tools that do nothing.
 
+import { useState } from 'react';
 import type { Intent, MapWire } from '@tt/protocol';
 import type { MapTool } from '@tt/client-core';
 import { CAMERA_HINT } from '@tt/client-core';
-import { MAP_MAX_HEIGHT } from '@tt/domain';
-import type { Material } from '@tt/domain';
-import { Tooltip } from '@tt/ui';
+import { MAP_MAX_HEIGHT, planeSteps, isFullRange } from '@tt/domain';
+import type { LevelRange, Material } from '@tt/domain';
+import { ConfirmDelete, Tooltip } from '@tt/ui';
 
 /**
  * The four directions a map can grow, in the order they are laid out: the top
@@ -34,6 +35,12 @@ interface Props {
   readonly materials: readonly Material[];
   readonly materialId: string;
   readonly hoverLabel: string | null;
+  /** Is the party standing in *this* map (R-158)? */
+  readonly partyHere: boolean;
+  /** Can they see it at all — Revealed, chunk Known, point of interest shown? */
+  readonly partyCanSee: boolean;
+  /** The band the table is being shown, or null while the party is elsewhere. */
+  readonly range: LevelRange | null;
   onTool: (tool: MapTool) => void;
   onMaterial: (id: string) => void;
   onLeave: () => void;
@@ -42,11 +49,35 @@ interface Props {
   readonly poiId: string;
 }
 
+/** A step's label: the plane's name, or what the two ends are. */
+function stepName(
+  y: number,
+  planes: MapWire['planes'],
+  cap: number,
+): string {
+  if (y <= 0) return 'Floor';
+  if (y >= cap) return 'Sky';
+  return planes?.find((plane) => plane.y === y)?.name ?? `Level ${y}`;
+}
+
 export function MapPanel({
   placeName, poiName, map, tool, materials, materialId, hoverLabel,
+  partyHere, partyCanSee, range,
   onTool, onMaterial, onLeave, dispatch, placeId, poiId,
 }: Props) {
   const blocks = Object.keys(map.blocks).length;
+  const [planeName, setPlaneName] = useState('');
+  const [planeY, setPlaneY] = useState('');
+  const planes = map.planes ?? [];
+  const steps = planeSteps(planes, MAP_MAX_HEIGHT);
+
+  const addPlane = () => {
+    const y = Number.parseInt(planeY, 10);
+    if (!Number.isInteger(y)) return;
+    dispatch({ kind: 'addPlane', placeId, poiId, name: planeName.trim(), y });
+    setPlaneName('');
+    setPlaneY('');
+  };
 
   return (
     <>
@@ -58,6 +89,55 @@ export function MapPanel({
             <button className="wide" onClick={onLeave}>← Back to the world</button>
           </Tooltip>
         </div>
+      </div>
+
+      <div className="card">
+        <h2>The party</h2>
+        {partyHere ? (
+          <>
+            <p className="hint" style={{ margin: '0 0 8px' }}>
+              They are in here. The table is showing them{' '}
+              {range && !isFullRange(range, MAP_MAX_HEIGHT)
+                ? `${stepName(range.lower, planes, MAP_MAX_HEIGHT)} to ${stepName(range.upper, planes, MAP_MAX_HEIGHT)}`
+                : 'the whole place'}.
+            </p>
+            <div className="btn-grid campaign-actions">
+              <Tooltip label="Send the party back out to the world map" placement="bottom" stretch>
+                <button className="wide" onClick={() => dispatch({ kind: 'leaveMap' })}>
+                  Bring them out
+                </button>
+              </Tooltip>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Opening a map takes the party in when it can (R-158). When it
+                cannot, the console is simply looking — which is what lets a GM
+                build a tavern the party has not found yet. */}
+            <p className="hint" style={{ margin: '0 0 8px' }}>
+              {partyCanSee
+                ? 'They are elsewhere. The table is not being shown this map.'
+                : 'They cannot see this place yet, so they cannot be brought in. Reveal it first.'}
+            </p>
+            <div className="btn-grid campaign-actions">
+              <Tooltip
+                label={partyCanSee
+                  ? 'Put the party in this map — the table follows'
+                  : 'Reveal the place and show the point of interest first'}
+                placement="bottom"
+                stretch
+              >
+                <button
+                  className="wide"
+                  disabled={!partyCanSee}
+                  onClick={() => dispatch({ kind: 'enterMap', placeId, poiId })}
+                >
+                  Take the party in
+                </button>
+              </Tooltip>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="card">
@@ -123,6 +203,124 @@ export function MapPanel({
           </ul>
         </div>
       )}
+
+      {/*
+        Levels (R-146). The plane list and the band are one card because they are
+        one idea read two ways: the names the GM gave the cuts, and which of the
+        bands between them the table is being shown.
+      */}
+      <div className="card">
+        <h2>Levels</h2>
+        {planes.length === 0 && (
+          <p className="hint" style={{ margin: '0 0 8px' }}>
+            No cuts yet — the whole place is one level.
+          </p>
+        )}
+        {planes.length > 0 && (
+          <ul className="notes">
+            {/* Top-down, because that is how a building is read. */}
+            {[...planes].sort((a, b) => b.y - a.y).map((plane) => (
+              <li key={plane.id}>
+                <span className="lbl" style={{ minWidth: 22, textAlign: 'right' }}>{plane.y}</span>
+                <input
+                  value={plane.name}
+                  onChange={(e) => dispatch({
+                    kind: 'renamePlane', placeId, poiId, planeId: plane.id, name: e.target.value,
+                  })}
+                />
+                <div className="note-actions">
+                  <ConfirmDelete
+                    label={`Remove the cut at ${plane.y}`}
+                    onConfirm={() => dispatch({
+                      kind: 'removePlane', placeId, poiId, planeId: plane.id,
+                    })}
+                  >
+                    <Tooltip label="Raise this cut by one" placement="left">
+                      <button
+                        className="quiet"
+                        onClick={() => dispatch({
+                          kind: 'movePlane', placeId, poiId, planeId: plane.id, y: plane.y + 1,
+                        })}
+                      >↑</button>
+                    </Tooltip>
+                    <Tooltip label="Lower this cut by one" placement="left">
+                      <button
+                        className="quiet"
+                        onClick={() => dispatch({
+                          kind: 'movePlane', placeId, poiId, planeId: plane.id, y: plane.y - 1,
+                        })}
+                      >↓</button>
+                    </Tooltip>
+                  </ConfirmDelete>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div className="row">
+          <input
+            placeholder="Cut named…"
+            value={planeName}
+            onChange={(e) => setPlaneName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') addPlane(); }}
+          />
+          <input
+            className="tiny"
+            placeholder="Y"
+            inputMode="numeric"
+            value={planeY}
+            onChange={(e) => setPlaneY(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') addPlane(); }}
+          />
+          <button onClick={addPlane} disabled={!Number.isInteger(Number.parseInt(planeY, 10))}>
+            Cut
+          </button>
+        </div>
+
+        {/*
+          The band. Two selects rather than the double slider the GM sketched —
+          the steps are few and named, and a dropdown of names cannot be dragged
+          past itself. The slider is a polish, not the feature.
+        */}
+        <label className="row" style={{ marginTop: 8 }}>
+          <span className="lbl">from</span>
+          <select
+            value={range?.lower ?? 0}
+            disabled={!partyHere}
+            onChange={(e) => dispatch({
+              kind: 'setRange',
+              lower: Number.parseInt(e.target.value, 10),
+              upper: range?.upper ?? MAP_MAX_HEIGHT,
+            })}
+          >
+            {steps.map((y) => (
+              <option key={y} value={y}>{stepName(y, planes, MAP_MAX_HEIGHT)}</option>
+            ))}
+          </select>
+        </label>
+        <label className="row" style={{ marginTop: 4 }}>
+          <span className="lbl">to</span>
+          <select
+            value={range?.upper ?? MAP_MAX_HEIGHT}
+            disabled={!partyHere}
+            onChange={(e) => dispatch({
+              kind: 'setRange',
+              lower: range?.lower ?? 0,
+              upper: Number.parseInt(e.target.value, 10),
+            })}
+          >
+            {steps.map((y) => (
+              <option key={y} value={y}>{stepName(y, planes, MAP_MAX_HEIGHT)}</option>
+            ))}
+          </select>
+        </label>
+        <p className="hint">
+          {partyHere
+            ? 'Faded levels are the ones the table is not being shown.'
+            : 'Take the party in to cut what they are shown.'}
+        </p>
+      </div>
 
       <div className="card">
         <h2>Map</h2>

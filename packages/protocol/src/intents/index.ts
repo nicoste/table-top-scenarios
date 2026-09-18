@@ -74,6 +74,13 @@ export const IntentSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('setBlock'), placeId: z.string().min(1), poiId: z.string().min(1), x: z.number().int(), y: z.number().int(), z: z.number().int(), materialId: z.string().min(1), stroke }),
   z.object({ kind: z.literal('clearBlock'), placeId: z.string().min(1), poiId: z.string().min(1), x: z.number().int(), y: z.number().int(), z: z.number().int(), stroke }),
   z.object({ kind: z.literal('fillMaterial'), placeId: z.string().min(1), poiId: z.string().min(1), x: z.number().int(), y: z.number().int(), z: z.number().int(), materialId: z.string().min(1) }),
+  z.object({ kind: z.literal('addPlane'), placeId: z.string().min(1), poiId: z.string().min(1), name: z.string().max(40), y: z.number().int() }),
+  z.object({ kind: z.literal('renamePlane'), placeId: z.string().min(1), poiId: z.string().min(1), planeId: z.string().min(1), name: z.string().max(40) }),
+  z.object({ kind: z.literal('movePlane'), placeId: z.string().min(1), poiId: z.string().min(1), planeId: z.string().min(1), y: z.number().int() }),
+  z.object({ kind: z.literal('removePlane'), placeId: z.string().min(1), poiId: z.string().min(1), planeId: z.string().min(1) }),
+  z.object({ kind: z.literal('enterMap'), placeId: z.string().min(1), poiId: z.string().min(1) }),
+  z.object({ kind: z.literal('leaveMap') }),
+  z.object({ kind: z.literal('setRange'), lower: z.number().int(), upper: z.number().int() }),
   z.object({ kind: z.literal('growMap'), placeId: z.string().min(1), poiId: z.string().min(1), towards: z.enum(['northeast', 'southeast', 'southwest', 'northwest']) }),
 
   // Undo and redo over authored content (D-169). GM only: the campaign is the

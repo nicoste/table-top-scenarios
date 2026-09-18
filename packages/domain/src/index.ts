@@ -6,7 +6,7 @@ export {
   isRegistryId, registryId, freshId,
 } from './ids/index.js';
 export type {
-  CampaignId, SaveId, MemberId, TerrainId, PlaceId, NoteId, PoiId, MarkerId, MaterialId,
+  CampaignId, SaveId, MemberId, TerrainId, PlaceId, NoteId, PoiId, PlaneId, MarkerId, MaterialId,
 } from './ids/index.js';
 
 export type { Terrain, Difficulty } from './terrain/index.js';
@@ -42,11 +42,19 @@ export type { Material } from './materials/index.js';
 export {
   DEFAULT_MATERIALS, DEFAULT_FLOOR, materialById, isKnownMaterial, requireMaterial,
 } from './materials/index.js';
-export type { EncounterMap, BlockCoord, Expand, MapJSON } from './map/index.js';
+export type { EncounterMap, BlockCoord, Expand, MapJSON, MapJSONIn } from './map/index.js';
+
+export {
+  MAX_PLANE_NAME, validPlaneY, planeAt, planeById,
+  addPlane, renamePlane, movePlane, removePlane,
+  planeSteps, fullRange, snapRange, inRange, sameRange, isFullRange,
+  planesToJSON, planesFromJSON,
+} from './planes/index.js';
+export type { CuttingPlane, LevelRange, PlaneJSON } from './planes/index.js';
 export {
   MAP_PATCH, MAP_MAX_HEIGHT, blockKey, parseBlockKey, inMap, blockAt,
   createMap, setBlock, clearBlock, growMap, topOfMap, mapToJSON, mapFromJSON,
-  fillRegion, fillMaterial, mapCentre, enclosing,
+  fillRegion, fillMaterial, mapCentre, enclosing, sliceOf,
 } from './map/index.js';
 export {
   MAX_PLACE_NAME, MAX_NOTE_TEXT, sameCell, placeGlobal, placeCellFromGlobal, isValidPlaceCell,
@@ -57,19 +65,21 @@ export {
   addPoi, renamePoi, setPoiVisible, removePoi, movePoi,
   partyVisiblePois,
   setMapBlock, clearMapBlock, fillPoiMaterial, growPoiMap, poiById, withPoiMaps,
+  addPoiPlane, renamePoiPlane, movePoiPlane, removePoiPlane,
 } from './place/index.js';
 
 export type { Discovery } from './discovery/index.js';
 export {
   emptyDiscovery, isChunkKnown, isPlaceRevealed, setChunkKnown, setPlaceRevealed,
-  setPlacesRevealed, isPlaceOnTable, discoveryToJSON, discoveryFromJSON,
+  setPlacesRevealed, isPlaceOnTable, isPoiOnTable, discoveryToJSON, discoveryFromJSON,
 } from './discovery/index.js';
 
-export type { Save } from './save/index.js';
+export type { Save, Inside } from './save/index.js';
 export {
   SAVE_SCHEMA_VERSION, LIVE_LABEL,
   liveSaveId, createLiveSave, belongsTo, matchesCampaignVersion,
   touch, upgraded, withDiscovery, withPlacement, pruneDiscovery, pruneMembers,
+  enteringMap, leavingMap, withRange, pruneInside,
 } from './save/index.js';
 
 export type { Placement, PlacementJSON } from './placement/index.js';

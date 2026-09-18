@@ -140,6 +140,9 @@ button.quiet:hover { background: #3a2222; color: #ffc9c9; border-color: transpar
   font-variant-numeric: tabular-nums;
 }
 
+/* A number beside a name, for a cut's height (R-146). */
+.row input.tiny { width: 3.2em; flex: none; text-align: center; }
+
 .palette { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
 .palette button {
   width: 100%; display: flex; align-items: center; gap: 8px;

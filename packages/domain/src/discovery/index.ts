@@ -80,6 +80,23 @@ export function isPlaceOnTable(
     && isChunkKnown(discovery, { cx: place.cell.cx, cz: place.cell.cz });
 }
 
+/**
+ * Can the party see this point of interest at all (R-158)?
+ *
+ * Composed from the two rules that already exist rather than restating them:
+ * the place has to reach the table (Revealed *and* its chunk Known, D-132), and
+ * the point of interest has to be individually shown (R-85). Used by the guard
+ * on taking the party into a map, so "you cannot walk them into a room they
+ * cannot see" is the same condition as "the table receives it".
+ */
+export function isPoiOnTable(
+  discovery: Discovery,
+  place: { readonly id: PlaceId; readonly cell: { readonly cx: number; readonly cz: number } },
+  poi: { readonly visibleToParty: boolean },
+): boolean {
+  return isPlaceOnTable(discovery, place) && poi.visibleToParty;
+}
+
 export function discoveryToJSON(discovery: Discovery): { chunks: string[]; places: string[] } {
   return { chunks: [...discovery.chunks].sort(), places: [...discovery.places].sort() };
 }

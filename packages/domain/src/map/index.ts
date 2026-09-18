@@ -11,6 +11,8 @@
 
 import type { MaterialId } from '../ids/index.js';
 import { DEFAULT_FLOOR } from '../materials/index.js';
+import type { CuttingPlane, LevelRange, PlaneJSON } from '../planes/index.js';
+import { inRange, planesToJSON, planesFromJSON } from '../planes/index.js';
 
 /** Cells along one side of a freshly created map, and the step `+` grows by. */
 export const MAP_PATCH = 16;
@@ -46,6 +48,14 @@ export interface EncounterMap {
   readonly size: { readonly x: number; readonly z: number };
   /** Filled cells only, keyed by `blockKey`. Absent means air. */
   readonly blocks: ReadonlyMap<string, MaterialId>;
+  /**
+   * The GM's named horizontal cuts (R-146). Authored, ordered by height.
+   *
+   * On the map rather than in the save because they are part of the building:
+   * a tavern has a cellar floor whether or not anyone is playing in it. Where
+   * the party's attention sits *between* them is play state.
+   */
+  readonly planes: readonly CuttingPlane[];
 }
 
 /**
@@ -111,7 +121,7 @@ export function createMap(material: MaterialId = DEFAULT_FLOOR): EncounterMap {
       blocks.set(blockKey({ x, y: 0, z }), material);
     }
   }
-  return { origin: { x: 0, z: 0 }, size: { x: MAP_PATCH, z: MAP_PATCH }, blocks };
+  return { origin: { x: 0, z: 0 }, size: { x: MAP_PATCH, z: MAP_PATCH }, blocks, planes: [] };
 }
 
 /** Identity-preserving: placing what is already there returns the same map (R-12). */
@@ -169,7 +179,9 @@ export function growMap(map: EncounterMap, towards: Expand): EncounterMap {
       blocks.set(blockKey({ x, y: 0, z }), floor);
     }
   }
-  return { origin, size, blocks };
+  // Spread, so the planes the GM named come along. A cut at "cellar ceiling" is
+  // still at that height after the footprint grows sideways.
+  return { ...map, origin, size, blocks };
 }
 
 /** The middle of the footprint, for framing a camera on it (R-152). */
@@ -251,6 +263,27 @@ export function fillMaterial(
   return { ...map, blocks };
 }
 
+/**
+ * The map as the table may see it: only the blocks inside the range (R-146).
+ *
+ * A *filter*, not a flag. R-85's standard is that a secret is never sent, so a
+ * cellar the GM has cut away is absent from the payload rather than present and
+ * undrawn — the table cannot leak what it was never given.
+ *
+ * The footprint and the planes travel whole. The footprint because the table
+ * still has to know how big the floor is, and the planes because their names
+ * are not secrets — the party can be told there is a level called "cellar"
+ * without being shown what is in it.
+ */
+export function sliceOf(map: EncounterMap, range: LevelRange): EncounterMap {
+  const blocks = new Map<string, MaterialId>();
+  for (const [key, material] of map.blocks) {
+    const at = parseBlockKey(key);
+    if (at && inRange(range, at.y)) blocks.set(key, material);
+  }
+  return { ...map, blocks };
+}
+
 /** The highest filled Y, or -1 for a map with nothing in it. */
 export function topOfMap(map: EncounterMap): number {
   let top = -1;
@@ -261,13 +294,26 @@ export function topOfMap(map: EncounterMap): number {
   return top;
 }
 
+/** What is always written (R-137: stamp the current shape on the way out). */
 export interface MapJSON {
-  /** Absent in files written before a map could grow toward lower cells. */
-  origin?: { x: number; z: number };
+  origin: { x: number; z: number };
   size: { x: number; z: number };
   /** `"x,y,z": materialId`. Sorted on the way out so an autosave does not churn. */
   blocks: Record<string, string>;
+  planes: PlaneJSON[];
 }
+
+/**
+ * What may arrive on the way *in* — the tolerance, and only in this direction
+ * (R-137a).
+ *
+ * An older file has no origin, because a map could only grow away from it, and
+ * no planes, because nobody could cut one. Both absences say what they mean, so
+ * neither needed a schema bump (D-187's reasoning, twice over).
+ */
+export type MapJSONIn =
+  Omit<MapJSON, 'origin' | 'planes'>
+  & { origin?: { x: number; z: number } | undefined; planes?: PlaneJSON[] | undefined };
 
 export function mapToJSON(map: EncounterMap): MapJSON {
   const blocks: Record<string, string> = {};
@@ -278,6 +324,7 @@ export function mapToJSON(map: EncounterMap): MapJSON {
     origin: { x: map.origin.x, z: map.origin.z },
     size: { x: map.size.x, z: map.size.z },
     blocks,
+    planes: planesToJSON(map.planes),
   };
 }
 
@@ -338,7 +385,7 @@ export function enclosing(
   return { origin: { x: x.from, z: z.from }, size: { x: x.width, z: z.width } };
 }
 
-export function mapFromJSON(json: MapJSON | undefined | null): EncounterMap | null {
+export function mapFromJSON(json: MapJSONIn | undefined | null): EncounterMap | null {
   if (!json) return null;
   const blocks = new Map(Object.entries(json.blocks) as [string, MaterialId][]);
   // No schema bump for the origin (D-187's reasoning): a file without one can
@@ -349,5 +396,11 @@ export function mapFromJSON(json: MapJSON | undefined | null): EncounterMap | nu
     origin: { x: json.origin?.x ?? 0, z: json.origin?.z ?? 0 },
     size: { x: json.size.x, z: json.size.z },
   };
-  return { ...enclosing(declared.origin, declared.size, blocks), blocks };
+  return {
+    ...enclosing(declared.origin, declared.size, blocks),
+    blocks,
+    // No planes is the honest reading of a file that has none: a map nobody has
+    // divided has exactly one range, all of it (R-146).
+    planes: planesFromJSON(json.planes),
+  };
 }

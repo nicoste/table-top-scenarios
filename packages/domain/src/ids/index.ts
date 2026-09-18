@@ -11,6 +11,7 @@ export type TerrainId = Brand<string, 'TerrainId'>;
 export type PlaceId = Brand<string, 'PlaceId'>;
 export type NoteId = Brand<string, 'NoteId'>;
 export type PoiId = Brand<string, 'PoiId'>;
+export type PlaneId = Brand<string, 'PlaneId'>;
 export type MarkerId = Brand<string, 'MarkerId'>;
 export type MaterialId = Brand<string, 'MaterialId'>;
 

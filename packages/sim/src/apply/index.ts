@@ -3,7 +3,9 @@
 // argument and everything leaves as a return value.
 
 import type { Campaign, ChunkCoord, WorldCell } from '@tt/domain';
-import type { PartyMember, PlaceId, NoteId, PoiId, MemberId, MaterialId, Save, Place } from '@tt/domain';
+import type {
+  PartyMember, PlaceId, NoteId, PoiId, PlaneId, MemberId, MaterialId, Save, Place,
+} from '@tt/domain';
 import {
   createCampaign, duplicateCampaign, uniqueCampaignName, createMember, editMember, removeMember,
   addChunk, chunkAt, terrainById, isCreatableSlot, DEFAULT_TERRAIN,
@@ -12,9 +14,12 @@ import {
   addNote, editNote, setNoteVisible, removeNote, moveNote, isKnownMarker,
   addPoi, renamePoi, setPoiVisible, removePoi, movePoi,
   setMapBlock, clearMapBlock, fillPoiMaterial, growPoiMap, inMap, isKnownMaterial,
+  MAP_MAX_HEIGHT,
+  addPoiPlane, renamePoiPlane, movePoiPlane, removePoiPlane,
+  validPlaneY, planeAt, planeById, snapRange, isPoiOnTable,
   poiById as poiOfPlace,
   createLiveSave, withDiscovery, withPlacement, touch, upgraded, upgradedCampaign, belongsTo,
-  pruneDiscovery, pruneMembers,
+  pruneDiscovery, pruneMembers, enteringMap, leavingMap, withRange, pruneInside,
   pawns, withGroupAt, withMemberAt, gathered, scattered,
   isValidWorldCell, chunkOf, isChunkKnown,
   setChunkKnown, setPlaceRevealed, setPlacesRevealed, isAuthored, placesInChunk,
@@ -39,6 +44,20 @@ export interface Applied {
 
 const reject = (state: HostState, reason: string): Applied => ({ state, effects: [], rejected: reason });
 const ok = (state: HostState, effects: readonly Effect[] = []): Applied => ({ state, effects });
+
+/**
+ * Adopts an edited save: stamps it and emits the write.
+ *
+ * Module-level rather than a closure inside one handler, because a branch that
+ * changes the save and forgets the effect looks like it worked and loses the
+ * change on the next reload. It was a closure, and the second caller for it
+ * nearly shipped without one.
+ */
+function commitSave(state: HostState, previous: Save, next: Save, now: string): Applied {
+  if (next === previous) return ok(state);
+  const stamped = touch(next, now);
+  return ok({ ...state, activeSave: stamped }, [{ kind: 'saveSave', save: stamped }]);
+}
 
 /**
  * Who may send what (R-136): **the party is the players', the world is the GM's**.
@@ -100,7 +119,13 @@ export function openedWith(
   const campaign = upgradedCampaign(stored);
   const usable = storedSave && belongsTo(storedSave, campaign) ? storedSave : null;
   const save = usable
-    ? upgraded(pruneMembers(pruneDiscovery(usable, placeIds), new Set(campaign.party.map((m) => m.id))))
+    ? upgraded(pruneInside(
+      pruneMembers(pruneDiscovery(usable, placeIds), new Set(campaign.party.map((m) => m.id))),
+      (placeId, poiId) => {
+        const place = placeById(campaign.places, placeId);
+        return !!place && !!poiOfPlace(place, poiId);
+      },
+    ))
     : createLiveSave(campaign, savedAt);
   return {
     state: { ...state, active: campaign, activeSave: save },
@@ -446,8 +471,98 @@ function applyToPois(
     case 'growMap':
       return applyToMap(campaign, intent, withPlaces, reject_);
 
+    case 'addPlane':
+    case 'renamePlane':
+    case 'movePlane':
+    case 'removePlane':
+      return applyToPlanes(campaign, intent, withPlaces, reject_);
+
+    case 'enterMap': {
+      if (!state.activeSave) return reject_('no save');
+      const placeId = intent.placeId as PlaceId;
+      const place = placeById(campaign.places, placeId);
+      if (!place) return reject_('no such place');
+      const poi = poiOfPlace(place, intent.poiId as PoiId);
+      if (!poi) return reject_('no such point of interest');
+      // The same condition the boundary uses to decide whether the table gets
+      // this point of interest at all (R-158). Walking the party into a room
+      // they cannot see would leave the table pointed at nothing, and would be
+      // a leak if it did send it.
+      if (!isPoiOnTable(state.activeSave.discovery, place, poi)) {
+        return reject_('the party cannot see that point of interest yet');
+      }
+      return commitSave(state, state.activeSave, enteringMap(state.activeSave, placeId, poi.id), now);
+    }
+
+    case 'leaveMap': {
+      if (!state.activeSave) return reject_('no save');
+      return commitSave(state, state.activeSave, leavingMap(state.activeSave), now);
+    }
+
+    case 'setRange': {
+      const save = state.activeSave;
+      if (!save) return reject_('no save');
+      if (!save.inside) return reject_('the party is not in a map');
+      const place = placeById(campaign.places, save.inside.placeId);
+      const poi = place ? poiOfPlace(place, save.inside.poiId) : null;
+      if (!poi?.map) return reject_('that point of interest has no map');
+      // Snapped here rather than trusted from the client: the steps are a fact
+      // about the map's planes, and the console could be a repaint behind.
+      const range = snapRange(
+        poi.map.planes,
+        { lower: intent.lower, upper: intent.upper },
+        MAP_MAX_HEIGHT,
+      );
+      return commitSave(state, save, withRange(save, range), now);
+    }
+
     default:
       return applyToDiscovery(state, campaign, intent, now);
+  }
+}
+
+/**
+ * A map's cutting planes (R-146).
+ *
+ * Authored content, so it shares `applyToMap`'s guards and its reasons: one
+ * place lookup, one point-of-interest lookup, and a map that has to exist.
+ */
+function applyToPlanes(
+  campaign: Campaign,
+  intent: Extract<Intent, { kind: 'addPlane' | 'renamePlane' | 'movePlane' | 'removePlane' }>,
+  withPlaces: (places: readonly Place[]) => Applied,
+  reject_: (reason: string) => Applied,
+): Applied {
+  const placeId = intent.placeId as PlaceId;
+  const place = placeById(campaign.places, placeId);
+  if (!place) return reject_('no such place');
+  const poiId = intent.poiId as PoiId;
+  const poi = poiOfPlace(place, poiId);
+  if (!poi) return reject_('no such point of interest');
+  if (!poi.map) return reject_('that point of interest has no map');
+
+  if (intent.kind === 'addPlane') {
+    if (!validPlaneY(intent.y, MAP_MAX_HEIGHT)) {
+      return reject_('a plane sits between the floor and the ceiling');
+    }
+    if (planeAt(poi.map.planes, intent.y)) return reject_('there is already a plane there');
+    return withPlaces(addPoiPlane(campaign.places, placeId, poiId, intent.name, intent.y));
+  }
+
+  const planeId = intent.planeId as PlaneId;
+  if (!planeById(poi.map.planes, planeId)) return reject_('no such plane');
+
+  switch (intent.kind) {
+    case 'renamePlane':
+      return withPlaces(renamePoiPlane(campaign.places, placeId, poiId, planeId, intent.name));
+    case 'removePlane':
+      return withPlaces(removePoiPlane(campaign.places, placeId, poiId, planeId));
+    default:
+      if (!validPlaneY(intent.y, MAP_MAX_HEIGHT)) {
+        return reject_('a plane sits between the floor and the ceiling');
+      }
+      if (planeAt(poi.map.planes, intent.y)) return reject_('there is already a plane there');
+      return withPlaces(movePoiPlane(campaign.places, placeId, poiId, planeId, intent.y));
   }
 }
 
@@ -537,14 +652,10 @@ function applyToDiscovery(
   // campaign would apply one world's discovery to another's contents.
   if (save.campaignId !== campaign.id) return reject(state, 'that save belongs to another campaign');
 
-  const commitSave = (next: Save): Applied => {
-    if (next === save) return ok(state);
-    const stamped = touch(next, now);
-    return ok({ ...state, activeSave: stamped }, [{ kind: 'saveSave', save: stamped }]);
-  };
+  const commitPlay = (next: Save): Applied => commitSave(state, save, next, now);
 
   const commitDiscovery = (discovery: Save['discovery']): Applied =>
-    commitSave(withDiscovery(save, discovery));
+    commitPlay(withDiscovery(save, discovery));
 
   switch (intent.kind) {
     case 'setChunkKnown': {
@@ -577,7 +688,7 @@ function applyToDiscovery(
     case 'moveParty': {
       const why = reachable(state, campaign, intent.cell);
       if (why) return reject(state, why);
-      return commitSave(withPlacement(save, withGroupAt(save.placement, intent.cell)));
+      return commitPlay(withPlacement(save, withGroupAt(save.placement, intent.cell)));
     }
 
     case 'movePartyMember': {
@@ -586,7 +697,7 @@ function applyToDiscovery(
       if (save.placement.together) return reject(state, 'the party is together — separate them first');
       const why = reachable(state, campaign, intent.cell);
       if (why) return reject(state, why);
-      return commitSave(withPlacement(save, withMemberAt(save.placement, id, intent.cell)));
+      return commitPlay(withPlacement(save, withMemberAt(save.placement, id, intent.cell)));
     }
 
     case 'setPartyTogether': {
@@ -594,7 +705,7 @@ function applyToDiscovery(
       const next = intent.together
         ? gathered(save.placement, campaign.party)
         : scattered(save.placement, campaign.party);
-      return commitSave(withPlacement(save, next));
+      return commitPlay(withPlacement(save, next));
     }
 
     default:

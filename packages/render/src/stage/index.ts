@@ -7,7 +7,9 @@ import {
   MeshBasicMaterial, PlaneGeometry, Raycaster, Scene, Vector2, WebGLRenderer, BoxGeometry,
   EdgesGeometry, LineSegments, LineBasicMaterial, Group,
 } from 'three';
-import type { BlockCoord, Campaign, EncounterMap, Material, Placement, WorldCell } from '@tt/domain';
+import type {
+  BlockCoord, Campaign, EncounterMap, LevelRange, Material, Placement, WorldCell,
+} from '@tt/domain';
 import { CHUNK_SIZE, brushCentreOffset, mapCentre } from '@tt/domain';
 import type { CameraTarget } from '../camera/index.js';
 import {
@@ -249,8 +251,17 @@ export class Stage {
    * `key` identifies the *surface*, not the body. The body arrives new on every
    * render, so keying the camera on it re-framed the map for every block placed
    * (R-152). Pass the same key while the same map is open.
+   *
+   * `range` fades the levels outside it rather than hiding them (R-146): the
+   * console shows the whole body and marks what the table is being shown. The
+   * table passes none, because it was never sent the rest.
    */
-  setMap(map: EncounterMap | null, materials: readonly Material[], key: string | null = null): void {
+  setMap(
+    map: EncounterMap | null,
+    materials: readonly Material[],
+    key: string | null = null,
+    range: LevelRange | null = null,
+  ): void {
     if (this.blocks) {
       this.scene.remove(this.blocks.group);
       this.blocks.dispose();
@@ -262,7 +273,7 @@ export class Stage {
     this.surface = next;
 
     if (map) {
-      this.blocks = buildBlockBody(map, materials);
+      this.blocks = buildBlockBody(map, materials, range);
       this.scene.add(this.blocks.group);
     }
     this.applySurface();
