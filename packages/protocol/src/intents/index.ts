@@ -80,7 +80,7 @@ export const IntentSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('removePlane'), placeId: z.string().min(1), poiId: z.string().min(1), planeId: z.string().min(1) }),
   z.object({ kind: z.literal('enterMap'), placeId: z.string().min(1), poiId: z.string().min(1) }),
   z.object({ kind: z.literal('leaveMap') }),
-  z.object({ kind: z.literal('setRange'), lower: z.number().int(), upper: z.number().int() }),
+  z.object({ kind: z.literal('setRange'), placeId: z.string().min(1), poiId: z.string().min(1), lower: z.number().int(), upper: z.number().int() }),
   z.object({ kind: z.literal('growMap'), placeId: z.string().min(1), poiId: z.string().min(1), towards: z.enum(['northeast', 'southeast', 'southwest', 'northwest']) }),
 
   // Undo and redo over authored content (D-169). GM only: the campaign is the

@@ -151,8 +151,15 @@ export const SaveWireSchema = z.object({
   inside: z.object({
     placeId: z.string(),
     poiId: z.string(),
-    range: z.object({ lower: z.number().int(), upper: z.number().int() }),
   }).nullable().default(null),
+  /**
+   * The band each map is cut to, keyed by point of interest (R-146). Absent
+   * means the whole body, so an uncut map needs no entry.
+   */
+  ranges: z.record(
+    z.string(),
+    z.object({ lower: z.number().int(), upper: z.number().int() }),
+  ).default({}),
 });
 export type SaveWire = z.infer<typeof SaveWireSchema>;
 
@@ -271,12 +278,11 @@ export function encodeSave(save: Save): SaveWire {
     discovery: discoveryToJSON(save.discovery),
     placement: placementToJSON(save.placement),
     inside: save.inside
-      ? {
-        placeId: save.inside.placeId as string,
-        poiId: save.inside.poiId as string,
-        range: { lower: save.inside.range.lower, upper: save.inside.range.upper },
-      }
+      ? { placeId: save.inside.placeId as string, poiId: save.inside.poiId as string }
       : null,
+    ranges: Object.fromEntries(
+      [...save.ranges].map(([poiId, range]) => [poiId, { lower: range.lower, upper: range.upper }]),
+    ),
   };
 }
 
@@ -294,9 +300,9 @@ export function decodeSave(wire: SaveWire): Save {
       ? {
         placeId: wire.inside.placeId as Inside['placeId'],
         poiId: wire.inside.poiId as Inside['poiId'],
-        range: wire.inside.range,
       }
       : null,
+    ranges: new Map(Object.entries(wire.ranges)),
   };
 }
 

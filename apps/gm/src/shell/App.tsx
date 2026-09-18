@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { decodeCampaign, decodePlacement } from '@tt/protocol';
 import {
-  CHUNK_SIZE, MAX_HEIGHT, clampBrush, creatableSlots, sameWorldCell,
+  CHUNK_SIZE, MAX_HEIGHT, MAP_MAX_HEIGHT, clampBrush, creatableSlots, sameWorldCell,
   DEFAULT_MATERIALS, DEFAULT_FLOOR, mapFromJSON, fillRegion,
 } from '@tt/domain';
 import type { GmView, Intent } from '@tt/protocol';
@@ -113,6 +113,16 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   const inside = view?.save?.inside ?? null;
   const partyHere = !!inside && !!openMap
     && inside.placeId === openMap.placeId && inside.poiId === openMap.poiId;
+  /**
+   * The band the open map is cut to (R-146).
+   *
+   * Read for whichever map is open, not for wherever the party is: the fade is
+   * the GM's own working view, and cutting to one floor is how a multi-level
+   * building gets built (D-201).
+   */
+  const openRange = openMap
+    ? view?.save?.ranges[openMap.poiId] ?? { lower: 0, upper: MAP_MAX_HEIGHT }
+    : null;
 
   const cellKey = (c: { cx: number; cz: number; x: number; z: number }) => `${c.cx}:${c.cz}:${c.x}:${c.z}`;
   const memberName = (id: string) => campaign?.party.find((m) => m.id === id)?.name ?? null;
@@ -225,9 +235,9 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       body,
       DEFAULT_MATERIALS,
       openMap ? `${openMap.placeId}/${openMap.poiId}` : null,
-      partyHere ? inside!.range : null,
+      openRange,
     );
-  }, [openBody, openMap, stage, partyHere, inside?.range.lower, inside?.range.upper]);
+  }, [openBody, openMap, stage, openRange?.lower, openRange?.upper]);
 
   // A point of interest whose map the GM deleted, or which they removed
   // outright, must not leave the console stranded on a surface that is gone.
@@ -671,7 +681,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
               && knownChunks.has(`${openPlace.cell.cx},${openPlace.cell.cz}`)
               && openPoi.visibleToParty
             }
-            range={partyHere ? inside!.range : null}
+            range={openRange ?? { lower: 0, upper: MAP_MAX_HEIGHT }}
             onTool={setMapTool}
             onMaterial={setMaterialId}
             onLeave={() => setOpenMap(null)}

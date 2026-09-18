@@ -2,7 +2,9 @@
 // passes through viewFor, and there is no second route.
 
 import type { Campaign, Save } from '@tt/domain';
-import { isPlaceOnTable, isChunkKnown, belongsTo, placementToJSON, sliceOf, mapToJSON } from '@tt/domain';
+import {
+  isPlaceOnTable, isChunkKnown, belongsTo, placementToJSON, sliceOf, mapToJSON, rangeFor,
+} from '@tt/domain';
 import type { CampaignWire, SaveWire, PlacementWire, MapWire } from '../wire/index.js';
 import { encodeCampaign, encodeSave } from '../wire/index.js';
 
@@ -150,7 +152,7 @@ function bodyForTheTable(
   const place = campaign.places.find((candidate) => candidate.id === placeId);
   const poi = place?.pois.find((candidate) => candidate.id === poiId);
   if (!poi?.map) return null;
-  return mapToJSON(sliceOf(poi.map, inside.range));
+  return mapToJSON(sliceOf(poi.map, rangeFor(save, poiId)));
 }
 
 function forTheTable(campaign: Campaign | null, save: Save | null): CampaignWire | null {

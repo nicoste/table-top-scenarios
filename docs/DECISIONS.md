@@ -3355,3 +3355,37 @@ Three things the compiler and the tests caught on the way, each worth a line:
   Neither absence needed a schema bump for D-187's reason — an older file says
   what it means — but a single type carrying both directions was what made the
   compiler shout about `exactOptionalPropertyTypes`, and it was right to.
+
+### D-201 — The band belongs to the map, not to the party · `agreed`
+*"I can't make the levels work, I can add steps, but then I can't use them."*
+
+My bug, and a plain one. I put the range **inside** the party's location in
+D-200, and then disabled the only control for it whenever the party was not
+there — so a GM who cuts a map while building it, which is the main reason to cut
+one, found the selects greyed out with a hint telling them to take the party in.
+On a map the party cannot see yet, that was unreachable by construction.
+
+The reasoning that led there is worth writing down because it was *nearly*
+right: a range is only meaningful while somebody is looking at the map it cuts.
+What I missed is that the GM is somebody. The console **fades by the range**
+(D-182), so the cut has an effect the moment it is set — it is how a GM works on
+one floor of a three-floor building without the other two in the way. I even
+wrote "prep of the range without the party inside has no observable effect" while
+building the fade that observes it.
+
+So the band moved out: `Save.ranges`, keyed by point of interest. Consequences,
+all of them improvements:
+
+- **It is settable any time**, from the map panel, party or no party.
+- **It persists per map**, so coming back to a tavern finds the cut where it was
+  left. I had rejected that in D-200 as speculative; it falls out for free now
+  and is the better behaviour.
+- **The party walks into whatever the map is cut to**, which is right: the GM cut
+  it for a reason.
+- **An uncut map carries no entry**, so the record does not fill with defaults.
+- `pruneRanges` drops the band of a deleted point of interest, and — the second
+  time in two rounds — the compiler is what told me I had written a prune and
+  never wired it to the open boundary.
+
+The intent now names the map it cuts rather than reading it off where the party
+is, which is also what lets the console cut a map the party has never seen.

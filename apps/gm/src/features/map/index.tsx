@@ -39,8 +39,8 @@ interface Props {
   readonly partyHere: boolean;
   /** Can they see it at all — Revealed, chunk Known, point of interest shown? */
   readonly partyCanSee: boolean;
-  /** The band the table is being shown, or null while the party is elsewhere. */
-  readonly range: LevelRange | null;
+  /** The band this map is cut to. Always present — an uncut map is its whole body. */
+  readonly range: LevelRange;
   onTool: (tool: MapTool) => void;
   onMaterial: (id: string) => void;
   onLeave: () => void;
@@ -97,9 +97,9 @@ export function MapPanel({
           <>
             <p className="hint" style={{ margin: '0 0 8px' }}>
               They are in here. The table is showing them{' '}
-              {range && !isFullRange(range, MAP_MAX_HEIGHT)
-                ? `${stepName(range.lower, planes, MAP_MAX_HEIGHT)} to ${stepName(range.upper, planes, MAP_MAX_HEIGHT)}`
-                : 'the whole place'}.
+              {isFullRange(range, MAP_MAX_HEIGHT)
+                ? 'the whole place'
+                : `${stepName(range.lower, planes, MAP_MAX_HEIGHT)} to ${stepName(range.upper, planes, MAP_MAX_HEIGHT)}`}.
             </p>
             <div className="btn-grid campaign-actions">
               <Tooltip label="Send the party back out to the world map" placement="bottom" stretch>
@@ -286,12 +286,13 @@ export function MapPanel({
         <label className="row" style={{ marginTop: 8 }}>
           <span className="lbl">from</span>
           <select
-            value={range?.lower ?? 0}
-            disabled={!partyHere}
+            value={range.lower}
             onChange={(e) => dispatch({
               kind: 'setRange',
+              placeId,
+              poiId,
               lower: Number.parseInt(e.target.value, 10),
-              upper: range?.upper ?? MAP_MAX_HEIGHT,
+              upper: range.upper,
             })}
           >
             {steps.map((y) => (
@@ -302,11 +303,12 @@ export function MapPanel({
         <label className="row" style={{ marginTop: 4 }}>
           <span className="lbl">to</span>
           <select
-            value={range?.upper ?? MAP_MAX_HEIGHT}
-            disabled={!partyHere}
+            value={range.upper}
             onChange={(e) => dispatch({
               kind: 'setRange',
-              lower: range?.lower ?? 0,
+              placeId,
+              poiId,
+              lower: range.lower,
               upper: Number.parseInt(e.target.value, 10),
             })}
           >
@@ -318,7 +320,7 @@ export function MapPanel({
         <p className="hint">
           {partyHere
             ? 'Faded levels are the ones the table is not being shown.'
-            : 'Take the party in to cut what they are shown.'}
+            : 'Faded levels are cut away here, and will be for the table when the party comes in.'}
         </p>
       </div>
 

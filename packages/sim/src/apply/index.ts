@@ -19,7 +19,7 @@ import {
   validPlaneY, planeAt, planeById, snapRange, isPoiOnTable,
   poiById as poiOfPlace,
   createLiveSave, withDiscovery, withPlacement, touch, upgraded, upgradedCampaign, belongsTo,
-  pruneDiscovery, pruneMembers, enteringMap, leavingMap, withRange, pruneInside,
+  pruneDiscovery, pruneMembers, enteringMap, leavingMap, withRange, pruneInside, pruneRanges,
   pawns, withGroupAt, withMemberAt, gathered, scattered,
   isValidWorldCell, chunkOf, isChunkKnown,
   setChunkKnown, setPlaceRevealed, setPlacesRevealed, isAuthored, placesInChunk,
@@ -119,12 +119,18 @@ export function openedWith(
   const campaign = upgradedCampaign(stored);
   const usable = storedSave && belongsTo(storedSave, campaign) ? storedSave : null;
   const save = usable
-    ? upgraded(pruneInside(
-      pruneMembers(pruneDiscovery(usable, placeIds), new Set(campaign.party.map((m) => m.id))),
-      (placeId, poiId) => {
-        const place = placeById(campaign.places, placeId);
-        return !!place && !!poiOfPlace(place, poiId);
-      },
+    ? upgraded(pruneRanges(
+      pruneInside(
+        pruneMembers(pruneDiscovery(usable, placeIds), new Set(campaign.party.map((m) => m.id))),
+        (placeId, poiId) => {
+          const place = placeById(campaign.places, placeId);
+          return !!place && !!poiOfPlace(place, poiId);
+        },
+      ),
+      // Every point of interest still in the campaign; a band belonging to one
+      // the GM deleted is dropped here rather than kept forever (R-9's
+      // tolerance, `pruneDiscovery`'s reason).
+      new Set(campaign.places.flatMap((place) => place.pois.map((poi) => poi.id as string))),
     ))
     : createLiveSave(campaign, savedAt);
   return {
@@ -502,10 +508,13 @@ function applyToPois(
     case 'setRange': {
       const save = state.activeSave;
       if (!save) return reject_('no save');
-      if (!save.inside) return reject_('the party is not in a map');
-      const place = placeById(campaign.places, save.inside.placeId);
-      const poi = place ? poiOfPlace(place, save.inside.poiId) : null;
-      if (!poi?.map) return reject_('that point of interest has no map');
+      // Named by the intent rather than taken from where the party is: the GM
+      // cuts a map to build it, long before anyone stands in it (D-201).
+      const place = placeById(campaign.places, intent.placeId as PlaceId);
+      if (!place) return reject_('no such place');
+      const poi = poiOfPlace(place, intent.poiId as PoiId);
+      if (!poi) return reject_('no such point of interest');
+      if (!poi.map) return reject_('that point of interest has no map');
       // Snapped here rather than trusted from the client: the steps are a fact
       // about the map's planes, and the console could be a repaint behind.
       const range = snapRange(
@@ -513,7 +522,7 @@ function applyToPois(
         { lower: intent.lower, upper: intent.upper },
         MAP_MAX_HEIGHT,
       );
-      return commitSave(state, save, withRange(save, range), now);
+      return commitSave(state, save, withRange(save, poi.id, range), now);
     }
 
     default:

@@ -45,20 +45,24 @@ export interface Save {
    * should keep them."*
    */
   readonly inside: Inside | null;
+  /**
+   * The band each map is cut to, by point of interest (R-146).
+   *
+   * **Not** nested inside `inside`, which is where it started and which was
+   * wrong: the console fades by this range, so a GM cutting a tavern to its
+   * ground floor *to build it* needs the cut whether or not anyone is standing
+   * there. Tying it to the party made the only control for it dead exactly when
+   * a builder reaches for it (D-201).
+   *
+   * Absent means the whole body, so a map nobody has cut needs no entry.
+   */
+  readonly ranges: ReadonlyMap<string, LevelRange>;
 }
 
-/**
- * The party, in one point of interest's map, looking at one band of it.
- *
- * The range rides along with the location rather than being remembered per
- * point of interest, because a range is only meaningful while somebody is
- * standing in the map it cuts. Leaving and coming back starts from the whole
- * body, which is also the honest default for a scene the GM is setting up again.
- */
+/** Which map the party has gone into. Where they are, and nothing else. */
 export interface Inside {
   readonly placeId: PlaceId;
   readonly poiId: PoiId;
-  readonly range: LevelRange;
 }
 
 /**
@@ -83,6 +87,7 @@ export function createLiveSave(campaign: Campaign, savedAt: string): Save {
     discovery: emptyDiscovery(),
     placement: emptyPlacement(),
     inside: null,
+    ranges: new Map(),
   };
 }
 
@@ -125,10 +130,15 @@ export function withPlacement(save: Save, placement: Placement): Save {
   return save.placement === placement ? save : { ...save, placement };
 }
 
-/** Takes the party into a map, at the whole of it (R-158). */
+/**
+ * Takes the party into a map (R-158).
+ *
+ * Whatever band that map was already cut to is what they walk into, because the
+ * GM cut it for a reason — most likely while building the place.
+ */
 export function enteringMap(save: Save, placeId: PlaceId, poiId: PoiId): Save {
   if (save.inside && save.inside.placeId === placeId && save.inside.poiId === poiId) return save;
-  return { ...save, inside: { placeId, poiId, range: fullRange(MAP_MAX_HEIGHT) } };
+  return { ...save, inside: { placeId, poiId } };
 }
 
 /** Brings them back out to the world map. */
@@ -136,10 +146,19 @@ export function leavingMap(save: Save): Save {
   return save.inside === null ? save : { ...save, inside: null };
 }
 
-/** Moves the band the table is shown. No-op when the party is out (R-158). */
-export function withRange(save: Save, range: LevelRange): Save {
-  if (!save.inside || sameRange(save.inside.range, range)) return save;
-  return { ...save, inside: { ...save.inside, range } };
+/** The band a map is cut to: the whole body unless the GM said otherwise. */
+export function rangeFor(save: Save, poiId: PoiId | string): LevelRange {
+  return save.ranges.get(poiId as string) ?? fullRange(MAP_MAX_HEIGHT);
+}
+
+/** Cuts one map to a band. Independent of where the party is (D-201). */
+export function withRange(save: Save, poiId: PoiId | string, range: LevelRange): Save {
+  if (sameRange(rangeFor(save, poiId), range)) return save;
+  const ranges = new Map(save.ranges);
+  // An uncut map carries no entry, so the record does not grow with defaults.
+  if (sameRange(range, fullRange(MAP_MAX_HEIGHT))) ranges.delete(poiId as string);
+  else ranges.set(poiId as string, range);
+  return { ...save, ranges };
 }
 
 /**
@@ -149,6 +168,13 @@ export function withRange(save: Save, range: LevelRange): Save {
  * otherwise leave the table pointed at nothing, with no way back to the world
  * short of the GM noticing. Same tolerance, same reason, as `pruneDiscovery`.
  */
+/** Forgets the band of a map that is gone, for `pruneDiscovery`'s reason. */
+export function pruneRanges(save: Save, livePoiIds: ReadonlySet<string>): Save {
+  const keep = [...save.ranges].filter(([poiId]) => livePoiIds.has(poiId));
+  if (keep.length === save.ranges.size) return save;
+  return { ...save, ranges: new Map(keep) };
+}
+
 export function pruneInside(
   save: Save,
   live: (placeId: PlaceId, poiId: PoiId) => boolean,

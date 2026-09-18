@@ -11,7 +11,7 @@ import { apply, emptyHistory, openedWith } from '@tt/sim';
 import { viewFor } from '@tt/protocol';
 import type { GmView, HostState, Intent, TableView } from '@tt/protocol';
 import {
-  createCampaign, createLiveSave, DEFAULT_MATERIALS, MAP_MAX_HEIGHT, ORIGIN,
+  createCampaign, createLiveSave, rangeFor, DEFAULT_MATERIALS, MAP_MAX_HEIGHT, ORIGIN,
 } from '@tt/domain';
 
 const NOW = '2026-01-01T00:00:00.000Z';
@@ -57,9 +57,7 @@ describe('taking the party in (R-158)', () => {
   it('records where they are, and writes it', () => {
     const { state, placeId, poiId } = tavern();
     const entered = run(state, { kind: 'enterMap', placeId, poiId });
-    expect(entered.state.activeSave!.inside).toEqual({
-      placeId, poiId, range: { lower: 0, upper: MAP_MAX_HEIGHT },
-    });
+    expect(entered.state.activeSave!.inside).toEqual({ placeId, poiId });
     // A save change that is not written is a save change that is lost.
     expect(entered.effects.some((e) => e.kind === 'saveSave')).toBe(true);
   });
@@ -151,7 +149,7 @@ describe('what the table is sent (R-158, D-184 answered)', () => {
   it('only the band, once the GM cuts to one', () => {
     const { state, placeId, poiId } = tavern();
     let inside = run(state, { kind: 'enterMap', placeId, poiId }).state;
-    inside = run(inside, { kind: 'setRange', lower: 4, upper: 8 }).state;
+    inside = run(inside, { kind: 'setRange', placeId, poiId, lower: 4, upper: 8 }).state;
 
     const map = tableMap(inside)!;
     expect(map.blocks['2,5,2']).toBe(STONE);
@@ -162,7 +160,7 @@ describe('what the table is sent (R-158, D-184 answered)', () => {
   it('a cut level is absent from the payload, not merely undrawn (R-85)', () => {
     const { state, placeId, poiId } = tavern();
     let inside = run(state, { kind: 'enterMap', placeId, poiId }).state;
-    inside = run(inside, { kind: 'setRange', lower: 4, upper: 8 }).state;
+    inside = run(inside, { kind: 'setRange', placeId, poiId, lower: 4, upper: 8 }).state;
 
     const payload = JSON.stringify(viewFor('table', inside));
     expect(payload).not.toContain('2,1,2');
@@ -197,7 +195,7 @@ describe('what the table is sent (R-158, D-184 answered)', () => {
     // can peek into the cellar while the party is upstairs.
     const { state, placeId, poiId } = tavern();
     let inside = run(state, { kind: 'enterMap', placeId, poiId }).state;
-    inside = run(inside, { kind: 'setRange', lower: 4, upper: 8 }).state;
+    inside = run(inside, { kind: 'setRange', placeId, poiId, lower: 4, upper: 8 }).state;
 
     const gm = (viewFor('gm', inside) as GmView).campaign!.places[0]!.pois[0]!;
     expect(gm.map!.blocks['2,1,2']).toBe(STONE);
@@ -207,7 +205,7 @@ describe('what the table is sent (R-158, D-184 answered)', () => {
   it('sends the plane names but not what is behind them', () => {
     const { state, placeId, poiId } = tavern();
     let inside = run(state, { kind: 'enterMap', placeId, poiId }).state;
-    inside = run(inside, { kind: 'setRange', lower: 4, upper: 8 }).state;
+    inside = run(inside, { kind: 'setRange', placeId, poiId, lower: 4, upper: 8 }).state;
     const map = tableMap(inside)!;
     expect(map.planes?.map((p) => p.name)).toEqual(['Ground floor', 'Upstairs']);
   });
@@ -219,14 +217,47 @@ describe('the range (R-146)', () => {
     // repaint behind.
     const { state, placeId, poiId } = tavern();
     const inside = run(state, { kind: 'enterMap', placeId, poiId }).state;
-    const ranged = run(inside, { kind: 'setRange', lower: 5, upper: 7 }).state;
-    expect(ranged.activeSave!.inside!.range).toEqual({ lower: 4, upper: 8 });
+    const ranged = run(inside, { kind: 'setRange', placeId, poiId, lower: 5, upper: 7 }).state;
+    expect(rangeFor(ranged.activeSave!, poiId)).toEqual({ lower: 4, upper: 8 });
   });
 
-  it('refuses when the party is not in a map', () => {
-    const { state } = tavern();
-    expect(run(state, { kind: 'setRange', lower: 0, upper: 4 }).rejected)
-      .toBe('the party is not in a map');
+  it('cuts a map the party is nowhere near — that is how one gets built (D-201)', () => {
+    // The bug this replaces: the range lived inside the party's location, so
+    // the only control for it was dead until somebody was standing there.
+    const { state, placeId, poiId } = tavern();
+    expect(state.activeSave!.inside).toBeNull();
+    const cut = run(state, { kind: 'setRange', placeId, poiId, lower: 0, upper: 4 }).state;
+    expect(rangeFor(cut.activeSave!, poiId)).toEqual({ lower: 0, upper: 4 });
+  });
+
+  it('is what the party walks into, later', () => {
+    const { state, placeId, poiId } = tavern();
+    let next = run(state, { kind: 'setRange', placeId, poiId, lower: 4, upper: 8 }).state;
+    next = run(next, { kind: 'enterMap', placeId, poiId }).state;
+    const levels = new Set(Object.keys(tableMap(next)!.blocks).map((k) => Number(k.split(',')[1])));
+    expect([...levels].sort((a, b) => a - b)).toEqual([5]);
+  });
+
+  it('an uncut map carries no entry, so the record does not fill with defaults', () => {
+    const { state, placeId, poiId } = tavern();
+    let next = run(state, { kind: 'setRange', placeId, poiId, lower: 4, upper: 8 }).state;
+    expect(next.activeSave!.ranges.size).toBe(1);
+    next = run(next, { kind: 'setRange', placeId, poiId, lower: 0, upper: MAP_MAX_HEIGHT }).state;
+    expect(next.activeSave!.ranges.size).toBe(0);
+  });
+
+  it('forgets the band of a map the GM deleted', () => {
+    const { state, placeId, poiId } = tavern();
+    let next = run(state, { kind: 'setRange', placeId, poiId, lower: 4, upper: 8 }).state;
+    next = run(next, { kind: 'removePoi', placeId, poiId }).state;
+    const reopened = openedWith(
+      { campaigns: [], active: null, activeSave: null, history: emptyHistory() },
+      next.active!,
+      next.activeSave!,
+      NOW,
+      new Set([placeId as never]),
+    );
+    expect(reopened.state.activeSave!.ranges.size).toBe(0);
   });
 });
 
@@ -241,7 +272,7 @@ describe('planes are authored content (R-136)', () => {
       { kind: 'removePlane', placeId, poiId, planeId },
       { kind: 'enterMap', placeId, poiId },
       { kind: 'leaveMap' },
-      { kind: 'setRange', lower: 0, upper: 4 },
+      { kind: 'setRange', placeId, poiId, lower: 0, upper: 4 },
     ] as Intent[]) {
       expect(run(state, intent, 'table').rejected, intent.kind).toBe('only the GM can do that');
     }

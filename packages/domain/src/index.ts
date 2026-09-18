@@ -79,7 +79,7 @@ export {
   SAVE_SCHEMA_VERSION, LIVE_LABEL,
   liveSaveId, createLiveSave, belongsTo, matchesCampaignVersion,
   touch, upgraded, withDiscovery, withPlacement, pruneDiscovery, pruneMembers,
-  enteringMap, leavingMap, withRange, pruneInside,
+  enteringMap, leavingMap, rangeFor, withRange, pruneInside, pruneRanges,
 } from './save/index.js';
 
 export type { Placement, PlacementJSON } from './placement/index.js';
