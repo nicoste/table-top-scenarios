@@ -4,9 +4,10 @@
 import { describe, it, expect } from 'vitest';
 import type { Cell, Pointed } from '@tt/client-core';
 import {
-  clickAction, holdsSelection, tableAction, mapAction, mapHover, mapDrags,
+  clickAction, holdsSelection, tableAction, mapAction, mapHover, mapDrags, mapAllowed,
   cameraAction, CAMERA_HINT,
 } from '@tt/client-core';
+import type { MapAim } from '@tt/client-core';
 import type { Tool } from '@tt/client-core';
 
 const cell = (x: number, z: number): Cell => ({ cx: 15, cz: 15, x, z });
@@ -280,12 +281,22 @@ describe('the map toolset (R-153, R-154)', () => {
   });
 
   it('says how many blocks a fill would repaint, and only for a fill', () => {
-    expect(mapHover(mapAction('fill', face), 42).label).toBe('Fill from 4,1,7 — 42 blocks');
-    expect(mapHover(mapAction('fill', face), 1).label).toBe('Fill from 4,1,7 — 1 block');
+    const reach = (total: number, unseen = 0) => ({ total, unseen });
+    expect(mapHover(mapAction('fill', face), reach(42)).label).toBe('Fill from 4,1,7 — 42 blocks');
+    expect(mapHover(mapAction('fill', face), reach(1)).label).toBe('Fill from 4,1,7 — 1 block');
     // The count is the client's to compute, so the label must survive not
     // having it rather than printing "undefined blocks".
     expect(mapHover(mapAction('fill', face)).label).toBe('Fill from 4,1,7');
-    expect(mapHover(mapAction('paint', face), 42).label).toBe('Paint 4,1,7');
+    expect(mapHover(mapAction('paint', face), reach(42)).label).toBe('Paint 4,1,7');
+  });
+
+  it('warns how much of a fill reaches past the levels being shown (R-159)', () => {
+    // A fill follows connected material straight through a cut, so with levels
+    // hidden the honest readout says how much of it the GM cannot see.
+    expect(mapHover(mapAction('fill', face), { total: 42, unseen: 12 }).label)
+      .toBe('Fill from 4,1,7 — 42 blocks, 12 unseen');
+    expect(mapHover(mapAction('fill', face), { total: 42, unseen: 0 }).label)
+      .toBe('Fill from 4,1,7 — 42 blocks');
   });
 
   it('outlines the block each tool would touch', () => {
@@ -325,5 +336,102 @@ describe('the camera keys are the same on both screens (R-156)', () => {
     for (const key of ['Q/E', 'R/F']) expect(CAMERA_HINT).toContain(key);
     expect(CAMERA_HINT).toContain('pan');
     expect(CAMERA_HINT).toContain('zoom');
+  });
+});
+
+describe('what a click may do while levels are hidden (R-159)', () => {
+  const face = { block: { x: 4, y: 1, z: 7 }, adjacent: { x: 4, y: 2, z: 7 } };
+  const band = { lower: 0, upper: 4 };
+  const aim = (over: Partial<MapAim> = {}): MapAim =>
+    ({ levelling: false, range: band, occupied: false, inBounds: true, ...over });
+
+  it('refuses to build into a cell that already holds a block', () => {
+    // Impossible while everything is drawn — a face you can see has air in
+    // front of it. Hiding levels breaks that, because a ray passes through
+    // what is hidden and lands on the far side.
+    expect(mapAllowed(mapAction('build', face), aim({ occupied: true })))
+      .toEqual({ kind: 'stop', why: 'a block is already there' });
+    expect(mapAllowed(mapAction('build', face), aim())).toEqual({ kind: 'go' });
+  });
+
+  it('refuses a placement above the band, but only while levelling', () => {
+    // `face.adjacent` is y=2, so a band of [0,2) puts it just outside — the
+    // block would be placed and then vanish, which is worse than a refusal.
+    const tight = { lower: 0, upper: 2 };
+    expect(mapAllowed(mapAction('build', face), aim({ levelling: true, range: tight })))
+      .toEqual({ kind: 'stop', why: 'outside the levels you are showing' });
+    // Same cell, same band, levels all shown: perfectly fine, and a GM
+    // building above the band is not making a mistake.
+    expect(mapAllowed(mapAction('build', face), aim({ levelling: false, range: tight })))
+      .toEqual({ kind: 'go' });
+  });
+
+  it('refuses a placement below the band too', () => {
+    const upstairs = { lower: 8, upper: 12 };
+    expect(mapAllowed(mapAction('build', face), aim({ levelling: true, range: upstairs })))
+      .toEqual({ kind: 'stop', why: 'outside the levels you are showing' });
+  });
+
+  it('allows a placement inside the band while levelling', () => {
+    // Half-open, so the band's own lower step counts as inside it.
+    expect(mapAllowed(mapAction('build', face), aim({ levelling: true, range: { lower: 2, upper: 6 } })))
+      .toEqual({ kind: 'go' });
+    expect(mapAllowed(mapAction('build', face), aim({ levelling: true, range: band })))
+      .toEqual({ kind: 'go' });
+  });
+
+  it('refuses erase, paint and fill on empty space', () => {
+    for (const tool of ['erase', 'paint', 'fill'] as const) {
+      expect(mapAllowed(mapAction(tool, face), aim({ occupied: false })), tool)
+        .toEqual({ kind: 'stop', why: 'nothing there' });
+      expect(mapAllowed(mapAction(tool, face), aim({ occupied: true })), tool)
+        .toEqual({ kind: 'go' });
+    }
+  });
+
+  it('needs no band check for the tools that act on a picked block', () => {
+    // Only a visible block can be picked, so erase, paint and fill cannot reach
+    // past the cut however the band is set.
+    for (const tool of ['erase', 'paint', 'fill'] as const) {
+      expect(
+        mapAllowed(mapAction(tool, face), aim({ levelling: true, occupied: true })),
+        tool,
+      ).toEqual({ kind: 'go' });
+    }
+  });
+
+  it('stops silently when the pointer is over nothing', () => {
+    expect(mapAllowed(mapAction('build', null), aim())).toEqual({ kind: 'stop', why: '' });
+    // An empty reason prints nothing rather than "— " with a blank after it.
+    expect(mapHover(mapAction('build', null), undefined, { kind: 'stop', why: '' }).label)
+      .toBeNull();
+  });
+});
+
+describe('a cell the map does not own (R-159)', () => {
+  // Clicking the outward side face of an edge block aims past the footprint.
+  // The host has always refused it; the readout now says so first, which is the
+  // same principle as the rest of R-159 — no toast for a gesture that could
+  // never work.
+  const edge = { block: { x: 47, y: 0, z: 0 }, adjacent: { x: 48, y: 0, z: 0 } };
+  const outside = {
+    levelling: false,
+    range: { lower: 0, upper: 32 },
+    occupied: false,
+    inBounds: false,
+  };
+
+  it('refuses every tool, whatever else is true', () => {
+    for (const tool of ['build', 'erase', 'paint', 'fill'] as const) {
+      expect(mapAllowed(mapAction(tool, edge), outside), tool)
+        .toEqual({ kind: 'stop', why: 'outside the map' });
+    }
+  });
+
+  it('says so before the occupancy or the band would', () => {
+    // A cell the map does not own is not "already occupied" and not "outside
+    // the levels" — it is not a cell. The most basic refusal reads first.
+    expect(mapAllowed(mapAction('build', edge), { ...outside, occupied: true, levelling: true }))
+      .toEqual({ kind: 'stop', why: 'outside the map' });
   });
 });

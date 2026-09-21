@@ -1743,15 +1743,12 @@ apps/host/src/
 > **Y value and a name** and nothing else — no X, no Z. They are the snap steps of
 > a **two-sided range**: everything outside `[lower, upper]` is not drawn.
 >
-> One range, two renderings, and both are built (D-200):
-> - The **table display** draws only what is inside it, because only that was
->   sent. Outside is **absent from the payload**, not merely undrawn (R-85).
-> - The **GM console draws the whole body**, with out-of-range levels faded to
->   28% (D-182). The GM peeks into the cellar while the party is upstairs, and
->   can always tell at a glance what the table is showing — which is R-76's
->   preview obligation met by one view rather than a second mode. Dimmed rather
->   than hidden because the GM still has to build in there, and clicking a face
->   they cannot see is how a wall ends up one level off.
+> One range, and the table draws only what is inside it — because only that was
+> sent. Outside is **absent from the payload**, not merely undrawn (R-85).
+>
+> The console shows the whole body by default and can be **switched to the band**
+> (R-159). It is a toggle rather than a permanent dimming: two views of one body,
+> chosen, instead of a visual tax on every session. **Superseded D-182's fade.**
 >
 > **This supersedes R-35**, which clamped to a single upper bound. One bound can
 > cut a roof away but cannot hide a cellar while the party stands on the grass
@@ -2040,3 +2037,35 @@ apps/host/src/
 > `inside` is **pruned at the open boundary** when the map it names is gone.
 > Deleting a point of interest with the party standing in it would otherwise
 > leave the table pointed at nothing.
+
+> **R-159.** **Levelling is a toggle, and hiding a level must not let the GM
+> edit through it.**
+>
+> The console shows the whole body or **the band alone** — the GM's own choice,
+> view state (R-64), off by default because the whole body is the safe view to
+> build in. While it is on, the GM sees exactly what the table sees.
+>
+> The band is a **slice**, not a dimming, and that is the load-bearing part: the
+> hidden levels are **absent from the scene**, so they cannot be picked. A dimmed
+> block is still clickable, which is how a GM edits something they cannot see.
+>
+> Absence alone is not enough, because a ray passes through what is not there and
+> lands on the far side — so the cell in front of a visible face may hold a block
+> a level down. Hence:
+>
+> - **Placing and repainting are separate intents**, refused for opposite
+>   reasons: build will not overwrite an occupied cell, paint will not conjure a
+>   block into empty space. They shared one intent while every block was drawn,
+>   because a face you can see has air in front of it and the difference never
+>   showed. It shows now (D-202).
+> - **A placement outside the band is refused while levelling**, because the
+>   block would be placed and then vanish.
+> - Erase, paint and fill need no band check: they act on a block that was
+>   picked, and only a visible block can be picked.
+> - A **fill reports how much of its reach is unseen**, because connected
+>   material runs straight through a cut and a one-click tool should not be quiet
+>   about that.
+>
+> Both refusals are stated in the readout *before* the click and enforced again
+> by the host. The client check is not the guard — it is so a gesture the readout
+> already called impossible never becomes a rejection toast.

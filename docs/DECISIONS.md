@@ -3389,3 +3389,49 @@ all of them improvements:
 
 The intent now names the map it cuts rather than reading it off where the party
 is, which is also what lets the console cut a map the party has never seen.
+
+### D-202 — Levelling is a toggle, and it forced a real bug into the open · `agreed`
+*"Instead of applying that shadowing, can we do like 'leveling enabled/disabled
+for GM' toggle? Will that affect constructing on places that look as empty but
+they are occupied but invisible?"*
+
+Both answered: yes to the toggle, and **yes it would have** — which is why the
+guard ships with it.
+
+**The toggle.** The console shows the whole body, or the band alone. Off by
+default. The fade it replaces is deleted rather than kept alongside: two
+mechanisms for one job is worse than either, and a permanently dimmed screen was
+a tax on every session to answer a question the GM asks occasionally. Switched
+on, the GM sees precisely what the table sees, cut by the same `sliceOf` the
+boundary uses — which is a better preview than a dimming ever was, because it is
+the same function rather than an impression of one.
+
+**And the hazard the GM spotted.** It was real, and worse than they put it.
+`setBlock` in the domain *replaces* whatever is at the cell, because that is what
+the paint brush needs; build and paint shared the intent. While every block was
+drawn this could not bite — a face you can see has air in front of it, so
+build's target cell was always empty. Hiding levels breaks that guarantee: a ray
+passes through what is not drawn and lands on the far side, so the cell "in
+front" of a visible face can hold a block a level down. The GM would have clicked
+bare floor and silently repainted something invisible.
+
+Three things now stop it, and only the first is really about levelling:
+
+1. **The band is a slice, not a dimming.** Hidden blocks are absent from the
+   scene, so they are not pickable. A dimmed block is still clickable, which
+   would have been the same bug with extra steps.
+2. **Build and paint became separate intents**, each refusing what the other is
+   for: *"there is already a block there"* and *"there is nothing there to
+   paint"*. That is a fix independent of levelling — it removes a silent
+   overwrite that was always wrong and merely unreachable.
+3. **A placement outside the band is refused while levelling**, because the cube
+   would be placed and then vanish. Client-side, since the band matters only to
+   a GM who has chosen to be shown it; the readout says so before the click.
+
+A fill also now reports how much of its reach is out of sight, because connected
+material runs through a cut and the count was the only thing telling the GM how
+far a click would go.
+
+The GM's question is the kind worth answering with code rather than care: "will
+this let me edit what I cannot see" has one acceptable answer, and it is not
+"be careful".

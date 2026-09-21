@@ -9,7 +9,8 @@
 // Neither of them may assume the other's precedence.
 
 import type { MapTool, Tool } from '../store/index.js';
-import type { BlockCoord } from '@tt/domain';
+import type { BlockCoord, LevelRange } from '@tt/domain';
+import { inRange } from '@tt/domain';
 import type { FacePick } from '@tt/render';
 
 export interface Cell { readonly cx: number; readonly cz: number; readonly x: number; readonly z: number }
@@ -170,6 +171,72 @@ export function mapDrags(tool: MapTool): boolean {
   return tool === 'paint';
 }
 
+/**
+ * What the console knows about the cell a tool is aimed at (R-159).
+ *
+ * `levelling` is the GM's own toggle: when it is on they are shown only the
+ * band, exactly as the table is, and the blocks outside it are absent from the
+ * scene rather than dimmed — so they cannot be clicked, which is half the
+ * safety. The other half is here.
+ */
+export interface MapAim {
+  readonly levelling: boolean;
+  readonly range: LevelRange;
+  /** Is there a block at the cell the tool picked? */
+  readonly occupied: boolean;
+  /**
+   * Is that cell inside the map's footprint at all?
+   *
+   * Clicking the outward side face of an edge block aims at a cell the map does
+   * not own — the host has always refused it, and saying so in the readout
+   * spares the GM a toast for a gesture that was never going to work.
+   */
+  readonly inBounds: boolean;
+}
+
+/** Whether a click may proceed, and if not, what to tell the GM (R-18). */
+export type MapVerdict =
+  | { readonly kind: 'go' }
+  | { readonly kind: 'stop'; readonly why: string };
+
+/**
+ * Whether the aimed-at cell is one this tool may act on.
+ *
+ * Two refusals, and both exist because hiding levels makes the screen stop
+ * telling the whole truth:
+ *
+ * - **Building into an occupied cell.** With everything drawn this could not
+ *   happen: a face you can see has air in front of it. With the band shown
+ *   alone, a ray passes through what is hidden and lands on the far side, so
+ *   the cell "in front" of the face may hold a block a level down. The host
+ *   refuses it too — this is so the GM reads why *before* clicking.
+ * - **Building outside the band.** The block would be placed and then vanish,
+ *   because the GM is not being shown that level. Refusing beats a cube that
+ *   blinks out of existence.
+ *
+ * And one that has nothing to do with levelling: a cell **outside the
+ * footprint**, which is what the outward face of an edge block aims at.
+ *
+ * Erase, paint and fill need no band check: they act on a block that was
+ * picked, and only visible blocks can be picked.
+ */
+export function mapAllowed(action: MapAction, aim: MapAim): MapVerdict {
+  if (action.kind === 'nothing') return { kind: 'stop', why: '' };
+
+  if (!aim.inBounds) return { kind: 'stop', why: 'outside the map' };
+
+  if (action.kind === 'place') {
+    if (aim.occupied) return { kind: 'stop', why: 'a block is already there' };
+    if (aim.levelling && !inRange(aim.range, action.at.y)) {
+      return { kind: 'stop', why: 'outside the levels you are showing' };
+    }
+    return { kind: 'go' };
+  }
+
+  if (!aim.occupied) return { kind: 'stop', why: 'nothing there' };
+  return { kind: 'go' };
+}
+
 export interface MapHover {
   /** What the readout says, or `null` when the pointer is over nothing. */
   readonly label: string | null;
@@ -193,14 +260,38 @@ const VERBS: Record<Exclude<MapAction['kind'], 'nothing'>, string> = {
   fill: 'Fill from',
 };
 
-export function mapHover(action: MapAction, region?: number): MapHover {
+/** What a fill is about to touch, and how much of it the GM cannot see. */
+export interface FillReach {
+  readonly total: number;
+  /** Of those, how many sit on levels the GM is not being shown (R-159). */
+  readonly unseen: number;
+}
+
+export function mapHover(
+  action: MapAction,
+  reach?: FillReach,
+  verdict?: MapVerdict,
+): MapHover {
   if (action.kind === 'nothing') return { label: null, ghost: null };
   const { x, y, z } = action.at;
   const where = `${VERBS[action.kind]} ${x},${y},${z}`;
+
+  // A refusal reads *instead* of the action, because the action is not going to
+  // happen and saying both would be telling the GM two things at once.
+  if (verdict?.kind === 'stop' && verdict.why) {
+    return { label: `${where} — ${verdict.why}`, ghost: action.at };
+  }
+
   // A fill says how much it is about to repaint, because one click can reach a
-  // long way and the outline can only mark where it starts (R-154).
-  const label = action.kind === 'fill' && region !== undefined
-    ? `${where} — ${region} block${region === 1 ? '' : 's'}`
-    : where;
-  return { label, ghost: action.at };
+  // long way and the outline can only mark where it starts (R-154). With levels
+  // hidden it also says how much of that reach is out of sight, since a fill
+  // follows connected material straight through a cut.
+  if (action.kind === 'fill' && reach) {
+    const unseen = reach.unseen > 0 ? `, ${reach.unseen} unseen` : '';
+    return {
+      label: `${where} — ${reach.total} block${reach.total === 1 ? '' : 's'}${unseen}`,
+      ghost: action.at,
+    };
+  }
+  return { label: where, ghost: action.at };
 }

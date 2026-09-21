@@ -4,14 +4,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { decodeCampaign, decodePlacement } from '@tt/protocol';
 import {
   CHUNK_SIZE, MAX_HEIGHT, MAP_MAX_HEIGHT, clampBrush, creatableSlots, sameWorldCell,
-  DEFAULT_MATERIALS, DEFAULT_FLOOR, mapFromJSON, fillRegion,
+  DEFAULT_MATERIALS, DEFAULT_FLOOR, mapFromJSON, fillRegion, sliceOf, inRange, inMap, blockAt,
 } from '@tt/domain';
 import type { GmView, Intent } from '@tt/protocol';
 import { defaultTarget, worldCentre } from '@tt/render';
 import type { Tool, Travel } from '@tt/client-core';
 import {
   idle, pick, armed, aim, ghostCell, canConfirm, travelIntent, travelPrompt,
-  clickAction, holdsSelection, mapAction, mapHover, mapDrags, cameraAction, CAMERA_HINT,
+  clickAction, holdsSelection, mapAction, mapHover, mapDrags, mapAllowed,
+  cameraAction, CAMERA_HINT,
 } from '@tt/client-core';
 import type { MapAction, MapTool } from '@tt/client-core';
 import { useStage } from '../scene/use-stage.js';
@@ -54,6 +55,16 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    */
   const [openMap, setOpenMap] = useState<{ placeId: string; poiId: string } | null>(null);
   const [mapTool, setMapTool] = useState<MapTool>('build');
+  /**
+   * Is the console showing only the band, like the table (R-159)?
+   *
+   * The GM's toggle, and view state (R-64): which levels *they* are looking at
+   * is nobody else's business, and it must not follow them between maps or
+   * survive a reload as a surprise. Off by default, because the whole body is
+   * the safe view to build in and a permanently dimmed screen was a tax on
+   * every session to answer a question the GM asks occasionally.
+   */
+  const [levelling, setLevelling] = useState(false);
   const [materialId, setMaterialId] = useState<string>(DEFAULT_FLOOR);
   /**
    * The cell a place was just placed on, waiting for the snapshot that will carry
@@ -194,6 +205,20 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     () => (openMapWire ? mapFromJSON(openMapWire) : null),
     [openMapWire],
   );
+  /**
+   * What the console actually draws: the band alone while levelling, otherwise
+   * everything (R-159).
+   *
+   * A *slice*, not a dimming. It is the same function the boundary uses to cut
+   * the table's payload, which means the GM levelling is looking at precisely
+   * what the table is looking at — and, just as importantly, that hidden blocks
+   * are absent from the scene and so cannot be picked. A dimmed block is still
+   * clickable, which is how a GM ends up editing something they cannot see.
+   */
+  const shownBody = useMemo(
+    () => (openBody && levelling && openRange ? sliceOf(openBody, openRange) : openBody),
+    [openBody, levelling, openRange?.lower, openRange?.upper],
+  );
 
   /**
    * Opening a map takes the party in — *"when a GM open a map, the party goes
@@ -226,7 +251,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   // whose meshes were hidden rather than destroyed.
   useEffect(() => {
     if (!stage) return;
-    const body = openBody;
+    const body = shownBody;
     // Keyed by which point of interest, not by the body: this effect reruns for
     // every block placed, because the wire hands back a new object each time
     // (D-185). The key is what tells the stage a *surface* changed, so the
@@ -235,9 +260,8 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       body,
       DEFAULT_MATERIALS,
       openMap ? `${openMap.placeId}/${openMap.poiId}` : null,
-      openRange,
     );
-  }, [openBody, openMap, stage, openRange?.lower, openRange?.upper]);
+  }, [shownBody, openMap, stage]);
 
   // A point of interest whose map the GM deleted, or which they removed
   // outright, must not leave the console stranded on a surface that is gone.
@@ -295,6 +319,21 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    * One place rather than a branch in pointer-down and another in pointer-move,
    * because the brush runs through both and the two copies would drift.
    */
+  /**
+   * What the tool is aimed at, and whether it may act (R-159).
+   *
+   * The occupancy check reads the **whole** body, not the slice the GM is
+   * shown: the point is to catch a cell that holds a block they cannot see.
+   * Asking the drawn geometry would answer "empty" and be exactly wrong.
+   */
+  const aimAt = (action: MapAction) => {
+    const range = openRange ?? { lower: 0, upper: MAP_MAX_HEIGHT };
+    const occupied = action.kind !== 'nothing' && !!openBody
+      && !!blockAt(openBody, action.at);
+    const inBounds = action.kind === 'nothing' || (!!openBody && inMap(openBody, action.at));
+    return mapAllowed(action, { levelling, range, occupied, inBounds });
+  };
+
   const mapEdit = (action: MapAction, stroke: string | null) => {
     if (!openMap || action.kind === 'nothing') return;
     const where = { placeId: openMap.placeId, poiId: openMap.poiId, ...action.at };
@@ -304,11 +343,10 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
         dispatch({ kind: 'setBlock', ...where, materialId, ...tagged });
         return;
       case 'paint':
-        // The same intent as `place`, deliberately: `setBlock` replaces the
-        // material of a block that is already there, and paint only ever
-        // targets a block the GM can see. What differs is the *cell* the tool
-        // chose — the block itself rather than the space against its face.
-        dispatch({ kind: 'setBlock', ...where, materialId, ...tagged });
+        // Its own intent, not `setBlock` with a different cell. The two are
+        // refused for opposite reasons — build will not overwrite, paint will
+        // not conjure — and one intent could not do both (R-159).
+        dispatch({ kind: 'paintBlock', ...where, materialId, ...tagged });
         return;
       case 'erase':
         dispatch({ kind: 'clearBlock', ...where, ...tagged });
@@ -339,6 +377,9 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     // Inside a map, the world's tool table does not apply at all (R-148).
     if (openMap) {
       const action = mapAction(mapTool, picked.face);
+      // Refused here as well as by the host, so a click the readout already
+      // called impossible never becomes a rejection toast (R-159).
+      if (aimAt(action).kind === 'stop') return;
       // Only the brush keeps acting as the pointer moves (R-153), and when it
       // does the whole drag is one undo, so the stroke id is generated here.
       if (mapDrags(mapTool) && action.kind !== 'nothing') {
@@ -430,10 +471,20 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     if (openMap) {
       const picked = stage.pick(e.clientX, e.clientY);
       const action = mapAction(mapTool, picked.face);
-      const region = action.kind === 'fill' && openBody
-        ? fillRegion(openBody, action.at).length
+      const verdict = aimAt(action);
+      // A fill follows connected material straight through a cut, so while
+      // levelling it also reports how much of its reach is out of sight.
+      const reach = action.kind === 'fill' && openBody
+        ? (() => {
+          const cells = fillRegion(openBody, action.at);
+          const range = openRange ?? { lower: 0, upper: MAP_MAX_HEIGHT };
+          return {
+            total: cells.length,
+            unseen: levelling ? cells.filter((c) => !inRange(range, c.y)).length : 0,
+          };
+        })()
         : undefined;
-      const hover = mapHover(action, region);
+      const hover = mapHover(action, reach, verdict);
       setHoverLabel(hover.label);
       stage.showBlockGhost(hover.ghost);
 
@@ -442,6 +493,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       // The brush does not, so it paints every new block it crosses — once
       // each, under the one stroke id that makes the drag a single undo.
       if (blockStroke.current === null || action.kind === 'nothing') return;
+      if (verdict.kind === 'stop') return;
       const key = `${action.at.x},${action.at.y},${action.at.z}`;
       if (key === lastBlock.current) return;
       lastBlock.current = key;
@@ -682,6 +734,8 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
               && openPoi.visibleToParty
             }
             range={openRange ?? { lower: 0, upper: MAP_MAX_HEIGHT }}
+            levelling={levelling}
+            onLevelling={setLevelling}
             onTool={setMapTool}
             onMaterial={setMaterialId}
             onLeave={() => setOpenMap(null)}

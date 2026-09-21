@@ -13,7 +13,7 @@ import {
   addPlace, renamePlace, setPlaceMarker, movePlace, removePlace, placeById, placeAt, isValidPlaceCell,
   addNote, editNote, setNoteVisible, removeNote, moveNote, isKnownMarker,
   addPoi, renamePoi, setPoiVisible, removePoi, movePoi,
-  setMapBlock, clearMapBlock, fillPoiMaterial, growPoiMap, inMap, isKnownMaterial,
+  setMapBlock, clearMapBlock, fillPoiMaterial, growPoiMap, inMap, blockAt, isKnownMaterial,
   MAP_MAX_HEIGHT,
   addPoiPlane, renamePoiPlane, movePoiPlane, removePoiPlane,
   validPlaneY, planeAt, planeById, snapRange, isPoiOnTable,
@@ -472,6 +472,7 @@ function applyToPois(
     }
 
     case 'setBlock':
+    case 'paintBlock':
     case 'clearBlock':
     case 'fillMaterial':
     case 'growMap':
@@ -611,7 +612,9 @@ function partyOccupies(state: HostState, campaign: Campaign, coord: ChunkCoord):
  */
 function applyToMap(
   campaign: Campaign,
-  intent: Extract<Intent, { kind: 'setBlock' | 'clearBlock' | 'fillMaterial' | 'growMap' }>,
+  intent: Extract<Intent, {
+    kind: 'setBlock' | 'paintBlock' | 'clearBlock' | 'fillMaterial' | 'growMap';
+  }>,
   withPlaces: (places: readonly Place[]) => Applied,
   reject_: (reason: string) => Applied,
 ): Applied {
@@ -644,6 +647,24 @@ function applyToMap(
   if (intent.kind === 'fillMaterial') {
     return withPlaces(fillPoiMaterial(campaign.places, placeId, poiId, at, materialId));
   }
+
+  /*
+   * Placing and repainting are different operations and are refused for
+   * opposite reasons (R-159).
+   *
+   * `setBlock` in the domain replaces whatever is there, which is exactly what
+   * paint wants and exactly what build must not do. While every block was on
+   * screen the difference never showed: a face you can see has empty space in
+   * front of it. Hiding levels breaks that — the GM clicks what looks like bare
+   * floor and lands on a block one level down that they cannot see — so the two
+   * are now distinct intents, each saying no rather than doing the other's job.
+   */
+  const standing = !!blockAt(poi.map, at);
+  if (intent.kind === 'setBlock') {
+    if (standing) return reject_('there is already a block there');
+    return withPlaces(setMapBlock(campaign.places, placeId, poiId, at, materialId));
+  }
+  if (!standing) return reject_('there is nothing there to paint');
   return withPlaces(setMapBlock(campaign.places, placeId, poiId, at, materialId));
 }
 

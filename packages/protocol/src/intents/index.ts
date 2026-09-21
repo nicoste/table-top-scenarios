@@ -72,6 +72,7 @@ export const IntentSchema = z.discriminatedUnion('kind', [
   // A point of interest's map (D-183). Authored content, so GM only. `stroke`
   // ties one drag into a single undo, exactly as it does for terrain (R-140b).
   z.object({ kind: z.literal('setBlock'), placeId: z.string().min(1), poiId: z.string().min(1), x: z.number().int(), y: z.number().int(), z: z.number().int(), materialId: z.string().min(1), stroke }),
+  z.object({ kind: z.literal('paintBlock'), placeId: z.string().min(1), poiId: z.string().min(1), x: z.number().int(), y: z.number().int(), z: z.number().int(), materialId: z.string().min(1), stroke }),
   z.object({ kind: z.literal('clearBlock'), placeId: z.string().min(1), poiId: z.string().min(1), x: z.number().int(), y: z.number().int(), z: z.number().int(), stroke }),
   z.object({ kind: z.literal('fillMaterial'), placeId: z.string().min(1), poiId: z.string().min(1), x: z.number().int(), y: z.number().int(), z: z.number().int(), materialId: z.string().min(1) }),
   z.object({ kind: z.literal('addPlane'), placeId: z.string().min(1), poiId: z.string().min(1), name: z.string().max(40), y: z.number().int() }),

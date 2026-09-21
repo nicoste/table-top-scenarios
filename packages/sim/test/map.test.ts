@@ -303,3 +303,79 @@ describe('the bucket fill through sim (R-154)', () => {
     }, 'table').rejected).toBe('only the GM can do that');
   });
 });
+
+describe('building never overwrites, painting never conjures (R-159)', () => {
+  const GRASS = DEFAULT_MATERIALS.find((m) => m.name === 'Grass')!.id as string;
+
+  it('refuses to build where a block already stands', () => {
+    // The hazard the levels toggle would otherwise create: with the band shown
+    // alone, a ray passes through what is hidden and lands on the far side, so
+    // the cell "in front" of a face can hold a block the GM cannot see. The
+    // domain's setBlock would have silently repainted it.
+    const { state, placeId, poiId } = seeded();
+    const built = run(state, {
+      kind: 'setBlock', placeId, poiId, x: 2, y: 1, z: 2, materialId: STONE,
+    }).state;
+    expect(run(built, {
+      kind: 'setBlock', placeId, poiId, x: 2, y: 1, z: 2, materialId: GRASS,
+    }).rejected).toBe('there is already a block there');
+    // And the block it refused to overwrite is untouched.
+    expect(poiOf(built).map!.blocks.get('2,1,2')).toBe(STONE);
+  });
+
+  it('refuses to build on the floor, which is a block like any other', () => {
+    const { state, placeId, poiId } = seeded();
+    expect(run(state, {
+      kind: 'setBlock', placeId, poiId, x: 0, y: 0, z: 0, materialId: STONE,
+    }).rejected).toBe('there is already a block there');
+  });
+
+  it('paints a block that is there', () => {
+    const { state, placeId, poiId } = seeded();
+    const painted = run(state, {
+      kind: 'paintBlock', placeId, poiId, x: 0, y: 0, z: 0, materialId: STONE,
+    }).state;
+    expect(poiOf(painted).map!.blocks.get('0,0,0')).toBe(STONE);
+  });
+
+  it('refuses to paint thin air', () => {
+    // The mirror image, and it is why these are two intents rather than one:
+    // each refuses precisely what the other is for.
+    const { state, placeId, poiId } = seeded();
+    expect(run(state, {
+      kind: 'paintBlock', placeId, poiId, x: 0, y: 5, z: 0, materialId: STONE,
+    }).rejected).toBe('there is nothing there to paint');
+  });
+
+  it('checks the bounds and the material before either', () => {
+    const { state, placeId, poiId } = seeded();
+    expect(run(state, {
+      kind: 'paintBlock', placeId, poiId, x: MAP_PATCH, y: 0, z: 0, materialId: STONE,
+    }).rejected).toBe('that is outside the map');
+    expect(run(state, {
+      kind: 'paintBlock', placeId, poiId, x: 0, y: 0, z: 0, materialId: 'material:unobtanium',
+    }).rejected).toBe('unknown material');
+  });
+
+  it('is refused for the table seat, like every other authored edit (R-136)', () => {
+    const { state, placeId, poiId } = seeded();
+    expect(run(state, {
+      kind: 'paintBlock', placeId, poiId, x: 0, y: 0, z: 0, materialId: STONE,
+    }, 'table').rejected).toBe('only the GM can do that');
+  });
+
+  it('coalesces a brush drag into one undo, as setBlock did (R-140b)', () => {
+    const { state, placeId, poiId } = seeded();
+    let next = state;
+    for (let x = 0; x < 4; x += 1) {
+      next = run(next, {
+        kind: 'paintBlock', placeId, poiId, x, y: 0, z: 0, materialId: STONE, stroke: 'brush1',
+      }).state;
+    }
+    expect(poiOf(next).map!.blocks.get('3,0,0')).toBe(STONE);
+    const undone = run(next, { kind: 'undo' }).state;
+    for (let x = 0; x < 4; x += 1) {
+      expect(poiOf(undone).map!.blocks.get(`${x},0,0`), `x${x}`).toBe(DEFAULT_FLOOR);
+    }
+  });
+});

@@ -8,7 +8,7 @@ import {
   EdgesGeometry, LineSegments, LineBasicMaterial, Group,
 } from 'three';
 import type {
-  BlockCoord, Campaign, EncounterMap, LevelRange, Material, Placement, WorldCell,
+  BlockCoord, Campaign, EncounterMap, Material, Placement, WorldCell,
 } from '@tt/domain';
 import { CHUNK_SIZE, brushCentreOffset, mapCentre } from '@tt/domain';
 import type { CameraTarget } from '../camera/index.js';
@@ -252,15 +252,15 @@ export class Stage {
    * render, so keying the camera on it re-framed the map for every block placed
    * (R-152). Pass the same key while the same map is open.
    *
-   * `range` fades the levels outside it rather than hiding them (R-146): the
-   * console shows the whole body and marks what the table is being shown. The
-   * table passes none, because it was never sent the rest.
+   * Whatever body it is handed is drawn in full. Cutting is the caller's job:
+   * the console hands over a slice while the GM is levelling, and the table was
+   * only ever sent one (R-159). A dimmed block is still clickable, which is how
+   * a GM ends up editing something they cannot see — so there is no dimming.
    */
   setMap(
     map: EncounterMap | null,
     materials: readonly Material[],
     key: string | null = null,
-    range: LevelRange | null = null,
   ): void {
     if (this.blocks) {
       this.scene.remove(this.blocks.group);
@@ -273,7 +273,7 @@ export class Stage {
     this.surface = next;
 
     if (map) {
-      this.blocks = buildBlockBody(map, materials, range);
+      this.blocks = buildBlockBody(map, materials);
       this.scene.add(this.blocks.group);
     }
     this.applySurface();

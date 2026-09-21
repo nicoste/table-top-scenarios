@@ -41,6 +41,9 @@ interface Props {
   readonly partyCanSee: boolean;
   /** The band this map is cut to. Always present — an uncut map is its whole body. */
   readonly range: LevelRange;
+  /** Is the console showing only the band, like the table (R-159)? */
+  readonly levelling: boolean;
+  onLevelling: (on: boolean) => void;
   onTool: (tool: MapTool) => void;
   onMaterial: (id: string) => void;
   onLeave: () => void;
@@ -62,7 +65,7 @@ function stepName(
 
 export function MapPanel({
   placeName, poiName, map, tool, materials, materialId, hoverLabel,
-  partyHere, partyCanSee, range,
+  partyHere, partyCanSee, range, levelling, onLevelling,
   onTool, onMaterial, onLeave, dispatch, placeId, poiId,
 }: Props) {
   const blocks = Object.keys(map.blocks).length;
@@ -279,6 +282,30 @@ export function MapPanel({
         </div>
 
         {/*
+          The toggle (R-159). Two views of one body: everything, or the band the
+          table gets. Not a dimming — while it is on, the levels outside the
+          band are *absent*, which is what stops the GM editing a block they
+          cannot see (D-202).
+        */}
+        <div className="btn-grid tools" style={{ marginTop: 4 }}>
+          <Tooltip
+            label={levelling
+              ? 'Show the whole body again'
+              : 'Show only the band — what the table gets, and nothing else'}
+            placement="bottom"
+            stretch
+          >
+            <button
+              className={`wide${levelling ? ' on' : ''}`}
+              aria-pressed={levelling}
+              onClick={() => onLevelling(!levelling)}
+            >
+              {levelling ? '◧ Showing the band' : '▦ Showing everything'}
+            </button>
+          </Tooltip>
+        </div>
+
+        {/*
           The band. Two selects rather than the double slider the GM sketched —
           the steps are few and named, and a dropdown of names cannot be dragged
           past itself. The slider is a polish, not the feature.
@@ -318,9 +345,11 @@ export function MapPanel({
           </select>
         </label>
         <p className="hint">
-          {partyHere
-            ? 'Faded levels are the ones the table is not being shown.'
-            : 'Faded levels are cut away here, and will be for the table when the party comes in.'}
+          {levelling
+            ? 'Only the band is drawn, so nothing outside it can be clicked by mistake.'
+            : partyHere
+              ? 'You see the whole place; the table sees the band.'
+              : 'You see the whole place. The band is what the table gets when the party comes in.'}
         </p>
       </div>
 
