@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { decodeCampaign, decodePlacement } from '@tt/protocol';
 import {
-  CHUNK_SIZE, MAX_HEIGHT, MAP_MAX_HEIGHT, clampBrush, creatableSlots, sameWorldCell,
+  CHUNK_SIZE, MAX_HEIGHT, WHOLE_MAP, rangeIn, clampBrush, creatableSlots, sameWorldCell,
   DEFAULT_MATERIALS, DEFAULT_FLOOR, mapFromJSON, fillRegion, sliceOf, inRange, inMap, blockAt,
 } from '@tt/domain';
 import type { GmView, Intent } from '@tt/protocol';
@@ -149,9 +149,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    * building gets built (D-201).
    */
   const storedRange = openMap ? view?.save?.ranges[openMap.poiId] ?? null : null;
-  const openRange = openMap
-    ? storedRange ?? { lower: 0, upper: MAP_MAX_HEIGHT }
-    : null;
+  const openRange = openMap ? rangeIn(view?.save?.ranges ?? {}, openMap.poiId) : null;
 
   /*
    * The band the console is working with, traced at the two moments it can go
@@ -408,7 +406,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    * Asking the drawn geometry would answer "empty" and be exactly wrong.
    */
   const aimAt = (action: MapAction) => {
-    const range = openRange ?? { lower: 0, upper: MAP_MAX_HEIGHT };
+    const range = openRange ?? WHOLE_MAP;
     const occupied = action.kind !== 'nothing' && !!openBody
       && !!blockAt(openBody, action.at);
     const inBounds = action.kind === 'nothing' || (!!openBody && inMap(openBody, action.at));
@@ -559,7 +557,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       const reach = action.kind === 'fill' && openBody
         ? (() => {
           const cells = fillRegion(openBody, action.at);
-          const range = openRange ?? { lower: 0, upper: MAP_MAX_HEIGHT };
+          const range = openRange ?? WHOLE_MAP;
           return {
             total: cells.length,
             unseen: levelling ? cells.filter((c) => !inRange(range, c.y)).length : 0,
@@ -816,7 +814,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
               && knownChunks.has(`${openPlace.cell.cx},${openPlace.cell.cz}`)
               && openPoi.visibleToParty
             }
-            range={openRange ?? { lower: 0, upper: MAP_MAX_HEIGHT }}
+            range={openRange ?? WHOLE_MAP}
             levelling={levelling}
             onLevelling={setLevelling}
             onTool={setMapTool}

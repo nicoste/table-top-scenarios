@@ -2137,6 +2137,22 @@ apps/host/src/
 > that **drag**. A handle draws *over* its row's marker rather than replacing
 > it, or a handle resting on a bound renders as a bar and disappears.
 >
+> **A press, not a click, and one gesture for both** (D-208). Pressing any row
+> takes hold of the nearer handle and brings it there; the press *is* the start
+> of the drag. Nothing in the ladder acts on a pointer click, because a click
+> fires on release — the same release that ends a drag — and the row's button
+> is reused as the handle moves, so a click after a drag threw the band back
+> where the drag began. Keyboard activation still works, and is the only click
+> the ladder answers.
+>
+> **An uncut map carries no band, and exactly one function says what that
+> means** (D-208). A band equal to the whole map is stored as *absence*, so the
+> record does not fill with defaults — which makes the default something every
+> reader has to supply. `WHOLE_MAP` is the value and `rangeFor` / `rangeIn` are
+> the only readers; no caller spells a band out. A console that spelled its own
+> — zero to sky, from before a map could be dug — made a handle dragged to
+> Bedrock come back drawn at the water line, with nothing wrong anywhere else.
+>
 > It is **evenly spaced, not proportional to height** — proportional puts a roof
 > at 3 and a water level at 0 six percent apart and overlapping. That also means
 > a row cannot be dragged to a new *height*, since an ordinal axis has no answer

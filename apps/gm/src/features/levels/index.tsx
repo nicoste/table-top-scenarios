@@ -36,6 +36,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Intent, MapWire } from '@tt/protocol';
 import { MAP_MAX_HEIGHT, MAP_MIN_DEPTH, planeSteps, stepLabel } from '@tt/domain';
 import type { LevelRange } from '@tt/domain';
+import { grabEnd } from '@tt/client-core';
 import { ConfirmDelete } from '@tt/ui';
 import { trace } from '../../trace.js';
 
@@ -178,10 +179,6 @@ export function LevelLadder({ map, range, placeId, poiId, dispatch }: Props) {
     );
   };
 
-  /** Which end a click on this stop should move: whichever is nearer. */
-  const nearerEnd = (at: number): 'lower' | 'upper' =>
-    (Math.abs(at - range.lower) <= Math.abs(at - range.upper) ? 'lower' : 'upper');
-
   /**
    * The stop under a pointer, found by hit-testing rows rather than by
    * arithmetic — the rows are the truth about where the stops are drawn.
@@ -200,10 +197,26 @@ export function LevelLadder({ map, range, placeId, poiId, dispatch }: Props) {
     return clientY < top.top ? found(0) : found(rows.length - 1);
   };
 
-  const onHandleDown = (end: 'lower' | 'upper') => (e: React.PointerEvent) => {
+  /**
+   * Pressing anywhere on the rail takes hold of a handle (D-208).
+   *
+   * One gesture for both cases: on a handle it grabs that handle, on any other
+   * row it brings the nearer end there and you are already dragging it — which
+   * is how a slider behaves, and what the GM meant by a double range slider.
+   *
+   * It is also what stops the ladder acting twice. The version this replaces
+   * moved the band on a **click**, and a click fires on release — the same
+   * release that ends a drag. React reuses the row's button as the handle
+   * moves, so letting go after a drag fired a click on the row the drag
+   * *started* from, and threw the band straight back there. The trace showed it
+   * plainly: `grip up` at -16, and one millisecond later a tap on Roof nobody
+   * made. Nothing listens for a pointer click here now, so it cannot recur.
+   */
+  const onRowDown = (stop: Stop) => (e: React.PointerEvent) => {
     e.preventDefault();
+    const end = grabEnd(range, stop.y);
     const at = end === 'lower' ? range.lower : range.upper;
-    drag.current = { end, at, from: range, steps: 0 };
+    drag.current = { end, at: stop.y, from: range, steps: 0 };
     let captured = false;
     try {
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -211,13 +224,14 @@ export function LevelLadder({ map, range, placeId, poiId, dispatch }: Props) {
     } catch {
       captured = false;
     }
-    trace('grip', `down on the ${end === 'upper' ? 'top' : 'bottom'} handle`, {
-      at,
+    trace('grip', `down on ${stop.name} (${stop.y}) — holding the ${end} end`, {
+      it_was_at: at,
       band: band(range),
       pointer: `${e.pointerType} #${e.pointerId}`,
       captured,
       on: (e.target as HTMLElement).className || (e.target as HTMLElement).tagName,
     });
+    if (stop.y !== at) move(end, stop.y, `grab at ${stop.name}`);
   };
 
   const onDragMove = (e: React.PointerEvent) => {
@@ -269,11 +283,9 @@ export function LevelLadder({ map, range, placeId, poiId, dispatch }: Props) {
    */
   const onAnyClick = (e: React.MouseEvent) => {
     const since = dragEndedAt.current ? performance.now() - dragEndedAt.current : null;
-    trace('ladder', 'click', {
+    trace('ladder', `click (${e.detail === 0 ? 'from the keyboard' : 'from a pointer — ignored, the press already ran'})`, {
       on: (e.target as HTMLElement).className || (e.target as HTMLElement).tagName,
-      ...(since === null
-        ? { after_a_drag: 'no drag yet' }
-        : { after_a_drag: `${Math.round(since)}ms ago`, ...(since < 400 ? { suspect: 'this click follows a drag' } : {}) }),
+      after_a_drag: since === null ? 'no drag yet' : `${Math.round(since)}ms ago`,
     });
   };
 
@@ -318,29 +330,30 @@ export function LevelLadder({ map, range, placeId, poiId, dispatch }: Props) {
                   bound is still a handle and not a bar.
                 */}
                 <span className={`mark${inBand ? ' in' : ''}`} aria-hidden />
-                {end ? (
-                  <button
-                    className="grip"
-                    aria-label={`Drag the ${end === 'upper' ? 'top' : 'bottom'} of the band`}
-                    title={`Drag to move the ${end === 'upper' ? 'top' : 'bottom'} of the band`}
-                    onPointerDown={onHandleDown(end)}
-                  />
-                ) : (
-                  <button
-                    className="pick"
-                    aria-label={`Bring the band to ${stop.name}`}
-                    title={`Bring the nearer end of the band to ${stop.name}`}
-                    onClick={() => {
-                      const which = nearerEnd(stop.y);
-                      trace('ladder', `tap on ${stop.name} (${stop.y})`, {
-                        band: band(range),
-                        nearer: which,
-                        away: { lower: Math.abs(stop.y - range.lower), upper: Math.abs(stop.y - range.upper) },
-                      });
-                      move(which, stop.y, `tap ${stop.name}`);
-                    }}
-                  />
-                )}
+                {/*
+                  One button whether or not a handle rests here, so the press
+                  that starts a drag and the press that summons a handle are
+                  the same gesture — and so React has no pair of elements to
+                  swap handlers between mid-drag.
+                */}
+                <button
+                  className={end ? 'grip' : 'pick'}
+                  aria-label={end
+                    ? `Drag the ${end === 'upper' ? 'top' : 'bottom'} of the band`
+                    : `Bring the band to ${stop.name}`}
+                  title={end
+                    ? `Drag to move the ${end === 'upper' ? 'top' : 'bottom'} of the band`
+                    : `Bring the nearer end of the band to ${stop.name}`}
+                  onPointerDown={onRowDown(stop)}
+                  onClick={(e) => {
+                    // Keyboard only. A pointer click has already been served by
+                    // the press above, and serving it twice is the bug.
+                    if (e.detail !== 0) return;
+                    const which = grabEnd(range, stop.y);
+                    trace('ladder', `keyboard: ${stop.name} (${stop.y}) moves the ${which} end`, { band: band(range) });
+                    move(which, stop.y, `key ${stop.name}`);
+                  }}
+                />
               </span>
 
               {stop.planeId ? (

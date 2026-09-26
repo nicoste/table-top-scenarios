@@ -52,7 +52,7 @@ export {
 } from './planes/index.js';
 export type { CuttingPlane, LevelRange, PlaneJSON } from './planes/index.js';
 export {
-  MAP_PATCH, MAP_MAX_HEIGHT, MAP_MIN_DEPTH, blockKey, parseBlockKey, inMap, blockAt,
+  MAP_PATCH, MAP_MAX_HEIGHT, MAP_MIN_DEPTH, WHOLE_MAP, blockKey, parseBlockKey, inMap, blockAt,
   createMap, setBlock, clearBlock, growMap, topOfMap, bottomOfMap, mapToJSON, mapFromJSON,
   fillRegion, fillMaterial, mapCentre, enclosing, sliceOf,
 } from './map/index.js';
@@ -79,7 +79,7 @@ export {
   SAVE_SCHEMA_VERSION, LIVE_LABEL,
   liveSaveId, createLiveSave, belongsTo, matchesCampaignVersion,
   touch, upgraded, withDiscovery, withPlacement, pruneDiscovery, pruneMembers,
-  enteringMap, leavingMap, rangeFor, withRange, pruneInside, pruneRanges, settleRanges,
+  enteringMap, leavingMap, rangeFor, rangeIn, withRange, pruneInside, pruneRanges, settleRanges,
 } from './save/index.js';
 
 export type { Placement, PlacementJSON } from './placement/index.js';

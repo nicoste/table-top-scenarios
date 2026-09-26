@@ -12,7 +12,7 @@ import { viewFor } from '@tt/protocol';
 import type { GmView, HostState, Intent, TableView } from '@tt/protocol';
 import {
   createCampaign, createLiveSave, rangeFor, planeSteps, DEFAULT_MATERIALS,
-  MAP_MAX_HEIGHT, MAP_MIN_DEPTH, ORIGIN,
+  MAP_MAX_HEIGHT, MAP_MIN_DEPTH, WHOLE_MAP, ORIGIN,
 } from '@tt/domain';
 
 const NOW = '2026-01-01T00:00:00.000Z';
@@ -396,5 +396,58 @@ describe('a band always rests on a level (R-161, D-206)', () => {
     );
     expect(stops).toContain(band.lower);
     expect(stops).toContain(band.upper);
+  });
+});
+
+describe('an uncut map carries no band, and everyone must agree what that means (D-208)', () => {
+  it('stores nothing once the band reaches both bounds', () => {
+    const { state, placeId, poiId } = tavern();
+    const cut = run(state, { kind: 'setRange', placeId, poiId, lower: 0, upper: 4 }).state;
+    expect(cut.activeSave!.ranges.has(poiId)).toBe(true);
+
+    const whole = run(cut, {
+      kind: 'setRange', placeId, poiId, lower: MAP_MIN_DEPTH, upper: MAP_MAX_HEIGHT,
+    }).state;
+    expect(whole.activeSave!.ranges.has(poiId)).toBe(false);
+  });
+
+  it('reads that absence back as floor to sky, not as zero to sky', () => {
+    /*
+     * The GM dragged the bottom handle down to Bedrock and watched it land at
+     * the water line instead. Nothing had gone wrong with the drag: the band
+     * reached the floor, which made it the whole map, which stored no entry at
+     * all — and the console read "no entry" as zero to sky, a default left over
+     * from before a map could be dug below zero (R-160).
+     *
+     * So the assertion is about the *bottom*. Absence must mean the deepest a
+     * map goes, because that is what the host wrote when it deleted the entry.
+     */
+    const { state, placeId, poiId } = tavern();
+    const whole = run(state, {
+      kind: 'setRange', placeId, poiId, lower: MAP_MIN_DEPTH, upper: MAP_MAX_HEIGHT,
+    }).state;
+    expect(rangeFor(whole.activeSave!, poiId)).toEqual({ lower: MAP_MIN_DEPTH, upper: MAP_MAX_HEIGHT });
+    expect(WHOLE_MAP).toEqual({ lower: MAP_MIN_DEPTH, upper: MAP_MAX_HEIGHT });
+  });
+
+  it('leaves the console nothing on the wire to read it from', () => {
+    // Where the two answers actually met: the console has no band to draw, so
+    // it supplies one. It must supply the same one.
+    const { state, placeId, poiId } = tavern();
+    const whole = run(state, {
+      kind: 'setRange', placeId, poiId, lower: MAP_MIN_DEPTH, upper: MAP_MAX_HEIGHT,
+    }).state;
+    const wire = (viewFor('gm', whole) as GmView).save!;
+    expect(wire.ranges[poiId as string]).toBeUndefined();
+  });
+
+  it('still stores a band that reaches the floor but not the sky', () => {
+    // The cellar alone, which is a real band and not an uncut map.
+    const { state, placeId, poiId } = tavern();
+    const cellar = run(state, {
+      kind: 'setRange', placeId, poiId, lower: MAP_MIN_DEPTH, upper: 4,
+    }).state;
+    expect(cellar.activeSave!.ranges.has(poiId)).toBe(true);
+    expect(rangeFor(cellar.activeSave!, poiId)).toEqual({ lower: MAP_MIN_DEPTH, upper: 4 });
   });
 });

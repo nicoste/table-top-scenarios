@@ -10,7 +10,7 @@ import {
   planeSteps, fullRange, clampRange, inRange, sameRange, isFullRange, validPlaneY,
   planesToJSON, planesFromJSON,
   createMap, setBlock, sliceOf, blockAt, blockKey, WATER_LEVEL,
-  MAP_MAX_HEIGHT, MAP_MIN_DEPTH, stepLabel, DEFAULT_MATERIALS,
+  MAP_MAX_HEIGHT, MAP_MIN_DEPTH, WHOLE_MAP, rangeIn, stepLabel, DEFAULT_MATERIALS,
 } from '@tt/domain';
 import type { CuttingPlane, MaterialId, PlaneId } from '@tt/domain';
 
@@ -278,5 +278,31 @@ describe('planes on the wire and on disk', () => {
     const map = { ...createMap(), planes: tavern() };
     const grown = { ...map, blocks: new Map(map.blocks).set(blockKey(at(0, 0, 0)), STONE as MaterialId) };
     expect(grown.planes).toHaveLength(3);
+  });
+});
+
+describe('an uncut map has no entry, so the default must live in one place (D-208)', () => {
+  it('reads a missing band as the whole map, floor included', () => {
+    /*
+     * The console read a map with no band stored as *zero* to sky, while the
+     * host wrote one as floor to sky. Dragging the bottom handle to Bedrock
+     * therefore worked, deleted the entry — because it now selected the whole
+     * map — and came back drawn at the water line.
+     *
+     * The fix was to delete the second answer, not to correct it. This is the
+     * one that is left.
+     */
+    expect(rangeIn({}, 'poi_1')).toEqual(WHOLE_MAP);
+    expect(rangeIn({}, 'poi_1').lower).toBe(MAP_MIN_DEPTH);
+    expect(rangeIn({}, 'poi_1').upper).toBe(MAP_MAX_HEIGHT);
+  });
+
+  it('hands back a stored band untouched', () => {
+    const stored = { lower: 0, upper: 4 };
+    expect(rangeIn({ poi_1: stored }, 'poi_1')).toBe(stored);
+  });
+
+  it('does not answer for a different map', () => {
+    expect(rangeIn({ poi_1: { lower: 0, upper: 4 } }, 'poi_2')).toEqual(WHOLE_MAP);
   });
 });

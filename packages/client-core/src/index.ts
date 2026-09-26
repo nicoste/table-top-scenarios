@@ -13,6 +13,8 @@ export {
   clickAction, holdsSelection, tableAction, mapAction, mapHover, mapDrags, mapAllowed,
 } from './tools/index.js';
 
+export { grabEnd } from './levels/index.js';
+
 export { cameraAction, CAMERA_HINT } from './camera/index.js';
 export type { CameraAction } from './camera/index.js';
 export type {

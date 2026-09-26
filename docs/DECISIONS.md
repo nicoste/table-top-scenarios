@@ -3641,3 +3641,59 @@ logs match what their hands did, which only works if nothing else changed.
 On by default. A trace you have to switch on is off when you need it, and this
 one costs nothing when there is nothing to print. `__trace = false` silences it.
 It stays as long as it earns its place; the moment it is narration, it goes.
+
+### D-208 — Two bugs the trace caught in one gesture · `agreed`
+The GM dragged the bottom handle from Roof to Bedrock. It landed back on Roof.
+D-207's trace printed the whole gesture, and there were two separate faults in
+it — neither of which could have been guessed from the screen, and one of which
+was the *opposite* of what it looked like.
+
+```
+010  grip drag: lower crosses into Bedrock (-16)
+011  ladder ⇒ drag — lower to -16
+012  ladder ⇐ band: 0 → 32          ← asked for -16, told 0
+013  grip up — the lower end let go at -16
+014  ladder click
+015  ladder tap on Roof (3)          ← a tap nobody made
+016  ladder ⇒ tap Roof — lower to 3
+```
+
+**Line 012 — the drag worked, and the console misread its own success.** A band
+that reaches both bounds *is* the whole map, and `withRange` stores an uncut map
+as **no entry at all**, so the record does not fill with defaults. That is
+sound, and it makes "no entry" a value every reader has to supply for itself.
+The host supplied floor-to-sky. The console supplied **zero** to sky — correct
+until R-160 let a map be dug, and never revisited, in four separate places.
+
+The fix is not to correct the second answer but to delete it: `WHOLE_MAP` is the
+value, and `rangeIn` reads the sparse record the wire carries so a console never
+supplies a default at all. Worth being straight about the tests: the ones
+asserting the contract would have passed *before* this fix too, because the bug
+was a duplicate constant in a component, not a wrong rule in the domain. Only
+the test of `rangeIn` — the console's actual read path, now that it has one —
+fails against the old behaviour. A duplicated constant is not caught by testing
+one of the copies (R-23b, again, and the same lesson as the POI-id fixture).
+
+**Lines 013–016 — a click nobody made.** Exactly the suspect D-207 wrote down,
+confirmed at one millisecond. A click fires on release; a drag ends in a
+release; React reuses the row's `<button>` as the handle moves, so releasing
+after a drag fired a click on the row the drag *started* from, whose job is
+"bring the nearer end here".
+
+Suppressing that click would have worked and would have been a patch on a
+design mistake. The real error was having two gestures at all — a drag on a
+handle and a click on a row — for one idea. So there is one now: **pressing any
+row takes hold of the nearer handle and starts dragging it.** On a handle that
+is the handle itself, since nothing is nearer to it than itself; anywhere else
+the handle comes to meet you and you are already dragging. One button per row
+rather than two, so React has no pair to swap handlers between. Nothing listens
+for a pointer click, so the phantom cannot return — and `e.detail === 0` keeps
+keyboard activation, which is a real click and the only one the ladder answers.
+
+`grabEnd` came out of the component while doing it (R-23b): it decides the
+outcome of every press now, which is far more than it used to.
+
+**On the instrument.** D-207 wrote two guesses down as questions rather than
+fixing them. One was right, one never fired, and the third fault was one I had
+not thought of at all — the console disbelieving a correct answer from the host.
+Worth remembering the next time it seems faster to fix the guess.

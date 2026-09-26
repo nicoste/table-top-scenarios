@@ -13,7 +13,7 @@ import type { MaterialId } from '../ids/index.js';
 import { freshId } from '../ids/index.js';
 import { DEFAULT_FLOOR } from '../materials/index.js';
 import type { CuttingPlane, LevelRange, PlaneJSON } from '../planes/index.js';
-import { inRange, planesToJSON, planesFromJSON, WATER_LEVEL } from '../planes/index.js';
+import { fullRange, inRange, planesToJSON, planesFromJSON, WATER_LEVEL } from '../planes/index.js';
 
 /** Cells along one side of a freshly created map, and the step `+` grows by. */
 export const MAP_PATCH = 16;
@@ -42,6 +42,20 @@ export const MAP_MAX_HEIGHT = 32;
  * sideways, with three things to keep in step instead of one (D-203).
  */
 export const MAP_MIN_DEPTH = -16;
+
+/**
+ * The band that selects the whole of a map, floor to sky (R-161).
+ *
+ * One value, because two callers that each spell the default out will
+ * eventually spell it differently — and did. A map the GM has not cut carries
+ * no band at all (`withRange` deletes the entry, so the record does not fill
+ * with defaults), which makes "no entry" a value every reader has to supply
+ * for itself. The host supplied floor-to-sky; the console still supplied
+ * *zero* to sky, left over from before a map could be dug (R-160). So dragging
+ * the bottom handle down to Bedrock worked perfectly, stored nothing, and came
+ * back drawn at the water line (D-208).
+ */
+export const WHOLE_MAP: LevelRange = fullRange(MAP_MAX_HEIGHT, MAP_MIN_DEPTH);
 
 export interface BlockCoord {
   readonly x: number;

@@ -11,8 +11,8 @@ import type { Placement } from '../placement/index.js';
 import { emptyPlacement, prunePlacement } from '../placement/index.js';
 import type { Campaign } from '../campaign/index.js';
 import type { CuttingPlane, LevelRange } from '../planes/index.js';
-import { fullRange, sameRange, settleRange } from '../planes/index.js';
-import { MAP_MAX_HEIGHT, MAP_MIN_DEPTH } from '../map/index.js';
+import { sameRange, settleRange } from '../planes/index.js';
+import { MAP_MAX_HEIGHT, MAP_MIN_DEPTH, WHOLE_MAP } from '../map/index.js';
 
 // 3 renames discovery's `pois` to `places`, following the campaign (D-176).
 // Like the campaign, there is no migration: the same field name meant a
@@ -148,7 +148,24 @@ export function leavingMap(save: Save): Save {
 
 /** The band a map is cut to: the whole body unless the GM said otherwise. */
 export function rangeFor(save: Save, poiId: PoiId | string): LevelRange {
-  return save.ranges.get(poiId as string) ?? fullRange(MAP_MAX_HEIGHT, MAP_MIN_DEPTH);
+  return save.ranges.get(poiId as string) ?? WHOLE_MAP;
+}
+
+/**
+ * The band for one map, read straight from the record the wire carries.
+ *
+ * `rangeFor` for a caller holding no `Save` — which is every console, since
+ * what crosses the wire is a plain object. It exists because `WHOLE_MAP` alone
+ * was not enough: an uncut map stores no entry, so every reader has to supply
+ * the default, and a reader that supplies it by hand can supply the wrong one.
+ * One did, for as long as maps have had a below-zero (D-208). Here there is
+ * nowhere to put the mistake.
+ */
+export function rangeIn(
+  ranges: Readonly<Record<string, LevelRange>>,
+  poiId: PoiId | string,
+): LevelRange {
+  return ranges[poiId as string] ?? WHOLE_MAP;
 }
 
 /** Cuts one map to a band. Independent of where the party is (D-201). */
@@ -156,7 +173,7 @@ export function withRange(save: Save, poiId: PoiId | string, range: LevelRange):
   if (sameRange(rangeFor(save, poiId), range)) return save;
   const ranges = new Map(save.ranges);
   // An uncut map carries no entry, so the record does not grow with defaults.
-  if (sameRange(range, fullRange(MAP_MAX_HEIGHT, MAP_MIN_DEPTH))) ranges.delete(poiId as string);
+  if (sameRange(range, WHOLE_MAP)) ranges.delete(poiId as string);
   else ranges.set(poiId as string, range);
   return { ...save, ranges };
 }
@@ -190,7 +207,7 @@ export function settleRanges(
     const rested = settleRange(planes, range, MAP_MAX_HEIGHT, MAP_MIN_DEPTH);
     if (sameRange(rested, range)) continue;
     touched = true;
-    if (sameRange(rested, fullRange(MAP_MAX_HEIGHT, MAP_MIN_DEPTH))) ranges.delete(poiId);
+    if (sameRange(rested, WHOLE_MAP)) ranges.delete(poiId);
     else ranges.set(poiId, rested);
   }
   return touched ? { ...save, ranges } : save;
