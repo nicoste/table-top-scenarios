@@ -1758,9 +1758,8 @@ apps/host/src/
 > That is R-8 applied without special-casing: what the GM built versus where the
 > party currently is.
 >
-> A plane's Y is editable and the range **snaps to steps**, with the floor and
-> ceiling of the map always available as the outermost two. A map with no planes
-> has exactly one range: all of it.
+> A plane's Y is editable and the range **snaps to steps**. Which steps exist is
+> R-161: three fixed reference heights, plus whatever the GM has cut.
 
 > **R-147.** Blocks are placed by **face adjacency** — click the face of an
 > existing block and the new one attaches there (D-181).
@@ -2101,3 +2100,37 @@ apps/host/src/
 > in it, clamped at zero, so an undug map still reads "Floor" at 0 and a stored
 > depth cannot disagree with the blocks. The band's lowest step follows it, which
 > is what lets a cut reach a cellar the moment one exists.
+
+> **R-161.** **Three fixed steps, named, and the GM's planes between them.**
+>
+> - **Sky** — the ceiling, the highest a map may build.
+> - **Water level** — zero, where every map's starting floor is laid (R-149),
+>   and the datum every other height is above or below.
+> - **Bedrock** — the deepest a map may be dug (R-160).
+>
+> All three are **immovable**, and that is the rule. The lowest step used to be
+> *the deepest block*, so the bottom label slid downward as the GM dug, and the
+> original ground lost its name the instant anything went beneath it — the same
+> word meaning a different height at different times. Anchored steps give the GM
+> references that hold still, and keep a saved band valid when blocks are erased.
+>
+> A plane may sit at none of the three, for the reason a plane may not sit at a
+> bound: it is already a step, so a cut there cuts nothing. A plane **may** sit
+> underground.
+>
+> The names live in `domain`, not in the console. They are vocabulary, like Place
+> and Point of interest (D-176) — a GM saying "cut it at water level" should be
+> saying the word the code says.
+>
+> A band pinched shut **opens upward**, because a band is named by the step it
+> sits on: pinching at water level should hand back the storey above, not the
+> cellar below, and certainly not the usually-empty underworld. Downward only at
+> the ceiling, where there is no up.
+>
+> **A stored band is never snapped behind the GM's back.** It is a pair of
+> heights they chose, and a plane they later move or delete can leave it
+> off-step — quietly dragging it to the nearest step would change what the party
+> sees without anyone asking. The *control* absorbs that instead: it offers
+> wherever the band currently sits alongside the steps, because a `select` whose
+> value is missing from its options displays a different one, and a control that
+> misreports the band is worse than an untidy list.

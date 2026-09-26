@@ -11,7 +11,8 @@ import { apply, emptyHistory, openedWith } from '@tt/sim';
 import { viewFor } from '@tt/protocol';
 import type { GmView, HostState, Intent, TableView } from '@tt/protocol';
 import {
-  createCampaign, createLiveSave, rangeFor, DEFAULT_MATERIALS, MAP_MAX_HEIGHT, ORIGIN,
+  createCampaign, createLiveSave, rangeFor, DEFAULT_MATERIALS,
+  MAP_MAX_HEIGHT, MAP_MIN_DEPTH, ORIGIN,
 } from '@tt/domain';
 
 const NOW = '2026-01-01T00:00:00.000Z';
@@ -242,7 +243,9 @@ describe('the range (R-146)', () => {
     const { state, placeId, poiId } = tavern();
     let next = run(state, { kind: 'setRange', placeId, poiId, lower: 4, upper: 8 }).state;
     expect(next.activeSave!.ranges.size).toBe(1);
-    next = run(next, { kind: 'setRange', placeId, poiId, lower: 0, upper: MAP_MAX_HEIGHT }).state;
+    next = run(next, {
+      kind: 'setRange', placeId, poiId, lower: MAP_MIN_DEPTH, upper: MAP_MAX_HEIGHT,
+    }).state;
     expect(next.activeSave!.ranges.size).toBe(0);
   });
 

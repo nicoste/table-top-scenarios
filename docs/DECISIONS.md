@@ -3485,3 +3485,36 @@ Three details that needed care, none of them obvious from the idea:
 - **The floor moves.** The band's lowest step was the constant 0; it is now the
   deepest block, derived and clamped at zero, so an undug map is unchanged and a
   dug one can be cut to its cellar.
+
+### D-204 — Sky, water level, bedrock · `agreed`
+*"Floor and Sky are the limits. What if we do the initial groundstone at 0, we
+call it waterlevel, and we have two unmovable levels called sky and hell (or
+something that illustrates 'the bottom')."*
+
+Right, and it fixes something D-203 had just broken. Once a map could be dug,
+the lowest step became *the deepest block* — so "Floor" slid downward as the GM
+worked, and zero, the height every map's starting ground is laid at, stopped
+having a name at all the moment anything went beneath it. A label that means a
+different height on Tuesday is not a reference point.
+
+Three fixed steps now, and a plane may sit at none of them for the reason a
+plane may not sit at a bound: it is already a step. A plane **may** sit
+underground, which it could not before.
+
+**On "Bedrock" rather than "Hell".** It is literally what the level is — the
+floor you cannot dig past — it is the established word in voxel builders, and it
+reads the same under a tavern as under a dungeon, where Hell presumes a
+cosmology the GM may not be running. "Water level" kept as the GM named it; it
+is the datum, and on an island map it is also literally true. The names live in
+`domain` beside the rules, not in the console, because they are vocabulary
+(D-176's lesson) — the code should say the word the GM says.
+
+**A bug the change surfaced.** With a datum at zero, `snapRange`'s
+never-select-nothing rule started handing back the wrong band: pinching both
+handles at water level opened *downward*, into the underworld, which is empty on
+almost every map. The old rule said "downward, or upward at the floor", and the
+reasoning behind it was arbitrary when I wrote it. It is now upward — a band is
+named by the step it sits on, so pinching at water level gives the storey above
+— with downward only at the ceiling, where there is no up. The test that caught
+it was one I had written asserting the arbitrary behaviour, which is a fair
+warning about tests that encode a coin-flip as if it were a decision.

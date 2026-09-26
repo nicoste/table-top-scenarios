@@ -12,7 +12,7 @@ import { emptyPlacement, prunePlacement } from '../placement/index.js';
 import type { Campaign } from '../campaign/index.js';
 import type { LevelRange } from '../planes/index.js';
 import { fullRange, sameRange } from '../planes/index.js';
-import { MAP_MAX_HEIGHT } from '../map/index.js';
+import { MAP_MAX_HEIGHT, MAP_MIN_DEPTH } from '../map/index.js';
 
 // 3 renames discovery's `pois` to `places`, following the campaign (D-176).
 // Like the campaign, there is no migration: the same field name meant a
@@ -148,7 +148,7 @@ export function leavingMap(save: Save): Save {
 
 /** The band a map is cut to: the whole body unless the GM said otherwise. */
 export function rangeFor(save: Save, poiId: PoiId | string): LevelRange {
-  return save.ranges.get(poiId as string) ?? fullRange(MAP_MAX_HEIGHT);
+  return save.ranges.get(poiId as string) ?? fullRange(MAP_MAX_HEIGHT, MAP_MIN_DEPTH);
 }
 
 /** Cuts one map to a band. Independent of where the party is (D-201). */
@@ -156,7 +156,7 @@ export function withRange(save: Save, poiId: PoiId | string, range: LevelRange):
   if (sameRange(rangeFor(save, poiId), range)) return save;
   const ranges = new Map(save.ranges);
   // An uncut map carries no entry, so the record does not grow with defaults.
-  if (sameRange(range, fullRange(MAP_MAX_HEIGHT))) ranges.delete(poiId as string);
+  if (sameRange(range, fullRange(MAP_MAX_HEIGHT, MAP_MIN_DEPTH))) ranges.delete(poiId as string);
   else ranges.set(poiId as string, range);
   return { ...save, ranges };
 }

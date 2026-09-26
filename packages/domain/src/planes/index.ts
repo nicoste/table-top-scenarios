@@ -63,8 +63,10 @@ function ordered(planes: readonly CuttingPlane[]): readonly CuttingPlane[] {
  * plane there would add nothing and would give the GM a named cut that does not
  * cut.
  */
-export function validPlaneY(y: number, cap: number, floor = 0): boolean {
-  return Number.isInteger(y) && y > floor && y < cap;
+export function validPlaneY(y: number, cap: number, floor: number): boolean {
+  // Not at either bound, and not at zero: all three are already steps (R-161),
+  // so a plane there would be a named cut that cuts nothing.
+  return Number.isInteger(y) && y > floor && y < cap && y !== 0;
 }
 
 export function planeAt(planes: readonly CuttingPlane[], y: number): CuttingPlane | null {
@@ -87,7 +89,7 @@ export function addPlane(
   name: string,
   y: number,
   cap: number,
-  floor = 0,
+  floor: number,
 ): readonly CuttingPlane[] {
   if (!validPlaneY(y, cap, floor) || planeAt(planes, y)) return planes;
   return ordered([
@@ -118,7 +120,7 @@ export function movePlane(
   id: PlaneId,
   y: number,
   cap: number,
-  floor = 0,
+  floor: number,
 ): readonly CuttingPlane[] {
   if (!validPlaneY(y, cap, floor)) return planes;
   // Occupied by another plane, or this one is already there: either way there is
@@ -149,22 +151,36 @@ export function removePlane(
  * the right answer for a body nobody has divided yet, and it is derived rather
  * than special-cased.
  */
+/**
+ * The values a range's handles may take (R-161).
+ *
+ * **Three fixed steps, always**, and the GM's planes between them:
+ *
+ * - the **ceiling**, the highest a map may build,
+ * - **zero**, where every map's starting floor is laid (R-149) and the datum
+ *   everything else is above or below,
+ * - the **bottom**, the deepest a map may be dug.
+ *
+ * Fixed is the point. The bottom step used to be *the deepest block*, which
+ * meant the lowest label slid downward as the GM dug and the original ground
+ * lost its name the moment anything went beneath it — the same word meaning a
+ * different height at different times. Anchoring all three gives the GM
+ * references that hold still, and it keeps a saved band valid when blocks are
+ * erased.
+ */
 export function planeSteps(
   // Heights, not identities: the console reads these straight off the wire,
   // where an id is a plain string.
   planes: readonly { readonly y: number }[],
   cap: number,
-  // Where the body actually bottoms out. Zero for a map nobody has dug, and
-  // negative once there is a cellar (R-160) — so the lowest step is a level
-  // that exists rather than the deepest one the rules permit.
-  floor = 0,
+  floor: number,
 ): readonly number[] {
-  const steps = new Set<number>([floor, cap]);
+  const steps = new Set<number>([floor, 0, cap]);
   for (const plane of planes) if (validPlaneY(plane.y, cap, floor)) steps.add(plane.y);
   return [...steps].sort((a, b) => a - b);
 }
 
-export function fullRange(cap: number, floor = 0): LevelRange {
+export function fullRange(cap: number, floor: number): LevelRange {
   return { lower: floor, upper: cap };
 }
 
@@ -179,7 +195,7 @@ export function snapRange(
   planes: readonly CuttingPlane[],
   range: LevelRange,
   cap: number,
-  floor = 0,
+  floor: number,
 ): LevelRange {
   const steps = planeSteps(planes, cap, floor);
   const nearest = (value: number) => steps.reduce(
@@ -189,11 +205,20 @@ export function snapRange(
   let lower = nearest(range.lower);
   let upper = nearest(range.upper);
   if (lower === upper) {
-    // Both handles landed on the same step. Open it downward when there is room
-    // below and upward otherwise, so there is always a level in view.
+    /*
+     * Both handles landed on the same step, which would select nothing.
+     *
+     * Open **upward**: a band is named by the step it sits on, so pinching at
+     * water level should give the storey above it rather than the cellar
+     * below. Downward was the first answer and it was arbitrary then; with a
+     * datum at zero and an underworld that is usually empty, it now reliably
+     * hands back the one band with nothing in it (R-161).
+     *
+     * Downward only at the ceiling, where there is no up.
+     */
     const at = steps.indexOf(lower);
-    if (at > 0) lower = steps[at - 1]!;
-    else upper = steps[1] ?? cap;
+    if (at >= 0 && at < steps.length - 1) upper = steps[at + 1]!;
+    else if (at > 0) lower = steps[at - 1]!;
   }
   if (lower > upper) [lower, upper] = [upper, lower];
   return { lower, upper };
@@ -209,8 +234,22 @@ export function sameRange(a: LevelRange, b: LevelRange): boolean {
 }
 
 /** Whether a range selects the whole body, for a UI that wants to say so. */
-export function isFullRange(range: LevelRange, cap: number, floor = 0): boolean {
+export function isFullRange(range: LevelRange, cap: number, floor: number): boolean {
   return range.lower <= floor && range.upper >= cap;
+}
+
+/**
+ * What the three fixed steps are called (R-161).
+ *
+ * Here rather than in the console, because they are part of the vocabulary
+ * rather than a label: the rules talk about the datum at zero, and a GM saying
+ * "cut it at water level" should be saying the same word the code does.
+ */
+export function stepLabel(y: number, cap: number, floor: number): string | null {
+  if (y >= cap) return 'Sky';
+  if (y <= floor) return 'Bedrock';
+  if (y === 0) return 'Water level';
+  return null;
 }
 
 export interface PlaneJSON {

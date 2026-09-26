@@ -47,7 +47,7 @@ export type { EncounterMap, BlockCoord, Expand, MapJSON, MapJSONIn } from './map
 export {
   MAX_PLANE_NAME, validPlaneY, planeAt, planeById,
   addPlane, renamePlane, movePlane, removePlane,
-  planeSteps, fullRange, snapRange, inRange, sameRange, isFullRange,
+  planeSteps, fullRange, snapRange, inRange, sameRange, isFullRange, stepLabel,
   planesToJSON, planesFromJSON,
 } from './planes/index.js';
 export type { CuttingPlane, LevelRange, PlaneJSON } from './planes/index.js';

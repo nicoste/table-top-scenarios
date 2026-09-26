@@ -8,7 +8,7 @@ import { useState } from 'react';
 import type { Intent, MapWire } from '@tt/protocol';
 import type { MapTool } from '@tt/client-core';
 import { CAMERA_HINT } from '@tt/client-core';
-import { MAP_MAX_HEIGHT, planeSteps, isFullRange } from '@tt/domain';
+import { MAP_MAX_HEIGHT, MAP_MIN_DEPTH, planeSteps, isFullRange, stepLabel } from '@tt/domain';
 import type { LevelRange, Material } from '@tt/domain';
 import { ConfirmDelete, Tooltip } from '@tt/ui';
 
@@ -52,18 +52,16 @@ interface Props {
   readonly poiId: string;
 }
 
-/** A step's label: the plane's name, or what the two ends are. */
-function stepName(
-  y: number,
-  planes: MapWire['planes'],
-  cap: number,
-  floor: number,
-): string {
-  // "Floor" means the bottom of the body, which moves down as the GM digs
-  // (R-160) — otherwise a cellar would sit below a step called the floor.
-  if (y <= floor) return 'Floor';
-  if (y >= cap) return 'Sky';
-  return planes?.find((plane) => plane.y === y)?.name ?? `Level ${y}`;
+/**
+ * A step's label: one of the three fixed names, or the plane the GM put there.
+ *
+ * The names come from the domain (R-161), not from here, so the rules and both
+ * screens say the same word for the same height.
+ */
+function stepName(y: number, planes: MapWire['planes']): string {
+  return stepLabel(y, MAP_MAX_HEIGHT, MAP_MIN_DEPTH)
+    ?? planes?.find((plane) => plane.y === y)?.name
+    ?? `Level ${y}`;
 }
 
 export function MapPanel({
@@ -76,17 +74,34 @@ export function MapPanel({
   const [planeY, setPlaneY] = useState('');
   const planes = map.planes ?? [];
   /**
-   * How deep this body goes, read off the blocks the console was sent.
+   * How far this body has actually been dug — for the readout only (R-160).
    *
-   * Derived here rather than passed down, for the same reason the domain
-   * derives it: the floor *is* wherever the GM has dug to, and a second stored
-   * answer could disagree with the first (R-160).
+   * The *steps* no longer use it: they are anchored at Bedrock, water level and
+   * Sky whatever has been built (R-161). This is just "how deep is it", which
+   * is a fact about the map worth telling the GM.
    */
-  const floor = Object.keys(map.blocks).reduce(
+  const dug = Object.keys(map.blocks).reduce(
     (lowest, key) => Math.min(lowest, Number(key.split(',')[1])),
     0,
   );
-  const steps = planeSteps(planes, MAP_MAX_HEIGHT, floor);
+  /**
+   * The heights the two handles may be set to.
+   *
+   * The fixed steps and the GM's planes — **plus wherever the band currently
+   * sits**, even when that is not a step any more. A band goes off-step the
+   * moment a plane it was resting on is moved or deleted, and a `select` whose
+   * value is not among its options silently displays a different one: the
+   * control would be claiming the table is being shown something it is not.
+   *
+   * Snapping the stored band instead would be worse. It is a pair of heights
+   * the GM chose, and quietly moving it whenever a plane changes would alter
+   * what the party sees without anyone asking (R-161).
+   */
+  const steps = [...new Set([
+    ...planeSteps(planes, MAP_MAX_HEIGHT, MAP_MIN_DEPTH),
+    range.lower,
+    range.upper,
+  ])].sort((a, b) => a - b);
 
   const addPlane = () => {
     const y = Number.parseInt(planeY, 10);
@@ -114,9 +129,9 @@ export function MapPanel({
           <>
             <p className="hint" style={{ margin: '0 0 8px' }}>
               They are in here. The table is showing them{' '}
-              {isFullRange(range, MAP_MAX_HEIGHT, floor)
+              {isFullRange(range, MAP_MAX_HEIGHT, MAP_MIN_DEPTH)
                 ? 'the whole place'
-                : `${stepName(range.lower, planes, MAP_MAX_HEIGHT, floor)} to ${stepName(range.upper, planes, MAP_MAX_HEIGHT, floor)}`}.
+                : `${stepName(range.lower, planes)} to ${stepName(range.upper, planes)}`}.
             </p>
             <div className="btn-grid campaign-actions">
               <Tooltip label="Send the party back out to the world map" placement="bottom" stretch>
@@ -343,7 +358,7 @@ export function MapPanel({
             })}
           >
             {steps.map((y) => (
-              <option key={y} value={y}>{stepName(y, planes, MAP_MAX_HEIGHT, floor)}</option>
+              <option key={y} value={y}>{stepName(y, planes)}</option>
             ))}
           </select>
         </label>
@@ -360,7 +375,7 @@ export function MapPanel({
             })}
           >
             {steps.map((y) => (
-              <option key={y} value={y}>{stepName(y, planes, MAP_MAX_HEIGHT, floor)}</option>
+              <option key={y} value={y}>{stepName(y, planes)}</option>
             ))}
           </select>
         </label>
@@ -377,7 +392,7 @@ export function MapPanel({
         <h2>Map</h2>
         <p className="hint" style={{ margin: '0 0 8px' }}>
           {blocks} block{blocks === 1 ? '' : 's'}, up to {MAP_MAX_HEIGHT} high
-          {floor < 0 ? `, ${-floor} deep` : ''}.
+          {dug < 0 ? `, ${-dug} deep` : ''}.
         </p>
         <p className="lbl" style={{ margin: '0 0 6px' }}>Expand the map to:</p>
         {/*

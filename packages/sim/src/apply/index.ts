@@ -14,9 +14,9 @@ import {
   addNote, editNote, setNoteVisible, removeNote, moveNote, isKnownMarker,
   addPoi, renamePoi, setPoiVisible, removePoi, movePoi,
   setMapBlock, clearMapBlock, fillPoiMaterial, growPoiMap, inMap, blockAt, isKnownMaterial,
-  MAP_MAX_HEIGHT,
+  MAP_MAX_HEIGHT, MAP_MIN_DEPTH,
   addPoiPlane, renamePoiPlane, movePoiPlane, removePoiPlane,
-  validPlaneY, planeAt, planeById, snapRange, bottomOfMap, isPoiOnTable,
+  validPlaneY, planeAt, planeById, snapRange, isPoiOnTable,
   poiById as poiOfPlace,
   createLiveSave, withDiscovery, withPlacement, touch, upgraded, upgradedCampaign, belongsTo,
   pruneDiscovery, pruneMembers, enteringMap, leavingMap, withRange, pruneInside, pruneRanges,
@@ -522,9 +522,9 @@ function applyToPois(
         poi.map.planes,
         { lower: intent.lower, upper: intent.upper },
         MAP_MAX_HEIGHT,
-        // The floor is wherever the GM has dug to (R-160), so a band can reach
-        // a cellar and cannot reach a level nobody has made.
-        bottomOfMap(poi.map),
+        // Fixed bounds, not the deepest block: the three reference steps hold
+        // still so a saved band stays valid when blocks come and go (R-161).
+        MAP_MIN_DEPTH,
       );
       return commitSave(state, save, withRange(save, poi.id, range), now);
     }
@@ -554,7 +554,7 @@ function applyToPlanes(
   if (!poi) return reject_('no such point of interest');
   if (!poi.map) return reject_('that point of interest has no map');
 
-  const floor = bottomOfMap(poi.map);
+  const floor = MAP_MIN_DEPTH;
   if (intent.kind === 'addPlane') {
     if (!validPlaneY(intent.y, MAP_MAX_HEIGHT, floor)) {
       return reject_('a plane sits between the floor and the ceiling');
