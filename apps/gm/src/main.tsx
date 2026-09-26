@@ -6,6 +6,7 @@ import { connect } from '@tt/client-core';
 import type { Connection } from '@tt/client-core';
 import type { GmView, Intent, View } from '@tt/protocol';
 import { App } from './shell/App.js';
+import { trace, announceTrace } from './trace.js';
 
 function Root() {
   const [view, setView] = useState<View | null>(null);
@@ -14,11 +15,21 @@ function Root() {
   const connection = useRef<Connection | null>(null);
 
   useEffect(() => {
+    announceTrace();
     const conn = connect('gm', {
       onView: setView,
       onRole: () => undefined,
-      onStatus: setStatus,
+      onStatus: (next) => {
+        trace('net', `socket ${next}`);
+        setStatus(next);
+      },
+      /*
+       * A refusal is the one thing that leaves no mark on screen beyond a
+       * badge that fades. Traced because "I dragged it and nothing happened"
+       * and "I dragged it and the host said no" look identical otherwise.
+       */
       onRejected: (reason) => {
+        trace('net', `⨯ the host refused it: ${reason}`);
         setRejection(reason);
         setTimeout(() => setRejection(null), 2600);
       },

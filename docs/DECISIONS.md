@@ -3609,3 +3609,35 @@ Two smaller notes:
 - While verifying I saw the band read `{1,32}` once and could not reproduce it.
   Two clean runs from a known state give the right answer, so I have recorded
   the observation rather than a cause I would be guessing at.
+
+### D-207 — A trace channel, because the ladder crosses five layers · `agreed`
+*"Now it looks perfect, but still works weird. Will adding some logs be
+helpful?"* — yes, and it is the only honest answer available. The band is not
+local state: a handle moves only after a pointer event, a row hit-test, an
+intent, a socket, the host's store, a domain rule and a view push. Six places a
+gesture can go wrong, and the screen shows the same thing for all six — the
+handle simply did not go where it was put.
+
+So each step prints itself, in order, with a sequence number and a clock,
+because the question is nearly always *what happened between these two things*.
+Three lines are doing real work beyond narration:
+
+- **`⇒` and `⇐` are paired and timed.** If a request gets no answer within half
+  a second the trace says so. An intent the host quietly refuses looks exactly
+  like a gesture that missed, and that pair is what tells them apart. Refusals
+  are traced at the socket too (O-025's lesson: the console said so and I did
+  not look — now it says so where the gesture is).
+- **A move with no button held is called out.** That is a drag whose release
+  was never seen, and from then on the band follows the bare pointer.
+- **A click is timed against the end of the last drag.** A click fires on
+  release and a drag ends in a release, so a click landing in the ladder right
+  after a drag is a second gesture the GM did not make.
+
+Those last two are guesses about the bug, written as questions the trace can
+answer rather than as fixes. Fixing on a guess while adding the instrument
+would leave us unable to say which one it was — and the GM asked to confirm the
+logs match what their hands did, which only works if nothing else changed.
+
+On by default. A trace you have to switch on is off when you need it, and this
+one costs nothing when there is nothing to print. `__trace = false` silences it.
+It stays as long as it earns its place; the moment it is narration, it goes.
