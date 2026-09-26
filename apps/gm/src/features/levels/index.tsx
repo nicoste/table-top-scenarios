@@ -221,8 +221,7 @@ export function LevelLadder({ map, range, placeId, poiId, dispatch }: Props) {
                   wrapped underneath, where it read as a stray word.
                 */
                 <ConfirmDelete
-                  label={`Remove ${stop.name}`}
-                  confirmLabel="Cut"
+                  label={`Delete ${stop.name}`}
                   onConfirm={() => dispatch({
                     kind: 'removePlane', placeId, poiId, planeId: stop.planeId!,
                   })}

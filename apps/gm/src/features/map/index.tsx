@@ -267,12 +267,12 @@ export function MapPanel({
           where the map actually grows on screen (D-198). The camera is
           diagonal to the grid by design (R-31), so the grid's axes run
           corner-to-corner in the view — a button labelled "East" on the right
-          hand side was pointing at the wrong place. The middle carries the
-          footprint, so the size is read where the growing happens.
+          hand side was pointing at the wrong place. The footprint sits in the
+          middle, so the size is read where the growing happens.
         */}
         <div className="rose">
           {EXPANSIONS.map(({ towards, short, long }) => (
-            <Tooltip key={towards} label={`Add a patch of floor to the ${long}`} placement="left">
+            <Tooltip key={towards} label={`Add a patch of floor to the ${long}`} placement="left" stretch>
               <button onClick={() => dispatch({ kind: 'growMap', placeId, poiId, towards })}>
                 {short}
               </button>

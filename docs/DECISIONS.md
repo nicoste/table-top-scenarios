@@ -3725,3 +3725,34 @@ input beside it instead. Four columns, five things. Now the height goes inside
 the question and steps aside while it is asked, which is what the component was
 built to do; the ladder's compact button sizing just needed to cover `.danger`
 as well as `.quiet`.
+
+### D-210 — Three corrections to the dock, one of them mine for being clever · `agreed`
+*"We have been using 'Delete' not 'Cut'."* Quite right, and the annoying part is
+that `ConfirmDelete` already defaults to "Delete" — I passed `confirmLabel="Cut"`
+because it read well beside a *cutting* plane. That is the whole bug: a word
+invented at one call site, for flavour, against a default that existed to keep
+the app saying one thing. The prop stays for a case that genuinely is not a
+delete; the ladder no longer is one.
+
+**The footprint gets a row.** The size sat absolutely positioned over the middle
+of the rose, legible only by text shadow and landing in the seam between four
+buttons. Given a row of its own between the two pairs, it is simply the middle
+of the rose and needs no trick to be read. Placing it explicitly also lets the
+four buttons auto-place around it, so the markup did not have to be reordered.
+
+The buttons were also hugging the left of their cells rather than filling them,
+because the grid items are `Tooltip` wrappers and the wrapper hugs its child
+unless told otherwise. `stretch` has existed for exactly this since R-115 and I
+did not pass it — the second time this round that a component's own answer was
+sitting unused (see D-209's `children`).
+
+**`.lbl` had no base rule.** Three callers used it; two of them — "Expand the
+map to:" and the place inspector's "marker" — were rendering at the browser's
+default 16px, which is what made them look like body text in the wrong font. The
+two scoped overrides (`.connect .lbl`, `.ladder .lbl.at`) had quietly carried
+the class for so long that the missing base was invisible. A class with no
+definition is not a style, it is a hope.
+
+One deliberate consequence: the ladder's two fixed heights, 32 and -16, now pick
+up the base and read quieter than the editable ones beside them. That is honest
+— they are the only two a GM cannot change.

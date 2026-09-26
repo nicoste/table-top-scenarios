@@ -126,18 +126,20 @@ button.quiet:hover { background: #3a2222; color: #ffc9c9; border-color: transpar
 .notes .note-actions { grid-column: 2; display: flex; gap: 3px; justify-content: flex-end; }
 .notes .note-actions button { padding: 1px 6px; font-size: 11px; }
 /* The expand rose (R-150, D-198): the four intercardinals at the corners of a
-   2x2, which is where the map grows on screen, and the footprint centred over
-   the whole thing so the size is read where the growing happens. */
-.rose {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 3px;
-  position: relative; place-items: stretch;
-}
+   2x2, which is where the map grows on screen, and the footprint between them
+   so the size is read where the growing happens.
+
+   The footprint has a **row of its own** rather than floating over the middle
+   on a text shadow. Overlaid, it had to be legible against whatever was behind
+   it and it sat in the seam between four buttons; given a row, it is simply
+   the middle of the rose. Placing it explicitly also leaves the four buttons
+   to auto-place around it, so the markup needs no second pass. */
+.rose { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
 .rose button { width: 100%; padding: 6px 4px; font-size: 11px; }
 .rose .mid {
-  position: absolute; inset: 0; display: grid; place-items: center;
-  pointer-events: none;
-  font-size: 10.5px; color: var(--ink); text-shadow: 0 0 5px #171b22, 0 0 3px #171b22;
-  font-variant-numeric: tabular-nums;
+  grid-column: 1 / -1; grid-row: 2;
+  padding: 3px 0; text-align: center;
+  font-size: 10.5px; color: var(--dim); font-variant-numeric: tabular-nums;
 }
 
 /* A number beside a name, for a cut's height (R-146). Not scoped to `.row`:
@@ -228,6 +230,10 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
 .palette .diff { font-variant-numeric: tabular-nums; font-size: 11px; opacity: .7; }
 .palette button.on .diff { opacity: .85; }
 .hint { color: var(--dim); font-size: 11.5px; margin: 8px 0 0; }
+/* The name of the control below it. `.lbl` had no base rule at all — only two
+   scoped overrides — so "Expand the map to:" and "marker" rendered at the
+   browser's default 16px and read as body text in someone else's font. */
+.lbl { color: var(--dim); font-size: 11px; letter-spacing: .02em; }
 
 .member { border-top: 1px solid var(--edge); padding: 8px 0; }
 .member .top { display: flex; align-items: center; gap: 6px; }
