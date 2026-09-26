@@ -3697,3 +3697,31 @@ outcome of every press now, which is far more than it used to.
 fixing them. One was right, one never fired, and the third fault was one I had
 not thought of at all — the console disbelieving a correct answer from the host.
 Worth remembering the next time it seems faster to fix the guess.
+
+### D-209 — The trace comes out, and two things it was standing in front of · `agreed`
+D-207 said the trace stays as long as it earns its place. It earned it twice —
+D-208 is two bugs it caught in one gesture — and the ladder now works, so out it
+goes. Kept in the history, not in the console.
+
+Worth the note on what it cost: nothing to run, and it was written in about the
+time one more wrong theory would have taken. The thing that made it pay was
+pairing `⇒` with `⇐` and timing them. Both bugs were visible as a *mismatch*
+between what was asked and what came back, which no amount of staring at the
+result could show.
+
+Two fixes the GM spotted once the behaviour stopped distracting from the look:
+
+**The rail ran on below Bedrock.** The rule meant to stop it read
+`.ladder li:last-child .rail i:last-child`, and the rail's last child is the
+*handle*, not a segment — so it matched nothing, at either end. `:first-child`
+worked by luck, because the first segment really is the rail's first child.
+`:last-of-type` is what both wanted. A selector that silently matches nothing is
+the CSS version of a test that never runs.
+
+**"Cut" and "Keep" wrapped onto a second line.** `ConfirmDelete` has taken the
+row's other actions as `children` since R-151, precisely so the question can
+have the whole row — and the ladder passed it nothing and rendered the height
+input beside it instead. Four columns, five things. Now the height goes inside
+the question and steps aside while it is asked, which is what the component was
+built to do; the ladder's compact button sizing just needed to cover `.danger`
+as well as `.quiet`.

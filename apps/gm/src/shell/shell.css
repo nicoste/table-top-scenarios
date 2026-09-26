@@ -163,8 +163,11 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
    the gap between two rows. */
 .ladder .rail i { width: 2px; background: #39404d; }
 .ladder .rail i.lit { width: 4px; background: var(--accent); }
-.ladder li:first-child .rail i:first-child,
-.ladder li:last-child .rail i:last-child { background: transparent; }
+/* No rail beyond the two bounds: the axis ends where the map does.
+   `:last-child` never matched — the rail's last child is the handle, not a
+   segment — so the line ran on below Bedrock. */
+.ladder li:first-child .rail i:first-of-type,
+.ladder li:last-child .rail i:last-of-type { background: transparent; }
 
 /* The row's own marker, drawn under any handle rather than replaced by it —
    a handle resting on a bound used to render as a bar and disappear. */
@@ -207,7 +210,8 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
 .ladder input.plain:hover { border-color: var(--edge); }
 .ladder input.plain:focus { background: #212733; border-color: var(--accent); }
 .ladder input.tiny { width: 3.2em; font-size: 11.5px; padding: 2px 4px; }
-.ladder button.quiet { padding: 1px 5px; font-size: 11px; }
+.ladder button.quiet,
+.ladder button.danger { padding: 1px 6px; font-size: 11px; }
 
 .palette { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
 .palette button {

@@ -24,7 +24,6 @@ import { ChunkInspector } from '../features/visibility/index.js';
 import { MapPanel } from '../features/map/index.js';
 import { ConnectBadge } from '../features/connect/index.js';
 import { Compass, Tooltip } from '@tt/ui';
-import { trace } from '../trace.js';
 
 /** Mac shows ⌘, everything else Ctrl. Cosmetic: the binding accepts both (R-140). */
 const MOD = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
@@ -148,30 +147,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    * the GM's own working view, and cutting to one floor is how a multi-level
    * building gets built (D-201).
    */
-  const storedRange = openMap ? view?.save?.ranges[openMap.poiId] ?? null : null;
   const openRange = openMap ? rangeIn(view?.save?.ranges ?? {}, openMap.poiId) : null;
-
-  /*
-   * The band the console is working with, traced at the two moments it can go
-   * wrong without anyone seeing: the map opening with no band stored — where
-   * the default stands in and looks exactly like a band that was forgotten —
-   * and the levelling toggle, which decides whether the band is a view or the
-   * whole edit surface (R-159).
-   */
-  useEffect(() => {
-    if (!openMap) return;
-    trace('map', storedRange ? 'opened' : 'opened with no band stored — showing the default', {
-      poi: openMap.poiId,
-      band: openRange ? `${openRange.lower} \u2192 ${openRange.upper}` : null,
-      levelling,
-    });
-  }, [openMap?.placeId, openMap?.poiId]);
-
-  useEffect(() => {
-    trace('map', `levelling ${levelling ? 'on — the band is all there is' : 'off — the whole body is editable'}`, {
-      band: openRange ? `${openRange.lower} \u2192 ${openRange.upper}` : null,
-    });
-  }, [levelling]);
 
   const cellKey = (c: { cx: number; cz: number; x: number; z: number }) => `${c.cx}:${c.cz}:${c.x}:${c.z}`;
   const memberName = (id: string) => campaign?.party.find((m) => m.id === id)?.name ?? null;
