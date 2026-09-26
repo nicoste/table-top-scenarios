@@ -6,7 +6,8 @@ import {
   addPlace, addPoi, withPoiMaps, fillRegion, fillMaterial, mapCentre, enclosing,
   createMap, setBlock, clearBlock, growMap, blockAt, blockKey, parseBlockKey,
   inMap, topOfMap, mapToJSON, mapFromJSON,
-  MAP_PATCH, MAP_MAX_HEIGHT, DEFAULT_FLOOR, DEFAULT_MATERIALS, isKnownMaterial,
+  MAP_PATCH, MAP_MAX_HEIGHT, MAP_MIN_DEPTH, bottomOfMap,
+  DEFAULT_FLOOR, DEFAULT_MATERIALS, isKnownMaterial,
 } from '@tt/domain';
 
 const STONE = DEFAULT_MATERIALS.find((m) => m.name === 'Stone')!.id;
@@ -37,9 +38,17 @@ describe('bounds', () => {
     expect(inMap(map, at(MAP_PATCH, 0, 0))).toBe(false);
     expect(inMap(map, at(0, 0, MAP_PATCH))).toBe(false);
     expect(inMap(map, at(-1, 0, 0))).toBe(false);
-    expect(inMap(map, at(0, -1, 0))).toBe(false);
     expect(inMap(map, at(0, MAP_MAX_HEIGHT, 0))).toBe(false);
     expect(inMap(map, at(0, MAP_MAX_HEIGHT - 1, 0))).toBe(true);
+  });
+
+  it('allows digging below the starting floor, down to a limit (R-160)', () => {
+    // Negative Y is how a cellar is reached. Shifting the whole body upward to
+    // make room would renumber every block, every cutting plane and the saved
+    // band together (D-203).
+    expect(inMap(map, at(0, -1, 0))).toBe(true);
+    expect(inMap(map, at(0, MAP_MIN_DEPTH, 0))).toBe(true);
+    expect(inMap(map, at(0, MAP_MIN_DEPTH - 1, 0))).toBe(false);
   });
 
   it('rejects fractional coordinates rather than rounding them', () => {
@@ -414,5 +423,34 @@ describe('a map never holds a block outside its own bounds (R-157)', () => {
           .toEqual(map.origin);
       }
     }
+  });
+});
+
+describe('how deep a map goes (R-160)', () => {
+  it('bottoms out at the starting floor until something is dug', () => {
+    // Clamped at zero so a map nobody has dug reports its own floor, which
+    // keeps the band selector's lowest step a level that actually exists.
+    expect(bottomOfMap(createMap())).toBe(0);
+    expect(bottomOfMap(setBlock(createMap(), at(2, 6, 2), STONE))).toBe(0);
+  });
+
+  it('follows the deepest block once there is a cellar', () => {
+    let map = setBlock(createMap(), at(2, -1, 2), STONE);
+    expect(bottomOfMap(map)).toBe(-1);
+    map = setBlock(map, at(3, -4, 3), STONE);
+    expect(bottomOfMap(map)).toBe(-4);
+  });
+
+  it('refuses to dig past the limit', () => {
+    const map = createMap();
+    expect(setBlock(map, at(0, MAP_MIN_DEPTH - 1, 0), STONE)).toBe(map);
+    expect(blockAt(setBlock(map, at(0, MAP_MIN_DEPTH, 0), STONE), at(0, MAP_MIN_DEPTH, 0)))
+      .toBe(STONE);
+  });
+
+  it('keeps a cellar when the footprint grows', () => {
+    const dug = setBlock(createMap(), at(2, -2, 2), STONE);
+    expect(blockAt(growMap(dug, 'northwest'), at(2, -2, 2))).toBe(STONE);
+    expect(bottomOfMap(growMap(dug, 'northwest'))).toBe(-2);
   });
 });

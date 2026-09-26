@@ -3435,3 +3435,53 @@ far a click would go.
 The GM's question is the kind worth answering with code rather than care: "will
 this let me edit what I cannot see" has one acceptable answer, and it is not
 "be careful".
+
+### D-203 — Digging: the modifier, not the offset and not the camera · `agreed`
+Three designs were on the table for "I need space below what I have already
+built", and the two that lost are worth recording because each was reasonable.
+
+**Offsetting the whole map — rejected.** Shifting the body upward to make room
+renumbers every block, and R-150 already refuses that sideways for one reason:
+saved references rot. Vertically it is worse, because three kinds of stored Y
+would have to move together — block keys, cutting planes, and the saved band —
+and any one missed silently moves geometry relative to whatever was pointing at
+it. It also invalidates every height the GM knows by heart. Negative Y costs
+none of that: nothing renumbers, planes keep their heights, the band keeps its
+bounds, and a cellar at -1 matches how buildings are actually numbered.
+
+**A 180-degree camera — rejected, but not wrong.** The GM's idea: let the
+console tilt below the horizon, see undersides, and place against them with no
+new affordance at all. It works geometrically — `faceOf` already handles any of
+six normals — and that elegance is real. What sank it was the freight: the
+compass would read exactly backwards below the horizon (screen-up in the ground
+plane is scaled by `sin(pitch)`, so its sign flips); undersides are lit by
+ambient and a near-black hemisphere ground colour, so the GM would be clicking
+faces they can barely tell apart; the world map is single-sided and vanishes
+from beneath; camera parity (R-156) hands all of that to the table as well; and
+the pass through the horizon is an edge-on frame of a flat plane.
+
+The deciding argument was not the freight, though. **Both ideas solve the same
+single step** — creating the first block below — because even with a camera
+underneath, the sane way to build a cellar is to make one block, cut the band to
+that level, and look down at it normally. The levelling toggle (R-159) was
+already half of this feature. Looking from beneath remains worth having as
+*inspection*, judged on that merit, some other day.
+
+**What shipped, and the GM improved it.** My proposal was a fifth tool; theirs
+was Alt/Option as a modifier on build, and it is better for a reason I had
+underrated: the ghost outline already exists, so pressing the key *shows* the
+change. The wireframe drops under the cube and comes back on release, with the
+pointer stationary — the modifier teaches itself in one press, no fifth button,
+no mode to leave. Their phrasing settled the semantics too: *"it doesn't care
+about the face, it cares about the cube."*
+
+Three details that needed care, none of them obvious from the idea:
+
+- **Re-aim on the key, not the pointer.** The outline has to move while the
+  mouse is still, so the last pointer position is remembered and the pick is
+  redone on keydown and keyup. Without it the GM holds Option, nothing happens,
+  and the modifier reads as broken.
+- **Clear on blur.** A window that loses focus mid-press never sees the keyup.
+- **The floor moves.** The band's lowest step was the constant 0; it is now the
+  deepest block, derived and clamped at zero, so an undug map is unchanged and a
+  dug one can be cut to its cellar.

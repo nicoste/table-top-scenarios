@@ -2069,3 +2069,35 @@ apps/host/src/
 > Both refusals are stated in the readout *before* the click and enforced again
 > by the host. The client check is not the guard — it is so a gesture the readout
 > already called impossible never becomes a rejection toast.
+
+> **R-160.** **A map may be dug below its starting floor**, and the way down is a
+> modifier, not a tool.
+>
+> Negative Y is how a cellar is reached. The alternative — shifting the whole
+> body upward to make room — is the renumber R-150 already refuses sideways, and
+> worse here: **three** kinds of stored Y would have to move in lockstep (every
+> block key, every cutting plane, the saved band), and a miss shifts geometry
+> relative to the thing pointing at it. It also invalidates every height the GM
+> has in their head or in a note.
+>
+> **Why a modifier is needed at all.** Placement is face-adjacent (R-147), the
+> camera sits 30 to 75 degrees *above* the horizon (R-31), and cube faces are
+> single-sided — so a raycast never returns a downward normal and
+> `face.adjacent` is mathematically incapable of being below the block. Digging
+> is not awkward under the existing rules; it is unreachable.
+>
+> So **Alt/Option changes build alone**, from *against the face* to *below the
+> cube* — the cube, not the face, so pointing at any visible side digs under
+> that one. It does not touch erase, paint or fill: reaching under a solid block
+> to remove or repaint it is editing what you cannot see (R-159).
+>
+> The **outline answers the key with the pointer stationary**, which is the whole
+> of its discoverability — press and the wireframe drops, release and it returns,
+> so the modifier teaches itself in one press. That needs the last pointer
+> position remembered, and the key state cleared on blur, or a window that loses
+> focus mid-press stays in dig mode with nothing on screen saying so.
+>
+> **The floor is derived, never stored.** A map's bottom *is* the deepest block
+> in it, clamped at zero, so an undug map still reads "Floor" at 0 and a stored
+> depth cannot disagree with the blocks. The band's lowest step follows it, which
+> is what lets a cut reach a cellar the moment one exists.

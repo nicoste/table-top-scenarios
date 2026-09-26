@@ -126,7 +126,8 @@ export function tableAction(pointed: Pointed, aiming: boolean): TableAction {
 /** What a click means inside an encounter map (D-181). */
 export type MapAction =
   | { readonly kind: 'nothing' }
-  | { readonly kind: 'place'; readonly at: BlockCoord }
+  /** `under` is the dig modifier: the cell below the cube, not against its face. */
+  | { readonly kind: 'place'; readonly at: BlockCoord; readonly under: boolean }
   | { readonly kind: 'erase'; readonly at: BlockCoord }
   | { readonly kind: 'paint'; readonly at: BlockCoord }
   | { readonly kind: 'fill'; readonly at: BlockCoord };
@@ -140,12 +141,36 @@ export type MapAction =
  * exactly one step along the face normal, so a single wrong field digs a hole
  * where a wall should go.
  */
-export function mapAction(tool: MapTool, face: FacePick | null): MapAction {
+/**
+ * Which cell a tool is aimed at.
+ *
+ * `under` is the **dig modifier** (R-160), held on Alt/Option. It changes build
+ * alone, and it changes it from *against the face* to *below the cube* — which
+ * is the one placement a god camera cannot otherwise express. The camera sits
+ * between 30 and 75 degrees above the horizon and cube faces are single-sided,
+ * so a downward normal never comes back from a raycast: `face.adjacent` is
+ * mathematically incapable of being below the block. The modifier reaches the
+ * cell the geometry cannot point at (D-203).
+ *
+ * "It cares about the cube, not the face" — the GM's words, and the reason it
+ * reads off `face.block` rather than adjusting `face.adjacent` by the normal.
+ * Pointing at any side of a cube digs under *that cube*.
+ */
+export function mapAction(
+  tool: MapTool,
+  face: FacePick | null,
+  under = false,
+): MapAction {
   if (!face) return { kind: 'nothing' };
-  // Build is the only tool that acts on the *empty* cell. The other three act on
-  // the block you can see, which is the one under the pointer.
+  // Build is the only tool that acts on an *empty* cell. The other three act on
+  // the block you can see, which is the one under the pointer — and none of
+  // them takes the modifier, because reaching under a solid block to erase or
+  // repaint it is editing what you cannot see (R-159).
   switch (tool) {
-    case 'build': return { kind: 'place', at: face.adjacent };
+    case 'build':
+      return under
+        ? { kind: 'place', at: { x: face.block.x, y: face.block.y - 1, z: face.block.z }, under }
+        : { kind: 'place', at: face.adjacent, under };
     case 'erase': return { kind: 'erase', at: face.block };
     case 'paint': return { kind: 'paint', at: face.block };
     case 'fill': return { kind: 'fill', at: face.block };
@@ -260,6 +285,10 @@ const VERBS: Record<Exclude<MapAction['kind'], 'nothing'>, string> = {
   fill: 'Fill from',
 };
 
+/** Digging reads differently from building, because it is aimed differently. */
+const verbFor = (action: Exclude<MapAction, { kind: 'nothing' }>): string =>
+  (action.kind === 'place' && action.under ? 'Build under' : VERBS[action.kind]);
+
 /** What a fill is about to touch, and how much of it the GM cannot see. */
 export interface FillReach {
   readonly total: number;
@@ -274,7 +303,7 @@ export function mapHover(
 ): MapHover {
   if (action.kind === 'nothing') return { label: null, ghost: null };
   const { x, y, z } = action.at;
-  const where = `${VERBS[action.kind]} ${x},${y},${z}`;
+  const where = `${verbFor(action)} ${x},${y},${z}`;
 
   // A refusal reads *instead* of the action, because the action is not going to
   // happen and saying both would be telling the GM two things at once.

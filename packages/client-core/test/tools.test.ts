@@ -193,7 +193,8 @@ describe('face adjacency inside a map (D-181)', () => {
   it('builds against the face, not on the block that was hit', () => {
     // Click the top of a block and the new one lands on top. Reading the wrong
     // field of the same pick digs a hole where a wall should go.
-    expect(mapAction('build', face)).toEqual({ kind: 'place', at: { x: 3, y: 3, z: 5 } });
+    expect(mapAction('build', face))
+      .toEqual({ kind: 'place', at: { x: 3, y: 3, z: 5 }, under: false });
   });
 
   it('erases the block that was hit, not its neighbour', () => {
@@ -209,7 +210,7 @@ describe('face adjacency inside a map (D-181)', () => {
     for (const [dx, dy, dz] of [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]]) {
       const block = { x: 4, y: 4, z: 4 };
       const f = { block, adjacent: { x: 4 + dx!, y: 4 + dy!, z: 4 + dz! } };
-      expect(mapAction('build', f)).toEqual({ kind: 'place', at: f.adjacent });
+      expect(mapAction('build', f)).toEqual({ kind: 'place', at: f.adjacent, under: false });
       expect(mapAction('erase', f)).toEqual({ kind: 'erase', at: block });
     }
   });
@@ -257,7 +258,7 @@ describe('the map toolset (R-153, R-154)', () => {
     // The off-by-one-along-the-normal, once per tool. Build is the only one that
     // acts on a cell that is not there yet; paint and fill act on what you see,
     // which is where erase already acted.
-    expect(mapAction('build', face)).toEqual({ kind: 'place', at: face.adjacent });
+    expect(mapAction('build', face)).toEqual({ kind: 'place', at: face.adjacent, under: false });
     expect(mapAction('erase', face)).toEqual({ kind: 'erase', at: face.block });
     expect(mapAction('paint', face)).toEqual({ kind: 'paint', at: face.block });
     expect(mapAction('fill', face)).toEqual({ kind: 'fill', at: face.block });
@@ -433,5 +434,64 @@ describe('a cell the map does not own (R-159)', () => {
     // the levels" — it is not a cell. The most basic refusal reads first.
     expect(mapAllowed(mapAction('build', edge), { ...outside, occupied: true, levelling: true }))
       .toEqual({ kind: 'stop', why: 'outside the map' });
+  });
+});
+
+describe('the dig modifier (R-160)', () => {
+  // A block at 4,1,7 whose top face was hit, so building normally lands above.
+  const face = { block: { x: 4, y: 1, z: 7 }, adjacent: { x: 4, y: 2, z: 7 } };
+
+  it('aims below the cube instead of against the face', () => {
+    expect(mapAction('build', face, true))
+      .toEqual({ kind: 'place', at: { x: 4, y: 0, z: 7 }, under: true });
+    expect(mapAction('build', face, false))
+      .toEqual({ kind: 'place', at: { x: 4, y: 2, z: 7 }, under: false });
+  });
+
+  it('cares about the cube, not the face', () => {
+    // The GM's own phrasing, and the reason it reads `face.block`. Whichever
+    // side of a cube is hit — top, or either visible flank — the modifier digs
+    // under *that cube*, so the answer does not depend on where the camera is.
+    const sides = [
+      { block: { x: 4, y: 1, z: 7 }, adjacent: { x: 5, y: 1, z: 7 } },
+      { block: { x: 4, y: 1, z: 7 }, adjacent: { x: 4, y: 1, z: 8 } },
+      { block: { x: 4, y: 1, z: 7 }, adjacent: { x: 4, y: 2, z: 7 } },
+    ];
+    for (const hit of sides) {
+      expect(mapAction('build', hit, true))
+        .toEqual({ kind: 'place', at: { x: 4, y: 0, z: 7 }, under: true });
+    }
+  });
+
+  it('reaches below zero, which is the whole point', () => {
+    const floor = { block: { x: 4, y: 0, z: 7 }, adjacent: { x: 4, y: 1, z: 7 } };
+    expect(mapAction('build', floor, true).kind).toBe('place');
+    expect((mapAction('build', floor, true) as { at: { y: number } }).at.y).toBe(-1);
+  });
+
+  it('changes build alone', () => {
+    // Reaching under a solid block to erase or repaint it is editing what you
+    // cannot see, which is the thing R-159 exists to prevent.
+    for (const tool of ['erase', 'paint', 'fill'] as const) {
+      expect(mapAction(tool, face, true), tool).toEqual(mapAction(tool, face, false));
+    }
+  });
+
+  it('reads differently in the readout, so the two are never confused', () => {
+    expect(mapHover(mapAction('build', face, true)).label).toBe('Build under 4,0,7');
+    expect(mapHover(mapAction('build', face, false)).label).toBe('Build at 4,2,7');
+  });
+
+  it('is refused for the same reasons an ordinary placement is', () => {
+    const aim = (over = {}) => ({
+      levelling: false, range: { lower: 0, upper: 32 }, occupied: false, inBounds: true, ...over,
+    });
+    expect(mapAllowed(mapAction('build', face, true), aim({ occupied: true })))
+      .toEqual({ kind: 'stop', why: 'a block is already there' });
+    expect(mapAllowed(mapAction('build', face, true), aim({ inBounds: false })))
+      .toEqual({ kind: 'stop', why: 'outside the map' });
+    // Digging below a band the GM is showing would place a cube they cannot see.
+    expect(mapAllowed(mapAction('build', face, true), aim({ levelling: true, range: { lower: 1, upper: 4 } })))
+      .toEqual({ kind: 'stop', why: 'outside the levels you are showing' });
   });
 });

@@ -16,7 +16,7 @@ import {
   setMapBlock, clearMapBlock, fillPoiMaterial, growPoiMap, inMap, blockAt, isKnownMaterial,
   MAP_MAX_HEIGHT,
   addPoiPlane, renamePoiPlane, movePoiPlane, removePoiPlane,
-  validPlaneY, planeAt, planeById, snapRange, isPoiOnTable,
+  validPlaneY, planeAt, planeById, snapRange, bottomOfMap, isPoiOnTable,
   poiById as poiOfPlace,
   createLiveSave, withDiscovery, withPlacement, touch, upgraded, upgradedCampaign, belongsTo,
   pruneDiscovery, pruneMembers, enteringMap, leavingMap, withRange, pruneInside, pruneRanges,
@@ -522,6 +522,9 @@ function applyToPois(
         poi.map.planes,
         { lower: intent.lower, upper: intent.upper },
         MAP_MAX_HEIGHT,
+        // The floor is wherever the GM has dug to (R-160), so a band can reach
+        // a cellar and cannot reach a level nobody has made.
+        bottomOfMap(poi.map),
       );
       return commitSave(state, save, withRange(save, poi.id, range), now);
     }
@@ -551,8 +554,9 @@ function applyToPlanes(
   if (!poi) return reject_('no such point of interest');
   if (!poi.map) return reject_('that point of interest has no map');
 
+  const floor = bottomOfMap(poi.map);
   if (intent.kind === 'addPlane') {
-    if (!validPlaneY(intent.y, MAP_MAX_HEIGHT)) {
+    if (!validPlaneY(intent.y, MAP_MAX_HEIGHT, floor)) {
       return reject_('a plane sits between the floor and the ceiling');
     }
     if (planeAt(poi.map.planes, intent.y)) return reject_('there is already a plane there');
@@ -568,7 +572,7 @@ function applyToPlanes(
     case 'removePlane':
       return withPlaces(removePoiPlane(campaign.places, placeId, poiId, planeId));
     default:
-      if (!validPlaneY(intent.y, MAP_MAX_HEIGHT)) {
+      if (!validPlaneY(intent.y, MAP_MAX_HEIGHT, floor)) {
         return reject_('a plane sits between the floor and the ceiling');
       }
       if (planeAt(poi.map.planes, intent.y)) return reject_('there is already a plane there');

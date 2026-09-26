@@ -63,8 +63,8 @@ function ordered(planes: readonly CuttingPlane[]): readonly CuttingPlane[] {
  * plane there would add nothing and would give the GM a named cut that does not
  * cut.
  */
-export function validPlaneY(y: number, cap: number): boolean {
-  return Number.isInteger(y) && y > 0 && y < cap;
+export function validPlaneY(y: number, cap: number, floor = 0): boolean {
+  return Number.isInteger(y) && y > floor && y < cap;
 }
 
 export function planeAt(planes: readonly CuttingPlane[], y: number): CuttingPlane | null {
@@ -87,8 +87,9 @@ export function addPlane(
   name: string,
   y: number,
   cap: number,
+  floor = 0,
 ): readonly CuttingPlane[] {
-  if (!validPlaneY(y, cap) || planeAt(planes, y)) return planes;
+  if (!validPlaneY(y, cap, floor) || planeAt(planes, y)) return planes;
   return ordered([
     ...planes,
     { id: freshId<'PlaneId'>('plane'), name: cleanName(name, `Level ${y}`), y },
@@ -117,8 +118,9 @@ export function movePlane(
   id: PlaneId,
   y: number,
   cap: number,
+  floor = 0,
 ): readonly CuttingPlane[] {
-  if (!validPlaneY(y, cap)) return planes;
+  if (!validPlaneY(y, cap, floor)) return planes;
   // Occupied by another plane, or this one is already there: either way there is
   // nothing to do, and returning the same array keeps identity (R-12).
   if (planeAt(planes, y)) return planes;
@@ -152,14 +154,18 @@ export function planeSteps(
   // where an id is a plain string.
   planes: readonly { readonly y: number }[],
   cap: number,
+  // Where the body actually bottoms out. Zero for a map nobody has dug, and
+  // negative once there is a cellar (R-160) — so the lowest step is a level
+  // that exists rather than the deepest one the rules permit.
+  floor = 0,
 ): readonly number[] {
-  const steps = new Set<number>([0, cap]);
-  for (const plane of planes) if (validPlaneY(plane.y, cap)) steps.add(plane.y);
+  const steps = new Set<number>([floor, cap]);
+  for (const plane of planes) if (validPlaneY(plane.y, cap, floor)) steps.add(plane.y);
   return [...steps].sort((a, b) => a - b);
 }
 
-export function fullRange(cap: number): LevelRange {
-  return { lower: 0, upper: cap };
+export function fullRange(cap: number, floor = 0): LevelRange {
+  return { lower: floor, upper: cap };
 }
 
 /**
@@ -173,8 +179,9 @@ export function snapRange(
   planes: readonly CuttingPlane[],
   range: LevelRange,
   cap: number,
+  floor = 0,
 ): LevelRange {
-  const steps = planeSteps(planes, cap);
+  const steps = planeSteps(planes, cap, floor);
   const nearest = (value: number) => steps.reduce(
     (best, step) => (Math.abs(step - value) < Math.abs(best - value) ? step : best),
     steps[0] ?? 0,
@@ -202,8 +209,8 @@ export function sameRange(a: LevelRange, b: LevelRange): boolean {
 }
 
 /** Whether a range selects the whole body, for a UI that wants to say so. */
-export function isFullRange(range: LevelRange, cap: number): boolean {
-  return range.lower <= 0 && range.upper >= cap;
+export function isFullRange(range: LevelRange, cap: number, floor = 0): boolean {
+  return range.lower <= floor && range.upper >= cap;
 }
 
 export interface PlaneJSON {

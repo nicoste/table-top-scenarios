@@ -57,8 +57,11 @@ function stepName(
   y: number,
   planes: MapWire['planes'],
   cap: number,
+  floor: number,
 ): string {
-  if (y <= 0) return 'Floor';
+  // "Floor" means the bottom of the body, which moves down as the GM digs
+  // (R-160) — otherwise a cellar would sit below a step called the floor.
+  if (y <= floor) return 'Floor';
   if (y >= cap) return 'Sky';
   return planes?.find((plane) => plane.y === y)?.name ?? `Level ${y}`;
 }
@@ -72,7 +75,18 @@ export function MapPanel({
   const [planeName, setPlaneName] = useState('');
   const [planeY, setPlaneY] = useState('');
   const planes = map.planes ?? [];
-  const steps = planeSteps(planes, MAP_MAX_HEIGHT);
+  /**
+   * How deep this body goes, read off the blocks the console was sent.
+   *
+   * Derived here rather than passed down, for the same reason the domain
+   * derives it: the floor *is* wherever the GM has dug to, and a second stored
+   * answer could disagree with the first (R-160).
+   */
+  const floor = Object.keys(map.blocks).reduce(
+    (lowest, key) => Math.min(lowest, Number(key.split(',')[1])),
+    0,
+  );
+  const steps = planeSteps(planes, MAP_MAX_HEIGHT, floor);
 
   const addPlane = () => {
     const y = Number.parseInt(planeY, 10);
@@ -100,9 +114,9 @@ export function MapPanel({
           <>
             <p className="hint" style={{ margin: '0 0 8px' }}>
               They are in here. The table is showing them{' '}
-              {isFullRange(range, MAP_MAX_HEIGHT)
+              {isFullRange(range, MAP_MAX_HEIGHT, floor)
                 ? 'the whole place'
-                : `${stepName(range.lower, planes, MAP_MAX_HEIGHT)} to ${stepName(range.upper, planes, MAP_MAX_HEIGHT)}`}.
+                : `${stepName(range.lower, planes, MAP_MAX_HEIGHT, floor)} to ${stepName(range.upper, planes, MAP_MAX_HEIGHT, floor)}`}.
             </p>
             <div className="btn-grid campaign-actions">
               <Tooltip label="Send the party back out to the world map" placement="bottom" stretch>
@@ -172,7 +186,13 @@ export function MapPanel({
           </Tooltip>
         </div>
         <p className="hint">
-          {tool === 'build' && <>Click a block&apos;s face; the new one lands against it. One click, one cube.</>}
+          {tool === 'build' && (
+            <>
+              Click a block&apos;s face; the new one lands against it. One click, one cube.
+              {' '}Hold <b>⌥ alt</b> to place <b>under</b> the cube instead — the only way down,
+              since a camera above the horizon never sees an underside.
+            </>
+          )}
           {tool === 'erase' && <>Click a block to remove it. One click, one cube.</>}
           {/* The one map tool that drags, because it does not move its own
               target the way build and erase do (R-153). */}
@@ -323,7 +343,7 @@ export function MapPanel({
             })}
           >
             {steps.map((y) => (
-              <option key={y} value={y}>{stepName(y, planes, MAP_MAX_HEIGHT)}</option>
+              <option key={y} value={y}>{stepName(y, planes, MAP_MAX_HEIGHT, floor)}</option>
             ))}
           </select>
         </label>
@@ -340,7 +360,7 @@ export function MapPanel({
             })}
           >
             {steps.map((y) => (
-              <option key={y} value={y}>{stepName(y, planes, MAP_MAX_HEIGHT)}</option>
+              <option key={y} value={y}>{stepName(y, planes, MAP_MAX_HEIGHT, floor)}</option>
             ))}
           </select>
         </label>
@@ -356,7 +376,8 @@ export function MapPanel({
       <div className="card">
         <h2>Map</h2>
         <p className="hint" style={{ margin: '0 0 8px' }}>
-          {blocks} block{blocks === 1 ? '' : 's'}, up to {MAP_MAX_HEIGHT} high.
+          {blocks} block{blocks === 1 ? '' : 's'}, up to {MAP_MAX_HEIGHT} high
+          {floor < 0 ? `, ${-floor} deep` : ''}.
         </p>
         <p className="lbl" style={{ margin: '0 0 6px' }}>Expand the map to:</p>
         {/*

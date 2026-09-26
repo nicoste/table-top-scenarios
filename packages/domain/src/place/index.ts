@@ -9,7 +9,7 @@ import { createMap, setBlock, clearBlock, growMap, fillMaterial } from '../map/i
 import type { Expand } from '../map/index.js';
 import type { PlaneId } from '../ids/index.js';
 import { addPlane, renamePlane, movePlane, removePlane } from '../planes/index.js';
-import { MAP_MAX_HEIGHT } from '../map/index.js';
+import { MAP_MAX_HEIGHT, bottomOfMap } from '../map/index.js';
 import type { BlockCoord } from '../map/index.js';
 import type { MaterialId } from '../ids/index.js';
 import type { ChunkCoord, GlobalCell, WorldCell } from '../world/index.js';
@@ -447,7 +447,7 @@ export function addPoiPlane(
   y: number,
 ): readonly Place[] {
   return mapOfPoi(places, placeId, poiId, (map) => {
-    const planes = addPlane(map.planes, name, y, MAP_MAX_HEIGHT);
+    const planes = addPlane(map.planes, name, y, MAP_MAX_HEIGHT, bottomOfMap(map));
     return planes === map.planes ? map : { ...map, planes };
   });
 }
@@ -473,7 +473,7 @@ export function movePoiPlane(
   y: number,
 ): readonly Place[] {
   return mapOfPoi(places, placeId, poiId, (map) => {
-    const planes = movePlane(map.planes, planeId, y, MAP_MAX_HEIGHT);
+    const planes = movePlane(map.planes, planeId, y, MAP_MAX_HEIGHT, bottomOfMap(map));
     return planes === map.planes ? map : { ...map, planes };
   });
 }

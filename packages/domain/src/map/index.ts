@@ -27,6 +27,21 @@ export const MAP_PATCH = 16;
  */
 export const MAP_MAX_HEIGHT = 32;
 
+/**
+ * How far below the starting floor a map may be dug (R-160).
+ *
+ * A separate bound rather than a share of the height, so digging a cellar does
+ * not quietly cost the GM a level of sky. 16 at the 1.5 m encounter cell is 24 m
+ * down — a four-level dungeon under a building that still has its full height
+ * above ground.
+ *
+ * Negative Y is how a cellar is reached at all. The alternative was shifting the
+ * whole body upward to make room, and that renumbers every block, every cutting
+ * plane and the saved band together — the renumber R-150 already refuses
+ * sideways, with three things to keep in step instead of one (D-203).
+ */
+export const MAP_MIN_DEPTH = -16;
+
 export interface BlockCoord {
   readonly x: number;
   readonly y: number;
@@ -100,7 +115,7 @@ export function inMap(map: EncounterMap, at: BlockCoord): boolean {
   return Number.isInteger(at.x) && Number.isInteger(at.y) && Number.isInteger(at.z)
     && at.x >= map.origin.x && at.x < map.origin.x + map.size.x
     && at.z >= map.origin.z && at.z < map.origin.z + map.size.z
-    && at.y >= 0 && at.y < MAP_MAX_HEIGHT;
+    && at.y >= MAP_MIN_DEPTH && at.y < MAP_MAX_HEIGHT;
 }
 
 export function blockAt(map: EncounterMap, at: BlockCoord): MaterialId | null {
@@ -282,6 +297,23 @@ export function sliceOf(map: EncounterMap, range: LevelRange): EncounterMap {
     if (at && inRange(range, at.y)) blocks.set(key, material);
   }
   return { ...map, blocks };
+}
+
+/**
+ * The lowest filled Y, never above zero (R-160).
+ *
+ * Derived rather than stored: the map's floor *is* wherever the GM has dug to,
+ * and a stored depth would be a second answer to the same question. Clamped at
+ * zero so a map nobody has dug reports its starting floor, which keeps the band
+ * selector's bottom step reading "Floor" instead of a level that does not exist.
+ */
+export function bottomOfMap(map: EncounterMap): number {
+  let bottom = 0;
+  for (const key of map.blocks.keys()) {
+    const at = parseBlockKey(key);
+    if (at && at.y < bottom) bottom = at.y;
+  }
+  return bottom;
 }
 
 /** The highest filled Y, or -1 for a map with nothing in it. */

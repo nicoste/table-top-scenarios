@@ -65,6 +65,22 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    * every session to answer a question the GM asks occasionally.
    */
   const [levelling, setLevelling] = useState(false);
+  /**
+   * Is Alt/Option down — the dig modifier (R-160)?
+   *
+   * State rather than a ref, because the outline has to move the moment the key
+   * goes down, with the pointer stationary. That is the whole of its
+   * discoverability: press it and the wireframe drops under the cube, release
+   * and it comes back, so the modifier teaches itself in one press.
+   */
+  const [digging, setDigging] = useState(false);
+  /**
+   * Where the pointer last was over the canvas.
+   *
+   * Needed for the same reason: recomputing the outline on a *key* event means
+   * re-picking at a position no pointer event is going to supply.
+   */
+  const lastPointer = useRef<{ x: number; y: number } | null>(null);
   const [materialId, setMaterialId] = useState<string>(DEFAULT_FLOOR);
   /**
    * The cell a place was just placed on, waiting for the snapshot that will carry
@@ -241,6 +257,47 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     // it — otherwise bringing them out would immediately put them back.
   }, [openMap, openPlace?.id, openPoi?.id, openPoi?.visibleToParty]);
 
+  /**
+   * Alt/Option is the dig modifier, and the outline answers to it immediately
+   * (R-160).
+   *
+   * Three parts, and the last two are the ones that bite:
+   *
+   * - `keydown`/`keyup` track the key rather than reading `altKey` off a
+   *   pointer event, because the pointer is not moving.
+   * - **Re-aim from the last pointer position** when it changes. Without this
+   *   the GM holds Option and nothing happens until they twitch the mouse,
+   *   which reads as the modifier being broken.
+   * - **Clear on blur.** A window that loses focus while the key is held never
+   *   receives the keyup, and the console would stay in dig mode with nothing
+   *   on screen saying so.
+   */
+  useEffect(() => {
+    const onDown = (e: KeyboardEvent) => { if (e.altKey) setDigging(true); };
+    const onUp = (e: KeyboardEvent) => { if (!e.altKey) setDigging(false); };
+    const onBlur = () => setDigging(false);
+    addEventListener('keydown', onDown);
+    addEventListener('keyup', onUp);
+    addEventListener('blur', onBlur);
+    return () => {
+      removeEventListener('keydown', onDown);
+      removeEventListener('keyup', onUp);
+      removeEventListener('blur', onBlur);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!stage || !openMap) return;
+    const at = lastPointer.current;
+    if (!at) return;
+    const picked = stage.pick(at.x, at.y);
+    const action = mapAction(mapTool, picked.face, digging);
+    const hover = mapHover(action, undefined, aimAt(action));
+    setHoverLabel(hover.label);
+    stage.showBlockGhost(hover.ghost);
+    // Only the modifier: a re-aim on every render would fight the pointer.
+  }, [digging]);
+
   // The compass follows the camera, on both surfaces (R-152, R-155).
   useEffect(() => {
     stage?.watchCamera(setBearing);
@@ -376,7 +433,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
 
     // Inside a map, the world's tool table does not apply at all (R-148).
     if (openMap) {
-      const action = mapAction(mapTool, picked.face);
+      const action = mapAction(mapTool, picked.face, digging);
       // Refused here as well as by the host, so a click the readout already
       // called impossible never becomes a rejection toast (R-159).
       if (aimAt(action).kind === 'stop') return;
@@ -469,8 +526,9 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     }
 
     if (openMap) {
+      lastPointer.current = { x: e.clientX, y: e.clientY };
       const picked = stage.pick(e.clientX, e.clientY);
-      const action = mapAction(mapTool, picked.face);
+      const action = mapAction(mapTool, picked.face, digging);
       const verdict = aimAt(action);
       // A fill follows connected material straight through a cut, so while
       // levelling it also reports how much of its reach is out of sight.
@@ -581,6 +639,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    */
   const onPointerLeave = () => {
     endGesture();
+    lastPointer.current = null;
     setHoverLabel(null);
     stage?.showBlockGhost(null);
   };

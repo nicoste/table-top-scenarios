@@ -52,8 +52,8 @@ export {
 } from './planes/index.js';
 export type { CuttingPlane, LevelRange, PlaneJSON } from './planes/index.js';
 export {
-  MAP_PATCH, MAP_MAX_HEIGHT, blockKey, parseBlockKey, inMap, blockAt,
-  createMap, setBlock, clearBlock, growMap, topOfMap, mapToJSON, mapFromJSON,
+  MAP_PATCH, MAP_MAX_HEIGHT, MAP_MIN_DEPTH, blockKey, parseBlockKey, inMap, blockAt,
+  createMap, setBlock, clearBlock, growMap, topOfMap, bottomOfMap, mapToJSON, mapFromJSON,
   fillRegion, fillMaterial, mapCentre, enclosing, sliceOf,
 } from './map/index.js';
 export {
