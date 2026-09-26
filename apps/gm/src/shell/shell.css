@@ -140,8 +140,50 @@ button.quiet:hover { background: #3a2222; color: #ffc9c9; border-color: transpar
   font-variant-numeric: tabular-nums;
 }
 
-/* A number beside a name, for a cut's height (R-146). */
-.row input.tiny { width: 3.2em; flex: none; text-align: center; }
+/* A number beside a name, for a cut's height (R-146). Not scoped to `.row`:
+   the ladder uses it too, and scoping it there is how the ladder's height
+   inputs came out full width and squeezed the names to nothing. */
+input.tiny { width: 3.4em; flex: none; text-align: center; }
+
+/*
+  The level ladder (R-161): a vertical double-range slider whose stops are the
+  GM's cutting planes. Evenly spaced on purpose — proportional to height would
+  put a roof at 3 and a water level at 0 on top of each other.
+*/
+.ladder { list-style: none; margin: 4px 0 8px; padding: 0; }
+.ladder li {
+  display: grid; grid-template-columns: 18px 1fr auto auto; gap: 0 5px;
+  align-items: center; min-height: 30px;
+}
+.ladder .rail {
+  position: relative; display: grid; grid-template-rows: 1fr 1fr;
+  justify-items: center; align-self: stretch;
+}
+/* Two half-segments per rung, so the band's colour stops at a handle and not
+   in the gap between two rows. */
+.ladder .rail i { width: 2px; background: #39404d; }
+.ladder .rail i.lit { width: 4px; background: var(--accent); }
+.ladder li:first-child .rail i:first-child,
+.ladder li:last-child .rail i:last-child { background: transparent; }
+.ladder .knob {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 9px; height: 9px; padding: 0; border-radius: 50%;
+  background: #39404d; border: 1px solid #39404d;
+}
+.ladder .knob:hover { background: var(--accent); border-color: var(--accent); }
+.ladder .knob.in { background: var(--accent); border-color: var(--accent); }
+/* A handle is the end of the band, and is the one thing here worth making big. */
+.ladder .knob.handle { width: 15px; height: 15px; box-shadow: 0 0 0 2px #171b22; }
+/* The two bounds are not movable, so they read as caps rather than stops. */
+.ladder li.cap .knob {
+  width: 13px; height: 4px; border-radius: 1px; background: var(--ink); border-color: var(--ink);
+}
+.ladder li.cap .nm { color: var(--ink); }
+.ladder .nm { font-size: 12px; color: var(--dim); }
+.ladder input { font-size: 11.5px; padding: 2px 6px; min-width: 0; width: 100%; }
+.ladder input.tiny { width: 3.4em; }
+.ladder .lbl.at { font-variant-numeric: tabular-nums; min-width: 2.2em; text-align: right; }
+.ladder .note-actions, .ladder button.quiet { padding: 1px 5px; font-size: 11px; }
 
 .palette { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
 .palette button {

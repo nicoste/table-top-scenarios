@@ -64,9 +64,10 @@ function ordered(planes: readonly CuttingPlane[]): readonly CuttingPlane[] {
  * cut.
  */
 export function validPlaneY(y: number, cap: number, floor: number): boolean {
-  // Not at either bound, and not at zero: all three are already steps (R-161),
-  // so a plane there would be a named cut that cuts nothing.
-  return Number.isInteger(y) && y > floor && y < cap && y !== 0;
+  // Not at either bound: both are already steps, so a plane there would be a
+  // named cut that cuts nothing. Zero is *not* excluded — water level is an
+  // ordinary plane that new maps simply start with (R-161).
+  return Number.isInteger(y) && y > floor && y < cap;
 }
 
 export function planeAt(planes: readonly CuttingPlane[], y: number): CuttingPlane | null {
@@ -154,19 +155,14 @@ export function removePlane(
 /**
  * The values a range's handles may take (R-161).
  *
- * **Three fixed steps, always**, and the GM's planes between them:
+ * **Two fixed bounds** — Sky at the ceiling, Bedrock at the digging limit —
+ * and the GM's planes between them.
  *
- * - the **ceiling**, the highest a map may build,
- * - **zero**, where every map's starting floor is laid (R-149) and the datum
- *   everything else is above or below,
- * - the **bottom**, the deepest a map may be dug.
- *
- * Fixed is the point. The bottom step used to be *the deepest block*, which
- * meant the lowest label slid downward as the GM dug and the original ground
- * lost its name the moment anything went beneath it — the same word meaning a
- * different height at different times. Anchoring all three gives the GM
- * references that hold still, and it keeps a saved band valid when blocks are
- * erased.
+ * Fixed bounds are the point. The bottom step used to be *the deepest block*,
+ * so the lowest label slid downward as the GM dug. Anchoring the two ends gives
+ * references that hold still and keeps a saved band valid when blocks are
+ * erased. **Zero is not one of them**: a new map starts with a plane there
+ * called water level, and the GM may rename, move or delete it like any other.
  */
 export function planeSteps(
   // Heights, not identities: the console reads these straight off the wire,
@@ -175,7 +171,7 @@ export function planeSteps(
   cap: number,
   floor: number,
 ): readonly number[] {
-  const steps = new Set<number>([floor, 0, cap]);
+  const steps = new Set<number>([floor, cap]);
   for (const plane of planes) if (validPlaneY(plane.y, cap, floor)) steps.add(plane.y);
   return [...steps].sort((a, b) => a - b);
 }
@@ -185,42 +181,44 @@ export function fullRange(cap: number, floor: number): LevelRange {
 }
 
 /**
- * Pulls a range onto the nearest steps, and guarantees it selects something.
+ * Makes a range legal without moving a handle the GM did not touch (R-161).
  *
- * The handles are snapped independently and then ordered, so a GM who drags the
- * bottom past the top gets the band they clearly meant rather than an empty one.
- * An empty range would hide the whole map with no hint of why.
+ * Clamps to the bounds, orders the two, and opens a band that would select
+ * nothing. It does **not** pull a handle onto the nearest step, and that was a
+ * real bug when it did: the ladder sends both bounds on every change, so moving
+ * the top handle re-snapped the bottom one — a GM whose band started at a level
+ * left off-step by a deleted plane lost it to a click somewhere else entirely.
+ *
+ * Snapping was designed for a drag, where a handle lands between steps. The
+ * ladder can only produce a step, so the pull had nothing left to do but harm.
+ * A stored band is the GM's, and nothing moves it behind their back.
  */
-export function snapRange(
+export function clampRange(
   planes: readonly CuttingPlane[],
   range: LevelRange,
   cap: number,
   floor: number,
 ): LevelRange {
-  const steps = planeSteps(planes, cap, floor);
-  const nearest = (value: number) => steps.reduce(
-    (best, step) => (Math.abs(step - value) < Math.abs(best - value) ? step : best),
-    steps[0] ?? 0,
-  );
-  let lower = nearest(range.lower);
-  let upper = nearest(range.upper);
+  const within = (value: number) => Math.min(cap, Math.max(floor, Math.round(value)));
+  let lower = within(range.lower);
+  let upper = within(range.upper);
+  if (lower > upper) [lower, upper] = [upper, lower];
+
   if (lower === upper) {
     /*
-     * Both handles landed on the same step, which would select nothing.
+     * Both handles on one height, which would select nothing and hide the map
+     * with no hint of why.
      *
-     * Open **upward**: a band is named by the step it sits on, so pinching at
-     * water level should give the storey above it rather than the cellar
-     * below. Downward was the first answer and it was arbitrary then; with a
-     * datum at zero and an underworld that is usually empty, it now reliably
-     * hands back the one band with nothing in it (R-161).
-     *
-     * Downward only at the ceiling, where there is no up.
+     * Open **upward** to the next step: a band is named by the level it sits
+     * on, so pinching at water level should give the storey above rather than
+     * the cellar below. Downward only at the ceiling, where there is no up.
      */
-    const at = steps.indexOf(lower);
-    if (at >= 0 && at < steps.length - 1) upper = steps[at + 1]!;
-    else if (at > 0) lower = steps[at - 1]!;
+    const steps = planeSteps(planes, cap, floor);
+    const above = steps.find((step) => step > lower);
+    const below = [...steps].reverse().find((step) => step < lower);
+    if (above !== undefined) upper = above;
+    else if (below !== undefined) lower = below;
   }
-  if (lower > upper) [lower, upper] = [upper, lower];
   return { lower, upper };
 }
 
@@ -239,16 +237,21 @@ export function isFullRange(range: LevelRange, cap: number, floor: number): bool
 }
 
 /**
- * What the three fixed steps are called (R-161).
+ * What a map's starting plane is called (R-161).
  *
- * Here rather than in the console, because they are part of the vocabulary
- * rather than a label: the rules talk about the datum at zero, and a GM saying
- * "cut it at water level" should be saying the same word the code does.
+ * Here rather than in the console because it is vocabulary rather than a label
+ * (D-176's lesson): a GM saying "cut it at water level" should be saying the
+ * word the code says. It is only a *default* — the plane is theirs to rename.
+ */
+export const WATER_LEVEL = 'Water level';
+
+/**
+ * What the two fixed bounds are called (R-161), or `null` for a height that is
+ * the GM's to name.
  */
 export function stepLabel(y: number, cap: number, floor: number): string | null {
   if (y >= cap) return 'Sky';
   if (y <= floor) return 'Bedrock';
-  if (y === 0) return 'Water level';
   return null;
 }
 

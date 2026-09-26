@@ -2101,36 +2101,42 @@ apps/host/src/
 > depth cannot disagree with the blocks. The band's lowest step follows it, which
 > is what lets a cut reach a cellar the moment one exists.
 
-> **R-161.** **Three fixed steps, named, and the GM's planes between them.**
+> **R-161.** **Two fixed bounds, and the GM's levels between them.**
 >
 > - **Sky** — the ceiling, the highest a map may build.
-> - **Water level** — zero, where every map's starting floor is laid (R-149),
->   and the datum every other height is above or below.
 > - **Bedrock** — the deepest a map may be dug (R-160).
 >
-> All three are **immovable**, and that is the rule. The lowest step used to be
-> *the deepest block*, so the bottom label slid downward as the GM dug, and the
-> original ground lost its name the instant anything went beneath it — the same
-> word meaning a different height at different times. Anchored steps give the GM
-> references that hold still, and keep a saved band valid when blocks are erased.
+> Both are **immovable**, and that is the rule. The bottom used to be *the
+> deepest block*, so its label slid downward as the GM dug — the same word
+> meaning a different height at different times. Anchored ends give references
+> that hold still and keep a saved band valid when blocks are erased.
 >
-> A plane may sit at none of the three, for the reason a plane may not sit at a
-> bound: it is already a step, so a cut there cuts nothing. A plane **may** sit
-> underground.
+> **Zero is not one of them.** A new map starts with a plane there called
+> **water level**, and the GM may rename, move or delete it like any other: a
+> dungeon that never sees daylight has no use for it. The name lives in
+> `domain` because it is vocabulary, like Place and Point of interest (D-176) —
+> a GM saying "cut it at water level" should be saying the word the code says.
 >
-> The names live in `domain`, not in the console. They are vocabulary, like Place
-> and Point of interest (D-176) — a GM saying "cut it at water level" should be
-> saying the word the code says.
+> A plane may sit anywhere strictly between the bounds, underground included. It
+> may not sit *at* a bound, which is already a step: a cut there cuts nothing.
 >
-> A band pinched shut **opens upward**, because a band is named by the step it
-> sits on: pinching at water level should hand back the storey above, not the
-> cellar below, and certainly not the usually-empty underworld. Downward only at
-> the ceiling, where there is no up.
+> **The ladder.** Levels and the band are **one control** (D-205): a vertical
+> axis, capped at Sky and Bedrock, with a rung for every plane and two handles
+> marking the band. It is **evenly spaced, not proportional to height** —
+> proportional puts a roof at 3 and a water level at 0 six percent apart and
+> overlapping. That also means a rung cannot be *dragged* to a new height, since
+> an ordinal axis has no answer to "what height did I drop it at"; the number
+> beside each name is how a height is set, and it is exact.
 >
-> **A stored band is never snapped behind the GM's back.** It is a pair of
-> heights they chose, and a plane they later move or delete can leave it
-> off-step — quietly dragging it to the nearest step would change what the party
-> sees without anyone asking. The *control* absorbs that instead: it offers
-> wherever the band currently sits alongside the steps, because a `select` whose
-> value is missing from its options displays a different one, and a control that
-> misreports the band is worse than an untidy list.
+> **A band is never moved behind the GM's back.** Two rules serve that:
+> - The host **clamps and orders** a band, and opens one that would select
+>   nothing, but never pulls a handle onto the nearest step. The ladder sends
+>   both bounds on every change, so pulling meant moving the handle the GM had
+>   not touched — a band left off-step by a deleted plane was lost to a click
+>   somewhere else entirely.
+> - The **ladder shows wherever the band sits**, step or not. A control that
+>   cannot display the current value reports a different one, which is worse
+>   than an untidy list.
+>
+> A band pinched shut opens **upward**: a band is named by the level it sits on,
+> so pinching gives the storey above. Downward only at the ceiling.

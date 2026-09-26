@@ -7,9 +7,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   addPlane, renamePlane, movePlane, removePlane, planeAt, planeById,
-  planeSteps, fullRange, snapRange, inRange, sameRange, isFullRange, validPlaneY,
+  planeSteps, fullRange, clampRange, inRange, sameRange, isFullRange, validPlaneY,
   planesToJSON, planesFromJSON,
-  createMap, setBlock, sliceOf, blockAt, blockKey,
+  createMap, setBlock, sliceOf, blockAt, blockKey, WATER_LEVEL,
   MAP_MAX_HEIGHT, MAP_MIN_DEPTH, stepLabel, DEFAULT_MATERIALS,
 } from '@tt/domain';
 import type { CuttingPlane, MaterialId, PlaneId } from '@tt/domain';
@@ -28,13 +28,14 @@ function tavern(): readonly CuttingPlane[] {
 }
 
 describe('a plane is a height and a name (R-146)', () => {
-  it('sits strictly between the bounds, and never on the datum', () => {
-    // All three fixed steps are already steps (R-161), so a plane at any of
-    // them would be a named cut that cuts nothing.
+  it('sits strictly between the two bounds', () => {
+    // Both bounds are already steps (R-161), so a plane at either would be a
+    // named cut that cuts nothing. Zero is *not* excluded: water level is an
+    // ordinary plane, which is why it can be renamed and deleted.
     expect(validPlaneY(1, CAP, FLOOR)).toBe(true);
+    expect(validPlaneY(0, CAP, FLOOR)).toBe(true);
     expect(validPlaneY(CAP - 1, CAP, FLOOR)).toBe(true);
     expect(validPlaneY(FLOOR + 1, CAP, FLOOR)).toBe(true);
-    expect(validPlaneY(0, CAP, FLOOR)).toBe(false);
     expect(validPlaneY(CAP, CAP, FLOOR)).toBe(false);
     expect(validPlaneY(FLOOR, CAP, FLOOR)).toBe(false);
     expect(validPlaneY(FLOOR - 1, CAP, FLOOR)).toBe(false);
@@ -76,7 +77,7 @@ describe('a plane is a height and a name (R-146)', () => {
     // 4 is taken, so the move is refused rather than silently swapping them.
     expect(movePlane(planes, id, 4, CAP, FLOOR)).toBe(planes);
     expect(movePlane(planes, id, 8, CAP, FLOOR)).toBe(planes);
-    expect(movePlane(planes, id, 0, CAP, FLOOR)).toBe(planes);
+    expect(movePlane(planes, id, FLOOR, CAP, FLOOR)).toBe(planes);
 
     expect(removePlane(planes, id)).toHaveLength(2);
     expect(removePlane(planes, 'plane_ghost' as PlaneId)).toBe(planes);
@@ -96,36 +97,41 @@ describe('a plane is a height and a name (R-146)', () => {
 });
 
 describe('the steps a range may snap to (R-161)', () => {
-  it('is the planes plus three fixed reference heights', () => {
-    expect(planeSteps(tavern(), CAP, FLOOR)).toEqual([FLOOR, 0, 4, 8, 12, CAP]);
+  it('is the planes plus the two fixed bounds', () => {
+    expect(planeSteps(tavern(), CAP, FLOOR)).toEqual([FLOOR, 4, 8, 12, CAP]);
   });
 
-  it('gives an undivided map the three, and nothing else', () => {
-    // Zero is a step whether or not anything was ever dug, because it is the
-    // datum every other height is above or below.
-    expect(planeSteps([], CAP, FLOOR)).toEqual([FLOOR, 0, CAP]);
+  it('gives an uncut map the two, and nothing else', () => {
+    expect(planeSteps([], CAP, FLOOR)).toEqual([FLOOR, CAP]);
   });
 
   it('holds still when the map is dug or filled in', () => {
     // The bug this replaces: the lowest step used to be the deepest block, so
-    // the bottom label slid downward as the GM dug and the original ground
-    // lost its name the moment anything went beneath it.
-    expect(planeSteps([], CAP, FLOOR)).toEqual(planeSteps(tavern(), CAP, FLOOR).filter(
-      (y) => y === FLOOR || y === 0 || y === CAP,
-    ));
+    // the bottom label slid downward as the GM dug. The bounds do not move for
+    // anything, which is what makes them references.
+    const ends = planeSteps(tavern(), CAP, FLOOR).filter((y) => y === FLOOR || y === CAP);
+    expect(ends).toEqual([FLOOR, CAP]);
   });
 
-  it('names the three, and lets the GM name the rest', () => {
+  it('names the two bounds, and lets the GM name everything else', () => {
     expect(stepLabel(CAP, CAP, FLOOR)).toBe('Sky');
-    expect(stepLabel(0, CAP, FLOOR)).toBe('Water level');
     expect(stepLabel(FLOOR, CAP, FLOOR)).toBe('Bedrock');
-    // A plane's height is the GM's to name, so the domain declines to.
+    // Every other height is the GM's to name, zero included — a new map simply
+    // starts with a plane there called water level.
+    expect(stepLabel(0, CAP, FLOOR)).toBeNull();
     expect(stepLabel(4, CAP, FLOOR)).toBeNull();
     expect(stepLabel(-4, CAP, FLOOR)).toBeNull();
   });
 
+  it('starts a new map with its ground named, as a plane like any other', () => {
+    const fresh = createMap();
+    expect(fresh.planes.map((plane) => [plane.name, plane.y])).toEqual([[WATER_LEVEL, 0]]);
+    // Deletable, which is the point of it being a plane.
+    expect(removePlane(fresh.planes, fresh.planes[0]!.id)).toEqual([]);
+  });
+
   it('still selects the whole body when nothing is cut', () => {
-    const only = snapRange([], { lower: FLOOR, upper: CAP }, CAP, FLOOR);
+    const only = clampRange([], { lower: FLOOR, upper: CAP }, CAP, FLOOR);
     expect(only).toEqual({ lower: FLOOR, upper: CAP });
     expect(isFullRange(only, CAP, FLOOR)).toBe(true);
   });
@@ -133,7 +139,7 @@ describe('the steps a range may snap to (R-161)', () => {
 
 describe("the GM's four bands, by name", () => {
   const planes = tavern();
-  const band = (lower: number, upper: number) => snapRange(planes, { lower, upper }, CAP, FLOOR);
+  const band = (lower: number, upper: number) => clampRange(planes, { lower, upper }, CAP, FLOOR);
 
   it('outside: the building without its cellar', () => {
     expect(band(4, CAP)).toEqual({ lower: 4, upper: CAP });
@@ -158,51 +164,51 @@ describe("the GM's four bands, by name", () => {
   });
 
   it('underground: the cellar alone', () => {
-    const cellar = band(0, 4);
-    expect(cellar).toEqual({ lower: 0, upper: 4 });
+    // Zero is not a step in this fixture — the tavern's planes are 4, 8 and 12
+    // — so the lower handle snaps to Bedrock, and the cellar is everything
+    // below the ground floor.
+    const cellar = band(FLOOR, 4);
+    expect(cellar).toEqual({ lower: FLOOR, upper: 4 });
     expect(inRange(cellar, 0)).toBe(true);
     expect(inRange(cellar, 3)).toBe(true);
+    expect(inRange(cellar, -5)).toBe(true);
     expect(inRange(cellar, 4)).toBe(false);
   });
 });
 
-describe('snapping', () => {
+describe('making a band legal (R-161)', () => {
   const planes = tavern();
+  const clamp = (lower: number, upper: number) =>
+    clampRange(planes, { lower, upper }, CAP, FLOOR);
 
-  it('pulls a handle to the nearest step', () => {
-    expect(snapRange(planes, { lower: 5, upper: 11 }, CAP, FLOOR)).toEqual({ lower: 4, upper: 12 });
-    expect(snapRange(planes, { lower: 3, upper: 13 }, CAP, FLOOR)).toEqual({ lower: 4, upper: 12 });
+  it('leaves a handle exactly where it was put', () => {
+    // The bug this replaces: both bounds were pulled onto the nearest step on
+    // every change, so moving the top handle re-snapped the bottom one and a
+    // GM could lose their cellar to a click somewhere else entirely.
+    expect(clamp(-2, 3)).toEqual({ lower: -2, upper: 3 });
+    expect(clamp(5, 11)).toEqual({ lower: 5, upper: 11 });
   });
 
-  it('opens a band the GM pinched shut between two steps', () => {
-    // 7 and 9 both snap to 8, which would select nothing, so it opens upward to
-    // the storey that step names — the nearest band that is actually a band.
-    expect(snapRange(planes, { lower: 7, upper: 9 }, CAP, FLOOR)).toEqual({ lower: 8, upper: 12 });
+  it('orders the handles when they arrive the wrong way round', () => {
+    expect(clamp(12, 4)).toEqual({ lower: 4, upper: 12 });
   });
 
-  it('orders the handles when the GM drags one past the other', () => {
-    expect(snapRange(planes, { lower: 12, upper: 4 }, CAP, FLOOR)).toEqual({ lower: 4, upper: 12 });
+  it('clamps to the two bounds', () => {
+    expect(clamp(-50, 900)).toEqual({ lower: FLOOR, upper: CAP });
   });
 
   it('never selects nothing, and opens upward when pinched', () => {
-    // A band is named by the step it sits on, so pinching at a step gives the
-    // storey *above* it. Downward would hand back the cellar — or, at water
-    // level, the empty underworld (R-161).
-    const collapsed = snapRange(planes, { lower: 8, upper: 8 }, CAP, FLOOR);
+    // A band is named by the step it sits on, so pinching at a level gives the
+    // storey above it.
+    const collapsed = clamp(8, 8);
     expect(collapsed.lower).toBeLessThan(collapsed.upper);
     expect(collapsed).toEqual({ lower: 8, upper: 12 });
 
-    expect(snapRange(planes, { lower: 0, upper: 0 }, CAP, FLOOR))
-      .toEqual({ lower: 0, upper: 4 });
+    // Between two steps, it opens to the next one up.
+    expect(clamp(5, 5)).toEqual({ lower: 5, upper: 8 });
 
     // At the ceiling there is no up, so it opens down instead.
-    expect(snapRange(planes, { lower: CAP, upper: CAP }, CAP, FLOOR))
-      .toEqual({ lower: 12, upper: CAP });
-  });
-
-  it('clamps a handle far outside the body', () => {
-    expect(snapRange(planes, { lower: -50, upper: 900 }, CAP, FLOOR))
-      .toEqual({ lower: FLOOR, upper: CAP });
+    expect(clamp(CAP, CAP)).toEqual({ lower: 12, upper: CAP });
   });
 
   it('compares two ranges', () => {

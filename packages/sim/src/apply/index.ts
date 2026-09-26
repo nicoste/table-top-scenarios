@@ -16,7 +16,7 @@ import {
   setMapBlock, clearMapBlock, fillPoiMaterial, growPoiMap, inMap, blockAt, isKnownMaterial,
   MAP_MAX_HEIGHT, MAP_MIN_DEPTH,
   addPoiPlane, renamePoiPlane, movePoiPlane, removePoiPlane,
-  validPlaneY, planeAt, planeById, snapRange, isPoiOnTable,
+  validPlaneY, planeAt, planeById, clampRange, isPoiOnTable,
   poiById as poiOfPlace,
   createLiveSave, withDiscovery, withPlacement, touch, upgraded, upgradedCampaign, belongsTo,
   pruneDiscovery, pruneMembers, enteringMap, leavingMap, withRange, pruneInside, pruneRanges,
@@ -516,9 +516,10 @@ function applyToPois(
       const poi = poiOfPlace(place, intent.poiId as PoiId);
       if (!poi) return reject_('no such point of interest');
       if (!poi.map) return reject_('that point of interest has no map');
-      // Snapped here rather than trusted from the client: the steps are a fact
-      // about the map's planes, and the console could be a repaint behind.
-      const range = snapRange(
+      // Made legal here rather than trusted from the client, but never pulled
+      // onto a step: the ladder sends both bounds every time, and moving one
+      // must not quietly move the other (R-161).
+      const range = clampRange(
         poi.map.planes,
         { lower: intent.lower, upper: intent.upper },
         MAP_MAX_HEIGHT,

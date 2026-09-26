@@ -4,13 +4,13 @@
 // height, places and travel have no meaning inside a tavern, and leaving them on
 // screen would offer four tools that do nothing.
 
-import { useState } from 'react';
 import type { Intent, MapWire } from '@tt/protocol';
 import type { MapTool } from '@tt/client-core';
 import { CAMERA_HINT } from '@tt/client-core';
-import { MAP_MAX_HEIGHT, MAP_MIN_DEPTH, planeSteps, isFullRange, stepLabel } from '@tt/domain';
+import { MAP_MAX_HEIGHT, MAP_MIN_DEPTH, isFullRange, stepLabel } from '@tt/domain';
 import type { LevelRange, Material } from '@tt/domain';
-import { ConfirmDelete, Tooltip } from '@tt/ui';
+import { Tooltip } from '@tt/ui';
+import { LevelLadder } from '../levels/index.js';
 
 /**
  * The four directions a map can grow, in the order they are laid out: the top
@@ -25,6 +25,13 @@ const EXPANSIONS = [
   { towards: 'southwest', short: 'SW', long: 'south-west' },
   { towards: 'southeast', short: 'SE', long: 'south-east' },
 ] as const;
+
+/** What a band's end is called: a bound, the plane there, or just its height. */
+function bandName(y: number, planes: MapWire['planes']): string {
+  return stepLabel(y, MAP_MAX_HEIGHT, MAP_MIN_DEPTH)
+    ?? planes?.find((plane) => plane.y === y)?.name
+    ?? `level ${y}`;
+}
 
 interface Props {
   /** Which point of interest's map this is — for the heading. */
@@ -52,64 +59,23 @@ interface Props {
   readonly poiId: string;
 }
 
-/**
- * A step's label: one of the three fixed names, or the plane the GM put there.
- *
- * The names come from the domain (R-161), not from here, so the rules and both
- * screens say the same word for the same height.
- */
-function stepName(y: number, planes: MapWire['planes']): string {
-  return stepLabel(y, MAP_MAX_HEIGHT, MAP_MIN_DEPTH)
-    ?? planes?.find((plane) => plane.y === y)?.name
-    ?? `Level ${y}`;
-}
-
 export function MapPanel({
   placeName, poiName, map, tool, materials, materialId, hoverLabel,
   partyHere, partyCanSee, range, levelling, onLevelling,
   onTool, onMaterial, onLeave, dispatch, placeId, poiId,
 }: Props) {
   const blocks = Object.keys(map.blocks).length;
-  const [planeName, setPlaneName] = useState('');
-  const [planeY, setPlaneY] = useState('');
-  const planes = map.planes ?? [];
   /**
    * How far this body has actually been dug — for the readout only (R-160).
    *
-   * The *steps* no longer use it: they are anchored at Bedrock, water level and
-   * Sky whatever has been built (R-161). This is just "how deep is it", which
-   * is a fact about the map worth telling the GM.
+   * The ladder's rungs do not use it: those are anchored at Bedrock and Sky
+   * whatever has been built (R-161). This is just "how deep is it", which is a
+   * fact about the map worth telling the GM.
    */
   const dug = Object.keys(map.blocks).reduce(
     (lowest, key) => Math.min(lowest, Number(key.split(',')[1])),
     0,
   );
-  /**
-   * The heights the two handles may be set to.
-   *
-   * The fixed steps and the GM's planes — **plus wherever the band currently
-   * sits**, even when that is not a step any more. A band goes off-step the
-   * moment a plane it was resting on is moved or deleted, and a `select` whose
-   * value is not among its options silently displays a different one: the
-   * control would be claiming the table is being shown something it is not.
-   *
-   * Snapping the stored band instead would be worse. It is a pair of heights
-   * the GM chose, and quietly moving it whenever a plane changes would alter
-   * what the party sees without anyone asking (R-161).
-   */
-  const steps = [...new Set([
-    ...planeSteps(planes, MAP_MAX_HEIGHT, MAP_MIN_DEPTH),
-    range.lower,
-    range.upper,
-  ])].sort((a, b) => a - b);
-
-  const addPlane = () => {
-    const y = Number.parseInt(planeY, 10);
-    if (!Number.isInteger(y)) return;
-    dispatch({ kind: 'addPlane', placeId, poiId, name: planeName.trim(), y });
-    setPlaneName('');
-    setPlaneY('');
-  };
 
   return (
     <>
@@ -131,7 +97,7 @@ export function MapPanel({
               They are in here. The table is showing them{' '}
               {isFullRange(range, MAP_MAX_HEIGHT, MAP_MIN_DEPTH)
                 ? 'the whole place'
-                : `${stepName(range.lower, planes)} to ${stepName(range.upper, planes)}`}.
+                : `${bandName(range.lower, map.planes)} to ${bandName(range.upper, map.planes)}`}.
             </p>
             <div className="btn-grid campaign-actions">
               <Tooltip label="Send the party back out to the world map" placement="bottom" stretch>
@@ -243,78 +209,19 @@ export function MapPanel({
       )}
 
       {/*
-        Levels (R-146). The plane list and the band are one card because they are
-        one idea read two ways: the names the GM gave the cuts, and which of the
+        Levels (R-146, R-161). The plane list and the band are one control
+        because they are one idea: the heights the GM named, and which of the
         bands between them the table is being shown.
       */}
       <div className="card">
         <h2>Levels</h2>
-        {planes.length === 0 && (
-          <p className="hint" style={{ margin: '0 0 8px' }}>
-            No cuts yet — the whole place is one level.
-          </p>
-        )}
-        {planes.length > 0 && (
-          <ul className="notes">
-            {/* Top-down, because that is how a building is read. */}
-            {[...planes].sort((a, b) => b.y - a.y).map((plane) => (
-              <li key={plane.id}>
-                <span className="lbl" style={{ minWidth: 22, textAlign: 'right' }}>{plane.y}</span>
-                <input
-                  value={plane.name}
-                  onChange={(e) => dispatch({
-                    kind: 'renamePlane', placeId, poiId, planeId: plane.id, name: e.target.value,
-                  })}
-                />
-                <div className="note-actions">
-                  <ConfirmDelete
-                    label={`Remove the cut at ${plane.y}`}
-                    onConfirm={() => dispatch({
-                      kind: 'removePlane', placeId, poiId, planeId: plane.id,
-                    })}
-                  >
-                    <Tooltip label="Raise this cut by one" placement="left">
-                      <button
-                        className="quiet"
-                        onClick={() => dispatch({
-                          kind: 'movePlane', placeId, poiId, planeId: plane.id, y: plane.y + 1,
-                        })}
-                      >↑</button>
-                    </Tooltip>
-                    <Tooltip label="Lower this cut by one" placement="left">
-                      <button
-                        className="quiet"
-                        onClick={() => dispatch({
-                          kind: 'movePlane', placeId, poiId, planeId: plane.id, y: plane.y - 1,
-                        })}
-                      >↓</button>
-                    </Tooltip>
-                  </ConfirmDelete>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        <div className="row">
-          <input
-            placeholder="Cut named…"
-            value={planeName}
-            onChange={(e) => setPlaneName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') addPlane(); }}
-          />
-          <input
-            className="tiny"
-            placeholder="Y"
-            inputMode="numeric"
-            value={planeY}
-            onChange={(e) => setPlaneY(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') addPlane(); }}
-          />
-          <button onClick={addPlane} disabled={!Number.isInteger(Number.parseInt(planeY, 10))}>
-            Cut
-          </button>
-        </div>
+        <LevelLadder
+          map={map}
+          range={range}
+          placeId={placeId}
+          poiId={poiId}
+          dispatch={dispatch}
+        />
 
         {/*
           The toggle (R-159). Two views of one body: everything, or the band the
@@ -322,7 +229,7 @@ export function MapPanel({
           band are *absent*, which is what stops the GM editing a block they
           cannot see (D-202).
         */}
-        <div className="btn-grid tools" style={{ marginTop: 4 }}>
+        <div className="btn-grid tools" style={{ marginTop: 6 }}>
           <Tooltip
             label={levelling
               ? 'Show the whole body again'
@@ -339,46 +246,6 @@ export function MapPanel({
             </button>
           </Tooltip>
         </div>
-
-        {/*
-          The band. Two selects rather than the double slider the GM sketched —
-          the steps are few and named, and a dropdown of names cannot be dragged
-          past itself. The slider is a polish, not the feature.
-        */}
-        <label className="row" style={{ marginTop: 8 }}>
-          <span className="lbl">from</span>
-          <select
-            value={range.lower}
-            onChange={(e) => dispatch({
-              kind: 'setRange',
-              placeId,
-              poiId,
-              lower: Number.parseInt(e.target.value, 10),
-              upper: range.upper,
-            })}
-          >
-            {steps.map((y) => (
-              <option key={y} value={y}>{stepName(y, planes)}</option>
-            ))}
-          </select>
-        </label>
-        <label className="row" style={{ marginTop: 4 }}>
-          <span className="lbl">to</span>
-          <select
-            value={range.upper}
-            onChange={(e) => dispatch({
-              kind: 'setRange',
-              placeId,
-              poiId,
-              lower: range.lower,
-              upper: Number.parseInt(e.target.value, 10),
-            })}
-          >
-            {steps.map((y) => (
-              <option key={y} value={y}>{stepName(y, planes)}</option>
-            ))}
-          </select>
-        </label>
         <p className="hint">
           {levelling
             ? 'Only the band is drawn, so nothing outside it can be clicked by mistake.'

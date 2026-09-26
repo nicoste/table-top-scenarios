@@ -208,18 +208,34 @@ describe('what the table is sent (R-158, D-184 answered)', () => {
     let inside = run(state, { kind: 'enterMap', placeId, poiId }).state;
     inside = run(inside, { kind: 'setRange', placeId, poiId, lower: 4, upper: 8 }).state;
     const map = tableMap(inside)!;
-    expect(map.planes?.map((p) => p.name)).toEqual(['Ground floor', 'Upstairs']);
+    // Water level comes with every new map (R-161); the other two are the
+    // fixture's own.
+    expect(map.planes?.map((p) => p.name)).toEqual(['Water level', 'Ground floor', 'Upstairs']);
   });
 });
 
 describe('the range (R-146)', () => {
-  it('snaps to the steps rather than trusting the console', () => {
-    // The steps are a fact about the map's planes, and a console can be a
-    // repaint behind.
+  it('takes the console at its word, within the bounds', () => {
+    // Not snapped to a step. The ladder sends both bounds on every change, so
+    // pulling them onto steps meant moving a handle the GM had not touched
+    // (R-161) — and a band between two levels is a perfectly good band.
     const { state, placeId, poiId } = tavern();
     const inside = run(state, { kind: 'enterMap', placeId, poiId }).state;
     const ranged = run(inside, { kind: 'setRange', placeId, poiId, lower: 5, upper: 7 }).state;
-    expect(rangeFor(ranged.activeSave!, poiId)).toEqual({ lower: 4, upper: 8 });
+    expect(rangeFor(ranged.activeSave!, poiId)).toEqual({ lower: 5, upper: 7 });
+  });
+
+  it('still refuses to let a band leave the map or select nothing', () => {
+    const { state, placeId, poiId } = tavern();
+    const inside = run(state, { kind: 'enterMap', placeId, poiId }).state;
+    const wild = run(inside, {
+      kind: 'setRange', placeId, poiId, lower: -900, upper: 900,
+    }).state;
+    expect(rangeFor(wild.activeSave!, poiId)).toEqual({ lower: MAP_MIN_DEPTH, upper: MAP_MAX_HEIGHT });
+
+    const pinched = run(inside, { kind: 'setRange', placeId, poiId, lower: 8, upper: 8 }).state;
+    const band = rangeFor(pinched.activeSave!, poiId);
+    expect(band.lower).toBeLessThan(band.upper);
   });
 
   it('cuts a map the party is nowhere near — that is how one gets built (D-201)', () => {
@@ -281,14 +297,26 @@ describe('planes are authored content (R-136)', () => {
     }
   });
 
-  it('refuses a plane at the floor or the ceiling, and a second at one height', () => {
+  it('refuses a plane at either bound, and a second at one height', () => {
     const { state, placeId, poiId } = tavern();
-    expect(run(state, { kind: 'addPlane', placeId, poiId, name: 'x', y: 0 }).rejected)
-      .toBe('a plane sits between the floor and the ceiling');
     expect(run(state, { kind: 'addPlane', placeId, poiId, name: 'x', y: MAP_MAX_HEIGHT }).rejected)
+      .toBe('a plane sits between the floor and the ceiling');
+    expect(run(state, { kind: 'addPlane', placeId, poiId, name: 'x', y: MAP_MIN_DEPTH }).rejected)
       .toBe('a plane sits between the floor and the ceiling');
     expect(run(state, { kind: 'addPlane', placeId, poiId, name: 'x', y: 4 }).rejected)
       .toBe('there is already a plane there');
+    // Zero is occupied by the water level a new map comes with, not forbidden.
+    expect(run(state, { kind: 'addPlane', placeId, poiId, name: 'x', y: 0 }).rejected)
+      .toBe('there is already a plane there');
+  });
+
+  it('lets the GM delete the water level it started with', () => {
+    const { state, placeId, poiId } = tavern();
+    const water = state.active!.places[0]!.pois[0]!.map!.planes.find((p) => p.y === 0)!;
+    const without = run(state, {
+      kind: 'removePlane', placeId, poiId, planeId: water.id,
+    }).state;
+    expect(without.active!.places[0]!.pois[0]!.map!.planes.some((p) => p.y === 0)).toBe(false);
   });
 
   it('names the plane that is not there', () => {
@@ -299,9 +327,10 @@ describe('planes are authored content (R-136)', () => {
 
   it('is undoable, like every other authored edit (R-140a)', () => {
     const { state, placeId, poiId } = tavern();
+    const before = state.active!.places[0]!.pois[0]!.map!.planes.length;
     const added = run(state, { kind: 'addPlane', placeId, poiId, name: 'Attic', y: 16 }).state;
-    expect(added.active!.places[0]!.pois[0]!.map!.planes).toHaveLength(3);
+    expect(added.active!.places[0]!.pois[0]!.map!.planes).toHaveLength(before + 1);
     const undone = run(added, { kind: 'undo' }).state;
-    expect(undone.active!.places[0]!.pois[0]!.map!.planes).toHaveLength(2);
+    expect(undone.active!.places[0]!.pois[0]!.map!.planes).toHaveLength(before);
   });
 });

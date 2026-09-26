@@ -10,9 +10,10 @@
 // R-123 already names for chunk coordinates.
 
 import type { MaterialId } from '../ids/index.js';
+import { freshId } from '../ids/index.js';
 import { DEFAULT_FLOOR } from '../materials/index.js';
 import type { CuttingPlane, LevelRange, PlaneJSON } from '../planes/index.js';
-import { inRange, planesToJSON, planesFromJSON } from '../planes/index.js';
+import { inRange, planesToJSON, planesFromJSON, WATER_LEVEL } from '../planes/index.js';
 
 /** Cells along one side of a freshly created map, and the step `+` grows by. */
 export const MAP_PATCH = 16;
@@ -136,7 +137,15 @@ export function createMap(material: MaterialId = DEFAULT_FLOOR): EncounterMap {
       blocks.set(blockKey({ x, y: 0, z }), material);
     }
   }
-  return { origin: { x: 0, z: 0 }, size: { x: MAP_PATCH, z: MAP_PATCH }, blocks, planes: [] };
+  return {
+    origin: { x: 0, z: 0 },
+    size: { x: MAP_PATCH, z: MAP_PATCH },
+    blocks,
+    // A new map starts with its ground named (R-161). A *plane*, not a fixed
+    // step: the GM may rename it, move it or delete it, and a dungeon that
+    // never sees daylight has no use for it.
+    planes: [{ id: freshId<'PlaneId'>('plane'), name: WATER_LEVEL, y: 0 }],
+  };
 }
 
 /** Identity-preserving: placing what is already there returns the same map (R-12). */

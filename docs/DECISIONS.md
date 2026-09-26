@@ -3518,3 +3518,49 @@ named by the step it sits on, so pinching at water level gives the storey above
 — with downward only at the ceiling, where there is no up. The test that caught
 it was one I had written asserting the arbitrary behaviour, which is a fair
 warning about tests that encode a coin-flip as if it were a decision.
+
+### D-205 — The level ladder · `agreed`
+The GM drew it: a vertical axis capped at Sky and Bedrock, a rung per level with
+its name, its height and a delete, and two round handles marking the band. Which
+is R-146's original brief — *"a double range slider, where the GM can specify
+the steps/planes by presetting their Y values"* — finally built. Two selects and
+a list were the placeholder.
+
+**Their drawing corrected me.** It showed water level with an ✕, like any other
+level. I had pinned zero as a third immovable step in D-204; re-reading what
+they actually asked for — *"two unmovable levels called sky and hell"* — they
+never said that, and the sliding-floor problem stays fixed either way because
+Bedrock is the anchor. So water level is a plane a new map simply starts with,
+renameable and deletable. A dungeon has no use for it.
+
+**Two things from the drawing I did not build, with reasons:**
+
+- **The ☰ grips.** The axis is evenly spaced, which is right — proportional to
+  height would put a roof at 3 and a water level at 0 six percent apart and
+  overlapping. But on an ordinal axis a drag has no defined result: if Roof is
+  dragged below Water level, what height did it land on? Y is a real height, not
+  a position in a list. The number input is exact and was already in the
+  drawing.
+- **Dragging the band handles.** Clicking a rung moves the *nearer* handle,
+  which needs no drag, cannot invert the band, and is one gesture for both ends.
+
+**And building it found a live bug.** `snapRange` pulled *both* bounds onto the
+nearest step on every change. The ladder sends both every time, so moving the
+top handle re-snapped the bottom — and the GM's own band, which started at a
+level left off-step by an earlier change, was silently dropped by a click at the
+other end of the ladder. Their party would have lost sight of the cellar.
+
+Snapping was designed for a drag, where a handle lands between steps. The ladder
+can only produce a step, so the pull had nothing left to do but harm. It is now
+`clampRange`: clamp to the bounds, order the two, open a band that would select
+nothing — and never move a handle that was not touched. Verified end to end by
+adding a plane, banding to it, deleting the plane to strand the band off-step,
+then moving the other handle and watching the stranded bound survive.
+
+Two smaller things the build turned up, both mine:
+
+- `.tiny` was scoped to `.row input.tiny`, so the ladder's height inputs came
+  out full width and squeezed every name to nothing.
+- Wrapping the knob in a `Tooltip` added its wrapper as a third row of the
+  rail's grid, putting every knob exactly half a row below the level it marks.
+  A native `title` stays where it is put.
