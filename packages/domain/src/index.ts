@@ -47,7 +47,7 @@ export type { EncounterMap, BlockCoord, Expand, MapJSON, MapJSONIn } from './map
 export {
   MAX_PLANE_NAME, validPlaneY, planeAt, planeById,
   addPlane, renamePlane, movePlane, removePlane,
-  planeSteps, fullRange, clampRange, inRange, sameRange, isFullRange, stepLabel, WATER_LEVEL,
+  planeSteps, fullRange, clampRange, settleRange, inRange, sameRange, isFullRange, stepLabel, WATER_LEVEL,
   planesToJSON, planesFromJSON,
 } from './planes/index.js';
 export type { CuttingPlane, LevelRange, PlaneJSON } from './planes/index.js';
@@ -79,7 +79,7 @@ export {
   SAVE_SCHEMA_VERSION, LIVE_LABEL,
   liveSaveId, createLiveSave, belongsTo, matchesCampaignVersion,
   touch, upgraded, withDiscovery, withPlacement, pruneDiscovery, pruneMembers,
-  enteringMap, leavingMap, rangeFor, withRange, pruneInside, pruneRanges,
+  enteringMap, leavingMap, rangeFor, withRange, pruneInside, pruneRanges, settleRanges,
 } from './save/index.js';
 
 export type { Placement, PlacementJSON } from './placement/index.js';

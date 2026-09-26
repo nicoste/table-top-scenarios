@@ -3564,3 +3564,48 @@ Two smaller things the build turned up, both mine:
 - Wrapping the knob in a `Tooltip` added its wrapper as a third row of the
   rail's grid, putting every knob exactly half a row below the level it marks.
   A native `title` stays where it is put.
+
+### D-206 — The ladder, reworked after the GM used it · `agreed`
+*"It doesn't work well, and it looks bad. See that the range has only 1 knot
+(the bottom one), and if I tap on cimientos, level 0 disappears. The overall
+functionality is odd."*
+
+Fair, and the two screenshots showed three separate failures rather than one
+rough edge:
+
+1. **A handle on a bound vanished.** The cap's flat marker and the handle's ring
+   were the same element, so whichever style won, won. With the top handle
+   resting on Sky the band appeared to have one end — which is exactly what the
+   GM saw and said.
+2. **Rows came and went.** `Level 0` existed only because the band rested there;
+   tapping another level moved the band and the row evaporated. A list that
+   rearranges itself as you touch it reads as broken.
+3. **Nothing said what was draggable.** Clicking a row moved the nearer handle:
+   fine once known, unguessable before, and unreadable with one visible knob.
+
+**The root cause was an invariant I invented in D-205** and then made the UI
+cope with: I let a band rest between levels, so the ladder had to grow a ghost
+row to show where it was. The fix is to make that state impossible.
+
+A band now **always rests on a stop**, and the rule is kept where the stops
+change: adding, moving or deleting a level settles the band onto the nearest
+remaining one. That is a visible consequence of a deliberate edit, which is
+quite different from what D-205 was right to forbid — a band moving because of
+an unrelated click. An ordinary band change is still clamped and never pulled.
+
+With no state to display, the ghost rows go, the list stops moving, and every
+row is a place the band can be. Then the handle can draw *over* its row's
+marker rather than replacing it, and the handles can **drag**, which is what
+"double range slider" meant in R-146 all along.
+
+Existing bands are settled once at the read boundary (R-137a). The GM's own was
+at -2, a height left over from an earlier change; it now rests at Cimientos to
+Roof, the nearest legal equivalent.
+
+Two smaller notes:
+
+- The rows were also just heavy. Names now read as text and only show an input
+  box on hover, which is how the GM drew them: plain names, numbers in pills.
+- While verifying I saw the band read `{1,32}` once and could not reproduce it.
+  Two clean runs from a known state give the right answer, so I have recorded
+  the observation rather than a cause I would be guessing at.

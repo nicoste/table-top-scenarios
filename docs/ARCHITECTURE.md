@@ -2120,23 +2120,25 @@ apps/host/src/
 > A plane may sit anywhere strictly between the bounds, underground included. It
 > may not sit *at* a bound, which is already a step: a cut there cuts nothing.
 >
-> **The ladder.** Levels and the band are **one control** (D-205): a vertical
-> axis, capped at Sky and Bedrock, with a rung for every plane and two handles
-> marking the band. It is **evenly spaced, not proportional to height** —
-> proportional puts a roof at 3 and a water level at 0 six percent apart and
-> overlapping. That also means a rung cannot be *dragged* to a new height, since
-> an ordinal axis has no answer to "what height did I drop it at"; the number
-> beside each name is how a height is set, and it is exact.
+> **A band always rests on a stop** — a level or a bound, never between them
+> (D-206). The ladder draws a handle on the row it rests at, so a band resting
+> nowhere had no row to draw on and appeared to have one end. The invariant is
+> kept where the stops change: adding, moving or deleting a level **settles**
+> the band onto the nearest remaining stop, visibly, at the moment of the edit.
 >
-> **A band is never moved behind the GM's back.** Two rules serve that:
-> - The host **clamps and orders** a band, and opens one that would select
->   nothing, but never pulls a handle onto the nearest step. The ladder sends
->   both bounds on every change, so pulling meant moving the handle the GM had
->   not touched — a band left off-step by a deleted plane was lost to a click
->   somewhere else entirely.
-> - The **ladder shows wherever the band sits**, step or not. A control that
->   cannot display the current value reports a different one, which is worse
->   than an untidy list.
+> An ordinary band change is **clamped and ordered but never pulled onto a
+> stop**, because the ladder can only produce a stop and the two bounds travel
+> together: pulling meant moving the handle the GM had not touched. A band
+> pinched shut opens **upward** — a band is named by the level it sits on, so
+> pinching gives the storey above. Downward only at the ceiling.
 >
-> A band pinched shut opens **upward**: a band is named by the level it sits on,
-> so pinching gives the storey above. Downward only at the ceiling.
+> **The ladder.** Levels and the band are **one control** (D-205, D-206): a
+> vertical axis capped at Sky and Bedrock, one row per stop, and two handles
+> that **drag**. A handle draws *over* its row's marker rather than replacing
+> it, or a handle resting on a bound renders as a bar and disappears.
+>
+> It is **evenly spaced, not proportional to height** — proportional puts a roof
+> at 3 and a water level at 0 six percent apart and overlapping. That also means
+> a row cannot be dragged to a new *height*, since an ordinal axis has no answer
+> to "what height did I drop it at"; the number beside each name is how a height
+> is set, and it is exact.

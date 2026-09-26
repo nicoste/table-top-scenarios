@@ -16,10 +16,11 @@ import {
   setMapBlock, clearMapBlock, fillPoiMaterial, growPoiMap, inMap, blockAt, isKnownMaterial,
   MAP_MAX_HEIGHT, MAP_MIN_DEPTH,
   addPoiPlane, renamePoiPlane, movePoiPlane, removePoiPlane,
-  validPlaneY, planeAt, planeById, clampRange, isPoiOnTable,
+  validPlaneY, planeAt, planeById, clampRange, settleRange, rangeFor, isPoiOnTable,
   poiById as poiOfPlace,
   createLiveSave, withDiscovery, withPlacement, touch, upgraded, upgradedCampaign, belongsTo,
   pruneDiscovery, pruneMembers, enteringMap, leavingMap, withRange, pruneInside, pruneRanges,
+  settleRanges,
   pawns, withGroupAt, withMemberAt, gathered, scattered,
   isValidWorldCell, chunkOf, isChunkKnown,
   setChunkKnown, setPlaceRevealed, setPlacesRevealed, isAuthored, placesInChunk,
@@ -119,7 +120,7 @@ export function openedWith(
   const campaign = upgradedCampaign(stored);
   const usable = storedSave && belongsTo(storedSave, campaign) ? storedSave : null;
   const save = usable
-    ? upgraded(pruneRanges(
+    ? upgraded(settleRanges(pruneRanges(
       pruneInside(
         pruneMembers(pruneDiscovery(usable, placeIds), new Set(campaign.party.map((m) => m.id))),
         (placeId, poiId) => {
@@ -131,7 +132,12 @@ export function openedWith(
       // the GM deleted is dropped here rather than kept forever (R-9's
       // tolerance, `pruneDiscovery`'s reason).
       new Set(campaign.places.flatMap((place) => place.pois.map((poi) => poi.id as string))),
-    ))
+    ),
+    // A band stored when one could sit between levels comes to rest on a
+    // level here, once, on the way in (R-161).
+    (poiId) => campaign.places
+      .flatMap((place) => place.pois)
+      .find((poi) => (poi.id as string) === poiId)?.map?.planes ?? null))
     : createLiveSave(campaign, savedAt);
   return {
     state: { ...state, active: campaign, activeSave: save },
@@ -482,7 +488,7 @@ function applyToPois(
     case 'renamePlane':
     case 'movePlane':
     case 'removePlane':
-      return applyToPlanes(campaign, intent, withPlaces, reject_);
+      return applyToPlanes(campaign, intent, withPlaces, reject_, now);
 
     case 'enterMap': {
       if (!state.activeSave) return reject_('no save');
@@ -546,6 +552,7 @@ function applyToPlanes(
   intent: Extract<Intent, { kind: 'addPlane' | 'renamePlane' | 'movePlane' | 'removePlane' }>,
   withPlaces: (places: readonly Place[]) => Applied,
   reject_: (reason: string) => Applied,
+  now: string,
 ): Applied {
   const placeId = intent.placeId as PlaceId;
   const place = placeById(campaign.places, placeId);
@@ -556,12 +563,41 @@ function applyToPlanes(
   if (!poi.map) return reject_('that point of interest has no map');
 
   const floor = MAP_MIN_DEPTH;
+  /**
+   * Applies the edit, then brings the band to rest on a stop (R-161).
+   *
+   * Changing the levels changes what the band may rest on, so a band left on a
+   * level that is gone has to move. Here, at the moment of the edit, where the
+   * GM can see it — not silently, later, from an unrelated click.
+   */
+  const settled = (places: readonly Place[]): Applied => {
+    const applied = withPlaces(places);
+    const save = applied.state.activeSave;
+    if (applied.rejected || !save) return applied;
+    const nextPoi = poiOfPlace(placeById(places, placeId)!, poiId);
+    if (!nextPoi?.map) return applied;
+    const rested = settleRange(
+      nextPoi.map.planes,
+      rangeFor(save, poiId),
+      MAP_MAX_HEIGHT,
+      MAP_MIN_DEPTH,
+    );
+    const withBand = withRange(save, poiId, rested);
+    if (withBand === save) return applied;
+    const stamped = touch(withBand, now);
+    return {
+      ...applied,
+      state: { ...applied.state, activeSave: stamped },
+      effects: [...applied.effects, { kind: 'saveSave', save: stamped }],
+    };
+  };
+
   if (intent.kind === 'addPlane') {
     if (!validPlaneY(intent.y, MAP_MAX_HEIGHT, floor)) {
       return reject_('a plane sits between the floor and the ceiling');
     }
     if (planeAt(poi.map.planes, intent.y)) return reject_('there is already a plane there');
-    return withPlaces(addPoiPlane(campaign.places, placeId, poiId, intent.name, intent.y));
+    return settled(addPoiPlane(campaign.places, placeId, poiId, intent.name, intent.y));
   }
 
   const planeId = intent.planeId as PlaneId;
@@ -571,13 +607,13 @@ function applyToPlanes(
     case 'renamePlane':
       return withPlaces(renamePoiPlane(campaign.places, placeId, poiId, planeId, intent.name));
     case 'removePlane':
-      return withPlaces(removePoiPlane(campaign.places, placeId, poiId, planeId));
+      return settled(removePoiPlane(campaign.places, placeId, poiId, planeId));
     default:
       if (!validPlaneY(intent.y, MAP_MAX_HEIGHT, floor)) {
         return reject_('a plane sits between the floor and the ceiling');
       }
       if (planeAt(poi.map.planes, intent.y)) return reject_('there is already a plane there');
-      return withPlaces(movePoiPlane(campaign.places, placeId, poiId, planeId, intent.y));
+      return settled(movePoiPlane(campaign.places, placeId, poiId, planeId, intent.y));
   }
 }
 

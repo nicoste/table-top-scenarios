@@ -146,44 +146,68 @@ button.quiet:hover { background: #3a2222; color: #ffc9c9; border-color: transpar
 input.tiny { width: 3.4em; flex: none; text-align: center; }
 
 /*
-  The level ladder (R-161): a vertical double-range slider whose stops are the
-  GM's cutting planes. Evenly spaced on purpose — proportional to height would
+  The level ladder (R-161, D-206): a vertical double-range slider whose stops
+  are the GM's levels. Evenly spaced on purpose — proportional to height would
   put a roof at 3 and a water level at 0 on top of each other.
 */
-.ladder { list-style: none; margin: 4px 0 8px; padding: 0; }
+.ladder { list-style: none; margin: 4px 0 8px; padding: 0; touch-action: none; }
 .ladder li {
-  display: grid; grid-template-columns: 18px 1fr auto auto; gap: 0 5px;
-  align-items: center; min-height: 30px;
+  display: grid; grid-template-columns: 20px 1fr auto auto; gap: 0 4px;
+  align-items: center; min-height: 28px;
 }
 .ladder .rail {
   position: relative; display: grid; grid-template-rows: 1fr 1fr;
   justify-items: center; align-self: stretch;
 }
-/* Two half-segments per rung, so the band's colour stops at a handle and not
-   in the gap between two rows. */
+/* Two half-segments per row, so the band's colour stops at a handle and not in
+   the gap between two rows. */
 .ladder .rail i { width: 2px; background: #39404d; }
 .ladder .rail i.lit { width: 4px; background: var(--accent); }
 .ladder li:first-child .rail i:first-child,
 .ladder li:last-child .rail i:last-child { background: transparent; }
-.ladder .knob {
+
+/* The row's own marker, drawn under any handle rather than replaced by it —
+   a handle resting on a bound used to render as a bar and disappear. */
+.ladder .mark {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  width: 9px; height: 9px; padding: 0; border-radius: 50%;
-  background: #39404d; border: 1px solid #39404d;
+  width: 8px; height: 8px; border-radius: 50%; background: #39404d;
 }
-.ladder .knob:hover { background: var(--accent); border-color: var(--accent); }
-.ladder .knob.in { background: var(--accent); border-color: var(--accent); }
-/* A handle is the end of the band, and is the one thing here worth making big. */
-.ladder .knob.handle { width: 15px; height: 15px; box-shadow: 0 0 0 2px #171b22; }
-/* The two bounds are not movable, so they read as caps rather than stops. */
-.ladder li.cap .knob {
-  width: 13px; height: 4px; border-radius: 1px; background: var(--ink); border-color: var(--ink);
+.ladder .mark.in { background: var(--accent); }
+.ladder li.cap .mark { width: 13px; height: 4px; border-radius: 1px; background: var(--ink); }
+
+/* A stop the band is not on: a quiet click target over the marker. */
+.ladder .pick {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 20px; height: 20px; padding: 0; border-radius: 50%;
+  background: transparent; border: none;
 }
+.ladder .pick:hover { background: #ffffff14; }
+
+/* An end of the band. Big, ringed, and obviously grabbable. */
+.ladder .grip {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 15px; height: 15px; padding: 0; border-radius: 50%;
+  background: var(--accent); border: 2px solid #171b22;
+  box-shadow: 0 0 0 1px var(--accent);
+  cursor: grab; touch-action: none;
+}
+.ladder .grip:active { cursor: grabbing; }
+
+.ladder .nm { font-size: 12px; color: var(--ink); }
 .ladder li.cap .nm { color: var(--ink); }
-.ladder .nm { font-size: 12px; color: var(--dim); }
-.ladder input { font-size: 11.5px; padding: 2px 6px; min-width: 0; width: 100%; }
-.ladder input.tiny { width: 3.4em; }
-.ladder .lbl.at { font-variant-numeric: tabular-nums; min-width: 2.2em; text-align: right; }
-.ladder .note-actions, .ladder button.quiet { padding: 1px 5px; font-size: 11px; }
+.ladder .lbl.at {
+  font-variant-numeric: tabular-nums; min-width: 2.4em; text-align: right;
+  padding-right: 4px;
+}
+/* A name reads as text until it is touched: the list is levels, not a form. */
+.ladder input.plain {
+  font-size: 12px; padding: 2px 5px; width: 100%; min-width: 0;
+  background: transparent; border-color: transparent; color: var(--ink);
+}
+.ladder input.plain:hover { border-color: var(--edge); }
+.ladder input.plain:focus { background: #212733; border-color: var(--accent); }
+.ladder input.tiny { width: 3.2em; font-size: 11.5px; padding: 2px 4px; }
+.ladder button.quiet { padding: 1px 5px; font-size: 11px; }
 
 .palette { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
 .palette button {

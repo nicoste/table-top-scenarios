@@ -222,6 +222,33 @@ export function clampRange(
   return { lower, upper };
 }
 
+/**
+ * Moves a band onto the nearest stops (R-161).
+ *
+ * Used **only when the stops themselves change** — a plane added, moved or
+ * removed — and never on an ordinary band change. Deleting the level a band
+ * rests on has to move it somewhere, and doing that visibly, at the moment of
+ * the delete, beats leaving the band at a height that is no longer a level and
+ * making every reader cope.
+ *
+ * The alternative was what this replaces: a band allowed to rest between
+ * levels, and a ladder that grew a ghost row to show it. Rows that appear and
+ * vanish as the band moves make the list feel like it is guessing.
+ */
+export function settleRange(
+  planes: readonly CuttingPlane[],
+  range: LevelRange,
+  cap: number,
+  floor: number,
+): LevelRange {
+  const steps = planeSteps(planes, cap, floor);
+  const nearest = (value: number) => steps.reduce(
+    (best, step) => (Math.abs(step - value) < Math.abs(best - value) ? step : best),
+    steps[0] ?? floor,
+  );
+  return clampRange(planes, { lower: nearest(range.lower), upper: nearest(range.upper) }, cap, floor);
+}
+
 /** Is this level inside the band? Half-open, so a plane belongs to what is above it. */
 export function inRange(range: LevelRange, y: number): boolean {
   return y >= range.lower && y < range.upper;

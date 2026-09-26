@@ -11,7 +11,7 @@ import { apply, emptyHistory, openedWith } from '@tt/sim';
 import { viewFor } from '@tt/protocol';
 import type { GmView, HostState, Intent, TableView } from '@tt/protocol';
 import {
-  createCampaign, createLiveSave, rangeFor, DEFAULT_MATERIALS,
+  createCampaign, createLiveSave, rangeFor, planeSteps, DEFAULT_MATERIALS,
   MAP_MAX_HEIGHT, MAP_MIN_DEPTH, ORIGIN,
 } from '@tt/domain';
 
@@ -332,5 +332,69 @@ describe('planes are authored content (R-136)', () => {
     expect(added.active!.places[0]!.pois[0]!.map!.planes).toHaveLength(before + 1);
     const undone = run(added, { kind: 'undo' }).state;
     expect(undone.active!.places[0]!.pois[0]!.map!.planes).toHaveLength(before);
+  });
+});
+
+describe('a band always rests on a level (R-161, D-206)', () => {
+  it('comes to rest when the level it was on is deleted', () => {
+    // The bug this prevents: a band left between levels made the ladder draw
+    // one handle instead of two, because a handle is drawn on the row it rests
+    // at and there was no such row.
+    const { state, placeId, poiId } = tavern();
+    let next = run(state, { kind: 'setRange', placeId, poiId, lower: 4, upper: 8 }).state;
+    const ground = next.active!.places[0]!.pois[0]!.map!.planes.find((p) => p.y === 4)!;
+    next = run(next, { kind: 'removePlane', placeId, poiId, planeId: ground.id }).state;
+
+    const band = rangeFor(next.activeSave!, poiId);
+    const stops = planeSteps(
+      next.active!.places[0]!.pois[0]!.map!.planes, MAP_MAX_HEIGHT, MAP_MIN_DEPTH,
+    );
+    expect(stops).toContain(band.lower);
+    expect(stops).toContain(band.upper);
+  });
+
+  it('comes to rest when the level it was on is moved', () => {
+    const { state, placeId, poiId } = tavern();
+    let next = run(state, { kind: 'setRange', placeId, poiId, lower: 4, upper: 8 }).state;
+    const ground = next.active!.places[0]!.pois[0]!.map!.planes.find((p) => p.y === 4)!;
+    next = run(next, { kind: 'movePlane', placeId, poiId, planeId: ground.id, y: 6 }).state;
+
+    const band = rangeFor(next.activeSave!, poiId);
+    const stops = planeSteps(
+      next.active!.places[0]!.pois[0]!.map!.planes, MAP_MAX_HEIGHT, MAP_MIN_DEPTH,
+    );
+    expect(stops).toContain(band.lower);
+    expect(stops).toContain(band.upper);
+  });
+
+  it('writes the settled band, or it is lost on reload', () => {
+    const { state, placeId, poiId } = tavern();
+    const banded = run(state, { kind: 'setRange', placeId, poiId, lower: 4, upper: 8 }).state;
+    const ground = banded.active!.places[0]!.pois[0]!.map!.planes.find((p) => p.y === 4)!;
+    const removed = run(banded, { kind: 'removePlane', placeId, poiId, planeId: ground.id });
+    expect(removed.effects.some((e) => e.kind === 'saveSave')).toBe(true);
+  });
+
+  it('settles a band stored before the rule existed, on the way in', () => {
+    // Such a band is real: one was found in a live campaign, resting at a
+    // height left behind by an earlier change (R-137a).
+    const { state, placeId, poiId } = tavern();
+    const stranded: HostState = {
+      ...state,
+      activeSave: { ...state.activeSave!, ranges: new Map([[poiId as string, { lower: -2, upper: 1 }]]) },
+    };
+    const reopened = openedWith(
+      { campaigns: [], active: null, activeSave: null, history: emptyHistory() },
+      stranded.active!,
+      stranded.activeSave!,
+      NOW,
+      new Set([placeId as never]),
+    );
+    const band = rangeFor(reopened.state.activeSave!, poiId);
+    const stops = planeSteps(
+      reopened.state.active!.places[0]!.pois[0]!.map!.planes, MAP_MAX_HEIGHT, MAP_MIN_DEPTH,
+    );
+    expect(stops).toContain(band.lower);
+    expect(stops).toContain(band.upper);
   });
 });

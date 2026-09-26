@@ -10,8 +10,8 @@ import { emptyDiscovery } from '../discovery/index.js';
 import type { Placement } from '../placement/index.js';
 import { emptyPlacement, prunePlacement } from '../placement/index.js';
 import type { Campaign } from '../campaign/index.js';
-import type { LevelRange } from '../planes/index.js';
-import { fullRange, sameRange } from '../planes/index.js';
+import type { CuttingPlane, LevelRange } from '../planes/index.js';
+import { fullRange, sameRange, settleRange } from '../planes/index.js';
 import { MAP_MAX_HEIGHT, MAP_MIN_DEPTH } from '../map/index.js';
 
 // 3 renames discovery's `pois` to `places`, following the campaign (D-176).
@@ -168,6 +168,34 @@ export function withRange(save: Save, poiId: PoiId | string, range: LevelRange):
  * otherwise leave the table pointed at nothing, with no way back to the world
  * short of the GM noticing. Same tolerance, same reason, as `pruneDiscovery`.
  */
+/**
+ * Brings every band to rest on one of its map's levels (R-161).
+ *
+ * A repair at the read boundary, for bands stored when the rules let one sit
+ * between levels. The ladder draws a handle on the level it rests at, so a band
+ * off every level rendered with one end missing — which is what it looked like.
+ *
+ * Same shape as `pruneDiscovery`: old play state brought up to what the code
+ * now assumes, once, on the way in (R-137a).
+ */
+export function settleRanges(
+  save: Save,
+  planesOf: (poiId: string) => readonly CuttingPlane[] | null,
+): Save {
+  let touched = false;
+  const ranges = new Map(save.ranges);
+  for (const [poiId, range] of save.ranges) {
+    const planes = planesOf(poiId);
+    if (!planes) continue;
+    const rested = settleRange(planes, range, MAP_MAX_HEIGHT, MAP_MIN_DEPTH);
+    if (sameRange(rested, range)) continue;
+    touched = true;
+    if (sameRange(rested, fullRange(MAP_MAX_HEIGHT, MAP_MIN_DEPTH))) ranges.delete(poiId);
+    else ranges.set(poiId, rested);
+  }
+  return touched ? { ...save, ranges } : save;
+}
+
 /** Forgets the band of a map that is gone, for `pruneDiscovery`'s reason. */
 export function pruneRanges(save: Save, livePoiIds: ReadonlySet<string>): Save {
   const keep = [...save.ranges].filter(([poiId]) => livePoiIds.has(poiId));
