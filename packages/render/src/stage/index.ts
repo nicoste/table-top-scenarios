@@ -527,8 +527,11 @@ export class Stage {
    * box needs no geometry rebuilt as the brush changes size. Twenty-five
    * outlines would also draw twenty-four interior edges nobody asked to see.
    *
-   * `tint` is what the gesture means: the material about to be laid down, or
-   * the colour of a mode that is not laying anything down at all.
+   * `tint` is what the *gesture* means, not what it is made of — white for
+   * building and painting, red for erasing. Tinting it with the material was
+   * tried and is a bad idea: a cube goes down against cubes of the same
+   * material, so the outline vanishes into the surface it exists to stand out
+   * from (D-212).
    */
   showBlockGhost(cells: readonly BlockCoord[], tint = 0xffffff): void {
     if (cells.length === 0 || !this.showingMap) { this.blockGhost.visible = false; return; }

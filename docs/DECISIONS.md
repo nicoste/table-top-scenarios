@@ -3817,3 +3817,18 @@ the one-undo property and the edge's cap. **Not** verified on screen: the GM had
 the console's seat while I finished, and taking it would have made their own
 window a viewer (R-127). The resizing outline and the red tint are the two
 things a test cannot show, and they are the GM's to confirm.
+
+### D-212 — The outline is white again · `agreed`
+*"The current material color makes it difficult to see."*
+
+My addition, not the GM's, and wrong for a reason I should have seen before
+offering it: a cube goes down **against cubes of the same material**, so an
+outline tinted with the material disappears into exactly the surface it exists
+to stand out from. The idea was that the GM would see what they were about to
+lay down before clicking — but the material is already named and swatched in the
+palette two cards above, so the tint was answering a question nothing was
+asking, at the cost of the one job the outline has.
+
+White for building and painting. **Red stays for erase**, which the GM asked for
+and which works for the opposite reason: it is not a material, so it cannot
+collide with one, and contrast is the whole point of it.

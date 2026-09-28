@@ -418,18 +418,18 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    * What colour the outline takes, which is the whole of how a mode announces
    * itself (R-162).
    *
-   * The material about to be laid down for the two that lay something down, so
-   * the GM sees the colour before the click; **red** for erase, because it is
-   * taking something away and no material is involved. The GM asked for the red
-   * specifically, and it does the work that a fourth tool button used to.
+   * **White, except red for erase.** I tried tinting it with the material about
+   * to be laid down, on the theory that the GM would see the colour before the
+   * click. It reads badly for the obvious reason, once you watch someone use
+   * it: the cube you are about to place is nearly always against cubes of the
+   * same material, so the outline disappears into exactly the surface it is
+   * supposed to stand out from — and the material is already named and swatched
+   * in the palette two cards up. Red for erase survives because it is not a
+   * material at all, and because contrast is the point of it.
    */
   const ERASE_TINT = 0xff5964;
-  const ghostTint = (action: MapAction): number => {
-    if (action.kind === 'erase') return ERASE_TINT;
-    const material = DEFAULT_MATERIALS.find((m) => m.id === materialId);
-    if (!material) return 0xffffff;
-    return Number.parseInt(material.colour.replace('#', ''), 16);
-  };
+  const ghostTint = (action: MapAction): number =>
+    (action.kind === 'erase' ? ERASE_TINT : 0xffffff);
 
   const aimAt = (action: MapAction) => {
     const occupied = action.kind !== 'nothing' && !!openBody
