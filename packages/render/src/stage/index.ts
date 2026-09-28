@@ -139,9 +139,10 @@ export class Stage {
     this.highlight.visible = false;
     this.highlight.renderOrder = 10;
 
-    // The same idea one surface down: white rather than the world's blue,
-    // because inside a map it is the *only* thing outlined and it marks a cube
-    // that is not there yet (R-153).
+    // The same idea one surface down, and a unit box so that `showBlockGhost`
+    // can scale it to a brush's patch rather than rebuild its geometry. White
+    // by default, because inside a map it is the *only* thing outlined and it
+    // marks cubes that are not there yet (R-153, R-162).
     this.blockGhost = new LineSegments(
       new EdgesGeometry(new BoxGeometry(1.02, 1.02, 1.02)),
       new LineBasicMaterial({ color: 0xffffff, depthTest: false }),
@@ -514,18 +515,43 @@ export class Stage {
   }
 
   /**
-   * Outlines the cube a click would add or remove (R-153).
+   * Outlines the cubes a click would add, remove or repaint (R-153, R-162).
    *
    * The world's highlight cannot do this job: it sits on a *column* and stretches
    * to its height, while a map's target is one cube anywhere in the air — which
    * is the whole reason a map stores blocks and the world stores heights.
+   *
+   * **One box around the whole patch**, not an outline per cube. A brush's
+   * cells are contiguous and stay contiguous when the map's edge or the GM's
+   * band clips them, so their bounding box *is* the patch — and a single scaled
+   * box needs no geometry rebuilt as the brush changes size. Twenty-five
+   * outlines would also draw twenty-four interior edges nobody asked to see.
+   *
+   * `tint` is what the gesture means: the material about to be laid down, or
+   * the colour of a mode that is not laying anything down at all.
    */
-  showBlockGhost(at: BlockCoord | null): void {
-    if (!at || !this.showingMap) { this.blockGhost.visible = false; return; }
+  showBlockGhost(cells: readonly BlockCoord[], tint = 0xffffff): void {
+    if (cells.length === 0 || !this.showingMap) { this.blockGhost.visible = false; return; }
+    let lowX = Infinity; let lowY = Infinity; let lowZ = Infinity;
+    let highX = -Infinity; let highY = -Infinity; let highZ = -Infinity;
+    for (const at of cells) {
+      if (at.x < lowX) lowX = at.x;
+      if (at.y < lowY) lowY = at.y;
+      if (at.z < lowZ) lowZ = at.z;
+      if (at.x > highX) highX = at.x;
+      if (at.y > highY) highY = at.y;
+      if (at.z > highZ) highZ = at.z;
+    }
     this.blockGhost.visible = true;
     // Blocks are addressed by their corner and the outline is centred, so add
     // half a cell — the same half `buildBlockBody` adds to every instance.
-    this.blockGhost.position.set(at.x + 0.5, at.y + 0.5, at.z + 0.5);
+    this.blockGhost.position.set(
+      (lowX + highX) / 2 + 0.5,
+      (lowY + highY) / 2 + 0.5,
+      (lowZ + highZ) / 2 + 0.5,
+    );
+    this.blockGhost.scale.set(highX - lowX + 1, highY - lowY + 1, highZ - lowZ + 1);
+    (this.blockGhost.material as LineBasicMaterial).color.setHex(tint);
   }
 
   resize(): void {

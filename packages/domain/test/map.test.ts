@@ -7,6 +7,8 @@ import {
   createMap, setBlock, clearBlock, growMap, blockAt, blockKey, parseBlockKey,
   inMap, topOfMap, mapToJSON, mapFromJSON,
   MAP_PATCH, MAP_MAX_HEIGHT, MAP_MIN_DEPTH, bottomOfMap,
+  MAP_BRUSH_MAX, MAP_BRUSH_CELLS, clampRadius, brushWidth, brushPatch, faceAxis,
+  setBlocks, paintBlocks, clearBlocks,
   DEFAULT_FLOOR, DEFAULT_MATERIALS, isKnownMaterial,
 } from '@tt/domain';
 
@@ -452,5 +454,162 @@ describe('how deep a map goes (R-160)', () => {
     const dug = setBlock(createMap(), at(2, -2, 2), STONE);
     expect(blockAt(growMap(dug, 'northwest'), at(2, -2, 2))).toBe(STONE);
     expect(bottomOfMap(growMap(dug, 'northwest'))).toBe(-2);
+  });
+});
+
+describe('the brush (R-162)', () => {
+  describe('faceAxis — which way the face points', () => {
+    it('names the axis the normal runs along, for all six faces', () => {
+      const block = at(4, 4, 4);
+      expect(faceAxis(block, at(5, 4, 4))).toBe('x');
+      expect(faceAxis(block, at(3, 4, 4))).toBe('x');
+      expect(faceAxis(block, at(4, 5, 4))).toBe('y');
+      expect(faceAxis(block, at(4, 3, 4))).toBe('y');
+      expect(faceAxis(block, at(4, 4, 5))).toBe('z');
+      expect(faceAxis(block, at(4, 4, 3))).toBe('z');
+    });
+  });
+
+  describe('clampRadius — an even brush is unrepresentable', () => {
+    it('keeps a radius inside the two ends', () => {
+      expect(clampRadius(-3)).toBe(0);
+      expect(clampRadius(0)).toBe(0);
+      expect(clampRadius(2)).toBe(MAP_BRUSH_MAX);
+      expect(clampRadius(99)).toBe(MAP_BRUSH_MAX);
+    });
+
+    it('answers a number that is not one with the narrowest brush', () => {
+      // Not the nearest end: nonsense in means the *safest* brush out, which is
+      // what `clampBrush` does for the world's and for the same reason. A
+      // garbled radius should not quietly edit twenty-five cubes.
+      expect(clampRadius(Number.NaN)).toBe(0);
+      expect(clampRadius(Number.POSITIVE_INFINITY)).toBe(0);
+      expect(clampRadius(1.4)).toBe(1);
+    });
+
+    it('is only ever odd when read as a width', () => {
+      // The GM's "so we keep the center cube always", made arithmetic: there is
+      // no radius that produces an even brush, so there is nothing to remember.
+      for (const radius of [-1, 0, 1, 2, 7]) {
+        expect(brushWidth(radius) % 2, `radius ${radius}`).toBe(1);
+      }
+      expect([0, 1, 2].map(brushWidth)).toEqual([1, 3, 5]);
+      expect(MAP_BRUSH_CELLS).toBe(brushWidth(MAP_BRUSH_MAX) ** 2);
+    });
+  });
+
+  describe('brushPatch — where the brush reaches', () => {
+    it('is one cube at the narrowest', () => {
+      expect(brushPatch(at(1, 2, 3), 'y', 0)).toEqual([at(1, 2, 3)]);
+    });
+
+    it('covers width squared, and always the cube it is centred on', () => {
+      for (const axis of ['x', 'y', 'z'] as const) {
+        for (const radius of [0, 1, 2]) {
+          const cells = brushPatch(at(1, 2, 3), axis, radius);
+          expect(cells, `${axis}/${radius}`).toHaveLength(brushWidth(radius) ** 2);
+          expect(cells, `${axis}/${radius}`).toContainEqual(at(1, 2, 3));
+          // No cell twice: a patch that repeated one would edit it twice and
+          // count wrong in the readout.
+          expect(new Set(cells.map(blockKey)).size).toBe(cells.length);
+        }
+      }
+    });
+
+    it('lies in the plane of the face, flat or upright', () => {
+      // The axis the normal runs along is the one the patch does *not* spread
+      // in — otherwise a brush on a wall reaches into the building.
+      expect(new Set(brushPatch(at(1, 2, 3), 'y', 2).map((c) => c.y))).toEqual(new Set([2]));
+      expect(new Set(brushPatch(at(1, 2, 3), 'x', 2).map((c) => c.x))).toEqual(new Set([1]));
+      expect(new Set(brushPatch(at(1, 2, 3), 'z', 2).map((c) => c.z))).toEqual(new Set([3]));
+    });
+
+    it('spreads evenly, so the centre really is the centre', () => {
+      const cells = brushPatch(at(10, 0, 10), 'y', 2);
+      expect(Math.min(...cells.map((c) => c.x))).toBe(8);
+      expect(Math.max(...cells.map((c) => c.x))).toBe(12);
+      expect(Math.min(...cells.map((c) => c.z))).toBe(8);
+      expect(Math.max(...cells.map((c) => c.z))).toBe(12);
+    });
+
+    it('reaches below zero like anything else does (R-160)', () => {
+      const cells = brushPatch(at(4, -3, 4), 'x', 1);
+      expect(new Set(cells.map((c) => c.y))).toEqual(new Set([-4, -3, -2]));
+    });
+  });
+
+  describe('setBlocks — build lands where it can', () => {
+    it('fills the empty cells of a patch and leaves the rest alone', () => {
+      // The rule that makes a wide brush usable next to something already
+      // built: refusing all twenty-five because one was occupied would not be.
+      const map = createMap();
+      const cells = brushPatch(at(2, 0, 2), 'y', 1);
+      const next = setBlocks(map, cells, STONE as MaterialId);
+      // A new map is a floor at y0, so every cell of a flat patch there is taken.
+      expect(next).toBe(map);
+
+      const above = brushPatch(at(2, 1, 2), 'y', 1);
+      const built = setBlocks(map, above, STONE as MaterialId);
+      expect(built).not.toBe(map);
+      for (const cell of above) expect(blockAt(built, cell)).toBe(STONE);
+    });
+
+    it('never overwrites, which is the difference from paint (R-159)', () => {
+      const map = setBlock(createMap(), at(2, 1, 2), STONE as MaterialId);
+      const other = DEFAULT_MATERIALS.find((m) => m.id !== STONE)!.id;
+      const next = setBlocks(map, brushPatch(at(2, 1, 2), 'y', 1), other);
+      expect(blockAt(next, at(2, 1, 2))).toBe(STONE);
+      // The eight neighbours were empty, so they take the new material.
+      expect(blockAt(next, at(3, 1, 2))).toBe(other);
+    });
+
+    it('drops the cells the map does not own (R-157)', () => {
+      // A brush at the corner laps over the edge. What is outside is skipped,
+      // not placed and not an error — the same way it clips at the band.
+      const map = createMap();
+      const cells = brushPatch(at(0, 1, 0), 'y', 1);
+      const next = setBlocks(map, cells, STONE as MaterialId);
+      const placed = cells.filter((cell) => blockAt(next, cell));
+      expect(placed).toHaveLength(4);
+      for (const cell of placed) expect(inMap(next, cell)).toBe(true);
+    });
+
+    it('keeps identity when there was nothing to do (R-12)', () => {
+      const map = createMap();
+      expect(setBlocks(map, [at(-500, 1, -500)], STONE as MaterialId)).toBe(map);
+      expect(setBlocks(map, [], STONE as MaterialId)).toBe(map);
+    });
+  });
+
+  describe('paintBlocks — paint will not conjure', () => {
+    it('repaints only the cells that hold a block', () => {
+      const map = createMap();
+      const cells = [...brushPatch(at(2, 0, 2), 'y', 1), at(2, 5, 2)];
+      const other = DEFAULT_MATERIALS.find((m) => m.id !== DEFAULT_FLOOR)!.id;
+      const next = paintBlocks(map, cells, other);
+      expect(blockAt(next, at(2, 0, 2))).toBe(other);
+      // The cell in the air stayed empty rather than becoming a block.
+      expect(blockAt(next, at(2, 5, 2))).toBeNull();
+    });
+
+    it('keeps identity when every cell is already that material (R-12)', () => {
+      const map = createMap();
+      expect(paintBlocks(map, brushPatch(at(2, 0, 2), 'y', 1), DEFAULT_FLOOR)).toBe(map);
+    });
+  });
+
+  describe('clearBlocks — erase takes what is there', () => {
+    it('removes every cell of a patch that held a block', () => {
+      const map = createMap();
+      const cells = brushPatch(at(4, 0, 4), 'y', 2);
+      const next = clearBlocks(map, cells);
+      for (const cell of cells) expect(blockAt(next, cell)).toBeNull();
+      expect(next.blocks.size).toBe(map.blocks.size - cells.length);
+    });
+
+    it('keeps identity when the patch was already empty (R-12)', () => {
+      const map = createMap();
+      expect(clearBlocks(map, brushPatch(at(4, 9, 4), 'y', 1))).toBe(map);
+    });
   });
 });

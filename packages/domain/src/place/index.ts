@@ -5,7 +5,9 @@ import type { MarkerId, NoteId, PlaceId, PoiId } from '../ids/index.js';
 import { freshId } from '../ids/index.js';
 import { DEFAULT_MARKER, isKnownMarker } from '../markers/index.js';
 import type { EncounterMap } from '../map/index.js';
-import { createMap, setBlock, clearBlock, growMap, fillMaterial } from '../map/index.js';
+import {
+  createMap, setBlock, clearBlock, setBlocks, paintBlocks, clearBlocks, growMap, fillMaterial,
+} from '../map/index.js';
 import type { Expand } from '../map/index.js';
 import type { PlaneId } from '../ids/index.js';
 import { addPlane, renamePlane, movePlane, removePlane } from '../planes/index.js';
@@ -386,6 +388,39 @@ export function clearMapBlock(
   at: BlockCoord,
 ): readonly Place[] {
   return mapOfPoi(places, placeId, poiId, (map) => clearBlock(map, at));
+}
+
+// One patch, one edit, one undo (R-162). A brush that sent a cell at a time
+// would be twenty-five undo steps, twenty-five writes and twenty-five
+// broadcasts for one click.
+
+export function setMapBlocks(
+  places: readonly Place[],
+  placeId: PlaceId,
+  poiId: PoiId,
+  cells: readonly BlockCoord[],
+  material: MaterialId,
+): readonly Place[] {
+  return mapOfPoi(places, placeId, poiId, (map) => setBlocks(map, cells, material));
+}
+
+export function paintMapBlocks(
+  places: readonly Place[],
+  placeId: PlaceId,
+  poiId: PoiId,
+  cells: readonly BlockCoord[],
+  material: MaterialId,
+): readonly Place[] {
+  return mapOfPoi(places, placeId, poiId, (map) => paintBlocks(map, cells, material));
+}
+
+export function clearMapBlocks(
+  places: readonly Place[],
+  placeId: PlaceId,
+  poiId: PoiId,
+  cells: readonly BlockCoord[],
+): readonly Place[] {
+  return mapOfPoi(places, placeId, poiId, (map) => clearBlocks(map, cells));
 }
 
 /** Repaints a connected same-material region of a point of interest's map (R-154). */

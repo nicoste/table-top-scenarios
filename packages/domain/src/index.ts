@@ -42,7 +42,7 @@ export type { Material } from './materials/index.js';
 export {
   DEFAULT_MATERIALS, DEFAULT_FLOOR, materialById, isKnownMaterial, requireMaterial,
 } from './materials/index.js';
-export type { EncounterMap, BlockCoord, Expand, MapJSON, MapJSONIn } from './map/index.js';
+export type { EncounterMap, BlockCoord, Expand, FaceAxis, MapJSON, MapJSONIn } from './map/index.js';
 
 export {
   MAX_PLANE_NAME, validPlaneY, planeAt, planeById,
@@ -53,6 +53,8 @@ export {
 export type { CuttingPlane, LevelRange, PlaneJSON } from './planes/index.js';
 export {
   MAP_PATCH, MAP_MAX_HEIGHT, MAP_MIN_DEPTH, WHOLE_MAP, blockKey, parseBlockKey, inMap, blockAt,
+  MAP_BRUSH_MAX, MAP_BRUSH_CELLS, clampRadius, brushWidth, brushPatch, faceAxis,
+  setBlocks, paintBlocks, clearBlocks,
   createMap, setBlock, clearBlock, growMap, topOfMap, bottomOfMap, mapToJSON, mapFromJSON,
   fillRegion, fillMaterial, mapCentre, enclosing, sliceOf,
 } from './map/index.js';
@@ -64,7 +66,8 @@ export {
   MAX_POI_NAME, moveWithin,
   addPoi, renamePoi, setPoiVisible, removePoi, movePoi,
   partyVisiblePois,
-  setMapBlock, clearMapBlock, fillPoiMaterial, growPoiMap, poiById, withPoiMaps,
+  setMapBlock, clearMapBlock, setMapBlocks, paintMapBlocks, clearMapBlocks,
+  fillPoiMaterial, growPoiMap, poiById, withPoiMaps,
   addPoiPlane, renamePoiPlane, movePoiPlane, removePoiPlane,
 } from './place/index.js';
 

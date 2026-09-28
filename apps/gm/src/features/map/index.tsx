@@ -7,7 +7,7 @@
 import type { Intent, MapWire } from '@tt/protocol';
 import type { MapTool } from '@tt/client-core';
 import { CAMERA_HINT } from '@tt/client-core';
-import { MAP_MAX_HEIGHT, MAP_MIN_DEPTH, isFullRange, stepLabel } from '@tt/domain';
+import { MAP_MAX_HEIGHT, MAP_MIN_DEPTH, brushWidth, isFullRange, stepLabel } from '@tt/domain';
 import type { LevelRange, Material } from '@tt/domain';
 import { Tooltip } from '@tt/ui';
 import { LevelLadder } from '../levels/index.js';
@@ -39,6 +39,10 @@ interface Props {
   readonly poiName: string;
   readonly map: MapWire;
   readonly tool: MapTool;
+  /** The brush, as a radius: 0 is one cube, 2 is 5×5 (R-162). */
+  readonly brush: number;
+  /** Is Shift held — is the selected tool showing its other mode right now? */
+  readonly shifting: boolean;
   readonly materials: readonly Material[];
   readonly materialId: string;
   readonly hoverLabel: string | null;
@@ -52,6 +56,7 @@ interface Props {
   readonly levelling: boolean;
   onLevelling: (on: boolean) => void;
   onTool: (tool: MapTool) => void;
+  onBrush: (radius: number) => void;
   onMaterial: (id: string) => void;
   onLeave: () => void;
   dispatch: (intent: Intent) => void;
@@ -60,9 +65,9 @@ interface Props {
 }
 
 export function MapPanel({
-  placeName, poiName, map, tool, materials, materialId, hoverLabel,
+  placeName, poiName, map, tool, brush, shifting, materials, materialId, hoverLabel,
   partyHere, partyCanSee, range, levelling, onLevelling,
-  onTool, onMaterial, onLeave, dispatch, placeId, poiId,
+  onTool, onBrush, onMaterial, onLeave, dispatch, placeId, poiId,
 }: Props) {
   const blocks = Object.keys(map.blocks).length;
   /**
@@ -140,53 +145,79 @@ export function MapPanel({
 
       <div className="card">
         <h2>Tool</h2>
+        {/*
+          Two tools, because there are two ideas: add or remove matter, and
+          change the colour of matter that is already there (R-162). Erase and
+          fill were tools of their own and are modes of these two now — you
+          alternate between build and erase constantly, and reaching for a
+          different button each time was the tax.
+        */}
         <div className="btn-grid tools">
-          <Tooltip label="Add a block against the face you click — key 1" placement="bottom" stretch>
-            <button className={tool === 'build' ? 'on' : ''} onClick={() => onTool('build')}>
-              ▣ Build
-            </button>
-          </Tooltip>
-          <Tooltip label="Remove the block you click — key 2" placement="bottom" stretch>
-            <button className={tool === 'erase' ? 'on' : ''} onClick={() => onTool('erase')}>
-              ⌫ Erase
-            </button>
-          </Tooltip>
-          <Tooltip label="Repaint blocks without moving them — key 3" placement="bottom" stretch>
-            <button className={tool === 'paint' ? 'on' : ''} onClick={() => onTool('paint')}>
-              ✏ Paint
-            </button>
-          </Tooltip>
           <Tooltip
-            label="Repaint every block joined to the one you click, of the same material — key 4"
+            label="Add blocks against the face you click, or hold ⇧ shift to erase — key 1"
             placement="bottom"
             stretch
           >
-            <button className={tool === 'fill' ? 'on' : ''} onClick={() => onTool('fill')}>
-              ◍ Fill
+            <button className={tool === 'build' ? 'on' : ''} onClick={() => onTool('build')}>
+              {tool === 'build' && shifting ? '⌫ Erase' : '▣ Build'}
+            </button>
+          </Tooltip>
+          <Tooltip
+            label="Repaint blocks without moving them, or hold ⇧ shift to fill — key 2"
+            placement="bottom"
+            stretch
+          >
+            <button className={tool === 'paint' ? 'on' : ''} onClick={() => onTool('paint')}>
+              {tool === 'paint' && shifting ? '◍ Fill' : '✏ Paint'}
             </button>
           </Tooltip>
         </div>
+
+        {/*
+          The brush, as three widths. A radius under the hood, so the centre
+          cube is always covered by arithmetic rather than by convention — and
+          the outline grows with it, which is how the size is really read.
+        */}
+        <p className="lbl" style={{ margin: '8px 0 4px' }}>Brush</p>
+        <div className="btn-grid brush">
+          {[0, 1, 2].map((radius) => (
+            <Tooltip
+              key={radius}
+              label={`${brushWidth(radius)}×${brushWidth(radius)}, on the face you are pointing at — key ${radius + 6}`}
+              placement="bottom"
+              stretch
+            >
+              <button className={brush === radius ? 'on' : ''} onClick={() => onBrush(radius)}>
+                {brushWidth(radius)}×{brushWidth(radius)}
+              </button>
+            </Tooltip>
+          ))}
+        </div>
+
         <p className="hint">
           {tool === 'build' && (
             <>
-              Click a block&apos;s face; the new one lands against it. One click, one cube.
-              {' '}Hold <b>⌥ alt</b> to place <b>under</b> the cube instead — the only way down,
-              since a camera above the horizon never sees an underside.
+              Click a block&apos;s face; the new ones land against it, flat on a roof and
+              upright on a wall. Hold <b>⇧ shift</b> to <b>erase</b> instead — the outline
+              turns red. Hold <b>⌥ alt</b> to build <b>under</b> the cube, the only way
+              down, since a camera above the horizon never sees an underside.
             </>
           )}
-          {tool === 'erase' && <>Click a block to remove it. One click, one cube.</>}
-          {/* The one map tool that drags, because it does not move its own
-              target the way build and erase do (R-153). */}
-          {tool === 'paint' && <>Click a block to repaint it, or drag the brush across several. Nothing moves.</>}
-          {tool === 'fill' && (
-            <>Click a block: everything joined to it of the same material is repainted. The readout says how many.</>
+          {/* Paint is the one mode that drags, because it does not move its own
+              target the way building and erasing do (R-153). */}
+          {tool === 'paint' && (
+            <>
+              Click a block to repaint it, or drag the brush across several. Nothing moves.
+              Hold <b>⇧ shift</b> to <b>fill</b>: everything joined to the block you click,
+              of the same material, is repainted. The readout says how many.
+            </>
           )}
         </p>
         <p className="readout">{hoverLabel ?? '—'}</p>
-        <p className="hint">1–4 tool · {CAMERA_HINT} · Esc leaves</p>
+        <p className="hint">1–2 tool · 6/7/8 or [ ] brush · {CAMERA_HINT} · Esc leaves</p>
       </div>
 
-      {tool !== 'erase' && (
+      {(
         <div className="card">
           <h2>Material</h2>
           <ul className="palette">

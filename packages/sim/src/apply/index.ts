@@ -13,7 +13,8 @@ import {
   addPlace, renamePlace, setPlaceMarker, movePlace, removePlace, placeById, placeAt, isValidPlaceCell,
   addNote, editNote, setNoteVisible, removeNote, moveNote, isKnownMarker,
   addPoi, renamePoi, setPoiVisible, removePoi, movePoi,
-  setMapBlock, clearMapBlock, fillPoiMaterial, growPoiMap, inMap, blockAt, isKnownMaterial,
+  setMapBlocks, paintMapBlocks, clearMapBlocks, fillPoiMaterial, growPoiMap,
+  inMap, blockAt, isKnownMaterial,
   MAP_MAX_HEIGHT, MAP_MIN_DEPTH,
   addPoiPlane, renamePoiPlane, movePoiPlane, removePoiPlane,
   validPlaneY, planeAt, planeById, clampRange, settleRange, rangeFor, isPoiOnTable,
@@ -677,36 +678,60 @@ function applyToMap(
     return withPlaces(growPoiMap(campaign.places, placeId, poiId, intent.towards));
   }
 
-  const at = { x: intent.x, y: intent.y, z: intent.z };
-  if (!inMap(poi.map, at)) return reject_('that is outside the map');
+  if (intent.kind === 'fillMaterial') {
+    const at = { x: intent.x, y: intent.y, z: intent.z };
+    if (!inMap(poi.map, at)) return reject_('that is outside the map');
+    const material = intent.materialId as MaterialId;
+    if (!isKnownMaterial(material)) return reject_('unknown material');
+    return withPlaces(fillPoiMaterial(campaign.places, placeId, poiId, at, material));
+  }
+
+  /*
+   * A brush arrives as the cells it touches, up to twenty-five of them (R-162).
+   *
+   * Every cell is still checked here, one at a time, against the footprint and
+   * against what is standing in it — the same checks each cell passed when it
+   * used to arrive in an intent of its own. The list buys one undo step, one
+   * write and one broadcast per click; it buys no trust.
+   *
+   * The refusals are worded for the whole gesture, and they fire only when
+   * there is nothing at all to do. A brush that laps over the edge of the map,
+   * or over a cube already built, lands where it can and leaves the rest —
+   * refusing all twenty-five because one was occupied would make a wide brush
+   * useless anywhere near something already standing.
+   */
+  const { cells } = intent;
+  const map = poi.map;
+  if (!cells.some((at) => inMap(map, at))) return reject_('that is outside the map');
+  const standing = cells.some((at) => inMap(map, at) && !!blockAt(map, at));
 
   if (intent.kind === 'clearBlock') {
-    return withPlaces(clearMapBlock(campaign.places, placeId, poiId, at));
+    if (!standing) return reject_('there is nothing there to erase');
+    return withPlaces(clearMapBlocks(campaign.places, placeId, poiId, cells));
   }
+
   const materialId = intent.materialId as MaterialId;
   if (!isKnownMaterial(materialId)) return reject_('unknown material');
-  if (intent.kind === 'fillMaterial') {
-    return withPlaces(fillPoiMaterial(campaign.places, placeId, poiId, at, materialId));
-  }
 
   /*
    * Placing and repainting are different operations and are refused for
    * opposite reasons (R-159).
    *
-   * `setBlock` in the domain replaces whatever is there, which is exactly what
-   * paint wants and exactly what build must not do. While every block was on
-   * screen the difference never showed: a face you can see has empty space in
-   * front of it. Hiding levels breaks that — the GM clicks what looks like bare
-   * floor and lands on a block one level down that they cannot see — so the two
-   * are now distinct intents, each saying no rather than doing the other's job.
+   * Build will not overwrite and paint will not conjure. While every block was
+   * on screen the difference never showed: a face you can see has empty space
+   * in front of it. Hiding levels breaks that — the GM clicks what looks like
+   * bare floor and lands on a block one level down that they cannot see — so
+   * the two are distinct intents, each saying no rather than doing the other's
+   * job, and each backed by a domain function that skips the cells that are not
+   * its business.
    */
-  const standing = !!blockAt(poi.map, at);
   if (intent.kind === 'setBlock') {
-    if (standing) return reject_('there is already a block there');
-    return withPlaces(setMapBlock(campaign.places, placeId, poiId, at, materialId));
+    const empty = cells.some((at) => inMap(map, at) && !blockAt(map, at));
+    if (!empty) return reject_('there is already a block there');
+    return withPlaces(setMapBlocks(campaign.places, placeId, poiId, cells, materialId));
   }
   if (!standing) return reject_('there is nothing there to paint');
-  return withPlaces(setMapBlock(campaign.places, placeId, poiId, at, materialId));
+  return withPlaces(paintMapBlocks(campaign.places, placeId, poiId, cells, materialId));
 }
 
 // -- what the party knows ---------------------------------------------------

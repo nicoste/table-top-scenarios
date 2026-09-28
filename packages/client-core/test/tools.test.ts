@@ -7,7 +7,7 @@ import {
   clickAction, holdsSelection, tableAction, mapAction, mapHover, mapDrags, mapAllowed,
   cameraAction, CAMERA_HINT,
 } from '@tt/client-core';
-import type { MapAim } from '@tt/client-core';
+import type { MapAction, MapAim, MapReach } from '@tt/client-core';
 import type { Tool } from '@tt/client-core';
 
 const cell = (x: number, z: number): Cell => ({ cx: 15, cz: 15, x, z });
@@ -187,32 +187,157 @@ describe('the table display has no tools, so the rule is different (D-174)', () 
   });
 });
 
+// -- inside a map -----------------------------------------------------------
+//
+// Two tools and two held keys (R-162). `bare` is what the pointer carries with
+// nothing held and the narrowest brush; `held` names only what differs, so a
+// test about Shift says Shift and nothing else.
+
+const bare: MapReach = { radius: 0, alt: false, shift: false, within: null };
+const held = (over: Partial<MapReach> = {}): MapReach => ({ ...bare, ...over });
+/** Narrows away `nothing`, which has neither an aim nor any cells. */
+const acting = (action: MapAction) => {
+  if (action.kind === 'nothing') throw new Error('expected an action, got nothing');
+  return action;
+};
+const cellsOf = (action: MapAction) => ('cells' in action ? action.cells : []);
+
 describe('face adjacency inside a map (D-181)', () => {
   const face = { block: { x: 3, y: 2, z: 5 }, adjacent: { x: 3, y: 3, z: 5 } };
 
   it('builds against the face, not on the block that was hit', () => {
     // Click the top of a block and the new one lands on top. Reading the wrong
     // field of the same pick digs a hole where a wall should go.
-    expect(mapAction('build', face))
-      .toEqual({ kind: 'place', at: { x: 3, y: 3, z: 5 }, under: false });
+    expect(mapAction('build', face, bare)).toEqual({
+      kind: 'place', at: { x: 3, y: 3, z: 5 }, cells: [{ x: 3, y: 3, z: 5 }], under: false,
+    });
   });
 
   it('erases the block that was hit, not its neighbour', () => {
-    expect(mapAction('erase', face)).toEqual({ kind: 'erase', at: { x: 3, y: 2, z: 5 } });
+    expect(mapAction('build', face, held({ shift: true }))).toEqual({
+      kind: 'erase', at: { x: 3, y: 2, z: 5 }, cells: [{ x: 3, y: 2, z: 5 }],
+    });
   });
 
   it('means nothing when the pointer is over no face at all', () => {
-    expect(mapAction('build', null)).toEqual({ kind: 'nothing' });
-    expect(mapAction('erase', null)).toEqual({ kind: 'nothing' });
+    expect(mapAction('build', null, bare)).toEqual({ kind: 'nothing' });
+    expect(mapAction('paint', null, held({ shift: true }))).toEqual({ kind: 'nothing' });
   });
 
   it('never confuses the two, whichever way the face points', () => {
     for (const [dx, dy, dz] of [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]]) {
       const block = { x: 4, y: 4, z: 4 };
       const f = { block, adjacent: { x: 4 + dx!, y: 4 + dy!, z: 4 + dz! } };
-      expect(mapAction('build', f)).toEqual({ kind: 'place', at: f.adjacent, under: false });
-      expect(mapAction('erase', f)).toEqual({ kind: 'erase', at: block });
+      expect(mapAction('build', f, bare))
+        .toEqual({ kind: 'place', at: f.adjacent, cells: [f.adjacent], under: false });
+      expect(mapAction('build', f, held({ shift: true })))
+        .toEqual({ kind: 'erase', at: block, cells: [block] });
     }
+  });
+});
+
+describe('the modifiers are the toolset (R-162)', () => {
+  const face = { block: { x: 4, y: 1, z: 7 }, adjacent: { x: 4, y: 2, z: 7 } };
+
+  it('gives each tool its other mode on Shift', () => {
+    expect(mapAction('build', face, bare).kind).toBe('place');
+    expect(mapAction('build', face, held({ shift: true })).kind).toBe('erase');
+    expect(mapAction('paint', face, bare).kind).toBe('paint');
+    expect(mapAction('paint', face, held({ shift: true })).kind).toBe('fill');
+  });
+
+  it('gives build the empty cell and every other mode the block itself', () => {
+    // The off-by-one-along-the-normal, once per mode. Build is the only one
+    // that acts on a cell that is not there yet.
+    expect(acting(mapAction('build', face, bare)).at).toEqual(face.adjacent);
+    for (const reach of [held({ shift: true }), bare]) {
+      expect(acting(mapAction('paint', face, reach)).at).toEqual(face.block);
+    }
+    expect(acting(mapAction('build', face, held({ shift: true }))).at).toEqual(face.block);
+  });
+
+  it('lets a fill keep its whole reach, brush or no brush', () => {
+    // A fill already goes as far as the material does; a brush would be a
+    // second, smaller answer to the same question.
+    const fill = mapAction('paint', face, held({ shift: true, radius: 2 }));
+    expect(fill).toEqual({ kind: 'fill', at: face.block });
+  });
+
+  it('lets only paint drag, and asks the action rather than the tool', () => {
+    // The test is whether the gesture moves its own target, not whether it is
+    // destructive. Building climbs its own cubes and erasing eats into what it
+    // exposes; painting leaves the geometry exactly where it was. Fill is out
+    // for the other reason: it is already a bulk action.
+    expect(mapDrags(mapAction('paint', face, bare))).toBe(true);
+    expect(mapDrags(mapAction('build', face, bare))).toBe(false);
+    expect(mapDrags(mapAction('build', face, held({ shift: true })))).toBe(false);
+    expect(mapDrags(mapAction('paint', face, held({ shift: true })))).toBe(false);
+    expect(mapDrags({ kind: 'nothing' })).toBe(false);
+  });
+});
+
+describe('the brush (R-162)', () => {
+  const top = { block: { x: 4, y: 1, z: 7 }, adjacent: { x: 4, y: 2, z: 7 } };
+  const side = { block: { x: 4, y: 1, z: 7 }, adjacent: { x: 5, y: 1, z: 7 } };
+  it('is one cube at its narrowest, and always odd', () => {
+    expect(cellsOf(mapAction('build', top, bare))).toHaveLength(1);
+    expect(cellsOf(mapAction('build', top, held({ radius: 1 })))).toHaveLength(9);
+    expect(cellsOf(mapAction('build', top, held({ radius: 2 })))).toHaveLength(25);
+  });
+
+  it('always covers the cube it is aimed at', () => {
+    // The GM's own requirement — "so we keep the center cube always" — and a
+    // radius is how it becomes arithmetic rather than a convention.
+    for (const radius of [0, 1, 2]) {
+      const action = acting(mapAction('build', top, held({ radius })));
+      expect(cellsOf(action), `radius ${radius}`).toContainEqual(action.at);
+    }
+  });
+
+  it('lies flat on a face pointing up', () => {
+    const cells = cellsOf(mapAction('build', top, held({ radius: 1 })));
+    expect(new Set(cells.map((c) => c.y))).toEqual(new Set([2]));
+    expect(new Set(cells.map((c) => c.x))).toEqual(new Set([3, 4, 5]));
+    expect(new Set(cells.map((c) => c.z))).toEqual(new Set([6, 7, 8]));
+  });
+
+  it('stands upright on a wall', () => {
+    // The reason the axis comes from the pick. Spreading in a fixed pair of
+    // axes would make a brush on a wall reach into the building instead.
+    const cells = cellsOf(mapAction('build', side, held({ radius: 1 })));
+    expect(new Set(cells.map((c) => c.x))).toEqual(new Set([5]));
+    expect(new Set(cells.map((c) => c.y))).toEqual(new Set([0, 1, 2]));
+    expect(new Set(cells.map((c) => c.z))).toEqual(new Set([6, 7, 8]));
+  });
+
+  it('lies flat under the cube when digging, whichever side was hit', () => {
+    // Digging is aimed at the cube rather than the face (R-160), so its patch
+    // is horizontal even when a flank was pointed at.
+    const cells = cellsOf(mapAction('build', side, held({ radius: 1, alt: true })));
+    expect(new Set(cells.map((c) => c.y))).toEqual(new Set([0]));
+    expect(cells).toHaveLength(9);
+  });
+
+  it('clips to the band rather than refusing, and only while levelling', () => {
+    // A brush on a wall spans three levels at radius 1, so it is the first
+    // gesture that can reach across a cut — and it must not (R-159).
+    const banded = mapAction('build', side, held({ radius: 1, within: { lower: 1, upper: 3 } }));
+    expect(new Set(cellsOf(banded).map((c) => c.y))).toEqual(new Set([1, 2]));
+    expect(cellsOf(banded)).toHaveLength(6);
+    // Same gesture with every level shown: nothing is clipped.
+    expect(cellsOf(mapAction('build', side, held({ radius: 1 })))).toHaveLength(9);
+  });
+
+  it('comes back empty when the cube itself is outside the band', () => {
+    // Which is the one case that can empty a patch, and what `mapAllowed`
+    // reads instead of making the band check a second time.
+    const past = mapAction('build', top, held({ radius: 2, within: { lower: 8, upper: 12 } }));
+    expect(cellsOf(past)).toEqual([]);
+  });
+
+  it('paints and erases through the same brush as it builds', () => {
+    expect(cellsOf(mapAction('paint', top, held({ radius: 2 })))).toHaveLength(25);
+    expect(cellsOf(mapAction('build', top, held({ radius: 2, shift: true })))).toHaveLength(25);
   });
 });
 
@@ -220,8 +345,8 @@ describe('mapHover — what the GM is told is about to happen (R-153)', () => {
   const face = { block: { x: 4, y: 1, z: 7 }, adjacent: { x: 4, y: 2, z: 7 } };
 
   it('outlines the very cube a click would place', () => {
-    const hover = mapHover(mapAction('build', face));
-    expect(hover.ghost).toEqual(face.adjacent);
+    const hover = mapHover(mapAction('build', face, bare));
+    expect(hover.ghost).toEqual([face.adjacent]);
     expect(hover.label).toBe('Build at 4,2,7');
   });
 
@@ -229,82 +354,51 @@ describe('mapHover — what the GM is told is about to happen (R-153)', () => {
     // The off-by-one-along-the-normal that R-147 exists to prevent. Deriving
     // both the words and the outline from one MapAction is what keeps the thing
     // that lights up and the thing that changes the same thing.
-    const hover = mapHover(mapAction('erase', face));
-    expect(hover.ghost).toEqual(face.block);
+    const hover = mapHover(mapAction('build', face, held({ shift: true })));
+    expect(hover.ghost).toEqual([face.block]);
     expect(hover.label).toBe('Erase 4,1,7');
   });
 
+  it('outlines every cube a brush would touch', () => {
+    const hover = mapHover(mapAction('build', face, held({ radius: 1 })));
+    expect(hover.ghost).toHaveLength(9);
+    expect(hover.label).toBe('Build at 4,2,7 — 9 wide');
+  });
+
   it('shows nothing when the pointer is over nothing', () => {
-    const hover = mapHover(mapAction('build', null));
-    expect(hover).toEqual({ label: null, ghost: null });
+    expect(mapHover(mapAction('build', null, bare))).toEqual({ label: null, ghost: [] });
   });
 
-  it('never disagrees with itself about which cube it means', () => {
-    for (const tool of ['build', 'erase'] as const) {
-      const action = mapAction(tool, face);
+  it('never disagrees with itself about which cubes it means', () => {
+    for (const reach of [bare, held({ shift: true }), held({ radius: 2 })]) {
+      const action = acting(mapAction('build', face, reach));
       const hover = mapHover(action);
-      expect(hover.ghost, tool).toBe(action.kind === 'nothing' ? null : action.at);
-      expect(hover.label, tool).toContain(
-        `${hover.ghost!.x},${hover.ghost!.y},${hover.ghost!.z}`,
-      );
+      expect(hover.ghost).toEqual(cellsOf(action));
+      expect(hover.label).toContain(`${action.at.x},${action.at.y},${action.at.z}`);
     }
-  });
-});
-
-describe('the map toolset (R-153, R-154)', () => {
-  const face = { block: { x: 4, y: 1, z: 7 }, adjacent: { x: 4, y: 2, z: 7 } };
-
-  it('gives build the empty cell and every other tool the block itself', () => {
-    // The off-by-one-along-the-normal, once per tool. Build is the only one that
-    // acts on a cell that is not there yet; paint and fill act on what you see,
-    // which is where erase already acted.
-    expect(mapAction('build', face)).toEqual({ kind: 'place', at: face.adjacent, under: false });
-    expect(mapAction('erase', face)).toEqual({ kind: 'erase', at: face.block });
-    expect(mapAction('paint', face)).toEqual({ kind: 'paint', at: face.block });
-    expect(mapAction('fill', face)).toEqual({ kind: 'fill', at: face.block });
-  });
-
-  it('does nothing for any tool when the pointer is over nothing', () => {
-    for (const tool of ['build', 'erase', 'paint', 'fill'] as const) {
-      expect(mapAction(tool, null), tool).toEqual({ kind: 'nothing' });
-    }
-  });
-
-  it('lets only the brush drag', () => {
-    // The test is whether the gesture moves its own target, not whether it is
-    // destructive. Build climbs its own cubes and erase eats into what it
-    // exposes; paint leaves the geometry exactly where it was. Fill is out for
-    // the other reason: it is already a bulk action.
-    expect(mapDrags('paint')).toBe(true);
-    expect(mapDrags('build')).toBe(false);
-    expect(mapDrags('erase')).toBe(false);
-    expect(mapDrags('fill')).toBe(false);
   });
 
   it('says how many blocks a fill would repaint, and only for a fill', () => {
+    const shift = held({ shift: true });
     const reach = (total: number, unseen = 0) => ({ total, unseen });
-    expect(mapHover(mapAction('fill', face), reach(42)).label).toBe('Fill from 4,1,7 — 42 blocks');
-    expect(mapHover(mapAction('fill', face), reach(1)).label).toBe('Fill from 4,1,7 — 1 block');
+    expect(mapHover(mapAction('paint', face, shift), reach(42)).label)
+      .toBe('Fill from 4,1,7 — 42 blocks');
+    expect(mapHover(mapAction('paint', face, shift), reach(1)).label)
+      .toBe('Fill from 4,1,7 — 1 block');
     // The count is the client's to compute, so the label must survive not
     // having it rather than printing "undefined blocks".
-    expect(mapHover(mapAction('fill', face)).label).toBe('Fill from 4,1,7');
-    expect(mapHover(mapAction('paint', face), reach(42)).label).toBe('Paint 4,1,7');
+    expect(mapHover(mapAction('paint', face, shift)).label).toBe('Fill from 4,1,7');
+    expect(mapHover(mapAction('paint', face, bare), reach(42)).label).toBe('Paint 4,1,7');
   });
 
   it('warns how much of a fill reaches past the levels being shown (R-159)', () => {
     // A fill follows connected material straight through a cut, so with levels
     // hidden the honest readout says how much of it the GM cannot see.
-    expect(mapHover(mapAction('fill', face), { total: 42, unseen: 12 }).label)
+    const shift = held({ shift: true });
+    expect(mapHover(mapAction('paint', face, shift), { total: 42, unseen: 12 }).label)
       .toBe('Fill from 4,1,7 — 42 blocks, 12 unseen');
-    expect(mapHover(mapAction('fill', face), { total: 42, unseen: 0 }).label)
+    expect(mapHover(mapAction('paint', face, shift), { total: 42, unseen: 0 }).label)
       .toBe('Fill from 4,1,7 — 42 blocks');
-  });
-
-  it('outlines the block each tool would touch', () => {
-    for (const tool of ['erase', 'paint', 'fill'] as const) {
-      expect(mapHover(mapAction(tool, face)).ghost, tool).toEqual(face.block);
-    }
-    expect(mapHover(mapAction('build', face)).ghost).toEqual(face.adjacent);
   });
 });
 
@@ -342,69 +436,61 @@ describe('the camera keys are the same on both screens (R-156)', () => {
 
 describe('what a click may do while levels are hidden (R-159)', () => {
   const face = { block: { x: 4, y: 1, z: 7 }, adjacent: { x: 4, y: 2, z: 7 } };
-  const band = { lower: 0, upper: 4 };
   const aim = (over: Partial<MapAim> = {}): MapAim =>
-    ({ levelling: false, range: band, occupied: false, inBounds: true, ...over });
+    ({ occupied: false, inBounds: true, ...over });
 
   it('refuses to build into a cell that already holds a block', () => {
     // Impossible while everything is drawn — a face you can see has air in
     // front of it. Hiding levels breaks that, because a ray passes through
     // what is hidden and lands on the far side.
-    expect(mapAllowed(mapAction('build', face), aim({ occupied: true })))
+    expect(mapAllowed(mapAction('build', face, bare), aim({ occupied: true })))
       .toEqual({ kind: 'stop', why: 'a block is already there' });
-    expect(mapAllowed(mapAction('build', face), aim())).toEqual({ kind: 'go' });
+    expect(mapAllowed(mapAction('build', face, bare), aim())).toEqual({ kind: 'go' });
   });
 
   it('refuses a placement above the band, but only while levelling', () => {
     // `face.adjacent` is y=2, so a band of [0,2) puts it just outside — the
     // block would be placed and then vanish, which is worse than a refusal.
     const tight = { lower: 0, upper: 2 };
-    expect(mapAllowed(mapAction('build', face), aim({ levelling: true, range: tight })))
+    expect(mapAllowed(mapAction('build', face, held({ within: tight })), aim()))
       .toEqual({ kind: 'stop', why: 'outside the levels you are showing' });
     // Same cell, same band, levels all shown: perfectly fine, and a GM
     // building above the band is not making a mistake.
-    expect(mapAllowed(mapAction('build', face), aim({ levelling: false, range: tight })))
-      .toEqual({ kind: 'go' });
+    expect(mapAllowed(mapAction('build', face, bare), aim())).toEqual({ kind: 'go' });
   });
 
   it('refuses a placement below the band too', () => {
     const upstairs = { lower: 8, upper: 12 };
-    expect(mapAllowed(mapAction('build', face), aim({ levelling: true, range: upstairs })))
+    expect(mapAllowed(mapAction('build', face, held({ within: upstairs })), aim()))
       .toEqual({ kind: 'stop', why: 'outside the levels you are showing' });
   });
 
   it('allows a placement inside the band while levelling', () => {
     // Half-open, so the band's own lower step counts as inside it.
-    expect(mapAllowed(mapAction('build', face), aim({ levelling: true, range: { lower: 2, upper: 6 } })))
+    expect(mapAllowed(mapAction('build', face, held({ within: { lower: 2, upper: 6 } })), aim()))
       .toEqual({ kind: 'go' });
-    expect(mapAllowed(mapAction('build', face), aim({ levelling: true, range: band })))
+    expect(mapAllowed(mapAction('build', face, held({ within: { lower: 0, upper: 4 } })), aim()))
       .toEqual({ kind: 'go' });
   });
 
   it('refuses erase, paint and fill on empty space', () => {
-    for (const tool of ['erase', 'paint', 'fill'] as const) {
-      expect(mapAllowed(mapAction(tool, face), aim({ occupied: false })), tool)
+    const modes: [ 'build' | 'paint', MapReach ][] = [
+      ['build', held({ shift: true })],
+      ['paint', bare],
+      ['paint', held({ shift: true })],
+    ];
+    for (const [tool, reach] of modes) {
+      expect(mapAllowed(mapAction(tool, face, reach), aim({ occupied: false })), tool)
         .toEqual({ kind: 'stop', why: 'nothing there' });
-      expect(mapAllowed(mapAction(tool, face), aim({ occupied: true })), tool)
+      expect(mapAllowed(mapAction(tool, face, reach), aim({ occupied: true })), tool)
         .toEqual({ kind: 'go' });
     }
   });
 
-  it('needs no band check for the tools that act on a picked block', () => {
-    // Only a visible block can be picked, so erase, paint and fill cannot reach
-    // past the cut however the band is set.
-    for (const tool of ['erase', 'paint', 'fill'] as const) {
-      expect(
-        mapAllowed(mapAction(tool, face), aim({ levelling: true, occupied: true })),
-        tool,
-      ).toEqual({ kind: 'go' });
-    }
-  });
-
   it('stops silently when the pointer is over nothing', () => {
-    expect(mapAllowed(mapAction('build', null), aim())).toEqual({ kind: 'stop', why: '' });
+    expect(mapAllowed(mapAction('build', null, bare), aim())).toEqual({ kind: 'stop', why: '' });
     // An empty reason prints nothing rather than "— " with a blank after it.
-    expect(mapHover(mapAction('build', null), undefined, { kind: 'stop', why: '' }).label)
+    expect(mapHover(mapAction('build', null, bare), undefined, { kind: 'stop', why: '' }).label)
       .toBeNull();
   });
 });
@@ -415,24 +501,25 @@ describe('a cell the map does not own (R-159)', () => {
   // same principle as the rest of R-159 — no toast for a gesture that could
   // never work.
   const edge = { block: { x: 47, y: 0, z: 0 }, adjacent: { x: 48, y: 0, z: 0 } };
-  const outside = {
-    levelling: false,
-    range: { lower: 0, upper: 32 },
-    occupied: false,
-    inBounds: false,
-  };
+  const outside: MapAim = { occupied: false, inBounds: false };
 
-  it('refuses every tool, whatever else is true', () => {
-    for (const tool of ['build', 'erase', 'paint', 'fill'] as const) {
-      expect(mapAllowed(mapAction(tool, edge), outside), tool)
+  it('refuses every mode, whatever else is true', () => {
+    const modes: [ 'build' | 'paint', MapReach ][] = [
+      ['build', bare],
+      ['build', held({ shift: true })],
+      ['paint', bare],
+      ['paint', held({ shift: true })],
+    ];
+    for (const [tool, reach] of modes) {
+      expect(mapAllowed(mapAction(tool, edge, reach), outside), tool)
         .toEqual({ kind: 'stop', why: 'outside the map' });
     }
   });
 
-  it('says so before the occupancy or the band would', () => {
-    // A cell the map does not own is not "already occupied" and not "outside
-    // the levels" — it is not a cell. The most basic refusal reads first.
-    expect(mapAllowed(mapAction('build', edge), { ...outside, occupied: true, levelling: true }))
+  it('says so before the occupancy would', () => {
+    // A cell the map does not own is not "already occupied" — it is not a cell.
+    // The most basic refusal reads first.
+    expect(mapAllowed(mapAction('build', edge, bare), { ...outside, occupied: true }))
       .toEqual({ kind: 'stop', why: 'outside the map' });
   });
 });
@@ -440,12 +527,15 @@ describe('a cell the map does not own (R-159)', () => {
 describe('the dig modifier (R-160)', () => {
   // A block at 4,1,7 whose top face was hit, so building normally lands above.
   const face = { block: { x: 4, y: 1, z: 7 }, adjacent: { x: 4, y: 2, z: 7 } };
+  const dig = held({ alt: true });
 
   it('aims below the cube instead of against the face', () => {
-    expect(mapAction('build', face, true))
-      .toEqual({ kind: 'place', at: { x: 4, y: 0, z: 7 }, under: true });
-    expect(mapAction('build', face, false))
-      .toEqual({ kind: 'place', at: { x: 4, y: 2, z: 7 }, under: false });
+    expect(mapAction('build', face, dig)).toEqual({
+      kind: 'place', at: { x: 4, y: 0, z: 7 }, cells: [{ x: 4, y: 0, z: 7 }], under: true,
+    });
+    expect(mapAction('build', face, bare)).toEqual({
+      kind: 'place', at: { x: 4, y: 2, z: 7 }, cells: [{ x: 4, y: 2, z: 7 }], under: false,
+    });
   });
 
   it('cares about the cube, not the face', () => {
@@ -458,40 +548,46 @@ describe('the dig modifier (R-160)', () => {
       { block: { x: 4, y: 1, z: 7 }, adjacent: { x: 4, y: 2, z: 7 } },
     ];
     for (const hit of sides) {
-      expect(mapAction('build', hit, true))
-        .toEqual({ kind: 'place', at: { x: 4, y: 0, z: 7 }, under: true });
+      expect(mapAction('build', hit, dig)).toEqual({
+        kind: 'place', at: { x: 4, y: 0, z: 7 }, cells: [{ x: 4, y: 0, z: 7 }], under: true,
+      });
     }
   });
 
   it('reaches below zero, which is the whole point', () => {
     const floor = { block: { x: 4, y: 0, z: 7 }, adjacent: { x: 4, y: 1, z: 7 } };
-    expect(mapAction('build', floor, true).kind).toBe('place');
-    expect((mapAction('build', floor, true) as { at: { y: number } }).at.y).toBe(-1);
+    expect(mapAction('build', floor, dig).kind).toBe('place');
+    expect(acting(mapAction('build', floor, dig)).at.y).toBe(-1);
   });
 
-  it('changes build alone', () => {
+  it('changes building alone', () => {
     // Reaching under a solid block to erase or repaint it is editing what you
-    // cannot see, which is the thing R-159 exists to prevent.
-    for (const tool of ['erase', 'paint', 'fill'] as const) {
-      expect(mapAction(tool, face, true), tool).toEqual(mapAction(tool, face, false));
-    }
+    // cannot see, which is the thing R-159 exists to prevent. Shift wins: an
+    // erase already acts on the cube rather than the face, so the dig modifier
+    // has nothing left to say.
+    expect(mapAction('paint', face, dig)).toEqual(mapAction('paint', face, bare));
+    expect(mapAction('paint', face, held({ alt: true, shift: true })))
+      .toEqual(mapAction('paint', face, held({ shift: true })));
+    expect(mapAction('build', face, held({ alt: true, shift: true })))
+      .toEqual(mapAction('build', face, held({ shift: true })));
   });
 
   it('reads differently in the readout, so the two are never confused', () => {
-    expect(mapHover(mapAction('build', face, true)).label).toBe('Build under 4,0,7');
-    expect(mapHover(mapAction('build', face, false)).label).toBe('Build at 4,2,7');
+    expect(mapHover(mapAction('build', face, dig)).label).toBe('Build under 4,0,7');
+    expect(mapHover(mapAction('build', face, bare)).label).toBe('Build at 4,2,7');
   });
 
   it('is refused for the same reasons an ordinary placement is', () => {
-    const aim = (over = {}) => ({
-      levelling: false, range: { lower: 0, upper: 32 }, occupied: false, inBounds: true, ...over,
-    });
-    expect(mapAllowed(mapAction('build', face, true), aim({ occupied: true })))
+    const aim = (over: Partial<MapAim> = {}): MapAim =>
+      ({ occupied: false, inBounds: true, ...over });
+    expect(mapAllowed(mapAction('build', face, dig), aim({ occupied: true })))
       .toEqual({ kind: 'stop', why: 'a block is already there' });
-    expect(mapAllowed(mapAction('build', face, true), aim({ inBounds: false })))
+    expect(mapAllowed(mapAction('build', face, dig), aim({ inBounds: false })))
       .toEqual({ kind: 'stop', why: 'outside the map' });
     // Digging below a band the GM is showing would place a cube they cannot see.
-    expect(mapAllowed(mapAction('build', face, true), aim({ levelling: true, range: { lower: 1, upper: 4 } })))
-      .toEqual({ kind: 'stop', why: 'outside the levels you are showing' });
+    expect(mapAllowed(
+      mapAction('build', face, held({ alt: true, within: { lower: 1, upper: 4 } })),
+      aim(),
+    )).toEqual({ kind: 'stop', why: 'outside the levels you are showing' });
   });
 });

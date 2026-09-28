@@ -34,7 +34,7 @@ export type Tool = 'select' | 'paint' | 'height' | 'places' | 'travel';
  * map and map tools none outside it, so a single union would let the compiler
  * accept "paint terrain" while standing in a tavern.
  */
-export type MapTool = 'build' | 'erase' | 'paint' | 'fill';
+export type MapTool = 'build' | 'paint';
 
 export interface ViewState {
   readonly camera: CameraTarget;

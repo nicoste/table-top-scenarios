@@ -18,6 +18,6 @@ export { grabEnd } from './levels/index.js';
 export { cameraAction, CAMERA_HINT } from './camera/index.js';
 export type { CameraAction } from './camera/index.js';
 export type {
-  ClickAction, TableAction, MapAction, MapHover, MapAim, MapVerdict, FillReach,
+  ClickAction, TableAction, MapAction, MapHover, MapAim, MapReach, MapVerdict, FillReach,
   Pointed, Cell, Slot, Context,
 } from './tools/index.js';

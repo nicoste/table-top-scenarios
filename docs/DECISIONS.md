@@ -3756,3 +3756,64 @@ definition is not a style, it is a hope.
 One deliberate consequence: the ladder's two fixed heights, 32 and -16, now pick
 up the base and read quieter than the editable ones beside them. That is honest
 — they are the only two a GM cannot change.
+
+### D-211 — Four tools become two, and gain a brush · `agreed`
+The GM's design, near enough verbatim: *"I think we can have just 2 tools.
+Build: has 3 sizes, 1x1, 3x3 and 5x5 (so we keep the center cube always), hold
+ctrl switches to erase mode (new thing: turns the wireframe red), alt+click will
+do the building down. Paint: has 3 sizes… shift+click will do the fill. For both
+I will love to have the wireframe resizing when the brush changes."*
+
+Agreed as designed, with one substitution and three details it did not cover.
+
+**Ctrl became Shift.** macOS delivers Ctrl+left-click as a *secondary* click,
+and this console already spends the secondary button on panning the camera — so
+Ctrl+click in a map would have started a pan and opened a context menu on the
+very machine the tool is being built on. Shift is safe everywhere and gives both
+tools the same vocabulary: Shift is the tool's other mode. Alt keeps its one
+meaning, downward.
+
+**The brush is a radius, not a size.** "So we keep the center cube always" is a
+requirement, and a radius makes it arithmetic: there is no radius that produces
+an even brush, so nothing has to remember the rule. The world's terrain brush
+counts cells and puts size 2 off-centre — genuinely a different thing, sharing
+its keys and nothing else, and said out loud rather than quietly unified.
+
+**A patch lies in the plane of the face.** The GM asked for sizes and for the
+outline to follow them; neither says which way a 5×5 faces. Flat on a rooftop
+and upright on a wall is what "painting the wall" means — a fixed pair of axes
+would have reached five blocks into the building instead. Digging is flat
+whichever side was hit, because it is aimed at the cube and not the face.
+
+**One intent per gesture.** The part with the most consequence and the least to
+see. Twenty-five cells sent one at a time would be twenty-five undo steps for
+one click — a GM who erased a 5×5 by mistake pressing undo twenty-five times —
+plus twenty-five writes and twenty-five broadcasts to the table. So the cells
+travel together.
+
+They travel as *cells* rather than as a radius and an axis for the host to
+expand, and that was the call worth thinking about. The console has to know the
+exact cells anyway, because it outlines them; deriving them again at the host is
+two chances to disagree about which cube the click edits, and the outline being
+the edit is a property this code has leaned on since R-147. The host still
+checks every cell — footprint, bounds, occupied, empty — exactly as it did when
+each arrived alone, and the list is capped at the widest brush at the edge. The
+list buys one undo; it buys no trust.
+
+It also keeps the band clip where the band lives. Whether the GM is levelling is
+their own view state and never crosses the wire (R-84), so a host expanding a
+radius could not have known to stop at the cut — it would have needed a flag
+saying "confine this", which is view state with a hat on.
+
+**Clip, do not refuse.** The last detail, and the one that decides whether a
+wide brush is pleasant. Cells already built, cells past the edge of the map,
+cells past the band: skipped. A refusal fires only when there is nothing at all
+to do. Refusing a 5×5 because one of its twenty-five was occupied would make the
+brush useless exactly where a GM most wants it — up against what they have
+already built.
+
+Verified by 611 tests, including the patch's shape on every face, the clipping,
+the one-undo property and the edge's cap. **Not** verified on screen: the GM had
+the console's seat while I finished, and taking it would have made their own
+window a viewer (R-127). The resizing outline and the red tint are the two
+things a test cannot show, and they are the GM's to confirm.

@@ -41,7 +41,7 @@ function tavern() {
 
   for (const [y, tag] of [[1, 'cellar'], [5, 'ground'], [9, 'upstairs']] as const) {
     state = run(state, {
-      kind: 'setBlock', placeId, poiId, x: 2, y, z: 2, materialId: STONE,
+      kind: 'setBlock', placeId, poiId, cells: [{ x: 2, y, z: 2 }], materialId: STONE,
     }).state;
     void tag;
   }
@@ -175,7 +175,7 @@ describe('what the table is sent (R-158, D-184 answered)', () => {
     let next = run(state, { kind: 'addPoi', placeId, name: 'The church', visibleToParty: true }).state;
     const churchId = next.active!.places[0]!.pois[1]!.id;
     next = run(next, {
-      kind: 'setBlock', placeId, poiId: churchId, x: 1, y: 1, z: 1, materialId: STONE,
+      kind: 'setBlock', placeId, poiId: churchId, cells: [{ x: 1, y: 1, z: 1 }], materialId: STONE,
     }).state;
     next = run(next, { kind: 'enterMap', placeId, poiId }).state;
 

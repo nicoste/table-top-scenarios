@@ -2158,3 +2158,66 @@ apps/host/src/
 > a row cannot be dragged to a new *height*, since an ordinal axis has no answer
 > to "what height did I drop it at"; the number beside each name is how a height
 > is set, and it is exact.
+
+> **R-162.** **Two tools, two modifiers, and a brush.**
+>
+> A map's toolset is **Build** and **Paint** — add or remove matter, and change
+> the colour of matter already there. Erase and Fill were tools of their own and
+> are **modes** of those two:
+>
+> | | Build | Paint |
+> | --- | --- | --- |
+> | plain | place blocks | repaint blocks |
+> | **Shift** | erase | fill |
+> | **Alt** | build underneath (R-160) | — |
+>
+> **Shift and not Ctrl**, because macOS delivers Ctrl+click as a secondary click
+> and this console already spends the secondary button on panning. A binding
+> that works on one platform is not a binding.
+>
+> A held modifier **shows** before it acts: the outline follows the key with the
+> pointer stationary, and erase draws it **red**. That is the whole of how a
+> mode is discovered now that it has no button of its own, and the same
+> reasoning as the dig modifier's (D-203).
+>
+> **The brush is a radius**, 0 to 2, read as 1×1, 3×3 and 5×5. A radius rather
+> than a width so that "the centre cube is always covered" is arithmetic and not
+> a convention: an even brush is unrepresentable. The world's terrain brush
+> counts *cells* and puts size 2 off-centre, so these are deliberately different
+> things that share their keys (`[` `]`, and 6/7/8) and nothing else.
+>
+> **A patch lies in the plane of the face it was aimed at** — flat on a rooftop,
+> upright on a wall. Spreading in a fixed pair of axes would make a 5×5 on a
+> wall reach five blocks into the building, which is neither what the outline
+> showed nor what anyone means by painting a wall. Digging is the exception, and
+> for its own reason: it is aimed at the *cube*, so its patch lies flat beneath
+> it whichever side was pointed at.
+>
+> **A patch clips; it does not refuse.** Cells outside the footprint (R-157),
+> outside the height bounds, already occupied for a build, or empty for a paint
+> are **skipped**. Refusing all twenty-five because one was occupied would make
+> a wide brush useless anywhere near something already standing. A refusal fires
+> only when there is nothing at all to do, and says the same thing a single cube
+> has always said.
+>
+> **A gesture is one intent**, carrying the cells it touches (at most the widest
+> brush, enforced at the edge). One undo step, one write, one broadcast per
+> click, however wide — twenty-five intents would be twenty-five of each, and a
+> GM who erased a 5×5 by accident would press undo twenty-five times. The cells
+> travel rather than a radius and an axis because the console must know them
+> exactly anyway — it outlines them — and deriving them twice is two chances to
+> disagree about which cube the click edits. The list buys that; it buys no
+> trust: every cell is checked at the host exactly as it was when each arrived
+> alone.
+>
+> **The band clips the brush** (R-159). A brush on a wall spans five levels, so
+> it is the first gesture that can reach across a cut, and it must not — the
+> band being a slice rather than a dimming is what stops a GM editing what they
+> cannot see. The clip lives in the console, because whether the GM is levelling
+> is their own view state (R-84) and never crosses the wire. An empty patch is
+> therefore the refusal: it happens exactly when the aimed-at cube is outside
+> the band, which is the check it replaces.
+>
+> **The drag rule reads the action, not the tool** (R-153). Paint drags; erase
+> and fill do not, and asking the tool would let a held Shift drag an erase
+> through the geometry it is eating.

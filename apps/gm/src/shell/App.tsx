@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { decodeCampaign, decodePlacement } from '@tt/protocol';
 import {
-  CHUNK_SIZE, MAX_HEIGHT, WHOLE_MAP, rangeIn, clampBrush, creatableSlots, sameWorldCell,
+  CHUNK_SIZE, MAX_HEIGHT, WHOLE_MAP, rangeIn, clampBrush, clampRadius,
+  creatableSlots, sameWorldCell,
   DEFAULT_MATERIALS, DEFAULT_FLOOR, mapFromJSON, fillRegion, sliceOf, inRange, inMap, blockAt,
 } from '@tt/domain';
 import type { GmView, Intent } from '@tt/protocol';
@@ -14,7 +15,7 @@ import {
   clickAction, holdsSelection, mapAction, mapHover, mapDrags, mapAllowed,
   cameraAction, CAMERA_HINT,
 } from '@tt/client-core';
-import type { MapAction, MapTool } from '@tt/client-core';
+import type { MapAction, MapReach, MapTool } from '@tt/client-core';
 import { useStage } from '../scene/use-stage.js';
 import { Launcher } from '../features/launcher/index.js';
 import { BuildWorldPanel } from '../features/build-world/index.js';
@@ -74,6 +75,22 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    * and it comes back, so the modifier teaches itself in one press.
    */
   const [digging, setDigging] = useState(false);
+  /**
+   * Is Shift down — the other mode of whichever tool is selected (R-162)?
+   *
+   * Build erases, Paint fills. Tracked exactly like Alt and for the same
+   * reason: the outline has to answer the key with the pointer stationary, and
+   * turning red under a held Shift is the whole of how the modifier is
+   * discovered.
+   */
+  const [shifting, setShifting] = useState(false);
+  /**
+   * The brush, as a radius: 0 is one cube, 1 is 3×3, 2 is 5×5 (R-162).
+   *
+   * View state (R-64), like the world's terrain brush and for the same reason —
+   * how wide the GM is working is not a fact about the campaign.
+   */
+  const [mapBrush, setMapBrush] = useState(0);
   /**
    * Where the pointer last was over the canvas.
    *
@@ -256,13 +273,14 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   }, [openMap, openPlace?.id, openPoi?.id, openPoi?.visibleToParty]);
 
   /**
-   * Alt/Option is the dig modifier, and the outline answers to it immediately
-   * (R-160).
+   * The two held modifiers — Alt to dig (R-160), Shift for the tool's other
+   * mode (R-162) — and the outline answers to both immediately.
    *
    * Three parts, and the last two are the ones that bite:
    *
-   * - `keydown`/`keyup` track the key rather than reading `altKey` off a
-   *   pointer event, because the pointer is not moving.
+   * - `keydown`/`keyup` read the modifier flags off the event rather than
+   *   matching key names, because the pointer is not moving and because a
+   *   `keyup` for Shift does not say which Shift.
    * - **Re-aim from the last pointer position** when it changes. Without this
    *   the GM holds Option and nothing happens until they twitch the mouse,
    *   which reads as the modifier being broken.
@@ -271,15 +289,14 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    *   on screen saying so.
    */
   useEffect(() => {
-    const onDown = (e: KeyboardEvent) => { if (e.altKey) setDigging(true); };
-    const onUp = (e: KeyboardEvent) => { if (!e.altKey) setDigging(false); };
-    const onBlur = () => setDigging(false);
-    addEventListener('keydown', onDown);
-    addEventListener('keyup', onUp);
+    const read = (e: KeyboardEvent) => { setDigging(e.altKey); setShifting(e.shiftKey); };
+    const onBlur = () => { setDigging(false); setShifting(false); };
+    addEventListener('keydown', read);
+    addEventListener('keyup', read);
     addEventListener('blur', onBlur);
     return () => {
-      removeEventListener('keydown', onDown);
-      removeEventListener('keyup', onUp);
+      removeEventListener('keydown', read);
+      removeEventListener('keyup', read);
       removeEventListener('blur', onBlur);
     };
   }, []);
@@ -289,12 +306,13 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     const at = lastPointer.current;
     if (!at) return;
     const picked = stage.pick(at.x, at.y);
-    const action = mapAction(mapTool, picked.face, digging);
+    const action = mapAction(mapTool, picked.face, reach);
     const hover = mapHover(action, undefined, aimAt(action));
     setHoverLabel(hover.label);
-    stage.showBlockGhost(hover.ghost);
-    // Only the modifier: a re-aim on every render would fight the pointer.
-  }, [digging]);
+    stage.showBlockGhost(hover.ghost, ghostTint(action));
+    // Only what a still hand can change: the modifiers and the brush. A re-aim
+    // on every render would fight the pointer.
+  }, [digging, shifting, mapBrush]);
 
   // The compass follows the camera, on both surfaces (R-152, R-155).
   useEffect(() => {
@@ -381,35 +399,68 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    * shown: the point is to catch a cell that holds a block they cannot see.
    * Asking the drawn geometry would answer "empty" and be exactly wrong.
    */
+  /**
+   * What the pointer is carrying: the brush, the held keys, and the levels the
+   * GM is allowed to reach (R-162).
+   *
+   * Assembled once and passed to every `mapAction` call, so pointer-down and
+   * pointer-move cannot disagree about what a gesture means — which is the
+   * same reason `mapEdit` is one function and not a branch in each.
+   */
+  const reach: MapReach = {
+    radius: mapBrush,
+    alt: digging,
+    shift: shifting,
+    within: levelling ? openRange ?? WHOLE_MAP : null,
+  };
+
+  /**
+   * What colour the outline takes, which is the whole of how a mode announces
+   * itself (R-162).
+   *
+   * The material about to be laid down for the two that lay something down, so
+   * the GM sees the colour before the click; **red** for erase, because it is
+   * taking something away and no material is involved. The GM asked for the red
+   * specifically, and it does the work that a fourth tool button used to.
+   */
+  const ERASE_TINT = 0xff5964;
+  const ghostTint = (action: MapAction): number => {
+    if (action.kind === 'erase') return ERASE_TINT;
+    const material = DEFAULT_MATERIALS.find((m) => m.id === materialId);
+    if (!material) return 0xffffff;
+    return Number.parseInt(material.colour.replace('#', ''), 16);
+  };
+
   const aimAt = (action: MapAction) => {
-    const range = openRange ?? WHOLE_MAP;
     const occupied = action.kind !== 'nothing' && !!openBody
       && !!blockAt(openBody, action.at);
     const inBounds = action.kind === 'nothing' || (!!openBody && inMap(openBody, action.at));
-    return mapAllowed(action, { levelling, range, occupied, inBounds });
+    return mapAllowed(action, { occupied, inBounds });
   };
 
   const mapEdit = (action: MapAction, stroke: string | null) => {
     if (!openMap || action.kind === 'nothing') return;
-    const where = { placeId: openMap.placeId, poiId: openMap.poiId, ...action.at };
+    const which = { placeId: openMap.placeId, poiId: openMap.poiId };
     const tagged = stroke ? { stroke } : {};
     switch (action.kind) {
       case 'place':
-        dispatch({ kind: 'setBlock', ...where, materialId, ...tagged });
+        // The whole patch in one intent: one undo, one write, one broadcast,
+        // however wide the brush (R-162).
+        dispatch({ kind: 'setBlock', ...which, cells: action.cells, materialId, ...tagged });
         return;
       case 'paint':
-        // Its own intent, not `setBlock` with a different cell. The two are
+        // Its own intent, not `setBlock` with different cells. The two are
         // refused for opposite reasons — build will not overwrite, paint will
         // not conjure — and one intent could not do both (R-159).
-        dispatch({ kind: 'paintBlock', ...where, materialId, ...tagged });
+        dispatch({ kind: 'paintBlock', ...which, cells: action.cells, materialId, ...tagged });
         return;
       case 'erase':
-        dispatch({ kind: 'clearBlock', ...where, ...tagged });
+        dispatch({ kind: 'clearBlock', ...which, cells: action.cells, ...tagged });
         return;
       case 'fill':
         // No stroke: a fill is already one intent covering a whole region, so
         // it is one undo without any help.
-        dispatch({ kind: 'fillMaterial', ...where, materialId });
+        dispatch({ kind: 'fillMaterial', ...which, ...action.at, materialId });
         return;
     }
   };
@@ -431,13 +482,13 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
 
     // Inside a map, the world's tool table does not apply at all (R-148).
     if (openMap) {
-      const action = mapAction(mapTool, picked.face, digging);
+      const action = mapAction(mapTool, picked.face, reach);
       // Refused here as well as by the host, so a click the readout already
       // called impossible never becomes a rejection toast (R-159).
       if (aimAt(action).kind === 'stop') return;
       // Only the brush keeps acting as the pointer moves (R-153), and when it
       // does the whole drag is one undo, so the stroke id is generated here.
-      if (mapDrags(mapTool) && action.kind !== 'nothing') {
+      if (mapDrags(action)) {
         blockStroke.current = newStroke();
         lastBlock.current = null;
         e.currentTarget.setPointerCapture(e.pointerId);
@@ -526,11 +577,11 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     if (openMap) {
       lastPointer.current = { x: e.clientX, y: e.clientY };
       const picked = stage.pick(e.clientX, e.clientY);
-      const action = mapAction(mapTool, picked.face, digging);
+      const action = mapAction(mapTool, picked.face, reach);
       const verdict = aimAt(action);
       // A fill follows connected material straight through a cut, so while
       // levelling it also reports how much of its reach is out of sight.
-      const reach = action.kind === 'fill' && openBody
+      const fill = action.kind === 'fill' && openBody
         ? (() => {
           const cells = fillRegion(openBody, action.at);
           const range = openRange ?? WHOLE_MAP;
@@ -540,9 +591,9 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
           };
         })()
         : undefined;
-      const hover = mapHover(action, reach, verdict);
+      const hover = mapHover(action, fill, verdict);
       setHoverLabel(hover.label);
-      stage.showBlockGhost(hover.ghost);
+      stage.showBlockGhost(hover.ghost, ghostTint(action));
 
       // Build and erase only ever *show* what a click would do (R-153): they
       // move their own target, so a hand that drifts mid-click would climb.
@@ -639,7 +690,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     endGesture();
     lastPointer.current = null;
     setHoverLabel(null);
-    stage?.showBlockGhost(null);
+    stage?.showBlockGhost([]);
   };
 
   const onWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
@@ -675,9 +726,14 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       const digit = /^(?:Digit|Numpad)([1-9])$/.exec(e.code)?.[1];
       if (openMap) {
         if (digit === '1') { setMapTool('build'); return; }
-        if (digit === '2') { setMapTool('erase'); return; }
-        if (digit === '3') { setMapTool('paint'); return; }
-        if (digit === '4') { setMapTool('fill'); return; }
+        if (digit === '2') { setMapTool('paint'); return; }
+        // The brush on the same keys as the world's, so the habit transfers
+        // even though one counts cells and the other is a radius (R-162).
+        if (digit === '6') { setMapBrush(0); return; }
+        if (digit === '7') { setMapBrush(1); return; }
+        if (digit === '8') { setMapBrush(2); return; }
+        if (e.code === 'BracketLeft') { setMapBrush((n) => clampRadius(n - 1)); return; }
+        if (e.code === 'BracketRight') { setMapBrush((n) => clampRadius(n + 1)); return; }
         if (e.code === 'Escape') { setOpenMap(null); return; }
       } else {
         switch (digit) {
@@ -793,7 +849,10 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
             range={openRange ?? WHOLE_MAP}
             levelling={levelling}
             onLevelling={setLevelling}
+            brush={mapBrush}
+            shifting={shifting}
             onTool={setMapTool}
+            onBrush={setMapBrush}
             onMaterial={setMaterialId}
             onLeave={() => setOpenMap(null)}
             dispatch={dispatch}

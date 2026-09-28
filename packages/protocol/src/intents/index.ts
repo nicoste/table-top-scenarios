@@ -3,7 +3,7 @@
 
 import { z } from 'zod';
 import { CellIndex, TerrainIdSchema, MarkerIdSchema, PlaceCellSchema, WorldCellSchema } from '../wire/index.js';
-import { MAX_HEIGHT, MAX_BRUSH } from '@tt/domain';
+import { MAX_HEIGHT, MAX_BRUSH, MAP_BRUSH_CELLS } from '@tt/domain';
 
 const cell = { cx: z.number().int(), cz: z.number().int(), x: CellIndex, z: CellIndex };
 /** Brush footprint in cells per side. One intent per stroke, not one per cell. */
@@ -13,6 +13,19 @@ const size = z.number().int().min(1).max(MAX_BRUSH).optional();
  * (D-170). Opaque to the host — it only ever compares it to the previous one.
  */
 const stroke = z.string().min(1).max(64).optional();
+/**
+ * The cells one block edit touches: a brush's patch, or a single cube (R-162).
+ *
+ * A list rather than one coordinate and a size, because the console has to know
+ * the exact cells anyway — it outlines them — and deriving them twice is two
+ * chances to disagree about which cube the click edits. Capped at the widest
+ * brush, so a list is bounded by the same rule that shapes it; the host still
+ * checks every cell against the footprint and against what is standing there,
+ * exactly as it did when each cell arrived on its own.
+ */
+const cells = z.array(z.object({
+  x: z.number().int(), y: z.number().int(), z: z.number().int(),
+})).min(1).max(MAP_BRUSH_CELLS).readonly();
 
 export const IntentSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('createCampaign'), name: z.string().min(1).max(80) }),
@@ -71,9 +84,9 @@ export const IntentSchema = z.discriminatedUnion('kind', [
 
   // A point of interest's map (D-183). Authored content, so GM only. `stroke`
   // ties one drag into a single undo, exactly as it does for terrain (R-140b).
-  z.object({ kind: z.literal('setBlock'), placeId: z.string().min(1), poiId: z.string().min(1), x: z.number().int(), y: z.number().int(), z: z.number().int(), materialId: z.string().min(1), stroke }),
-  z.object({ kind: z.literal('paintBlock'), placeId: z.string().min(1), poiId: z.string().min(1), x: z.number().int(), y: z.number().int(), z: z.number().int(), materialId: z.string().min(1), stroke }),
-  z.object({ kind: z.literal('clearBlock'), placeId: z.string().min(1), poiId: z.string().min(1), x: z.number().int(), y: z.number().int(), z: z.number().int(), stroke }),
+  z.object({ kind: z.literal('setBlock'), placeId: z.string().min(1), poiId: z.string().min(1), cells, materialId: z.string().min(1), stroke }),
+  z.object({ kind: z.literal('paintBlock'), placeId: z.string().min(1), poiId: z.string().min(1), cells, materialId: z.string().min(1), stroke }),
+  z.object({ kind: z.literal('clearBlock'), placeId: z.string().min(1), poiId: z.string().min(1), cells, stroke }),
   z.object({ kind: z.literal('fillMaterial'), placeId: z.string().min(1), poiId: z.string().min(1), x: z.number().int(), y: z.number().int(), z: z.number().int(), materialId: z.string().min(1) }),
   z.object({ kind: z.literal('addPlane'), placeId: z.string().min(1), poiId: z.string().min(1), name: z.string().max(40), y: z.number().int() }),
   z.object({ kind: z.literal('renamePlane'), placeId: z.string().min(1), poiId: z.string().min(1), planeId: z.string().min(1), name: z.string().max(40) }),

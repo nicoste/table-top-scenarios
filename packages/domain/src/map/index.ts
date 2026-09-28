@@ -137,6 +137,146 @@ export function blockAt(map: EncounterMap, at: BlockCoord): MaterialId | null {
   return map.blocks.get(blockKey(at)) ?? null;
 }
 
+// -- the brush (R-162) ------------------------------------------------------
+
+/**
+ * The axis a face's normal runs along — the one a brush does **not** spread in.
+ *
+ * A patch lies *on the face you are pointing at*: horizontal on a rooftop,
+ * vertical on a wall. Spreading in a fixed pair of axes instead would make a
+ * 5×5 on a wall reach five blocks into the building, which is not what the
+ * outline showed and not what anyone means by painting a wall.
+ */
+export type FaceAxis = 'x' | 'y' | 'z';
+
+/** Which axis separates a block from the cell against one of its faces. */
+export function faceAxis(block: BlockCoord, adjacent: BlockCoord): FaceAxis {
+  if (adjacent.x !== block.x) return 'x';
+  if (adjacent.z !== block.z) return 'z';
+  return 'y';
+}
+
+/**
+ * The widest brush, as a **radius**: 2, which is 5×5 (R-162).
+ *
+ * A radius rather than a width, so the GM's "keep the centre cube always" is
+ * arithmetic and not a convention anyone has to remember. An even brush has no
+ * centre cell and is simply unrepresentable here — unlike the world's terrain
+ * brush, which counts cells and puts size 2 off-centre.
+ */
+export const MAP_BRUSH_MAX = 2;
+
+/** How many cells the widest brush reaches: the cap on a single edit. */
+export const MAP_BRUSH_CELLS = (MAP_BRUSH_MAX * 2 + 1) ** 2;
+
+export function clampRadius(radius: number): number {
+  if (!Number.isFinite(radius)) return 0;
+  return Math.min(MAP_BRUSH_MAX, Math.max(0, Math.round(radius)));
+}
+
+/** How wide a brush of this radius reads, for a label the GM chooses from. */
+export function brushWidth(radius: number): number {
+  return clampRadius(radius) * 2 + 1;
+}
+
+/**
+ * The cells a brush covers, centred on `at` and lying in the face's plane.
+ *
+ * Not clipped: what the map will accept is `setBlocks`' business and what the
+ * GM is being shown is the console's. This answers only "where does the brush
+ * reach", so the outline and the edit are drawn from the same list.
+ */
+export function brushPatch(
+  at: BlockCoord,
+  axis: FaceAxis,
+  radius: number,
+): readonly BlockCoord[] {
+  const r = clampRadius(radius);
+  if (r === 0) return [at];
+  const cells: BlockCoord[] = [];
+  for (let a = -r; a <= r; a += 1) {
+    for (let b = -r; b <= r; b += 1) {
+      cells.push(
+        axis === 'y' ? { x: at.x + a, y: at.y, z: at.z + b }
+          : axis === 'x' ? { x: at.x, y: at.y + a, z: at.z + b }
+            : { x: at.x + a, y: at.y + b, z: at.z },
+      );
+    }
+  }
+  return cells;
+}
+
+/**
+ * Builds in every cell of a patch that is **empty and inside the map**.
+ *
+ * Not `cells.reduce(setBlock)`: `setBlock` replaces whatever is there, which is
+ * what paint wants and what build must never do (R-159). The skipping is the
+ * rule, and it lives here rather than as a guard in the host so that a brush
+ * lands where it can and leaves the rest alone — refusing all twenty-five cells
+ * because one of them is occupied would make a brush useless anywhere near
+ * something already built.
+ *
+ * Identity-preserving (R-12), which is also how a caller learns that nothing
+ * happened at all.
+ */
+export function setBlocks(
+  map: EncounterMap,
+  cells: readonly BlockCoord[],
+  material: MaterialId,
+): EncounterMap {
+  const blocks = new Map(map.blocks);
+  let touched = false;
+  for (const at of cells) {
+    if (!inMap(map, at)) continue;
+    const key = blockKey(at);
+    if (blocks.has(key)) continue;
+    blocks.set(key, material);
+    touched = true;
+  }
+  return touched ? { ...map, blocks } : map;
+}
+
+/** Erases every cell of a patch that holds a block. Identity-preserving (R-12). */
+export function clearBlocks(
+  map: EncounterMap,
+  cells: readonly BlockCoord[],
+): EncounterMap {
+  const blocks = new Map(map.blocks);
+  let touched = false;
+  for (const at of cells) {
+    const key = blockKey(at);
+    if (!blocks.has(key)) continue;
+    blocks.delete(key);
+    touched = true;
+  }
+  return touched ? { ...map, blocks } : map;
+}
+
+/**
+ * Repaints every cell of a patch that **already holds** a block (R-159).
+ *
+ * The mirror of `setBlocks`: paint will not conjure a block, build will not
+ * overwrite one. A brush dragged across a rooftop therefore colours the roof
+ * and not the sky behind it.
+ */
+export function paintBlocks(
+  map: EncounterMap,
+  cells: readonly BlockCoord[],
+  material: MaterialId,
+): EncounterMap {
+  const blocks = new Map(map.blocks);
+  let touched = false;
+  for (const at of cells) {
+    if (!inMap(map, at)) continue;
+    const key = blockKey(at);
+    const standing = blocks.get(key);
+    if (standing === undefined || standing === material) continue;
+    blocks.set(key, material);
+    touched = true;
+  }
+  return touched ? { ...map, blocks } : map;
+}
+
 /**
  * A new map: a flat floor at Y0 across the whole patch (R-149).
  *

@@ -9,8 +9,8 @@
 // Neither of them may assume the other's precedence.
 
 import type { MapTool, Tool } from '../store/index.js';
-import type { BlockCoord, LevelRange } from '@tt/domain';
-import { inRange } from '@tt/domain';
+import type { BlockCoord, FaceAxis, LevelRange } from '@tt/domain';
+import { brushPatch, faceAxis, inRange } from '@tt/domain';
 import type { FacePick } from '@tt/render';
 
 export interface Cell { readonly cx: number; readonly cz: number; readonly x: number; readonly z: number }
@@ -123,13 +123,29 @@ export function tableAction(pointed: Pointed, aiming: boolean): TableAction {
   return { kind: 'clearSelection' };
 }
 
-/** What a click means inside an encounter map (D-181). */
+/**
+ * What a click means inside an encounter map (D-181, R-162).
+ *
+ * `at` is where the gesture is aimed — the cube the readout names and the one
+ * the refusals are about. `cells` is everything the click actually edits: the
+ * brush's patch, already clipped to the levels the GM is being shown. They are
+ * the same single cell at the narrowest brush.
+ *
+ * Both are here, on one value, because the outline and the edit are drawn from
+ * it: the cubes that light up are by construction the cubes the click changes.
+ */
 export type MapAction =
   | { readonly kind: 'nothing' }
   /** `under` is the dig modifier: the cell below the cube, not against its face. */
-  | { readonly kind: 'place'; readonly at: BlockCoord; readonly under: boolean }
-  | { readonly kind: 'erase'; readonly at: BlockCoord }
-  | { readonly kind: 'paint'; readonly at: BlockCoord }
+  | {
+    readonly kind: 'place';
+    readonly at: BlockCoord;
+    readonly cells: readonly BlockCoord[];
+    readonly under: boolean;
+  }
+  | { readonly kind: 'erase'; readonly at: BlockCoord; readonly cells: readonly BlockCoord[] }
+  | { readonly kind: 'paint'; readonly at: BlockCoord; readonly cells: readonly BlockCoord[] }
+  /** A fill takes no brush: it already reaches as far as the material goes. */
   | { readonly kind: 'fill'; readonly at: BlockCoord };
 
 /**
@@ -156,25 +172,79 @@ export type MapAction =
  * reads off `face.block` rather than adjusting `face.adjacent` by the normal.
  * Pointing at any side of a cube digs under *that cube*.
  */
+export interface MapReach {
+  /** The brush, as a radius: 0 is one cube, 2 is 5×5 (R-162). */
+  readonly radius: number;
+  /** Alt/Option — build *under* the cube rather than against its face (R-160). */
+  readonly alt: boolean;
+  /** Shift — the tool's other mode: erase under Build, fill under Paint. */
+  readonly shift: boolean;
+  /**
+   * The levels a brush may touch, or `null` for all of them.
+   *
+   * The GM's band while they are levelling. A brush on a wall spans five levels
+   * at its widest, so it is the first gesture that can reach across a cut — and
+   * it must not, because the band being a slice rather than a dimming is what
+   * stops the GM editing what they cannot see (R-159).
+   *
+   * Clipped rather than refused: a wide brush near the edge of the band should
+   * lay down what it can, the same way it does at the edge of the map.
+   */
+  readonly within: LevelRange | null;
+}
+
+/**
+ * Two tools and two modifiers, which is the whole of the map's toolset (R-162).
+ *
+ * | | Build | Paint |
+ * | --- | --- | --- |
+ * | plain | place | repaint |
+ * | Shift | **erase** | **fill** |
+ * | Alt | build underneath | — |
+ *
+ * Shift is the tool's other mode, and it is Shift rather than the more obvious
+ * Ctrl because macOS delivers Ctrl+click as a secondary click — which this
+ * console already spends on panning the camera. A binding that works on one
+ * platform is not a binding.
+ *
+ * Build is the only mode that acts on an *empty* cell. The others act on the
+ * block you can see, which is the one under the pointer.
+ */
 export function mapAction(
   tool: MapTool,
   face: FacePick | null,
-  under = false,
+  reach: MapReach,
 ): MapAction {
   if (!face) return { kind: 'nothing' };
-  // Build is the only tool that acts on an *empty* cell. The other three act on
-  // the block you can see, which is the one under the pointer — and none of
-  // them takes the modifier, because reaching under a solid block to erase or
-  // repaint it is editing what you cannot see (R-159).
-  switch (tool) {
-    case 'build':
-      return under
-        ? { kind: 'place', at: { x: face.block.x, y: face.block.y - 1, z: face.block.z }, under }
-        : { kind: 'place', at: face.adjacent, under };
-    case 'erase': return { kind: 'erase', at: face.block };
-    case 'paint': return { kind: 'paint', at: face.block };
-    case 'fill': return { kind: 'fill', at: face.block };
+  /**
+   * The patch, in the plane of whichever face was hit and clipped to the band.
+   *
+   * The axis comes from the pick rather than from the tool, so a brush lies on
+   * the surface it is pointed at: flat on a rooftop, upright on a wall.
+   */
+  const patch = (at: BlockCoord, axis: FaceAxis): readonly BlockCoord[] => {
+    const cells = brushPatch(at, axis, reach.radius);
+    return reach.within ? cells.filter((cell) => inRange(reach.within!, cell.y)) : cells;
+  };
+  const axis = faceAxis(face.block, face.adjacent);
+
+  if (tool === 'build') {
+    // Erasing acts on the cube that was hit, which is already "the cube, not
+    // the face" — so the dig modifier has nothing left to say and is ignored.
+    if (reach.shift) {
+      return { kind: 'erase', at: face.block, cells: patch(face.block, axis) };
+    }
+    if (reach.alt) {
+      const at = { x: face.block.x, y: face.block.y - 1, z: face.block.z };
+      // Flat, whichever side was pointed at: digging is aimed at the cube, so
+      // its patch lies under the cube rather than in the face's plane.
+      return { kind: 'place', at, cells: patch(at, 'y'), under: true };
+    }
+    return { kind: 'place', at: face.adjacent, cells: patch(face.adjacent, axis), under: false };
   }
+
+  if (reach.shift) return { kind: 'fill', at: face.block };
+  return { kind: 'paint', at: face.block, cells: patch(face.block, axis) };
 }
 
 /**
@@ -191,9 +261,14 @@ export function mapAction(
  * Fill is excluded for a different reason: it is already a bulk action. One
  * click can repaint a wing of a building, and dragging one would fire another
  * whole region per cell entered.
+ *
+ * It reads the **action** rather than the tool now that erase and fill are
+ * modifiers on the two tools (R-162). Asking the tool would let a held Shift
+ * drag an erase across the geometry it is eating, which is the case the rule
+ * exists to prevent.
  */
-export function mapDrags(tool: MapTool): boolean {
-  return tool === 'paint';
+export function mapDrags(action: MapAction): boolean {
+  return action.kind === 'paint';
 }
 
 /**
@@ -205,8 +280,6 @@ export function mapDrags(tool: MapTool): boolean {
  * safety. The other half is here.
  */
 export interface MapAim {
-  readonly levelling: boolean;
-  readonly range: LevelRange;
   /** Is there a block at the cell the tool picked? */
   readonly occupied: boolean;
   /**
@@ -227,34 +300,39 @@ export type MapVerdict =
 /**
  * Whether the aimed-at cell is one this tool may act on.
  *
- * Two refusals, and both exist because hiding levels makes the screen stop
- * telling the whole truth:
+ * Three refusals:
  *
  * - **Building into an occupied cell.** With everything drawn this could not
  *   happen: a face you can see has air in front of it. With the band shown
  *   alone, a ray passes through what is hidden and lands on the far side, so
  *   the cell "in front" of the face may hold a block a level down. The host
  *   refuses it too — this is so the GM reads why *before* clicking.
- * - **Building outside the band.** The block would be placed and then vanish,
- *   because the GM is not being shown that level. Refusing beats a cube that
- *   blinks out of existence.
+ * - **Nothing left to act on**, because the band clipped the whole patch —
+ *   which happens exactly when the cube being aimed at is outside it. The
+ *   block would have been placed and then vanished, unseen (R-162).
+ * - A cell **outside the footprint**, which is what the outward face of an
+ *   edge block aims at.
  *
- * And one that has nothing to do with levelling: a cell **outside the
- * footprint**, which is what the outward face of an edge block aims at.
- *
- * Erase, paint and fill need no band check: they act on a block that was
- * picked, and only visible blocks can be picked.
+ * Erasing, painting and filling need no band check of their own: they act on a
+ * block that was picked, and only visible blocks can be picked.
  */
 export function mapAllowed(action: MapAction, aim: MapAim): MapVerdict {
   if (action.kind === 'nothing') return { kind: 'stop', why: '' };
 
   if (!aim.inBounds) return { kind: 'stop', why: 'outside the map' };
 
+  /*
+   * An empty patch means the band clipped every cell, which can only happen
+   * when the cube being aimed at is itself outside it (R-162). The clip
+   * replaces the explicit band check this used to make: two mechanisms for one
+   * rule is how they come to disagree.
+   */
+  if (action.kind !== 'fill' && action.cells.length === 0) {
+    return { kind: 'stop', why: 'outside the levels you are showing' };
+  }
+
   if (action.kind === 'place') {
     if (aim.occupied) return { kind: 'stop', why: 'a block is already there' };
-    if (aim.levelling && !inRange(aim.range, action.at.y)) {
-      return { kind: 'stop', why: 'outside the levels you are showing' };
-    }
     return { kind: 'go' };
   }
 
@@ -265,8 +343,8 @@ export function mapAllowed(action: MapAction, aim: MapAim): MapVerdict {
 export interface MapHover {
   /** What the readout says, or `null` when the pointer is over nothing. */
   readonly label: string | null;
-  /** The cube to outline, or `null` for none (R-153). */
-  readonly ghost: BlockCoord | null;
+  /** The cubes to outline — empty for none (R-153). */
+  readonly ghost: readonly BlockCoord[];
 }
 
 /**
@@ -301,14 +379,17 @@ export function mapHover(
   reach?: FillReach,
   verdict?: MapVerdict,
 ): MapHover {
-  if (action.kind === 'nothing') return { label: null, ghost: null };
+  if (action.kind === 'nothing') return { label: null, ghost: [] };
   const { x, y, z } = action.at;
   const where = `${verbFor(action)} ${x},${y},${z}`;
+  const cells = action.kind === 'fill' ? [action.at] : action.cells;
 
   // A refusal reads *instead* of the action, because the action is not going to
-  // happen and saying both would be telling the GM two things at once.
+  // happen and saying both would be telling the GM two things at once. The
+  // outline stays on the cube that was aimed at, so a refused gesture still
+  // shows where it was pointing.
   if (verdict?.kind === 'stop' && verdict.why) {
-    return { label: `${where} — ${verdict.why}`, ghost: action.at };
+    return { label: `${where} — ${verdict.why}`, ghost: [action.at] };
   }
 
   // A fill says how much it is about to repaint, because one click can reach a
@@ -319,8 +400,12 @@ export function mapHover(
     const unseen = reach.unseen > 0 ? `, ${reach.unseen} unseen` : '';
     return {
       label: `${where} — ${reach.total} block${reach.total === 1 ? '' : 's'}${unseen}`,
-      ghost: action.at,
+      ghost: cells,
     };
   }
-  return { label: where, ghost: action.at };
+  // A brush says how many cubes it covers, because the outline shows the shape
+  // and not how much of it will take — cells already built, or already the
+  // right colour, are skipped without a word.
+  if (cells.length > 1) return { label: `${where} — ${cells.length} wide`, ghost: cells };
+  return { label: where, ghost: cells };
 }
