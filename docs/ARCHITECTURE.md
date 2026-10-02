@@ -2298,7 +2298,21 @@ apps/host/src/
 >
 > The cost moves from build time to **every frame**, which is a real trade and
 > not obviously the right one on whatever drives the table. So it is a switch,
-> read beside the numbers (R-166): shift+backtick, with its state on the panel.
+> read beside the numbers (R-166): shift+backtick, with its state on the panel
+> — and it is **off by default** (D-225). The console is a tool somebody runs
+> all session, and the first laptop to try this got warm.
+>
+> **Off means off, not "the composer with one pass skipped."** The composer is
+> not free on its own: a half-float target, multisampled, at the device pixel
+> ratio, blitted back every frame. Leaving it in the path would make "off" cost
+> more than before the feature existed, and would make the switch useless as
+> the comparison it exists to be.
+>
+> **Frame time cannot see this**, which is the thing worth remembering about
+> the overlay. `requestAnimationFrame` is locked to the display, so a GPU doing
+> three times the work still reports the same frame time until it misses a
+> frame entirely. Frame time measures *lateness*, not *load*. The GM's fan was
+> a better instrument than anything on the panel.
 >
 > **The composer's target is multisampled on purpose.** A composer draws into
 > its own buffer, where the renderer's `antialias` does nothing, and the

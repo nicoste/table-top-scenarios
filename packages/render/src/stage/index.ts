@@ -80,6 +80,8 @@ export class Stage {
   private readonly renderer: WebGLRenderer;
   private readonly composer: EffectComposer;
   private readonly occlusion: GTAOPass;
+  /** Off until a screen is shown to afford it (R-168, D-225). */
+  private occluding = false;
   private readonly scene = new Scene();
   private readonly camera = createCamera();
   private readonly raycaster = new Raycaster();
@@ -184,7 +186,9 @@ export class Stage {
      * nothing about the geometry or the picking changes.
      *
      * The cost moves from build time to **every frame**, which is the part
-     * worth watching rather than assuming — see `cost()` and R-166.
+     * worth watching rather than assuming — see `cost()` and R-166. It is
+     * **off by default**: the GM's console runs all session on a laptop, and
+     * the first thing this did on one was warm it up (D-225).
      *
      * The render target is **multisampled on purpose.** A composer draws into
      * its own buffer, where the renderer's `antialias` does nothing, and the
@@ -656,6 +660,7 @@ export class Stage {
    * written on.
    */
   setOcclusion(on: boolean): void {
+    this.occluding = on;
     this.occlusion.enabled = on;
   }
 
@@ -681,7 +686,19 @@ export class Stage {
       this.pawns.group.visible = markers;
       if (markers) this.pawns.scaleLabels(this.target.zoom, this.canvas.clientHeight || 1);
     }
-    this.composer.render();
+    /*
+     * Straight to the canvas when occlusion is off — **not** through the
+     * composer with one pass disabled (D-225).
+     *
+     * The composer is not free on its own: it renders into a half-float
+     * target, multisampled, at the device's pixel ratio, and then blits it
+     * back. Leaving that in the path and merely skipping the AO pass would
+     * mean "off" still cost more than before any of this existed, and would
+     * make the switch useless as a comparison — which is the only thing it is
+     * for.
+     */
+    if (this.occluding) this.composer.render();
+    else this.renderer.render(this.scene, this.camera);
   }
 
   dispose(): void {

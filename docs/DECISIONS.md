@@ -4319,3 +4319,46 @@ back on, and the panel close.
 Worth keeping as a habit rather than a rule: **a keyboard shortcut with a
 modifier cannot be matched on the character**, because the modifier is what
 changes the character. The convention already existed; the lapse was mine.
+
+### D-225 — The fan was a better instrument than the overlay · `agreed`
+*"I can tell you that my pc is getting warmer, so this change definitely
+consumes more."*
+
+Correct, and the overlay I had just built **cannot see it**, which is the part
+worth writing down. `requestAnimationFrame` is locked to the display: a GPU
+doing three times the work reports the same frame time until it misses a frame
+outright. Frame time measures *lateness*, not *load*. The panel would have sat
+there reading a comfortable 120 fps while the machine heated up, and I would
+have believed it.
+
+The arithmetic, which I should have done before shipping rather than after
+being told: at a 1024×768 canvas on a 2× display the composer works on 3.1
+million pixels a pass, and GTAO takes sixteen samples at each — about **50
+million AO samples a frame**, plus a normal prepass and a denoise blur, plus a
+four-times-multisampled half-float target to keep the antialiasing a composer
+otherwise throws away.
+
+**Two fixes, and one of them is mine to own.**
+
+- It is **off by default** now. The console is a tool somebody runs all
+  session; a visual nicety should not be the reason a laptop is warm.
+- "Off" now means the composer is **bypassed entirely**, not that one pass is
+  skipped inside it. The composer costs something on its own — that
+  multisampled half-float target was my addition, to stop the composer
+  throwing away the renderer's antialiasing — so leaving it in the path would
+  have made "off" cost more than before any of this existed, and would have
+  made the switch useless as the comparison it exists to be. That was a real
+  bug in the thing I shipped to measure with.
+
+**What remains undecided**, deliberately, until it can be measured rather than
+guessed: whether GTAO is affordable at half resolution (four times fewer AO
+pixels, the standard lever and the one GTAOPass does not offer as a parameter),
+whether fewer than sixteen samples still reads, and whether the table — the
+screen where it actually matters — can carry it at all while the console never
+needed it.
+
+And a gap in the instrument to close before trusting it again: **GPU time is
+not on the panel because the browser makes it hard** (`EXT_disjoint_timer_query`
+is often unavailable). Worth attempting at runtime and showing when the browser
+allows, because "is this expensive" is the question the overlay was built to
+answer and it currently cannot.

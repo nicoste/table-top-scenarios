@@ -63,8 +63,11 @@ export function useCost(stage: Stage | null, frames: { current: number[] }): {
    * (R-168), and the only machine whose answer matters is the one driving the
    * table. A switch beside the numbers is what makes that measurable by the
    * person standing in front of it.
+   *
+   * **Off by default** (D-225). It is a visual nicety and the console is a
+   * tool somebody runs all session; the first laptop to try it got warm.
    */
-  const [occlusion, setOcclusion] = useState(true);
+  const [occlusion, setOcclusion] = useState(false);
   const [reading, setReading] = useState<Reading | null>(null);
 
   useEffect(() => {
