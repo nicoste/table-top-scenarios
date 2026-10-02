@@ -4362,3 +4362,50 @@ not on the panel because the browser makes it hard** (`EXT_disjoint_timer_query`
 is often unavailable). Worth attempting at runtime and showing when the browser
 allows, because "is this expensive" is the question the overlay was built to
 answer and it currently cannot.
+
+### D-226 — Thirty frames is plenty, and the panel was lying · `agreed`
+The GM measured the thing their fan had already told them, and the screenshots
+settled two questions and exposed a third.
+
+| | fps | p50 | draw calls | triangles |
+| --- | --- | --- | --- | --- |
+| before any of this | 120 | 8.3 ms | 2 | 116,568 |
+| occlusion **on** | **51** | **19.7 ms** | 1 | **1** |
+| occlusion off | 119 | 8.4 ms | 2 | 116,580 |
+
+**Occlusion halves the frame rate** — about 11 ms a frame. Settled, with a
+number rather than a guess.
+
+**`triangles: 1` is my panel lying**, and that is the third thing. `info`
+resets before each render, so with a composer in the path the only counts left
+at the end belong to the last pass — a full-screen quad. The overlay reported
+one triangle for 9,714 cubes, which is worse than reporting nothing: it read as
+though occlusion had made the scene *cheaper*. Counted across the whole frame
+now.
+
+**Thirty frames a second**, the GM's suggestion and plainly right: *"This is
+not a AAA game."* Nothing in this scene moves but a camera easing between four
+fixed angles, and a 120 Hz panel was paying four times over to show the same
+still picture. Three.js has no limiter, so it is a gate in the loop — with two
+milliseconds of slop, which is load-bearing: a budget of exactly 33.3 ms misses
+the tick at 33.3 on a 120 Hz display and waits for 41.6, giving 24 fps rather
+than 30. Measured after: 30 fps, p50 33.4 ms, p95 33.7.
+
+Two consequences inside the overlay: the frame window samples **renders**
+rather than ticks, or skipped ones would read as a flattering 8 ms; and p95 is
+judged against the **budget** rather than an absolute, because at 30 fps a
+33 ms frame is on time and the same number at 60 is a missed one.
+
+**And the gap that started this is closed: GPU time is on the panel**, from
+`EXT_disjoint_timer_query_webgl2`, read a frame or two late because a result is
+never ready on the frame that asked, and discarded whole when the driver
+reports a disjoint. `n/a` where the browser hides it, rather than a number that
+is wrong. It reads 0.9 ms on an empty scene here, and it is the only figure on
+the panel that answers "is this expensive" — which was the question the whole
+overlay was built for.
+
+**A note on what the cap does to occlusion.** At 30 fps the budget is 33.3 ms
+and occlusion cost about 19.7 — so it *fits*, where uncapped it was saturating.
+That does not make it free, and it stays off by default, but it moves the
+question from "can this run at all" to "is it worth 60% of a frame", which is
+the GM's to answer with the panel open.

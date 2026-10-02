@@ -13,6 +13,7 @@
 
 import { useEffect, useState } from 'react';
 import type { Stage } from '@tt/render';
+import { FRAME_BUDGET_MS } from '@tt/render';
 import { rate, summarise } from '@tt/client-core';
 import type { Reading } from '@tt/ui';
 
@@ -102,6 +103,8 @@ export function useCost(stage: Stage | null, frames: { current: number[] }): {
         pushes: rate(arrivals, performance.now()),
         heap: heapNow(),
         occlusion,
+        gpuMs: cost?.gpuMs ?? null,
+        budgetMs: FRAME_BUDGET_MS,
       });
     };
     take();

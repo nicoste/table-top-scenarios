@@ -59,6 +59,25 @@ export interface Picked {
 
 let instances = 0;
 
+/**
+ * How often a screen redraws at most (R-169).
+ *
+ * Thirty, deliberately. This is a map on a table, not a shooter: nothing in it
+ * moves except a camera easing between four fixed angles, and a 120 Hz display
+ * was costing four times the GPU to show the same still picture. The GM's
+ * laptop runs this all session and the table's box may be a modest one.
+ *
+ * Three.js has no frame limiter — `setAnimationLoop` takes no rate — so the
+ * cap lives in the loop that calls `render`, which is the app's.
+ *
+ * **The slop matters.** Frames arrive on the display's clock, so a budget of
+ * exactly 33.3 ms on a 120 Hz panel is missed by the tick at 33.3 and waits
+ * for the one at 41.6 — which is 24 fps, not 30. A couple of milliseconds of
+ * tolerance lands it on the right tick at 60, 120 and 144.
+ */
+export const FRAME_BUDGET_MS = 1000 / 30;
+export const FRAME_SLOP_MS = 2;
+
 /** What `Stage.cost()` reports (R-166). */
 export interface StageCost {
   readonly calls: number;
@@ -70,6 +89,8 @@ export interface StageCost {
   readonly rebuildMs: number;
   /** How many cubes are drawn, or zero outside a map. */
   readonly blocks: number;
+  /** Milliseconds the GPU spent on a recent frame, or null where unavailable. */
+  readonly gpuMs: number | null;
 }
 
 export class Stage {
@@ -90,6 +111,19 @@ export class Stage {
   private readonly blockGhost: LineSegments;
   /** How long the last map body took to build — the usual cause of a hitch. */
   private rebuildMs = 0;
+  /*
+   * GPU time, which is the number the overlay was missing and the reason a
+   * fan noticed what the panel could not (D-226). `requestAnimationFrame` is
+   * locked to the display, so frame time reports *lateness*, never *load*: a
+   * card doing four times the work reads the same until it drops a frame.
+   *
+   * Measured with a timer query, which browsers expose grudgingly — it is
+   * absent on plenty of configurations and returns nothing on others. Null
+   * throughout when it is unavailable, rather than a number that is wrong.
+   */
+  private readonly timer: { TIME_ELAPSED_EXT: number; GPU_DISJOINT_EXT: number } | null;
+  private pending: WebGLQuery | null = null;
+  private gpuMs: number | null = null;
   private readonly slots = new Group();
   private world: WorldMeshes | null = null;
   private places: PlaceMarkers | null = null;
@@ -145,6 +179,20 @@ export class Stage {
   constructor(private readonly canvas: HTMLCanvasElement) {
     this.renderer = new WebGLRenderer({ canvas, antialias: true });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    /*
+     * Counted across the whole frame, not per pass (D-226).
+     *
+     * `info` resets itself before each render by default, so once a composer
+     * is in the path the only numbers left at the end are the last pass's —
+     * a full-screen quad. The panel duly reported one draw call and one
+     * triangle for a scene of 9,714 cubes, which is worse than reporting
+     * nothing: it looked like occlusion had made the scene cheaper.
+     */
+    this.renderer.info.autoReset = false;
+    const gl = this.renderer.getContext();
+    this.timer = 'createQuery' in gl
+      ? (gl.getExtension('EXT_disjoint_timer_query_webgl2') as typeof this.timer)
+      : null;
     this.scene.background = new Color('#0f1216');
 
     this.scene.add(
@@ -621,6 +669,30 @@ export class Stage {
   }
 
   /**
+   * Collects a timer query once the driver has finished with it.
+   *
+   * A result is never ready on the frame that asked for it, so this reads the
+   * one in flight and only starts another when that is done — which makes the
+   * figure a recent frame's rather than this one's, and that is the honest
+   * best a browser allows.
+   *
+   * A **disjoint** means the GPU was interrupted and every outstanding timing
+   * is nonsense; the whole result is thrown away rather than reported low.
+   */
+  private readTimer(gl: WebGL2RenderingContext): void {
+    if (!this.timer || !this.pending) return;
+    const disjoint = gl.getParameter(this.timer.GPU_DISJOINT_EXT) as boolean;
+    const ready = gl.getQueryParameter(this.pending, gl.QUERY_RESULT_AVAILABLE) as boolean;
+    if (!ready && !disjoint) return;
+    if (ready && !disjoint) {
+      const ns = gl.getQueryParameter(this.pending, gl.QUERY_RESULT) as number;
+      this.gpuMs = ns / 1e6;
+    }
+    gl.deleteQuery(this.pending);
+    this.pending = null;
+  }
+
+  /**
    * What this screen is costing the GPU, for the overlay (R-166).
    *
    * Straight from `renderer.info`, which three.js keeps for free and resets
@@ -640,6 +712,7 @@ export class Stage {
       programs: info.programs?.length ?? 0,
       rebuildMs: this.rebuildMs,
       blocks: this.blocks?.count ?? 0,
+      gpuMs: this.gpuMs,
     };
   }
 
@@ -686,6 +759,13 @@ export class Stage {
       this.pawns.group.visible = markers;
       if (markers) this.pawns.scaleLabels(this.target.zoom, this.canvas.clientHeight || 1);
     }
+    this.renderer.info.reset();
+    const gl = this.renderer.getContext() as WebGL2RenderingContext;
+    this.readTimer(gl);
+    if (this.timer && !this.pending) {
+      this.pending = gl.createQuery();
+      if (this.pending) gl.beginQuery(this.timer.TIME_ELAPSED_EXT, this.pending);
+    }
     /*
      * Straight to the canvas when occlusion is off — **not** through the
      * composer with one pass disabled (D-225).
@@ -699,6 +779,7 @@ export class Stage {
      */
     if (this.occluding) this.composer.render();
     else this.renderer.render(this.scene, this.camera);
+    if (this.timer && this.pending) gl.endQuery(this.timer.TIME_ELAPSED_EXT);
   }
 
   dispose(): void {

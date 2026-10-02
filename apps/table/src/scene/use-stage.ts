@@ -7,7 +7,7 @@
 // dependency the effect can actually see.
 
 import { useEffect, useRef, useState } from 'react';
-import { Stage } from '@tt/render';
+import { Stage, FRAME_BUDGET_MS, FRAME_SLOP_MS } from '@tt/render';
 import { keepRecent } from '@tt/client-core';
 
 export function useStage(): {
@@ -36,11 +36,18 @@ export function useStage(): {
 
     let raf = 0;
     const loop = () => {
+      raf = requestAnimationFrame(loop);
       const now = performance.now();
-      if (previous.current !== 0) frames.current = keepRecent(frames.current, now - previous.current);
+      // Capped (R-169). Asking for the next frame first, so a skipped tick
+      // still keeps the loop alive.
+      const since = previous.current === 0 ? Infinity : now - previous.current;
+      if (since < FRAME_BUDGET_MS - FRAME_SLOP_MS) return;
+      // The interval between *renders*, which is what the screen shows. A
+      // window of skipped ticks would read as a flattering 8 ms and mean
+      // nothing.
+      if (previous.current !== 0) frames.current = keepRecent(frames.current, since);
       previous.current = now;
       created.render();
-      raf = requestAnimationFrame(loop);
     };
     loop();
 

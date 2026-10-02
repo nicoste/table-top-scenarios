@@ -2282,6 +2282,22 @@ apps/host/src/
 > and fill do not, and asking the tool would let a held Shift drag an erase
 > through the geometry it is eating.
 
+> **R-169.** **Both screens are capped at 30 frames a second.**
+>
+> This is a map on a table. Nothing in it moves except a camera easing between
+> four fixed angles, and a 120 Hz display was spending four times the GPU to
+> show the same still picture — on a laptop the GM runs all session and a box
+> that may be driving a TV.
+>
+> Three.js has no frame limiter, so the cap lives in the loop that calls
+> `render`. A couple of milliseconds of slop is load-bearing: a budget of
+> exactly 33.3 ms is missed by the tick at 33.3 on a 120 Hz panel and waits for
+> 41.6, which is 24 fps.
+>
+> **The frame window samples renders, not ticks**, or the skipped ones would
+> read as a flattering 8 ms, and **p95 is judged against the budget** rather
+> than an absolute — at 30 fps a 33 ms frame is on time.
+
 > **R-168.** **Ambient occlusion is a post-process, not geometry.**
 >
 > `GTAOPass`, which three.js ships, in a composer: render → occlusion →
@@ -2309,10 +2325,12 @@ apps/host/src/
 > the comparison it exists to be.
 >
 > **Frame time cannot see this**, which is the thing worth remembering about
-> the overlay. `requestAnimationFrame` is locked to the display, so a GPU doing
-> three times the work still reports the same frame time until it misses a
-> frame entirely. Frame time measures *lateness*, not *load*. The GM's fan was
-> a better instrument than anything on the panel.
+> the overlay. `requestAnimationFrame` is locked to the display — and capped on
+> top of that (R-169) — so a GPU doing three times the work still reports the
+> same frame time until it misses a frame entirely. Frame time measures
+> *lateness*, not *load*. The GM's fan was a better instrument than anything on
+> the panel, which is why the panel now reports **GPU time** from a timer query
+> where the browser allows one, and says `n/a` where it does not (D-226).
 >
 > **The composer's target is multisampled on purpose.** A composer draws into
 > its own buffer, where the renderer's `antialias` does nothing, and the
