@@ -3958,3 +3958,19 @@ a second one.
 
 This closes the field left open in D-214, which flagged the colour picker rather
 than half-fixing it on the way past.
+
+### O-026 — The `{1,32}` band was never a bug · `closed`
+D-206 recorded an observation rather than a cause: while verifying the ladder I
+read a stored band of `{1,32}` once — bottom on Cimientos, top on Sky instead of
+Roof — and could not reproduce it across two clean runs.
+
+Closed, on the GM's evidence rather than mine. They have since built a
+9,714-block church across three named levels, moving the band constantly, and
+report the state is kept correctly. The dull explanation was almost certainly
+the right one: I had been dragging handles in that same session and read the
+file after my own drag to Sky.
+
+Left here because an open note that is actually settled is worse than no note —
+the next reader would treat it as a live concern and go looking. The lesson
+worth keeping is the one D-206 already drew: record what was observed, not a
+cause invented to explain it, and let it close when the evidence arrives.
