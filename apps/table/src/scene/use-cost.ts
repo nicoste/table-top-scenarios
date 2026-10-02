@@ -19,7 +19,16 @@ import type { Reading } from '@tt/ui';
 /** Four times a second: fast enough to watch, slow enough not to be the cost. */
 const SAMPLE_MS = 250;
 
-export const COST_KEY = '`';
+/*
+ * Matched by **position**, not by character.
+ *
+ * `e.key` for this key is a backtick unshifted and a tilde shifted, so a check
+ * against the character turned the shifted binding off before it could look at
+ * the modifier — shift+backtick simply did nothing (D-224). `e.code` is the
+ * key in that place whatever the layout says, which is the convention the rest
+ * of the console already follows for its digits and brackets.
+ */
+export const COST_CODE = 'Backquote';
 export const COST_HINT = 'backtick closes this · shift+backtick toggles occlusion';
 
 /*
@@ -60,7 +69,7 @@ export function useCost(stage: Stage | null, frames: { current: number[] }): {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== COST_KEY || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.code !== COST_CODE || e.metaKey || e.ctrlKey || e.altKey) return;
       // Not while the GM is naming something: a backtick belongs to the field.
       const to = e.target as HTMLElement | null;
       if (to && /^(INPUT|TEXTAREA|SELECT)$/.test(to.tagName)) return;

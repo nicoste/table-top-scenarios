@@ -4298,3 +4298,24 @@ The judgement that remains is the GM's, and could not be anyone else's: whether
 it looks better, and whether the table can afford it. Verified here only that
 the chain builds, compiles and renders without error — the console's seat
 belongs to the GM and claiming it would have demoted their window mid-session.
+
+### D-224 — Shift + backtick is not backtick · `agreed`
+*"I can't disable it with shift + `"* — because `e.key` for that key is a
+backtick unshifted and a **tilde** shifted. The handler checked the character
+first and bailed before it ever looked at the modifier, so the shifted binding
+could never fire.
+
+`e.code` is the key in that position whatever the layout or the modifiers say,
+and it is **what the rest of this console already uses** — the digits and the
+brackets are matched by code, with a comment beside them saying exactly why. I
+wrote a new binding and did not follow the convention sitting ten lines away in
+a file I had been editing all week.
+
+Both bindings are matched by position now. Verified by dispatching the real
+pair — `{key: '`', code: 'Backquote'}` and `{key: '~', code: 'Backquote',
+shiftKey: true}` — and watching the panel open, the occlusion row go off and
+back on, and the panel close.
+
+Worth keeping as a habit rather than a rule: **a keyboard shortcut with a
+modifier cannot be matched on the character**, because the modifier is what
+changes the character. The convention already existed; the lapse was mine.
