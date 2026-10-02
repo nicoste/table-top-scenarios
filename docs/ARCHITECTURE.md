@@ -2186,12 +2186,12 @@ apps/host/src/
 > counts *cells* and puts size 2 off-centre, so these are deliberately different
 > things that share their keys (`[` `]`, and 6/7/8) and nothing else.
 >
-> **A patch lies in the plane of the face it was aimed at** — flat on a rooftop,
-> upright on a wall. Spreading in a fixed pair of axes would make a 5×5 on a
-> wall reach five blocks into the building, which is neither what the outline
-> showed nor what anyone means by painting a wall. Digging is the exception, and
-> for its own reason: it is aimed at the *cube*, so its patch lies flat beneath
-> it whichever side was pointed at.
+> **A patch is flat and on one level, always** (D-213). It followed the face
+> first — flat on a rooftop, upright on a wall — which sounds right and reads as
+> weird in the hand: the outline changes orientation as the pointer crosses an
+> edge, so one gesture means two shapes depending on which pixel you are over.
+> One shape every time beats a shape that is cleverer about the surface. It also
+> means a patch cannot straddle a cut, so the band admits all of it or none.
 >
 > **A patch clips; it does not refuse.** Cells outside the footprint (R-157),
 > outside the height bounds, already occupied for a build, or empty for a paint
@@ -2210,13 +2210,12 @@ apps/host/src/
 > trust: every cell is checked at the host exactly as it was when each arrived
 > alone.
 >
-> **The band clips the brush** (R-159). A brush on a wall spans five levels, so
-> it is the first gesture that can reach across a cut, and it must not — the
-> band being a slice rather than a dimming is what stops a GM editing what they
-> cannot see. The clip lives in the console, because whether the GM is levelling
-> is their own view state (R-84) and never crosses the wire. An empty patch is
-> therefore the refusal: it happens exactly when the aimed-at cube is outside
-> the band, which is the check it replaces.
+> **The band decides the whole patch** (R-159). It lives in the console, because
+> whether the GM is levelling is their own view state (R-84) and never crosses
+> the wire. A patch is one level, so the answer is the same for every cell, and
+> an empty patch *is* the refusal — it happens exactly when the cube being aimed
+> at is outside the band, which is the check it replaces. One mechanism, not
+> two saying the same thing.
 >
 > **The drag rule reads the action, not the tool** (R-153). Paint drags; erase
 > and fill do not, and asking the tool would let a held Shift drag an erase

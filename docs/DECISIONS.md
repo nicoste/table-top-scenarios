@@ -3832,3 +3832,36 @@ asking, at the cost of the one job the outline has.
 White for building and painting. **Red stays for erase**, which the GM asked for
 and which works for the opposite reason: it is not a material, so it cannot
 collide with one, and contrast is the whole point of it.
+
+### D-213 — The brush is flat, always · `agreed`
+*"What it looks weird is the tool lying flat on a roof but upright on a wall. I
+would rather do always a flat."*
+
+Following the face was my call in D-211, and it reasons well on paper: a brush
+should lie on the surface it is pointed at, the way a roller does. In the hand it
+is worse, and the GM named why without needing the theory — **the outline changes
+orientation as the pointer crosses an edge.** One gesture means two shapes
+depending on which pixel you happen to be over, and you find out after the
+click. A brush that is always flat is one shape and one level, every time.
+
+What it costs: a wall is no longer built by brushing its face. It is built by
+laying flat courses, which is what the gesture was already doing on a rooftop,
+and is at least the same answer twice.
+
+Two things fall out of it, both simplifications:
+
+- **`faceAxis` is gone**, along with the axis parameter. The patch's shape no
+  longer depends on the pick at all, so there is nothing to derive and nothing
+  to get wrong.
+- **A patch cannot straddle a cut.** Every cell shares the anchor's height, so
+  the band admits the whole gesture or none of it — which is precisely the check
+  `mapAllowed` used to make for itself before R-162 moved it into the patch.
+  Clipping is still how it is expressed, and it is now exact rather than partial.
+
+Asked in the same breath and worth recording, because it is the kind of thing a
+GM should be able to trust without testing: **a build skips, it never
+overwrites.** A 5×5 over half-built ground fills the empty cells and leaves
+every standing block exactly as it was, material included. It refuses only when
+all twenty-five are occupied. Paint is the mirror — it repaints what is there
+and conjures nothing. That was R-162's "clip, do not refuse", and the panel now
+says it out loud rather than leaving it to be discovered.

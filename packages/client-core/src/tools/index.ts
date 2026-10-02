@@ -9,8 +9,8 @@
 // Neither of them may assume the other's precedence.
 
 import type { MapTool, Tool } from '../store/index.js';
-import type { BlockCoord, FaceAxis, LevelRange } from '@tt/domain';
-import { brushPatch, faceAxis, inRange } from '@tt/domain';
+import type { BlockCoord, LevelRange } from '@tt/domain';
+import { brushPatch, inRange } from '@tt/domain';
 import type { FacePick } from '@tt/render';
 
 export interface Cell { readonly cx: number; readonly cz: number; readonly x: number; readonly z: number }
@@ -182,13 +182,10 @@ export interface MapReach {
   /**
    * The levels a brush may touch, or `null` for all of them.
    *
-   * The GM's band while they are levelling. A brush on a wall spans five levels
-   * at its widest, so it is the first gesture that can reach across a cut — and
-   * it must not, because the band being a slice rather than a dimming is what
-   * stops the GM editing what they cannot see (R-159).
-   *
-   * Clipped rather than refused: a wide brush near the edge of the band should
-   * lay down what it can, the same way it does at the edge of the map.
+   * The GM's band while they are levelling. A flat patch is all on one level
+   * (D-213), so this admits the whole gesture or none of it — which is exactly
+   * the band check `mapAllowed` used to make for itself, moved to where the
+   * cells are decided so that there is one mechanism rather than two.
    */
   readonly within: LevelRange | null;
 }
@@ -217,34 +214,30 @@ export function mapAction(
 ): MapAction {
   if (!face) return { kind: 'nothing' };
   /**
-   * The patch, in the plane of whichever face was hit and clipped to the band.
+   * The patch, flat and on one level, with the band's say applied (D-213).
    *
-   * The axis comes from the pick rather than from the tool, so a brush lies on
-   * the surface it is pointed at: flat on a rooftop, upright on a wall.
+   * Every cell shares the anchor's height, so the band either admits the whole
+   * patch or none of it — and an empty patch is how `mapAllowed` learns that
+   * the cube being aimed at is outside the levels the GM is being shown.
    */
-  const patch = (at: BlockCoord, axis: FaceAxis): readonly BlockCoord[] => {
-    const cells = brushPatch(at, axis, reach.radius);
+  const patch = (at: BlockCoord): readonly BlockCoord[] => {
+    const cells = brushPatch(at, reach.radius);
     return reach.within ? cells.filter((cell) => inRange(reach.within!, cell.y)) : cells;
   };
-  const axis = faceAxis(face.block, face.adjacent);
 
   if (tool === 'build') {
     // Erasing acts on the cube that was hit, which is already "the cube, not
     // the face" — so the dig modifier has nothing left to say and is ignored.
-    if (reach.shift) {
-      return { kind: 'erase', at: face.block, cells: patch(face.block, axis) };
-    }
+    if (reach.shift) return { kind: 'erase', at: face.block, cells: patch(face.block) };
     if (reach.alt) {
       const at = { x: face.block.x, y: face.block.y - 1, z: face.block.z };
-      // Flat, whichever side was pointed at: digging is aimed at the cube, so
-      // its patch lies under the cube rather than in the face's plane.
-      return { kind: 'place', at, cells: patch(at, 'y'), under: true };
+      return { kind: 'place', at, cells: patch(at), under: true };
     }
-    return { kind: 'place', at: face.adjacent, cells: patch(face.adjacent, axis), under: false };
+    return { kind: 'place', at: face.adjacent, cells: patch(face.adjacent), under: false };
   }
 
   if (reach.shift) return { kind: 'fill', at: face.block };
-  return { kind: 'paint', at: face.block, cells: patch(face.block, axis) };
+  return { kind: 'paint', at: face.block, cells: patch(face.block) };
 }
 
 /**

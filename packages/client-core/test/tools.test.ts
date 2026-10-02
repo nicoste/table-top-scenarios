@@ -301,12 +301,13 @@ describe('the brush (R-162)', () => {
     expect(new Set(cells.map((c) => c.z))).toEqual(new Set([6, 7, 8]));
   });
 
-  it('stands upright on a wall', () => {
-    // The reason the axis comes from the pick. Spreading in a fixed pair of
-    // axes would make a brush on a wall reach into the building instead.
+  it('stays flat on a wall too (D-213)', () => {
+    // It used to follow the face and stand upright here. The GM used it and
+    // said it reads as weird: the outline changed orientation as the pointer
+    // crossed an edge, so one gesture meant two shapes. Flat is one shape.
     const cells = cellsOf(mapAction('build', side, held({ radius: 1 })));
-    expect(new Set(cells.map((c) => c.x))).toEqual(new Set([5]));
-    expect(new Set(cells.map((c) => c.y))).toEqual(new Set([0, 1, 2]));
+    expect(new Set(cells.map((c) => c.y))).toEqual(new Set([1]));
+    expect(new Set(cells.map((c) => c.x))).toEqual(new Set([4, 5, 6]));
     expect(new Set(cells.map((c) => c.z))).toEqual(new Set([6, 7, 8]));
   });
 
@@ -318,14 +319,14 @@ describe('the brush (R-162)', () => {
     expect(cells).toHaveLength(9);
   });
 
-  it('clips to the band rather than refusing, and only while levelling', () => {
-    // A brush on a wall spans three levels at radius 1, so it is the first
-    // gesture that can reach across a cut — and it must not (R-159).
-    const banded = mapAction('build', side, held({ radius: 1, within: { lower: 1, upper: 3 } }));
-    expect(new Set(cellsOf(banded).map((c) => c.y))).toEqual(new Set([1, 2]));
-    expect(cellsOf(banded)).toHaveLength(6);
-    // Same gesture with every level shown: nothing is clipped.
-    expect(cellsOf(mapAction('build', side, held({ radius: 1 })))).toHaveLength(9);
+  it('is admitted or refused by the band as one, since it is one level', () => {
+    // A flat patch cannot straddle a cut (D-213), so the band's answer is the
+    // same for every cell — which is what lets `mapAllowed` read an empty
+    // patch as "the cube you are aiming at is outside the levels you show".
+    const inside = mapAction('build', side, held({ radius: 1, within: { lower: 1, upper: 3 } }));
+    expect(cellsOf(inside)).toHaveLength(9);
+    const outside = mapAction('build', side, held({ radius: 1, within: { lower: 4, upper: 8 } }));
+    expect(cellsOf(outside)).toEqual([]);
   });
 
   it('comes back empty when the cube itself is outside the band', () => {

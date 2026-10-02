@@ -183,7 +183,7 @@ export function MapPanel({
           {[0, 1, 2].map((radius) => (
             <Tooltip
               key={radius}
-              label={`${brushWidth(radius)}×${brushWidth(radius)}, on the face you are pointing at — key ${radius + 6}`}
+              label={`A flat ${brushWidth(radius)}×${brushWidth(radius)} square — key ${radius + 6}`}
               placement="bottom"
               stretch
             >
@@ -197,10 +197,11 @@ export function MapPanel({
         <p className="hint">
           {tool === 'build' && (
             <>
-              Click a block&apos;s face; the new ones land against it, flat on a roof and
-              upright on a wall. Hold <b>⇧ shift</b> to <b>erase</b> instead — the outline
-              turns red. Hold <b>⌥ alt</b> to build <b>under</b> the cube, the only way
-              down, since a camera above the horizon never sees an underside.
+              Click a block&apos;s face; the new ones land against it, always as a flat
+              square. Blocks already standing are skipped, never overwritten. Hold
+              <b>⇧ shift</b> to <b>erase</b> instead — the outline turns red. Hold
+              <b>⌥ alt</b> to build <b>under</b> the cube, the only way down, since a
+              camera above the horizon never sees an underside.
             </>
           )}
           {/* Paint is the one mode that drags, because it does not move its own

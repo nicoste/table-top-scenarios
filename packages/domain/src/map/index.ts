@@ -140,23 +140,6 @@ export function blockAt(map: EncounterMap, at: BlockCoord): MaterialId | null {
 // -- the brush (R-162) ------------------------------------------------------
 
 /**
- * The axis a face's normal runs along — the one a brush does **not** spread in.
- *
- * A patch lies *on the face you are pointing at*: horizontal on a rooftop,
- * vertical on a wall. Spreading in a fixed pair of axes instead would make a
- * 5×5 on a wall reach five blocks into the building, which is not what the
- * outline showed and not what anyone means by painting a wall.
- */
-export type FaceAxis = 'x' | 'y' | 'z';
-
-/** Which axis separates a block from the cell against one of its faces. */
-export function faceAxis(block: BlockCoord, adjacent: BlockCoord): FaceAxis {
-  if (adjacent.x !== block.x) return 'x';
-  if (adjacent.z !== block.z) return 'z';
-  return 'y';
-}
-
-/**
  * The widest brush, as a **radius**: 2, which is 5×5 (R-162).
  *
  * A radius rather than a width, so the GM's "keep the centre cube always" is
@@ -180,27 +163,26 @@ export function brushWidth(radius: number): number {
 }
 
 /**
- * The cells a brush covers, centred on `at` and lying in the face's plane.
+ * The cells a brush covers: a **flat** square centred on `at`, always (D-213).
+ *
+ * It used to lie in the plane of whichever face was hit — flat on a rooftop,
+ * upright on a wall — on the theory that a brush should follow the surface it
+ * is pointed at. The GM used it and said it reads as weird, and they are right:
+ * the outline changes orientation as the pointer crosses an edge, so the same
+ * gesture means two different shapes depending on which pixel you are over.
+ * A brush that is always flat is one shape, and one level, every time.
  *
  * Not clipped: what the map will accept is `setBlocks`' business and what the
  * GM is being shown is the console's. This answers only "where does the brush
  * reach", so the outline and the edit are drawn from the same list.
  */
-export function brushPatch(
-  at: BlockCoord,
-  axis: FaceAxis,
-  radius: number,
-): readonly BlockCoord[] {
+export function brushPatch(at: BlockCoord, radius: number): readonly BlockCoord[] {
   const r = clampRadius(radius);
   if (r === 0) return [at];
   const cells: BlockCoord[] = [];
-  for (let a = -r; a <= r; a += 1) {
-    for (let b = -r; b <= r; b += 1) {
-      cells.push(
-        axis === 'y' ? { x: at.x + a, y: at.y, z: at.z + b }
-          : axis === 'x' ? { x: at.x, y: at.y + a, z: at.z + b }
-            : { x: at.x + a, y: at.y + b, z: at.z },
-      );
+  for (let dx = -r; dx <= r; dx += 1) {
+    for (let dz = -r; dz <= r; dz += 1) {
+      cells.push({ x: at.x + dx, y: at.y, z: at.z + dz });
     }
   }
   return cells;
