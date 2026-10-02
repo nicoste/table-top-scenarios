@@ -33,7 +33,7 @@ filter on all future feature requests rather than a footnote.
 
 ### D-004 — World is 20×20 chunks of 20×20 columns · `agreed`
 400 chunks × 400 cells ≈ 160k columns ≈ 1–2 MB. Trivial as data. Never rendered
-at voxel detail in the world view (see R-12 and D-010).
+at voxel detail in the world view (see R-165 and D-010).
 
 ### D-005 — Discovery is GM-granted, not computed · `agreed`
 Players tap a place, or the centre of a chunk they know nothing about. The actual
@@ -2429,7 +2429,7 @@ and dispatch it — fails on the brush: undoing a 3×3 stroke over mixed terrain
 "paint these nine cells back to their nine different terrains", which no intent
 expresses. **Snapshots** cost almost nothing here, because the domain is
 immutable with identity-preserving edits: an entry shares every chunk the edit
-did not touch (R-12). That the expensive-sounding option is the cheap one is a
+did not touch (R-165). That the expensive-sounding option is the cheap one is a
 dividend of a decision made for unrelated reasons in round 2.
 
 The snapshot is taken by comparing campaign identity across `apply`, not in each
@@ -2928,7 +2928,7 @@ where it is read by people rather than by code.
 Found while changing `addPoi`, not reported. `duplicateCampaign` renews the
 campaign id, every party member's, every place's and every note's — and never
 touched poi ids, from the day points of interest were added. Fixed; the map comes
-across by reference, which is safe because a map is immutable (R-12), but an id
+across by reference, which is safe because a map is immutable (R-165), but an id
 is identity (R-106).
 
 The interesting part is why no test caught it. There *was* a test — *"regenerates
@@ -3076,7 +3076,7 @@ target** — and build, erase, paint and the world's terrain brush all fall out 
 it correctly rather than each being decided by hand.
 
 Paint reuses `setBlock`: the domain already replaces the material of a block that
-is there (R-12), and paint only ever targets a block the GM can see. What differs
+is there (R-165), and paint only ever targets a block the GM can see. What differs
 between build and paint is not the intent, it is the *cell the tool chose* — the
 block itself rather than the space against its face. One `mapEdit` performs every
 map action, because the brush runs through both pointer-down and pointer-move and
@@ -4049,3 +4049,33 @@ places it would creep back up. It buys a long runway and probably means we
 never need a diff protocol, which is the complexity most worth avoiding.
 Coalescing writes within a short window is the obvious next step and is now
 much less urgent: one cube costs one 4 KiB file.
+
+### D-218 — Thirty citations of a rule that said something else · `agreed`
+While checking that I could cite the rules accurately in an explanation, I found
+that **R-12 does not say what the code says it says.** It is about there being
+one `VoxelGrid` implementation with two brush sets. Thirty places across
+`domain`, `sim`, `protocol`, `persistence`, the tests and this file cite it for
+*immutability and identity-preserving edits*, which it never mentions.
+
+The property is real and heavily tested — undo depends on it, the store's
+file-skipping depends on it, and several tests assert it by name. It simply had
+no rule. The mis-citation predates me and I added four more to it this session
+without checking, which is the thing I had just written about in D-217: a
+comment describing an intention is indistinguishable from one describing
+behaviour, and nobody re-reads the rule a citation points at.
+
+So: **R-165** states it, and every citation moved. R-12 keeps its own meaning
+and loses the one it was carrying for something else.
+
+Two notes on the fix:
+
+- **The references in this file were corrected too**, though it is append-only
+  in spirit. A citation is a pointer, not a claim about what was decided — a
+  past entry pointing at the wrong rule is a broken link, and leaving it broken
+  to preserve the letter of append-only would make the record less true rather
+  than more faithful.
+- **It would have been caught by a test.** `docs.test.ts` already checks that
+  the playbook cites rules that exist, and these did exist — just not the ones
+  meant. Nothing can check that a citation points at the *right* rule, which is
+  worth knowing about every citation in this corpus: they are load-bearing
+  prose, kept honest only by somebody reading them.

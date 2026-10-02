@@ -32,7 +32,7 @@ describe('together', () => {
     expect(memberCell(p, 'b' as MemberId)).toEqual(at(4, 4, 9, 9));
   });
 
-  it('preserves identity when moved to the cell it is already on (R-12)', () => {
+  it('preserves identity when moved to the cell it is already on (R-165)', () => {
     const p = withGroupAt(emptyPlacement(), at(1, 1));
     expect(withGroupAt(p, at(1, 1))).toBe(p);
     expect(withGroupAt(p, at(1, 2))).not.toBe(p);
@@ -136,7 +136,7 @@ describe('schema versions (R-61)', () => {
     const old = { ...createLiveSave(createCampaign('Ashfall'), AT), schemaVersion: 1 };
     const once = upgraded(old);
     expect(once.schemaVersion).toBe(SAVE_SCHEMA_VERSION);
-    // Idempotent, and identity-preserving the second time (R-12).
+    // Idempotent, and identity-preserving the second time (R-165).
     expect(upgraded(once)).toBe(once);
   });
 

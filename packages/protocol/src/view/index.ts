@@ -23,7 +23,7 @@ export interface CampaignSummary {
  * cannot be the other way round).
  *
  * Holds whole campaigns, which is affordable only because the domain is
- * immutable with identity-preserving edits (R-12) — and which is why it must
+ * immutable with identity-preserving edits (R-165) — and which is why it must
  * **never** be serialised into a view. The GM console gets two booleans.
  */
 export interface History {

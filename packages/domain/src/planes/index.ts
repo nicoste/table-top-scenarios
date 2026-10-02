@@ -125,7 +125,7 @@ export function movePlane(
 ): readonly CuttingPlane[] {
   if (!validPlaneY(y, cap, floor)) return planes;
   // Occupied by another plane, or this one is already there: either way there is
-  // nothing to do, and returning the same array keeps identity (R-12).
+  // nothing to do, and returning the same array keeps identity (R-165).
   if (planeAt(planes, y)) return planes;
   let touched = false;
   const next = planes.map((plane) => {

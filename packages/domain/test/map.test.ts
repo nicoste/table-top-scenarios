@@ -69,7 +69,7 @@ describe('placing and clearing', () => {
     expect(topOfMap(map)).toBe(4);
   });
 
-  it('preserves identity when nothing changes (R-12)', () => {
+  it('preserves identity when nothing changes (R-165)', () => {
     const map = setBlock(createMap(), at(3, 4, 5), STONE);
     expect(setBlock(map, at(3, 4, 5), STONE)).toBe(map);
     expect(clearBlock(map, at(9, 9, 9))).toBe(map);
@@ -281,7 +281,7 @@ describe('a point of interest owns exactly one map (R-145, D-187)', () => {
       expect(blockAt(fixed[0]!.pois[0]!.map!, at(1, 1, 1))).toBe(STONE);
     });
 
-    it('preserves identity when every one already has a map (R-12)', () => {
+    it('preserves identity when every one already has a map (R-165)', () => {
       const places = seeded();
       expect(withPoiMaps(places)).toBe(places);
       expect(withPoiMaps([])).toEqual([]);
@@ -352,7 +352,7 @@ describe('the bucket fill (R-154)', () => {
     expect(fillRegion(map, at(0, 5, 0))).toEqual([]);
   });
 
-  it('preserves identity when the region is already that material (R-12)', () => {
+  it('preserves identity when the region is already that material (R-165)', () => {
     const map = createMap();
     expect(fillMaterial(map, at(0, 0, 0), DEFAULT_FLOOR)).toBe(map);
   });
@@ -599,7 +599,7 @@ describe('the brush (R-162, R-164)', () => {
       for (const cell of placed) expect(inMap(next, cell)).toBe(true);
     });
 
-    it('keeps identity when there was nothing to do (R-12)', () => {
+    it('keeps identity when there was nothing to do (R-165)', () => {
       const map = createMap();
       expect(setBlocks(map, [at(-500, 1, -500)], STONE as MaterialId)).toBe(map);
       expect(setBlocks(map, [], STONE as MaterialId)).toBe(map);
@@ -617,7 +617,7 @@ describe('the brush (R-162, R-164)', () => {
       expect(blockAt(next, at(2, 5, 2))).toBeNull();
     });
 
-    it('keeps identity when every cell is already that material (R-12)', () => {
+    it('keeps identity when every cell is already that material (R-165)', () => {
       const map = createMap();
       expect(paintBlocks(map, brushPatch(at(2, 0, 2), FLAT3), DEFAULT_FLOOR)).toBe(map);
     });
@@ -632,7 +632,7 @@ describe('the brush (R-162, R-164)', () => {
       expect(next.blocks.size).toBe(map.blocks.size - cells.length);
     });
 
-    it('keeps identity when the patch was already empty (R-12)', () => {
+    it('keeps identity when the patch was already empty (R-165)', () => {
       const map = createMap();
       expect(clearBlocks(map, brushPatch(at(4, 9, 4), FLAT3))).toBe(map);
     });

@@ -36,7 +36,7 @@ export const SCHEMA_VERSION = 4;
  * (D-187), and a v4 file may hold one that does not. That is normalised
  * unconditionally rather than behind a version gate, because the file is
  * already stamped v4 and gating would leave the very campaigns that need it
- * untouched. Identity-preserving both ways (R-12).
+ * untouched. Identity-preserving both ways (R-165).
  */
 export function upgradedCampaign(campaign: Campaign): Campaign {
   const places = withPoiMaps(campaign.places);
@@ -112,7 +112,7 @@ export function duplicateCampaign(source: Campaign, name: string): Campaign {
       notes: place.notes.map((note) => ({ ...note, id: freshId<'NoteId'>('note') })),
       // Points of interest were left sharing their source's ids when they were
       // added — the copy's map is carried over by reference, which is safe
-      // because a map is immutable (R-12), but an id is identity (R-106).
+      // because a map is immutable (R-165), but an id is identity (R-106).
       pois: place.pois.map((poi) => ({ ...poi, id: freshId<'PoiId'>('poi') })),
     })),
   };

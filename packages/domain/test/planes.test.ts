@@ -64,7 +64,7 @@ describe('a plane is a height and a name (R-146)', () => {
     expect(addPlane([], '   ', 6, CAP, FLOOR)[0]!.name).toBe('Level 6');
   });
 
-  it('renames, moves and removes, preserving identity when nothing changes (R-12)', () => {
+  it('renames, moves and removes, preserving identity when nothing changes (R-165)', () => {
     const planes = tavern();
     const id = planeAt(planes, 8)!.id;
 

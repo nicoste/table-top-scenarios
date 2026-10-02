@@ -134,7 +134,7 @@ describe('what counts as an edit', () => {
 
   it('ignores an intent that changed nothing', () => {
     // paint the same terrain twice: identity-preserving edits mean the second
-    // returns the same campaign, so there is nothing to take back (R-12).
+    // returns the same campaign, so there is nothing to take back (R-165).
     let state = run(open(), { kind: 'paintTerrain', ...at(4, 4), terrainId: 'terrain:rock' }).state;
     state = run(state, { kind: 'paintTerrain', ...at(4, 4), terrainId: 'terrain:rock' }).state;
     state = run(state, { kind: 'undo' }).state;

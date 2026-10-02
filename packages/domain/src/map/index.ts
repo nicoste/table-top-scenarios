@@ -228,7 +228,7 @@ export function brushPatch(
  * because one of them is occupied would make a brush useless anywhere near
  * something already built.
  *
- * Identity-preserving (R-12), which is also how a caller learns that nothing
+ * Identity-preserving (R-165), which is also how a caller learns that nothing
  * happened at all.
  */
 export function setBlocks(
@@ -248,7 +248,7 @@ export function setBlocks(
   return touched ? { ...map, blocks } : map;
 }
 
-/** Erases every cell of a patch that holds a block. Identity-preserving (R-12). */
+/** Erases every cell of a patch that holds a block. Identity-preserving (R-165). */
 export function clearBlocks(
   map: EncounterMap,
   cells: readonly BlockCoord[],
@@ -314,7 +314,7 @@ export function createMap(material: MaterialId = DEFAULT_FLOOR): EncounterMap {
   };
 }
 
-/** Identity-preserving: placing what is already there returns the same map (R-12). */
+/** Identity-preserving: placing what is already there returns the same map (R-165). */
 export function setBlock(
   map: EncounterMap,
   at: BlockCoord,
@@ -434,7 +434,7 @@ export function fillRegion(map: EncounterMap, at: BlockCoord): readonly BlockCoo
 }
 
 /**
- * Repaints the connected region at `at` (R-154). Identity-preserving (R-12).
+ * Repaints the connected region at `at` (R-154). Identity-preserving (R-165).
  *
  * Only the *material* changes: a fill never adds or removes a block, so the
  * shape of the building is the same after it as before. That is what makes it

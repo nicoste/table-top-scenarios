@@ -1,6 +1,6 @@
 // Undo history for authored content (D-169).
 //
-// Cheap because the domain is immutable with identity-preserving edits (R-12):
+// Cheap because the domain is immutable with identity-preserving edits (R-165):
 // a paint stroke rebuilds one chunk and shares every other, so an entry costs
 // roughly one chunk rather than a whole world. Keeping fifty of them is nothing.
 //

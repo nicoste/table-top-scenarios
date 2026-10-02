@@ -227,7 +227,7 @@ export function removeNote(places: readonly Place[], id: PlaceId, noteId: NoteId
  *
  * Shared by notes and pois. The index clamping and the splice dance are
  * the only fiddly part of either, and two copies is how they drift apart.
- * Returns the same array when nothing moves, so identity survives (R-12).
+ * Returns the same array when nothing moves, so identity survives (R-165).
  */
 export function moveWithin<T extends { readonly id: string }>(
   list: readonly T[],

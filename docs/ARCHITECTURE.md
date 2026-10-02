@@ -1052,7 +1052,7 @@ D-035. Numbers are not reused; decisions cite them.
 > for a long time while `save` wrote every file every time, so one cube cost
 > 497 KiB including terrain nobody had touched (D-217). "Changed" is a
 > **reference comparison** — exact and free, because the domain already returns
-> the same object for an edit that changed nothing (R-12). A map body whose
+> the same object for an edit that changed nothing (R-165). A map body whose
 > point of interest is gone is removed; the deletion that orphaned it was
 > confirmed (R-151) and undo restores both the map and its file.
 >
@@ -1650,7 +1650,7 @@ apps/host/src/
 > This keeps undo purely the GM's, because only the GM edits the campaign.
 >
 > The history holds **whole campaign states**, which is affordable only because
-> the domain is immutable with identity-preserving edits (R-12): a paint stroke
+> the domain is immutable with identity-preserving edits (R-165): a paint stroke
 > rebuilds one chunk and shares the rest, so an entry costs about a chunk. Fifty
 > are kept. It is in-memory and does not survive a host restart.
 >
@@ -2267,6 +2267,31 @@ apps/host/src/
 > **The drag rule reads the action, not the tool** (R-153). Paint drags; erase
 > and fill do not, and asking the tool would let a held Shift drag an erase
 > through the geometry it is eating.
+
+> **R-165.** **The domain is immutable, and an edit that changes nothing
+> returns the same object.**
+>
+> Every edit builds a new value and shares everything it did not touch. An edit
+> with no effect — placing the block that is already there, renaming something
+> to its own name, moving a plane to where it sits — returns the value it was
+> given, by reference.
+>
+> Three things rest on it, and none of them is the obvious one:
+>
+> - **Undo stores whole campaigns** (R-140a). A paint stroke rebuilds one chunk
+>   and shares the rest, so an entry costs about a chunk rather than a world.
+> - **"Did this change?" is a pointer comparison** — exact, free, and impossible
+>   to get subtly wrong. The store writes only the files whose objects moved
+>   (R-60) and the encoder can skip the bodies it already packed (R-59).
+> - **Nothing has to declare what it touched.** The alternative is each intent
+>   announcing its own blast radius, which works until someone adds one that
+>   forgets, and then a screen goes quietly stale. A declaration can be
+>   forgotten; identity is observed.
+>
+> This rule had no entry for a long time while thirty places in the code cited
+> **R-12** for it — a rule about there being one `VoxelGrid` with two brush
+> sets, which says nothing of the kind (D-218). The property was always real and
+> always tested; only its name was wrong.
 
 > **R-164.** **A brush is a shape with a name, chosen from a registry.**
 >

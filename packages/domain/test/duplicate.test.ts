@@ -93,7 +93,7 @@ describe('a duplicate shares nothing identifiable (R-106)', () => {
     expect(place.notes[0]!.text).toBe('The elder is a spy');
     expect(place.pois[0]!.name).toBe('The tavern');
     // A map comes over by reference: it is immutable, so there is nothing to
-    // share (R-12). Only the id had to be renewed (R-106).
+    // share (R-165). Only the id had to be renewed (R-106).
     expect(blockAt(place.pois[0]!.map!, { x: 2, y: 1, z: 3 })).toBe(DEFAULT_FLOOR);
   });
 

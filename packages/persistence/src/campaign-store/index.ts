@@ -9,7 +9,7 @@
 //
 // Now each map is its own file and only what changed is written. "Changed" is a
 // reference comparison, which costs nothing and is exact because the domain
-// preserves identity on an edit that changes nothing (R-12) — the rule was
+// preserves identity on an edit that changes nothing (R-165) — the rule was
 // already there, waiting to be used for this.
 
 import {
@@ -156,7 +156,7 @@ export function fileCampaignStore(root: string): CampaignStore {
 
       // One body per point of interest, and only the ones that moved. The
       // comparison is by reference: an edit that changed nothing returns the
-      // same object (R-12), and an edit to one map leaves every other map's
+      // same object (R-165), and an edit to one map leaves every other map's
       // object untouched, so this is exact rather than a heuristic.
       const maps = new Map<string, EncounterMap>();
       for (const place of campaign.places) {

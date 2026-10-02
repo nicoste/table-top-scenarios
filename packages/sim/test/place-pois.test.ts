@@ -159,7 +159,7 @@ describe('an older campaign (R-137)', () => {
     expect(opened.state.active!.schemaVersion).toBe(SCHEMA_VERSION);
   });
 
-  it('leaves a current campaign untouched, identity included (R-12)', () => {
+  it('leaves a current campaign untouched, identity included (R-165)', () => {
     const campaign = createCampaign('Ashfall');
     expect(upgradedCampaign(campaign)).toBe(campaign);
   });

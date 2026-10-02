@@ -151,7 +151,7 @@ export function openedWith(
  *
  * The snapshot is taken **here**, by comparing campaign identity before and
  * after, rather than inside each handler. Two reasons: immutable edits mean
- * identity changing *is* the definition of "the campaign was edited" (R-12), and
+ * identity changing *is* the definition of "the campaign was edited" (R-165), and
  * a hook nobody has to remember cannot be forgotten when the twenty-ninth intent
  * arrives (D-169, R-23b's lesson).
  */
