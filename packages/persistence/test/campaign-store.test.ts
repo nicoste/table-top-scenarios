@@ -3,7 +3,10 @@ import { mkdtempSync, rmSync, writeFileSync, mkdirSync, readFileSync, existsSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileCampaignStore, memoryCampaignStore } from '@tt/persistence';
-import { createCampaign, addChunk, ORIGIN, chunkAt, columnAt, setHeight, replaceChunk } from '@tt/domain';
+import {
+  createCampaign, addChunk, ORIGIN, chunkAt, columnAt, setHeight, replaceChunk,
+  addPlace, addPoi, setMapBlock, blockAt, DEFAULT_FLOOR,
+} from '@tt/domain';
 import { encodeCampaign } from '@tt/protocol';
 
 let root: string;
@@ -246,5 +249,139 @@ describe('a campaign this build cannot read (R-144)', () => {
     store.save(fresh);
     expect(store.list().map((c) => c.name)).toEqual(['Fresh']);
     expect(store.load(fresh.id)?.name).toBe('Fresh');
+  });
+});
+
+describe('each map is its own file, and only what changed is written (R-59, R-60, D-217)', () => {
+  /** A campaign with one place and one point of interest, which owns a map. */
+  const built = () => {
+    const campaign = createCampaign('Ashfall');
+    const placed = addPlace(campaign.places, { ...ORIGIN, x: 2, z: 2 }, 'Casilda');
+    return { ...campaign, places: addPoi(placed, placed[0]!.id, 'The tavern', true) };
+  };
+  type Built = ReturnType<typeof built>;
+  const poiOf = (c: Built) => c.places[0]!.pois[0]!;
+  const body = (c: Built) => join(root, c.id, 'pois', `${poiOf(c).id}.json`);
+
+  it('puts the body beside the manifest, not inside it', () => {
+    const store = fileCampaignStore(root);
+    const campaign = built();
+    store.save(campaign);
+    expect(existsSync(body(campaign))).toBe(true);
+    const manifest = readFileSync(join(root, campaign.id, 'campaign.json'), 'utf8');
+    // The manifest keeps the point of interest and none of its cubes.
+    expect(manifest).toContain('The tavern');
+    expect(JSON.parse(manifest).places[0].pois[0].map).toBeNull();
+  });
+
+  it('writes the body packed, not one entry per cube', () => {
+    const store = fileCampaignStore(root);
+    const campaign = built();
+    store.save(campaign);
+    const written = JSON.parse(readFileSync(body(campaign), 'utf8'));
+    expect(written).toHaveProperty('runs');
+    expect(written).not.toHaveProperty('blocks');
+    // A 16×16 floor is one run of air, one of floor, and one of air again.
+    expect(written.runs.length).toBeLessThan(20);
+  });
+
+  it('leaves the world alone when a map changes', () => {
+    /*
+     * The whole point, and tested by scribbling rather than by timing: a
+     * sentinel written into world.json survives a map edit if and only if
+     * that save did not rewrite the world. Placing one cube used to rewrite
+     * 143 KiB of terrain nobody had touched.
+     */
+    const store = fileCampaignStore(root);
+    const campaign = built();
+    store.save(campaign);
+    const worldPath = join(root, campaign.id, 'world.json');
+    const sentinel = `${readFileSync(worldPath, 'utf8')}\n`;
+    writeFileSync(worldPath, sentinel, 'utf8');
+
+    const poi = poiOf(campaign);
+    const edited = {
+      ...campaign,
+      places: setMapBlock(campaign.places, campaign.places[0]!.id, poi.id, { x: 1, y: 1, z: 1 },
+        DEFAULT_FLOOR),
+    };
+    store.save(edited);
+    expect(readFileSync(worldPath, 'utf8')).toBe(sentinel);
+  });
+
+  it('leaves a map alone when the terrain changes', () => {
+    // And the other way round, which is the half that makes the split worth
+    // having at all rather than just tidier.
+    const store = fileCampaignStore(root);
+    const campaign = built();
+    store.save(campaign);
+    const sentinel = `${readFileSync(body(campaign), 'utf8')}\n`;
+    writeFileSync(body(campaign), sentinel, 'utf8');
+
+    const chunk = chunkAt(campaign.world, ORIGIN)!;
+    const raised = replaceChunk(campaign.world, setHeight(chunk, 0, 0, 5));
+    store.save({ ...campaign, world: raised });
+    expect(readFileSync(body(campaign), 'utf8')).toBe(sentinel);
+  });
+
+  it('survives the round trip with the body intact', () => {
+    const store = fileCampaignStore(root);
+    const campaign = built();
+    const poi = poiOf(campaign);
+    const edited = {
+      ...campaign,
+      places: setMapBlock(campaign.places, campaign.places[0]!.id, poi.id, { x: 3, y: 7, z: 3 },
+        DEFAULT_FLOOR),
+    };
+    store.save(edited);
+    const back = store.load(campaign.id)!;
+    expect(back).not.toBeNull();
+    const backMap = back.places[0]!.pois[0]!.map!;
+    expect(blockAt(backMap, { x: 3, y: 7, z: 3 })).toBe(DEFAULT_FLOOR);
+    expect(backMap.blocks.size).toBe(edited.places[0]!.pois[0]!.map!.blocks.size);
+  });
+
+  it('still reads a campaign written before the split (R-137a)', () => {
+    /*
+     * The migration, and the reason the GM's church still opens: maps inline
+     * in the manifest, one JSON entry per cube, no bodies directory at all.
+     * Read as it is, and moved on the next save.
+     */
+    const store = fileCampaignStore(root);
+    const campaign = built();
+    store.save(campaign);
+    const base = join(root, campaign.id);
+    const manifest = JSON.parse(readFileSync(join(base, 'campaign.json'), 'utf8'));
+    manifest.places[0].pois[0].map = {
+      origin: { x: 0, z: 0 },
+      size: { x: 16, z: 16 },
+      blocks: { '4,2,4': DEFAULT_FLOOR as string },
+      planes: [],
+    };
+    writeFileSync(join(base, 'campaign.json'), JSON.stringify(manifest), 'utf8');
+    rmSync(join(base, 'pois'), { recursive: true, force: true });
+
+    const back = fileCampaignStore(root).load(campaign.id)!;
+    expect(back).not.toBeNull();
+    expect(blockAt(back.places[0]!.pois[0]!.map!, { x: 4, y: 2, z: 4 })).toBe(DEFAULT_FLOOR);
+
+    // And saving it moves the body out of the manifest, packed.
+    fileCampaignStore(root).save(back);
+    expect(existsSync(body(campaign))).toBe(true);
+    expect(JSON.parse(readFileSync(join(base, 'campaign.json'), 'utf8'))
+      .places[0].pois[0].map).toBeNull();
+  });
+
+  it('clears away the body of a point of interest that is gone', () => {
+    const store = fileCampaignStore(root);
+    const campaign = built();
+    store.save(campaign);
+    expect(existsSync(body(campaign))).toBe(true);
+    const emptied = {
+      ...campaign,
+      places: campaign.places.map((p) => ({ ...p, pois: [] })),
+    };
+    store.save(emptied);
+    expect(existsSync(body(campaign))).toBe(false);
   });
 });

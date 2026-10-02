@@ -73,8 +73,25 @@ export const MapWireSchema = z.object({
   /** Absent in a map written before it could grow toward lower cells (R-150). */
   origin: z.object({ x: z.number().int(), z: z.number().int() }).optional(),
   size: z.object({ x: z.number().int().positive(), z: z.number().int().positive() }),
-  /** `"x,y,z": materialId`. Sparse — an absent key is air. */
-  blocks: z.record(z.string(), z.string()).default({}),
+  /**
+   * The body, packed: a palette of materials and a run-length encoding of the
+   * cells, ordered y, then z, then x (R-59, D-217).
+   *
+   * `blocks` is the shape this replaced — one JSON entry per cube, which came
+   * to 258 KiB for a church and went to disk and to both screens on every cube
+   * placed. Still accepted on the way in, because a campaign written before
+   * packing is still a campaign (R-137a).
+   */
+  /*
+   * Optional and **not defaulted**, which matters: a default turns the absence
+   * of a packed body into an empty one, and an empty array is truthy. A map
+   * written before packing would then be read as a packed body with no runs —
+   * which is to say, refused as corrupt. Absence has to stay absence for the
+   * reader to tell the two shapes apart.
+   */
+  palette: z.array(z.string()).optional(),
+  runs: z.array(z.number().int().nonnegative()).optional(),
+  blocks: z.record(z.string(), z.string()).optional(),
   /**
    * The GM's named cuts (R-146). Sent to the table as well as the console: a
    * level called "cellar" is not itself a secret, what is in it is, and the

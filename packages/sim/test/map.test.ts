@@ -12,6 +12,7 @@ import type { Campaign } from '@tt/domain';
 import {
   createCampaign, createLiveSave, DEFAULT_MATERIALS, DEFAULT_FLOOR,
   MAP_PATCH, MAP_MAX_HEIGHT, ORIGIN, MAP_BRUSH_CELLS, brushById, brushPatch,
+  blockAt, mapFromJSON,
 } from '@tt/domain';
 import { IntentSchema } from '@tt/protocol';
 
@@ -223,7 +224,7 @@ describe('the boundary (D-184)', () => {
 
     const gm = viewFor('gm', next) as GmView;
     const poi = gm.campaign!.places[0]!.pois[0]!;
-    expect(poi.map?.blocks['7,9,7']).toBe(STONE);
+    expect(blockAt(mapFromJSON(poi.map)!, { x: 7, y: 9, z: 7 })).toBe(STONE);
   });
 });
 

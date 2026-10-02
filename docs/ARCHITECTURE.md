@@ -1008,28 +1008,59 @@ D-035. Numbers are not reused; decisions cite them.
 
 ## 8b. Storage format
 
-> **R-59.** Structure is **JSON**; voxel payloads are **packed**. Campaign
-> manifest, world, chunks, places, registries and every save stay hand-editable and
-> diffable. Voxel bodies use a per-32³-chunk **palette plus run-length encoding**.
+> **R-59.** Structure is **JSON**; voxel bodies are **packed**. Campaign
+> manifest, world, chunks, places, registries and every save stay hand-editable
+> and diffable. A body is a **palette and one run-length stream**, ordered y,
+> then z, then x, over the whole box.
 >
-> The reason is arithmetic: a campaign with ~20 places, several points of interest
-> each and one map apiece holds several hundred thousand filled cubes. One JSON entry per cube is 10–35 MB;
-> palette+RLE puts the same content at 1–3 MB. Saves are small either way
-> (tokens, flags, overlay) so they stay plain JSON.
+> The reason was arithmetic and is now measurement. A 9,714-block church came to
+> **258 KiB** as one JSON entry per cube and to **4.2 KiB** packed — 62×, and
+> that body went to disk *and* to both screens on every cube placed (D-217).
+>
+> **Not chunked**, though this rule said per-32³ chunks for a long time. That
+> predates `MAP_PATCH` and the dig limit and aligns with neither, and it loses
+> on its own terms: these maps are built as flat storeys, so the church fills 15
+> of 48 levels, and empty levels collapse into single runs for free in one
+> continuous stream. Chunking exists to allow partial loads, which one file per
+> map already makes unnecessary.
+>
+> **Encode from the sparse keys, never by walking the box.** The cost is then
+> proportional to what the GM built rather than to how far their map reaches —
+> which matters, because the box grows with every expansion while the content
+> does not.
+>
+> The packed body still lives in a JSON file beside its own origin, size and
+> plane names, so a map remains something you can open and read. Only the cubes
+> are numbers. Saves are small either way (tokens, flags, overlay) so they stay
+> plain JSON.
 
 > **R-60.** A campaign is a **directory, not a file**:
 >
 > ```
 > campaigns/<id>/
->   campaign.json          manifest, registries, cell scales
->   world.json             chunk grid, terrain, places
->   points of interest/<id>.vox    packed voxel body, one file per map
-> saves/<id>.json          play state: tokens, discovery, fog, overlay
+>   campaign.json     manifest: name, party, places and their points of interest
+>   world.json        chunk grid, terrain
+>   pois/<id>.json    one map: origin, size, plane names, packed body (R-59)
+> saves/<id>.json     play state: tokens, discovery, fog, overlay
 > ```
 >
 > This is what makes editing one dungeon level rewrite one file instead of the
 > whole campaign, and it keeps a campaign something you can hand to someone as a
 > folder.
+>
+> **And only the files that changed are written.** The rule said the first half
+> for a long time while `save` wrote every file every time, so one cube cost
+> 497 KiB including terrain nobody had touched (D-217). "Changed" is a
+> **reference comparison** — exact and free, because the domain already returns
+> the same object for an edit that changed nothing (R-12). A map body whose
+> point of interest is gone is removed; the deletion that orphaned it was
+> confirmed (R-151) and undo restores both the map and its file.
+>
+> **Both layouts are read** (R-137a). A manifest still carrying its maps inline,
+> with one JSON entry per cube, is a campaign written before the split; it loads
+> as it is and moves on the next save. No schema bump, because a map in the
+> manifest and a map in a file are the same map and the absence of one says
+> where to find the other (D-187's reasoning).
 
 > **R-61.** Every persisted file carries a `schemaVersion`. Migrations are
 > forward-only, live in `persistence`, and are tested against fixtures of older

@@ -38,6 +38,9 @@ interface Props {
   readonly placeName: string;
   readonly poiName: string;
   readonly map: MapWire;
+  /** How many cubes stand in it, and how far it has been dug (R-160). */
+  readonly blocks: number;
+  readonly dug: number;
   readonly tool: MapTool;
   /** Which shape the brush lays down, by id (R-164). */
   readonly brush: string;
@@ -65,23 +68,10 @@ interface Props {
 }
 
 export function MapPanel({
-  placeName, poiName, map, tool, brush, shifting, materials, materialId, hoverLabel,
+  placeName, poiName, map, blocks, dug, tool, brush, shifting, materials, materialId, hoverLabel,
   partyHere, partyCanSee, range, levelling, onLevelling,
   onTool, onBrush, onMaterial, onLeave, dispatch, placeId, poiId,
 }: Props) {
-  const blocks = Object.keys(map.blocks).length;
-  /**
-   * How far this body has actually been dug — for the readout only (R-160).
-   *
-   * The ladder's rungs do not use it: those are anchored at Bedrock and Sky
-   * whatever has been built (R-161). This is just "how deep is it", which is a
-   * fact about the map worth telling the GM.
-   */
-  const dug = Object.keys(map.blocks).reduce(
-    (lowest, key) => Math.min(lowest, Number(key.split(',')[1])),
-    0,
-  );
-
   return (
     <>
       <div className="card">

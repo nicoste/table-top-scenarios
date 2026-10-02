@@ -12,7 +12,7 @@ import { viewFor } from '@tt/protocol';
 import type { GmView, HostState, Intent, TableView } from '@tt/protocol';
 import {
   createCampaign, createLiveSave, rangeFor, planeSteps, DEFAULT_MATERIALS,
-  MAP_MAX_HEIGHT, MAP_MIN_DEPTH, WHOLE_MAP, ORIGIN,
+  MAP_MAX_HEIGHT, MAP_MIN_DEPTH, WHOLE_MAP, ORIGIN, blockAt, mapFromJSON,
 } from '@tt/domain';
 
 const NOW = '2026-01-01T00:00:00.000Z';
@@ -53,6 +53,19 @@ function tavern() {
 
 const tableMap = (state: HostState) =>
   (viewFor('table', state) as TableView).campaign!.places[0]!.pois[0]!.map;
+
+/**
+ * What the table could actually get out of its payload, at one cell.
+ *
+ * **Decoded, not inspected.** The body is packed now (D-217), but that is not
+ * why: R-85's question was never "is there a key" — it is whether a table can
+ * reconstruct a cube the GM cut away. Asking the decoded payload is asking
+ * exactly what a table does with it.
+ */
+const tableBlock = (state: HostState, x: number, y: number, z: number) => {
+  const wire = tableMap(state);
+  return wire ? blockAt(mapFromJSON(wire)!, { x, y, z }) : null;
+};
 
 describe('taking the party in (R-158)', () => {
   it('records where they are, and writes it', () => {
@@ -140,11 +153,10 @@ describe('what the table is sent (R-158, D-184 answered)', () => {
   it('the whole body once they are in and nothing is cut', () => {
     const { state, placeId, poiId } = tavern();
     const inside = run(state, { kind: 'enterMap', placeId, poiId }).state;
-    const map = tableMap(inside);
-    expect(map).not.toBeNull();
-    expect(map!.blocks['2,1,2']).toBe(STONE);
-    expect(map!.blocks['2,5,2']).toBe(STONE);
-    expect(map!.blocks['2,9,2']).toBe(STONE);
+    expect(tableMap(inside)).not.toBeNull();
+    expect(tableBlock(inside, 2, 1, 2)).toBe(STONE);
+    expect(tableBlock(inside, 2, 5, 2)).toBe(STONE);
+    expect(tableBlock(inside, 2, 9, 2)).toBe(STONE);
   });
 
   it('only the band, once the GM cuts to one', () => {
@@ -152,10 +164,10 @@ describe('what the table is sent (R-158, D-184 answered)', () => {
     let inside = run(state, { kind: 'enterMap', placeId, poiId }).state;
     inside = run(inside, { kind: 'setRange', placeId, poiId, lower: 4, upper: 8 }).state;
 
-    const map = tableMap(inside)!;
-    expect(map.blocks['2,5,2']).toBe(STONE);
-    expect(map.blocks['2,1,2']).toBeUndefined();
-    expect(map.blocks['2,9,2']).toBeUndefined();
+    expect(tableBlock(inside, 2, 5, 2)).toBe(STONE);
+    // Not merely unkeyed — not recoverable from the payload at all (R-85).
+    expect(tableBlock(inside, 2, 1, 2)).toBeNull();
+    expect(tableBlock(inside, 2, 9, 2)).toBeNull();
   });
 
   it('a cut level is absent from the payload, not merely undrawn (R-85)', () => {
@@ -163,10 +175,25 @@ describe('what the table is sent (R-158, D-184 answered)', () => {
     let inside = run(state, { kind: 'enterMap', placeId, poiId }).state;
     inside = run(inside, { kind: 'setRange', placeId, poiId, lower: 4, upper: 8 }).state;
 
-    const payload = JSON.stringify(viewFor('table', inside));
-    expect(payload).not.toContain('2,1,2');
-    expect(payload).not.toContain('2,9,2');
-    expect(payload).toContain('2,5,2');
+    /*
+     * This read the payload's bytes and grepped for the coordinate keys, which
+     * was the right question asked of a shape that no longer exists: a packed
+     * body contains no coordinate strings at all, so the grep would now pass
+     * for a payload carrying every level (D-217).
+     *
+     * Decoding asks the thing R-85 actually cares about — whether a table can
+     * reconstruct the cube — and it is what a table does with the payload
+     * anyway.
+     */
+    expect(tableBlock(inside, 2, 5, 2)).toBe(STONE);
+    expect(tableBlock(inside, 2, 1, 2)).toBeNull();
+    expect(tableBlock(inside, 2, 9, 2)).toBeNull();
+    // And the payload is not merely hiding them behind a second copy of the
+    // body: there is one, and it decodes to one level.
+    const levels = new Set(
+      [...mapFromJSON(tableMap(inside)!)!.blocks.keys()].map((k) => Number(k.split(',')[1])),
+    );
+    expect([...levels]).toEqual([5]);
   });
 
   it('gives a second point of interest nothing, even while the first is open', () => {
@@ -198,9 +225,9 @@ describe('what the table is sent (R-158, D-184 answered)', () => {
     let inside = run(state, { kind: 'enterMap', placeId, poiId }).state;
     inside = run(inside, { kind: 'setRange', placeId, poiId, lower: 4, upper: 8 }).state;
 
-    const gm = (viewFor('gm', inside) as GmView).campaign!.places[0]!.pois[0]!;
-    expect(gm.map!.blocks['2,1,2']).toBe(STONE);
-    expect(gm.map!.blocks['2,9,2']).toBe(STONE);
+    const gm = mapFromJSON((viewFor('gm', inside) as GmView).campaign!.places[0]!.pois[0]!.map)!;
+    expect(blockAt(gm, { x: 2, y: 1, z: 2 })).toBe(STONE);
+    expect(blockAt(gm, { x: 2, y: 9, z: 2 })).toBe(STONE);
   });
 
   it('sends the plane names but not what is behind them', () => {
@@ -251,7 +278,9 @@ describe('the range (R-146)', () => {
     const { state, placeId, poiId } = tavern();
     let next = run(state, { kind: 'setRange', placeId, poiId, lower: 4, upper: 8 }).state;
     next = run(next, { kind: 'enterMap', placeId, poiId }).state;
-    const levels = new Set(Object.keys(tableMap(next)!.blocks).map((k) => Number(k.split(',')[1])));
+    const levels = new Set(
+      [...mapFromJSON(tableMap(next)!)!.blocks.keys()].map((k) => Number(k.split(',')[1])),
+    );
     expect([...levels].sort((a, b) => a - b)).toEqual([5]);
   });
 

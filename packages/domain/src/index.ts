@@ -55,7 +55,7 @@ export {
   MAP_PATCH, MAP_MAX_HEIGHT, MAP_MIN_DEPTH, WHOLE_MAP, blockKey, parseBlockKey, inMap, blockAt,
   BRUSHES, DEFAULT_BRUSH, MAP_BRUSH_CELLS, brushById, brushPatch,
   setBlocks, paintBlocks, clearBlocks,
-  createMap, setBlock, clearBlock, growMap, topOfMap, bottomOfMap, mapToJSON, mapFromJSON,
+  createMap, setBlock, clearBlock, growMap, topOfMap, bottomOfMap, mapToJSON, mapFromJSON, packBlocks, unpackBlocks,
   fillRegion, fillMaterial, mapCentre, enclosing, sliceOf,
 } from './map/index.js';
 export {

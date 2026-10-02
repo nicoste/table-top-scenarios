@@ -3974,3 +3974,78 @@ Left here because an open note that is actually settled is worse than no note �
 the next reader would treat it as a live concern and go looking. The lesson
 worth keeping is the one D-206 already drew: record what was observed, not a
 cause invented to explain it, and let it close when the evidence arrives.
+
+### D-217 — One cube cost half a megabyte · `agreed`
+The GM asked for metrics before any visual work, to find out whether what we
+build is cheap. The first thing measured made the question moot, so it is
+recorded here rather than discovered later with an overlay.
+
+**Every accepted intent rewrote the whole campaign and pushed it to every
+screen.** For a campaign with one 9,714-block church:
+
+| | before | after |
+| --- | --- | --- |
+| `campaign.json`, written every intent | 354 KiB | 1.3 KiB |
+| `world.json`, written every intent | 143 KiB | only when terrain changes |
+| each map body | *inside the manifest* | 4.2 KiB, its own file |
+| broadcast to each screen | ~270 KiB | ~6 KiB |
+
+A twenty-cell paint drag was about **10 MB of disk writes and 10 MB of wire**
+for twenty cubes — synchronous on the host's event loop, with the broadcast
+queued behind it. It scaled with how much the GM owned rather than with what
+they had edited, which is the wrong shape to leave in a tool somebody is
+building a world with.
+
+**Both fixes were already written down and neither was built.** R-60 specified
+one file per map and "editing one part rewrites one file"; `save` wrote every
+file every time. R-59 specified packed bodies and even did the arithmetic —
+*"one JSON entry per cube is 10–35 MB"* — while every cube was a JSON entry.
+The module's own header stated the property it did not have. Worth saying
+plainly: a comment describing an intention is indistinguishable from one
+describing behaviour, and this one was wrong for long enough to matter.
+
+**The GM asked the right question before building: is the *how* still right?**
+It half was. Measured on the real church:
+
+| encoding | size |
+| --- | --- |
+| JSON, one entry per cube | 257.9 KiB |
+| JSON + gzip | 25.4 KiB |
+| sparse binary, 7 bytes a block | 66.4 KiB |
+| **palette + run-length** | **4.2 KiB** |
+
+So packing was right, and **chunking was wrong** — R-59's per-32³ chunks
+predate `MAP_PATCH` and the dig limit and align with neither. These maps turn
+out to be flat storeys: the church fills 15 of 48 levels. One continuous stream
+collapses the empty ones into single runs for free, scans nothing, and needs no
+index. Chunking buys partial loads, which one file per map already made
+unnecessary.
+
+Two choices worth keeping:
+
+- **Encode from the sparse keys, not by walking the box.** Cost proportional to
+  what was built rather than to how far the map reaches. The box grows with
+  every expansion; the content does not.
+- **Repair the footprint before packing, not after reading.** A run stream can
+  only describe cells inside its own box, so a block that strayed outside the
+  declared footprint would be dropped on the way *out* — before the repair that
+  used to catch it on the way in. That is D-199's bug arriving by a new route,
+  and it is closed by computing `enclosing` first.
+
+**Migration.** No schema bump: a map in the manifest and a map in a file are
+the same map, and the absence of one says where to find the other (D-187).
+A body with `blocks` and no runs is read as it is and written packed from then
+on. R-144 refuses older schemas outright, so a bump here would have made the
+GM's church unopenable — which is the sort of thing worth checking before
+reaching for a version number.
+
+Verified on the GM's own campaign before anything was committed: 9,714 blocks
+and 256 blocks, loaded from the old layout, saved, reloaded, compared cube for
+cube. Identical.
+
+**What this does not fix.** The GM's view still carries every map in the
+campaign, so the broadcast is still linear in how many maps exist — at twenty
+places it would creep back up. It buys a long runway and probably means we
+never need a diff protocol, which is the complexity most worth avoiding.
+Coalescing writes within a short window is the obvious next step and is now
+much less urgent: one cube costs one 4 KiB file.

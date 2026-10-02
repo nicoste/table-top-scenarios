@@ -185,12 +185,25 @@ describe('serialisation', () => {
     expect(blockAt(back, at(2, 5, 2))).toBe(STONE);
   });
 
-  it('sorts keys, so an autosave does not churn the diff', () => {
-    let map = createMap();
-    map = setBlock(map, at(9, 9, 9), STONE);
-    map = setBlock(map, at(1, 1, 1), STONE);
-    const keys = Object.keys(mapToJSON(map).blocks);
-    expect(keys).toEqual([...keys].sort());
+  it('writes the same bytes for the same body, whatever order it was built in', () => {
+    /*
+     * This used to say "sorts keys, so an autosave does not churn the diff",
+     * which was the same worry about a shape that no longer exists: runs are
+     * ordered by position, so the ordering is the format's rather than a
+     * precaution. What still has to hold is that the file does not change when
+     * the body has not.
+     */
+    let one = createMap();
+    one = setBlock(one, at(9, 9, 9), STONE);
+    one = setBlock(one, at(1, 1, 1), STONE);
+    let other = createMap();
+    other = setBlock(other, at(1, 1, 1), STONE);
+    other = setBlock(other, at(9, 9, 9), STONE);
+    const body = (m: typeof one) => {
+      const { palette, runs } = mapToJSON(m);
+      return JSON.stringify({ palette, runs });
+    };
+    expect(body(one)).toBe(body(other));
   });
 
   it('reads a missing map as no map at all', () => {
@@ -623,5 +636,111 @@ describe('the brush (R-162, R-164)', () => {
       const map = createMap();
       expect(clearBlocks(map, brushPatch(at(4, 9, 4), FLAT3))).toBe(map);
     });
+  });
+});
+
+describe('the packed body (R-59, D-217)', () => {
+  const build = (cells: readonly { x: number; y: number; z: number }[]) => {
+    let map = createMap();
+    for (const cell of cells) map = setBlock(map, cell, STONE);
+    return map;
+  };
+  const roundTrip = (map: ReturnType<typeof createMap>) => mapFromJSON(mapToJSON(map))!;
+
+  it('comes back exactly, cube for cube', () => {
+    const map = build([at(0, 1, 0), at(5, 7, 9), at(15, 0, 15), at(3, -4, 3)]);
+    const back = roundTrip(map);
+    expect(back.blocks.size).toBe(map.blocks.size);
+    for (const [key, material] of map.blocks) expect(back.blocks.get(key), key).toBe(material);
+  });
+
+  it('comes back exactly at the very edges of the box', () => {
+    // The corners and both height bounds, where an off-by-one in the index
+    // arithmetic would put a cube on the far side of the map or lose it.
+    const map = build([
+      at(0, MAP_MIN_DEPTH, 0),
+      at(MAP_PATCH - 1, MAP_MAX_HEIGHT - 1, MAP_PATCH - 1),
+      at(0, MAP_MAX_HEIGHT - 1, MAP_PATCH - 1),
+      at(MAP_PATCH - 1, MAP_MIN_DEPTH, 0),
+    ]);
+    const back = roundTrip(map);
+    for (const key of map.blocks.keys()) expect(back.blocks.has(key), key).toBe(true);
+    expect(back.blocks.size).toBe(map.blocks.size);
+  });
+
+  it('survives a body with nothing in it', () => {
+    const empty = clearBlocks(createMap(), [...createMap().blocks.keys()].map(
+      (k) => parseBlockKey(k)!,
+    ));
+    expect(empty.blocks.size).toBe(0);
+    expect(roundTrip(empty).blocks.size).toBe(0);
+  });
+
+  it('keeps every material distinct through the palette', () => {
+    let map = createMap();
+    const some = DEFAULT_MATERIALS.slice(0, 5);
+    some.forEach((material, i) => { map = setBlock(map, at(i, 5, 0), material.id); });
+    const back = roundTrip(map);
+    some.forEach((material, i) => {
+      expect(blockAt(back, at(i, 5, 0)), material.name).toBe(material.id);
+    });
+  });
+
+  it('keeps a body that strayed outside its declared footprint (R-157)', () => {
+    /*
+     * A run stream can only describe cells inside its own box, so if the box
+     * were not repaired first, a stray cube would be dropped on the way out —
+     * silently, and before the repair that used to catch it on the way in.
+     * This is the bug of D-199 arriving by a new route.
+     */
+    const map = { ...createMap(), blocks: new Map([...createMap().blocks, ['-5,1,-5', STONE]]) };
+    const back = roundTrip(map);
+    expect(blockAt(back, at(-5, 1, -5))).toBe(STONE);
+    expect(back.blocks.size).toBe(map.blocks.size);
+  });
+
+  it('still reads a body written before packing (R-137a)', () => {
+    // The migration, and the only reason the GM's campaign still opens. A file
+    // with `blocks` and no runs is read as it is, and written packed after.
+    const old = {
+      origin: { x: 0, z: 0 },
+      size: { x: 16, z: 16 },
+      blocks: { '1,0,1': STONE as string, '2,3,4': STONE as string },
+      planes: [],
+    };
+    const read = mapFromJSON(old)!;
+    expect(read.blocks.size).toBe(2);
+    expect(blockAt(read, at(2, 3, 4))).toBe(STONE);
+    // And writing it back produces the packed shape, not the one it came in as.
+    const written = mapToJSON(read);
+    expect(written.runs.length).toBeGreaterThan(0);
+    expect('blocks' in written).toBe(false);
+  });
+
+  it('refuses a stream whose counts do not describe the box', () => {
+    /*
+     * A cube inserted or lost shifts every cube after it, so the map would
+     * open drawn one cell askew — which looks like the GM's own mistake.
+     * Refusing says so instead (R-18).
+     */
+    const good = mapToJSON(build([at(2, 2, 2)]));
+    expect(mapFromJSON(good)).not.toBeNull();
+    expect(mapFromJSON({ ...good, runs: [...good.runs.slice(0, -1)] })).toBeNull();
+    expect(mapFromJSON({ ...good, runs: good.runs.map((n, i) => (i === 0 ? n + 1 : n)) }))
+      .toBeNull();
+    expect(mapFromJSON({ ...good, palette: [] })).toBeNull();
+  });
+
+  it('is dramatically smaller than one entry per cube, which is the point', () => {
+    // A floor and a wall: the shape of a real map, mostly air.
+    let map = createMap();
+    for (let y = 1; y < 8; y += 1) {
+      for (let x = 0; x < MAP_PATCH; x += 1) map = setBlock(map, at(x, y, 0), STONE);
+    }
+    const packed = JSON.stringify(mapToJSON(map)).length;
+    const perCube = JSON.stringify(
+      Object.fromEntries([...map.blocks].map(([k, v]) => [k, v])),
+    ).length;
+    expect(packed).toBeLessThan(perCube / 4);
   });
 });

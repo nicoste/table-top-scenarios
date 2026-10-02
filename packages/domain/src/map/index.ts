@@ -505,60 +505,158 @@ export function topOfMap(map: EncounterMap): number {
 export interface MapJSON {
   origin: { x: number; z: number };
   size: { x: number; z: number };
-  /** `"x,y,z": materialId`. Sorted on the way out so an autosave does not churn. */
-  blocks: Record<string, string>;
+  /**
+   * The materials this body uses, indexed **from 1**. Index 0 is air and is
+   * never in the list, so an empty cell costs nothing to name.
+   */
+  palette: string[];
+  /**
+   * The body, run-length encoded: `[count, index, count, index, …]` over every
+   * cell of the box, ordered **y, then z, then x** (R-59, D-217).
+   *
+   * One JSON entry per cube was 27 bytes a cube — a 9,714-block church came to
+   * 258 KiB, written whole to disk and pushed whole to both screens on every
+   * single cube placed. The same body is about 8 KiB this way, because a map is
+   * mostly air and air costs one number however much of it there is.
+   */
+  runs: number[];
   planes: PlaneJSON[];
+}
+
+/** How many cells a map's box holds: its footprint by the full height. */
+function boxOf(size: { readonly x: number; readonly z: number }): number {
+  return size.x * size.z * (MAP_MAX_HEIGHT - MAP_MIN_DEPTH);
+}
+
+/**
+ * Packs a body into a palette and a run of counts (R-59).
+ *
+ * Built from the **sparse keys**, not by walking the box: the cost is
+ * proportional to what the GM built rather than to how far their map reaches,
+ * which matters because the box grows with every expansion while the content
+ * does not. Runs of the same value merge as they are pushed, so the empty
+ * levels above and below a building collapse into one number each.
+ */
+export function packBlocks(
+  origin: { readonly x: number; readonly z: number },
+  size: { readonly x: number; readonly z: number },
+  blocks: ReadonlyMap<string, MaterialId>,
+): { palette: string[]; runs: number[] } {
+  const palette = [...new Set(blocks.values())].sort();
+  const indexOf = new Map(palette.map((id, i) => [id, i + 1]));
+  const perLevel = size.x * size.z;
+
+  const cells: { at: number; value: number }[] = [];
+  for (const [key, material] of blocks) {
+    const at = parseBlockKey(key);
+    if (!at || at.x < origin.x || at.z < origin.z) continue;
+    const dx = at.x - origin.x;
+    const dz = at.z - origin.z;
+    const dy = at.y - MAP_MIN_DEPTH;
+    if (dx >= size.x || dz >= size.z || dy < 0 || dy >= MAP_MAX_HEIGHT - MAP_MIN_DEPTH) continue;
+    cells.push({ at: dy * perLevel + dz * size.x + dx, value: indexOf.get(material)! });
+  }
+  cells.sort((a, b) => a.at - b.at);
+
+  const runs: number[] = [];
+  const push = (count: number, value: number) => {
+    if (count <= 0) return;
+    const n = runs.length;
+    if (n >= 2 && runs[n - 1] === value) runs[n - 2] = runs[n - 2]! + count;
+    else runs.push(count, value);
+  };
+
+  let cursor = 0;
+  for (const cell of cells) {
+    // A duplicate index cannot happen — block keys are unique — but a skipped
+    // one would silently shift every cube after it, so it is cheaper to be sure.
+    if (cell.at < cursor) continue;
+    push(cell.at - cursor, 0);
+    push(1, cell.value);
+    cursor = cell.at + 1;
+  }
+  push(boxOf(size) - cursor, 0);
+  return { palette, runs };
+}
+
+/**
+ * Unpacks a body, or `null` if the runs do not describe this box exactly.
+ *
+ * Refusing beats guessing: a stream whose counts do not add up has had a cube
+ * inserted or lost somewhere, and every cube after that point is at the wrong
+ * coordinate. A map drawn one cell askew is worse than a map that will not
+ * open, because only one of the two tells you (R-18).
+ */
+export function unpackBlocks(
+  origin: { readonly x: number; readonly z: number },
+  size: { readonly x: number; readonly z: number },
+  palette: readonly string[],
+  runs: readonly number[],
+): Map<string, MaterialId> | null {
+  if (runs.length % 2 !== 0) return null;
+  const blocks = new Map<string, MaterialId>();
+  const perLevel = size.x * size.z;
+  let cursor = 0;
+  for (let i = 0; i < runs.length; i += 2) {
+    const count = runs[i]!;
+    const value = runs[i + 1]!;
+    if (!Number.isInteger(count) || count < 0) return null;
+    if (value !== 0) {
+      const material = palette[value - 1];
+      if (material === undefined) return null;
+      for (let k = 0; k < count; k += 1) {
+        const at = cursor + k;
+        const level = Math.floor(at / perLevel);
+        const rest = at - level * perLevel;
+        blocks.set(blockKey({
+          x: origin.x + (rest % size.x),
+          y: MAP_MIN_DEPTH + level,
+          z: origin.z + Math.floor(rest / size.x),
+        }), material as MaterialId);
+      }
+    }
+    cursor += count;
+  }
+  return cursor === boxOf(size) ? blocks : null;
+}
+
+export function mapToJSON(map: EncounterMap): MapJSON {
+  // The box is repaired *before* packing, not after reading. A run stream can
+  // only describe cells inside its own box, so a block that strayed outside
+  // the declared footprint would be dropped on the way out and never reach the
+  // repair that used to catch it on the way in (R-157, D-199).
+  const box = enclosing(map.origin, map.size, map.blocks);
+  return {
+    ...box,
+    ...packBlocks(box.origin, box.size, map.blocks),
+    planes: planesToJSON(map.planes),
+  };
 }
 
 /**
  * What may arrive on the way *in* — the tolerance, and only in this direction
  * (R-137a).
  *
- * An older file has no origin, because a map could only grow away from it, and
- * no planes, because nobody could cut one. Both absences say what they mean, so
- * neither needed a schema bump (D-187's reasoning, twice over).
+ * Three absences, each saying what it means, none of which needed a schema
+ * bump (D-187's reasoning, three times over):
+ *
+ * - **No origin.** The map could only grow away from it, so `{0,0}` is not a
+ *   guess; it is what that map already meant.
+ * - **No planes.** Nobody could cut one, so it has exactly one band: all of it.
+ * - **No palette or runs, but a `blocks` record.** The body predates packing
+ *   (D-217). It is read as it is, and written packed from then on.
  */
-export type MapJSONIn =
-  Omit<MapJSON, 'origin' | 'planes'>
-  & { origin?: { x: number; z: number } | undefined; planes?: PlaneJSON[] | undefined };
+export type MapJSONIn = {
+  origin?: { x: number; z: number } | undefined;
+  size: { x: number; z: number };
+  planes?: PlaneJSON[] | undefined;
+  /** The packed body (D-217). */
+  palette?: string[] | undefined;
+  runs?: number[] | undefined;
+  /** The body as it was stored before packing: `"x,y,z": materialId`. */
+  blocks?: Record<string, string> | undefined;
+};
 
-export function mapToJSON(map: EncounterMap): MapJSON {
-  const blocks: Record<string, string> = {};
-  for (const key of [...map.blocks.keys()].sort()) {
-    blocks[key] = map.blocks.get(key)!;
-  }
-  return {
-    origin: { x: map.origin.x, z: map.origin.z },
-    size: { x: map.size.x, z: map.size.z },
-    blocks,
-    planes: planesToJSON(map.planes),
-  };
-}
-
-/**
- * The footprint a map should have: one that contains every block it holds, is
- * never smaller than the one it declared, and moves as little as possible
- * (R-157).
- *
- * A map should never hold a block outside its own bounds, and one was found that
- * did: 64 by 64 of floor running from -16 to 47 on a map whose stored origin
- * said zero (D-199). `inMap` rejects those cells, so the GM could see that floor
- * and not erase it, paint it or fill through it.
- *
- * Two repairs, and which one applies is decided by the blocks:
- *
- * - **Slide**, when the blocks fit inside the declared size. That was the case
- *   found: the size was right and only the origin had gone missing, so the
- *   footprint moves to sit over the work and keeps its width. Widening instead
- *   would invent empty footprint on the far side — in-bounds cells with no
- *   floor under them, which R-149 says a map does not have.
- * - **Widen**, when the blocks genuinely span more than the declared size.
- *   Exactly to the blocks, since that is the smallest honest answer.
- *
- * It never *shrinks*. A map dug hollow still owns the ground it was given:
- * growing is the GM's decision, and erasing a corner is not a request to give
- * it back. Between the blocks and the bookkeeping, the blocks are the work.
- */
 export function enclosing(
   origin: { readonly x: number; readonly z: number },
   size: { readonly x: number; readonly z: number },
@@ -594,20 +692,23 @@ export function enclosing(
 
 export function mapFromJSON(json: MapJSONIn | undefined | null): EncounterMap | null {
   if (!json) return null;
-  const blocks = new Map(Object.entries(json.blocks) as [string, MaterialId][]);
-  // No schema bump for the origin (D-187's reasoning): a file without one can
-  // only be a map that grew in the two directions that never needed it, so
-  // `{0, 0}` is not a guess — it is what that map already meant. And whatever
-  // the file claims, the footprint is widened to hold what is actually in it.
   const declared = {
     origin: { x: json.origin?.x ?? 0, z: json.origin?.z ?? 0 },
     size: { x: json.size.x, z: json.size.z },
   };
+  const blocks = json.runs
+    ? unpackBlocks(declared.origin, declared.size, json.palette ?? [], json.runs)
+    : new Map(Object.entries(json.blocks ?? {}) as [string, MaterialId][]);
+  // Runs that do not add up are refused rather than drawn askew — see
+  // `unpackBlocks`. Null reads as "that map could not be loaded", which the
+  // store already knows how to say.
+  if (!blocks) return null;
   return {
+    // Whatever the file claims, the footprint is widened to hold what is in
+    // it. A packed body cannot stray outside its box, but one written before
+    // packing could, and may still be on disk.
     ...enclosing(declared.origin, declared.size, blocks),
     blocks,
-    // No planes is the honest reading of a file that has none: a map nobody has
-    // divided has exactly one range, all of it (R-146).
     planes: planesFromJSON(json.planes),
   };
 }

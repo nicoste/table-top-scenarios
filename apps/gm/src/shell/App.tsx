@@ -6,6 +6,7 @@ import {
   CHUNK_SIZE, MAX_HEIGHT, WHOLE_MAP, rangeIn, clampBrush, BRUSHES, DEFAULT_BRUSH, brushById,
   creatableSlots, sameWorldCell,
   DEFAULT_MATERIALS, DEFAULT_FLOOR, mapFromJSON, fillRegion, sliceOf, inRange, inMap, blockAt,
+  bottomOfMap,
 } from '@tt/domain';
 import type { GmView, Intent } from '@tt/protocol';
 import { defaultTarget, worldCentre } from '@tt/render';
@@ -851,6 +852,11 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
             placeName={openPlace.name}
             poiName={openPoi.name}
             map={openMapWire}
+            // Counted from the decoded body rather than the wire: the wire
+            // carries a packed run stream now, and a panel should not need to
+            // know how a map is encoded to say how big it is (D-217).
+            blocks={openBody?.blocks.size ?? 0}
+            dug={openBody ? Math.min(0, bottomOfMap(openBody)) : 0}
             tool={mapTool}
             materials={DEFAULT_MATERIALS}
             materialId={materialId}
