@@ -3,10 +3,10 @@
 
 import type { Campaign, Save } from '@tt/domain';
 import {
-  isPlaceOnTable, isChunkKnown, belongsTo, placementToJSON, sliceOf, mapToJSON, rangeFor,
+  isPlaceOnTable, isChunkKnown, belongsTo, placementToJSON, rangeFor,
 } from '@tt/domain';
 import type { CampaignWire, SaveWire, PlacementWire, MapWire } from '../wire/index.js';
-import { encodeCampaign, encodeSave } from '../wire/index.js';
+import { encodeCampaign, encodeSave, mapWire } from '../wire/index.js';
 
 export type Role = 'gm' | 'table' | 'spectator';
 
@@ -152,7 +152,10 @@ function bodyForTheTable(
   const place = campaign.places.find((candidate) => candidate.id === placeId);
   const poi = place?.pois.find((candidate) => candidate.id === poiId);
   if (!poi?.map) return null;
-  return mapToJSON(sliceOf(poi.map, rangeFor(save, poiId)));
+  // Through the same cache as the GM's copy, keyed on the map *and* the band:
+  // an edit to another map must not cost the table a re-slice of this one
+  // (D-219).
+  return mapWire(poi.map, rangeFor(save, poiId));
 }
 
 function forTheTable(campaign: Campaign | null, save: Save | null): CampaignWire | null {

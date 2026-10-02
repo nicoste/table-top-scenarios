@@ -10,6 +10,7 @@ export {
   ChunkWireSchema, TerrainWireSchema, MemberWireSchema, WorldWireSchema, CampaignWireSchema,
   encodeChunk, encodeWorld, encodeCampaign, decodeChunk, decodeWorld, decodeCampaign,
   parseTerrainId,
+  mapWire,
 } from './wire/index.js';
 export type { ChunkWire, CampaignWire, PlaceWire, SaveWire, PlacementWire, MapWire } from './wire/index.js';
 

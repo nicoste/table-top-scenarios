@@ -2282,7 +2282,11 @@ apps/host/src/
 >   and shares the rest, so an entry costs about a chunk rather than a world.
 > - **"Did this change?" is a pointer comparison** — exact, free, and impossible
 >   to get subtly wrong. The store writes only the files whose objects moved
->   (R-60) and the encoder can skip the bodies it already packed (R-59).
+>   (R-60), and the wire form of a map is **packed once per version of that
+>   map**, cached in a `WeakMap` on the map object itself (D-219). An edit to
+>   one map therefore costs nothing for the others, on disk or on either screen.
+>   That cache is correct *only* while this rule holds: a map mutated in place
+>   would be served with its old cubes.
 > - **Nothing has to declare what it touched.** The alternative is each intent
 >   announcing its own blast radius, which works until someone adds one that
 >   forgets, and then a screen goes quietly stale. A declaration can be

@@ -4079,3 +4079,50 @@ Two notes on the fix:
   meant. Nothing can check that a citation points at the *right* rule, which is
   worth knowing about every citation in this corpus: they are load-bearing
   prose, kept honest only by somebody reading them.
+
+### D-219 — Pack a map once per version of it · `agreed`
+*"Why do I get slower by the amount of maps I have, if I can edit only 1 map at
+a time?"* — and the answer was that nothing was checking all the maps. It was
+**rebuilding** them. `encodeCampaign` packed every body on every intent, and
+the GM's view carries every map because the GM may open any of them, so one
+cube cost a full repack of the campaign three times over: once for the save and
+once per connected screen.
+
+The checking the GM was objecting to — `prev === next` — is twenty pointer
+comparisons and costs nothing. Their instinct was right and my explanation had
+it backwards.
+
+A `WeakMap` keyed on the map object fixes it, and the key is exact rather than
+a heuristic because an edit to one map leaves every other map's object
+untouched (R-165). Measured on the GM's campaign, 2 maps and 9,970 cubes:
+
+| | before | after |
+| --- | --- | --- |
+| `encodeCampaign`, nothing changed | 3.23 ms | **0.09 ms** |
+| `viewFor(gm)`, nothing changed | 3.19 ms | **0.08 ms** |
+| one cube: encode, both views, serialise | ~17 ms | **0.65 ms** |
+
+That was about one 60 Hz frame of host CPU per cube, synchronous, with the
+table's update queued behind it — and it grew with the campaign rather than
+with the edit.
+
+**Why observe rather than declare.** The sim knows which point of interest an
+intent touched and could say so. That fixes the save and not the broadcast:
+`viewFor` is called fresh per socket with no effect object to carry a flag, so
+declaring would mean threading "what changed" into the view builder, and then
+the one function that decides what each role may see stops being a pure
+function of the state. That property is what makes the trust boundary easy to
+be sure of. Observing fixes both paths and changes no signature — and a new
+intent kind gets it right without knowing the cache exists, where a declaration
+can be forgotten.
+
+**What it costs.** Invisible machinery resting entirely on immutability. A map
+mutated in place would be served stale and the bug would be miserable. R-165 is
+the thing holding it up, which is a reasonable place to stand but worth saying
+out loud rather than discovering.
+
+**What it did not fix.** The GM's push is still **153 KiB**, and now almost all
+of it is *terrain*: `world.json` is 143 KiB and `encodeCampaign` rebuilds the
+chunk grid every time, exactly as it used to rebuild the maps. The same trick
+works there and is the obvious next one. The maps are no longer the problem;
+they are 4.4 KiB of that payload.

@@ -4,11 +4,11 @@
 import { z } from 'zod';
 import type {
   Campaign, Chunk, Column, World, PartyMember, TerrainId, Place, PlaceNote, MarkerId, Save,
-  Placement, Inside,
+  Placement, Inside, EncounterMap, LevelRange,
 } from '@tt/domain';
 import {
   CHUNK_SIZE, DEFAULT_METRES_PER_LEVEL, DEFAULT_TERRAIN, DEFAULT_MARKERS,
-  chunkKey, registryId, discoveryToJSON, discoveryFromJSON, mapToJSON, mapFromJSON,
+  chunkKey, registryId, discoveryToJSON, discoveryFromJSON, mapToJSON, mapFromJSON, sliceOf,
   placementToJSON, placementFromJSON,
 } from '@tt/domain';
 
@@ -324,6 +324,49 @@ export function decodeSave(wire: SaveWire): Save {
 }
 
 /**
+ * The wire form of a map, computed once per version of that map (D-219).
+ *
+ * Packing a body walks every cube in it, and the GM's view carries *every* map
+ * in the campaign because the GM may open any of them. So placing one cube
+ * repacked every map the campaign owned — a cost proportional to how much the
+ * GM had built rather than to what they had just edited, three times over:
+ * once for the save and once per connected screen.
+ *
+ * The cache is keyed on the **map object**, which is exact and free because an
+ * edit that changes nothing returns the same object and an edit to one map
+ * leaves every other map's object untouched (R-165). Nothing has to declare
+ * what it touched; an unchanged map simply *is* the one we packed before.
+ *
+ * A `WeakMap`, so a map that goes out of scope takes its entry with it — and
+ * every edit replaces the object, so entries die as fast as they are made.
+ *
+ * **It is correct only while the domain stays immutable.** A map mutated in
+ * place would be served from this cache with its old cubes, and that bug would
+ * be a miserable one to find. R-165 is the thing holding it up.
+ *
+ * The returned object is shared between callers, which is safe for the one
+ * thing anyone does with a wire value — serialise it — and would not be if
+ * somebody started editing one.
+ */
+const packed = new WeakMap<EncounterMap, Map<string, MapWire>>();
+
+export function mapWire(map: EncounterMap, range?: LevelRange): MapWire {
+  // The band is part of the key: the table is sent a *slice*, and the same map
+  // cut two ways is two different payloads (R-146).
+  const key = range ? `${range.lower}:${range.upper}` : 'whole';
+  let byRange = packed.get(map);
+  if (!byRange) {
+    byRange = new Map();
+    packed.set(map, byRange);
+  }
+  const already = byRange.get(key);
+  if (already) return already;
+  const made = mapToJSON(range ? sliceOf(map, range) : map);
+  byRange.set(key, made);
+  return made;
+}
+
+/**
  * Symmetry with `decodeCampaign`: an app reads the wire through `protocol` and
  * gets domain types back, rather than reaching into `domain` for a JSON helper.
  */
@@ -345,7 +388,7 @@ export function encodePoi(place: Place): PlaceWire {
       id: e.id as string,
       name: e.name,
       visibleToParty: e.visibleToParty,
-      map: e.map ? mapToJSON(e.map) : null,
+      map: e.map ? mapWire(e.map) : null,
     })),
     notes: place.notes.map((n) => ({ id: n.id, text: n.text, visibleToParty: n.visibleToParty })),
   };

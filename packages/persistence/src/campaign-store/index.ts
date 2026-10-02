@@ -17,9 +17,9 @@ import {
 } from 'node:fs';
 import { join } from 'node:path';
 import type { Campaign, EncounterMap } from '@tt/domain';
-import { SCHEMA_VERSION, mapToJSON } from '@tt/domain';
+import { SCHEMA_VERSION } from '@tt/domain';
 import type { CampaignSummary, CampaignWire } from '@tt/protocol';
-import { CampaignWireSchema, encodeCampaign, decodeCampaign } from '@tt/protocol';
+import { CampaignWireSchema, encodeCampaign, decodeCampaign, mapWire } from '@tt/protocol';
 
 export interface CampaignStore {
   list(): readonly CampaignSummary[];
@@ -164,7 +164,11 @@ export function fileCampaignStore(root: string): CampaignStore {
           if (!poi.map) continue;
           maps.set(poi.id as string, poi.map);
           if (before?.maps.get(poi.id as string) === poi.map) continue;
-          writeAtomic(join(bodies, `${poi.id}.json`), JSON.stringify(mapToJSON(poi.map)));
+          // `mapWire`, not `mapToJSON`: `encodeCampaign` above has just packed
+          // this body, and going through the cache means it is packed once
+          // rather than once for the manifest it is then stripped from and
+          // again for the file (D-219).
+          writeAtomic(join(bodies, `${poi.id}.json`), JSON.stringify(mapWire(poi.map)));
         }
       }
 
