@@ -3935,3 +3935,26 @@ three and so can straddle a cut, where it lays down what fits and stops. The
 refusal is unchanged and still exact: an empty patch means the cube being aimed
 at is outside the band, because a column grows *away* from the surface it was
 aimed at and so can never reach back in from outside it.
+
+### D-216 — A colour commits when it stops moving · `agreed`
+*"Can we submit the color on mouse click release?"* — the right instinct, and
+the one thing that cannot be written as written: **the release is not
+observable.** A colour input opens the operating system's own panel, which is a
+window rather than part of the page. Dragging in it streams events at the
+element; the mouse-up that ends the drag is delivered to that window and never
+reaches here, and the element does not reliably blur when the panel closes.
+
+So the commit is measured from this side instead: a quarter-second with the
+colour holding still. That is the same event — a GM dragging through a gradient
+produces a change every few milliseconds, and a GM who has chosen produces none
+— and it has the advantage of not depending on which of `input` and `change` a
+particular browser decides to fire for colour inputs, which they disagree about.
+Blur still commits immediately, because tabbing away is unambiguous.
+
+The decision itself is `DraftInput`'s, reused rather than rewritten: a drag that
+wanders around the wheel and lands back on the colour it started from is not an
+edit, and must not cost an undo step. That was D-214's rule and it did not need
+a second one.
+
+This closes the field left open in D-214, which flagged the colour picker rather
+than half-fixing it on the way past.

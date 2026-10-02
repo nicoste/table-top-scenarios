@@ -10,5 +10,8 @@ export type { ConfirmDeleteProps } from './confirm-delete/index.js';
 export { DraftInput, commits } from './draft-input/index.js';
 export type { DraftInputProps } from './draft-input/index.js';
 
+export { ColourInput } from './colour-input/index.js';
+export type { ColourInputProps } from './colour-input/index.js';
+
 export { Compass } from './compass/index.js';
 export type { CompassProps } from './compass/index.js';

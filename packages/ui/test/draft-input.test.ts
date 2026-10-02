@@ -54,3 +54,24 @@ describe('commits', () => {
     expect(commits('', '3', whole)).toBe(false);
   });
 });
+
+describe('commits, for a colour that has settled (R-163)', () => {
+  // A colour input has none of a text field's signals: the OS panel is a
+  // window, not part of the page, so the release that ends a drag is never
+  // delivered and the element need not blur when the panel closes. What a
+  // settled colour shares with a finished draft is this rule, which is why it
+  // is the same function.
+  it('commits a colour the GM moved to', () => {
+    expect(commits('#ff0000', '#00ff00')).toBe(true);
+  });
+
+  it('says nothing happened when the drag came back to where it began', () => {
+    // Dragging around a wheel and landing on the starting colour is a gesture
+    // that changed nothing, and must not cost an undo step.
+    expect(commits('#00ff00', '#00ff00')).toBe(false);
+  });
+
+  it('says nothing happened when the picker was opened and closed', () => {
+    expect(commits(null, '#00ff00')).toBe(false);
+  });
+});

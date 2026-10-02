@@ -2267,3 +2267,12 @@ apps/host/src/
 > field. Its one decision — *does this finished draft become an edit?* — is a
 > pure function beside it, because there is no DOM to test the component in
 > (R-23b).
+>
+> **A colour commits when it settles**, because it has no finish to wait for.
+> The OS colour panel is a window and not part of the page: the release that
+> ends a drag is never delivered, and the element need not blur when the panel
+> closes. "Commit on release" cannot be written, so `ColourInput` measures the
+> same event from this side — a quarter-second with the colour holding still,
+> which no human drag is quiet for mid-gesture. Blur still commits at once,
+> since tabbing away is unambiguous. The decision it makes is `DraftInput`'s,
+> the same function: a drag that ends where it began is not an edit.

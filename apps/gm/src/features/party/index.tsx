@@ -7,7 +7,7 @@
 
 import type { Intent, PlacementWire } from '@tt/protocol';
 import type { CampaignWire } from '@tt/protocol';
-import { DraftInput, Tooltip } from '@tt/ui';
+import { ColourInput, DraftInput, Tooltip } from '@tt/ui';
 
 interface Props {
   campaign: CampaignWire;
@@ -75,11 +75,11 @@ export function PartyPanel({ campaign, placement, canPlace, dispatch }: Props) {
           </div>
           <div className="grid">
             <label htmlFor={`c-${m.id}`}>colour</label>
-            <input
+            {/* One edit per choice, not one per frame of the drag (R-163). */}
+            <ColourInput
               id={`c-${m.id}`}
-              type="color"
               value={m.colour}
-              onChange={(e) => dispatch({ kind: 'editMember', id: m.id, colour: e.target.value })}
+              onCommit={(colour) => dispatch({ kind: 'editMember', id: m.id, colour })}
             />
           </div>
         </div>
