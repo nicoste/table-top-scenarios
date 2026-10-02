@@ -24,6 +24,8 @@ export {
   paintArea, setHeightArea, raiseArea,
 } from './world/index.js';
 
+export { packRuns, unpackRuns } from './runs/index.js';
+
 export type { PartyMember } from './party/index.js';
 export {
   DEFAULT_VISION_RANGE, nextPawnColour, createMember, startingParty, editMember, removeMember,

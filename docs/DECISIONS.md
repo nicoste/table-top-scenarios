@@ -4126,3 +4126,41 @@ of it is *terrain*: `world.json` is 143 KiB and `encodeCampaign` rebuilds the
 chunk grid every time, exactly as it used to rebuild the maps. The same trick
 works there and is the obvious next one. The maps are no longer the problem;
 they are 4.4 KiB of that payload.
+
+### D-220 — The terrain was the same bug, one dimension down · `agreed`
+D-219 fixed the maps and reported honestly that the GM's push was still
+153 KiB. Nearly all of it was terrain: a chunk carried **900 copies of strings
+like `terrain:grass`**, 126 KiB of a 143 KiB world, to every screen on every
+accepted intent — the same per-cell verbosity the bodies had, in a rule that
+happened to say "voxel bodies" and so never covered it.
+
+| | before | after |
+| --- | --- | --- |
+| world on the wire and on disk | 142.7 KiB | **1.6 KiB** |
+| the GM's whole push | 153.2 KiB | **12.2 KiB** |
+| `encodeCampaign`, nothing changed | 0.086 ms | **0.003 ms** |
+| one cube: encode, both views, serialise | 0.650 ms | **0.417 ms** |
+
+Packing *and* the same `WeakMap`, for the same reason as the maps: a chunk's
+wire form is built once per version of that chunk, and painting one chunk
+leaves the others' objects untouched (R-165). The packing cut the bytes; the
+cache stopped the packing being redone nine times a keystroke.
+
+Two things worth recording because they are not symmetric with the maps:
+
+- **A corrupt chunk is read as sea; a corrupt body is refused.** Terrain has a
+  value in every cell by definition, so there is an obvious floor and one bad
+  chunk should not cost a campaign that may hold twenty good ones. A body has
+  no such floor — a map one cube askew looks like the GM's own mistake, so
+  refusing is the honest answer.
+- **The runs are expanded back into the flat arrays the decoder already had**,
+  so the one piece of arithmetic that can shear a world — the re-lay from the
+  stored stride into the current `CHUNK_SIZE` — was not touched at all.
+
+It also flushed out a console reading the wire's own arrays to say what was
+under the pointer. That now reads a decoded campaign, which the scene needed
+anyway, so there is one decode per push instead of two and the readout no
+longer knows how a chunk is encoded.
+
+Verified lossless over all 8,100 columns, height and terrain, before anything
+was written.

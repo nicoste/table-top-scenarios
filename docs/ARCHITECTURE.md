@@ -1008,10 +1008,24 @@ D-035. Numbers are not reused; decisions cite them.
 
 ## 8b. Storage format
 
-> **R-59.** Structure is **JSON**; voxel bodies are **packed**. Campaign
-> manifest, world, chunks, places, registries and every save stay hand-editable
-> and diffable. A body is a **palette and one run-length stream**, ordered y,
-> then z, then x, over the whole box.
+> **R-59.** Structure is **JSON**; **anything stored one value per cell is
+> packed**. Campaign manifest, places, registries and every save stay
+> hand-editable and diffable. A voxel body is a **palette and one run-length
+> stream**, ordered y, then z, then x, over the whole box. A chunk's terrain
+> and heights are the same idea in two dimensions.
+>
+> The rule used to say "voxel bodies", and terrain quietly was not one — 900
+> copies of strings like `terrain:grass` per chunk, 126 KiB of a 143 KiB world,
+> on every screen on every intent (D-220). It packs to 1.6 KiB: a world is
+> overwhelmingly long stretches of the same thing, 135 runs of terrain and 9 of
+> height across 8,100 cells.
+>
+> **Two different answers to a corrupt stream, on purpose.** A body whose runs
+> do not add up is **refused**, because a map drawn one cube askew is
+> indistinguishable from the GM's own mistake. A chunk is **read as sea**,
+> because terrain has a value in every cell by definition so there is an
+> obvious floor, and one bad chunk should not cost a campaign holding twenty
+> good ones.
 >
 > The reason was arithmetic and is now measurement. A 9,714-block church came to
 > **258 KiB** as one JSON entry per cube and to **4.2 KiB** packed — 62×, and
@@ -2282,11 +2296,11 @@ apps/host/src/
 >   and shares the rest, so an entry costs about a chunk rather than a world.
 > - **"Did this change?" is a pointer comparison** — exact, free, and impossible
 >   to get subtly wrong. The store writes only the files whose objects moved
->   (R-60), and the wire form of a map is **packed once per version of that
->   map**, cached in a `WeakMap` on the map object itself (D-219). An edit to
->   one map therefore costs nothing for the others, on disk or on either screen.
->   That cache is correct *only* while this rule holds: a map mutated in place
->   would be served with its old cubes.
+>   (R-60), and the wire form of a **map or a chunk** is packed once per version
+>   of it, cached in a `WeakMap` on that object (D-219, D-220). An edit to one
+>   map or one chunk therefore costs nothing for the others, on disk or on
+>   either screen. Those caches are correct *only* while this rule holds:
+>   something mutated in place would be served with its old contents.
 > - **Nothing has to declare what it touched.** The alternative is each intent
 >   announcing its own blast radius, which works until someone adds one that
 >   forgets, and then a screen goes quietly stale. A declaration can be

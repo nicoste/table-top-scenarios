@@ -3,7 +3,7 @@ import {
   CHUNK_SIZE, MAX_HEIGHT, WATER, DEFAULT_TERRAIN,
   createChunk, emptyWorld, addChunk, replaceChunk, chunkAt, isAuthored, creatableSlots,
   columnAt, paintTerrain, setHeight, raiseHeight, clampHeight, requireTerrain, registryId,
-  isCreatableSlot,
+  isCreatableSlot, packRuns, unpackRuns,
 } from '@tt/domain';
 import type { TerrainId } from '@tt/domain';
 
@@ -171,5 +171,46 @@ describe('no-op edits stay no-ops all the way up', () => {
   it('ignores a chunk for a coordinate that was never authored', () => {
     const world = emptyWorld();
     expect(replaceChunk(world, createChunk({ cx: 2, cz: 2 }))).toBe(world);
+  });
+});
+
+describe('run-length encoding a dense array (R-59, D-220)', () => {
+  it('comes back exactly, however the values fall', () => {
+    for (const values of [
+      [],
+      [7],
+      [1, 1, 1, 1],
+      [0, 1, 0, 1, 0],
+      [3, 3, 9, 9, 9, 0],
+      Array.from({ length: 900 }, (_, i) => (i < 800 ? 0 : 4)),
+    ]) {
+      expect(unpackRuns(packRuns(values), values.length), JSON.stringify(values.slice(0, 6)))
+        .toEqual(values);
+    }
+  });
+
+  it('collapses a stretch of one value to a single pair', () => {
+    // The property the whole thing rests on: 900 cells of sea cost two numbers.
+    expect(packRuns(Array.from({ length: 900 }, () => 0))).toEqual([900, 0]);
+  });
+
+  it('refuses runs that do not add up to what was asked for', () => {
+    // A count wrong by one shifts every cell after it, so a world would be
+    // silently sheared by a column — which looks like somebody's mistake
+    // rather than a corrupt file (R-18).
+    expect(unpackRuns([3, 1], 4)).toBeNull();
+    expect(unpackRuns([5, 1], 4)).toBeNull();
+    expect(unpackRuns([3, 1, 1], 4)).toBeNull();
+    expect(unpackRuns([2, 1, 2, 0], 4)).toEqual([1, 1, 0, 0]);
+  });
+
+  it('refuses a count it would have to allocate for before noticing', () => {
+    // Guarded on the way in rather than after filling: a corrupt stream must
+    // not be able to ask for a hundred million entries first.
+    expect(unpackRuns([1e9, 0], 10)).toBeNull();
+  });
+
+  it('refuses a stream with a count and no value', () => {
+    expect(unpackRuns([4], 4)).toBeNull();
   });
 });

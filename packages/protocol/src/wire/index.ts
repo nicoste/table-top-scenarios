@@ -9,6 +9,7 @@ import type {
 import {
   CHUNK_SIZE, DEFAULT_METRES_PER_LEVEL, DEFAULT_TERRAIN, DEFAULT_MARKERS,
   chunkKey, registryId, discoveryToJSON, discoveryFromJSON, mapToJSON, mapFromJSON, sliceOf,
+  packRuns, unpackRuns,
   placementToJSON, placementFromJSON,
 } from '@tt/domain';
 
@@ -30,8 +31,26 @@ export const ChunkWireSchema = z.object({
    * (R-61). Schema 1 had no field and was always 20.
    */
   size: z.number().int().min(1).max(512).default(20),
-  heights: z.array(z.number().int().min(0)),
-  terrain: z.array(TerrainIdSchema),
+  /**
+   * Terrain and heights, run-length encoded, with the terrain's values indexed
+   * into `palette` (R-59, D-220).
+   *
+   * They were one entry per cell: 900 copies of strings like `terrain:grass`
+   * per chunk, which came to 126 KiB of a 143 KiB world and went over the wire
+   * on every accepted intent. The same world packs to 1.2 KiB, because a world
+   * is overwhelmingly long stretches of the same thing — 135 runs of terrain
+   * and 9 of height across 8,100 cells.
+   *
+   * The plain arrays are still **accepted** on the way in, because a campaign
+   * written before packing is still a campaign (R-137a), and not defaulted,
+   * because an empty array is truthy and the reader has to tell absence from
+   * emptiness.
+   */
+  palette: z.array(TerrainIdSchema).optional(),
+  terrainRuns: z.array(z.number().int().nonnegative()).optional(),
+  heightRuns: z.array(z.number().int().nonnegative()).optional(),
+  heights: z.array(z.number().int().min(0)).optional(),
+  terrain: z.array(TerrainIdSchema).optional(),
 });
 export type ChunkWire = z.infer<typeof ChunkWireSchema>;
 
@@ -223,14 +242,31 @@ export type CampaignWire = z.infer<typeof CampaignWireSchema>;
 
 // -- encode ------------------------------------------------------------------
 
+/**
+ * The wire form of a chunk, built once per version of that chunk (D-220).
+ *
+ * The same cache as a map's, for the same reason and resting on the same rule
+ * (R-165): painting one chunk leaves every other chunk's object untouched, so
+ * an unchanged chunk simply *is* the one that was packed before. Packing costs
+ * a walk of 900 cells, which is cheap once and silly nine times per keystroke.
+ */
+const packedChunks = new WeakMap<Chunk, ChunkWire>();
+
 export function encodeChunk(chunk: Chunk): ChunkWire {
-  return {
+  const already = packedChunks.get(chunk);
+  if (already) return already;
+  const palette = [...new Set(chunk.columns.map((c) => c.terrainId as string))].sort();
+  const indexOf = new Map(palette.map((id, i) => [id, i]));
+  const made: ChunkWire = {
     cx: chunk.coord.cx,
     cz: chunk.coord.cz,
     size: CHUNK_SIZE,
-    heights: chunk.columns.map((c) => c.height),
-    terrain: chunk.columns.map((c) => c.terrainId as string),
+    palette,
+    terrainRuns: packRuns(chunk.columns.map((c) => indexOf.get(c.terrainId as string)!)),
+    heightRuns: packRuns(chunk.columns.map((c) => c.height)),
   };
+  packedChunks.set(chunk, made);
+  return made;
 }
 
 export function encodeWorld(world: World): z.infer<typeof WorldWireSchema> {
@@ -420,14 +456,30 @@ export function decodePoi(wire: PlaceWire): Place {
  */
 export function decodeChunk(wire: ChunkWire): Chunk {
   const stride = wire.size;
+  /*
+   * Unpacked back into the flat arrays the re-lay below already understood, so
+   * the one piece of arithmetic that can shear a world stayed untouched.
+   *
+   * A chunk whose runs do not add up is read as sea rather than refused. A map
+   * refuses, because a body drawn one cube askew is indistinguishable from the
+   * GM's own mistake; a chunk is *terrain*, every cell of it has a value, and
+   * one unreadable chunk in a world should not cost the campaign.
+   */
+  const cells = stride * stride;
+  const heights = wire.heightRuns
+    ? unpackRuns(wire.heightRuns, cells) ?? []
+    : wire.heights ?? [];
+  const terrain = wire.terrainRuns
+    ? (unpackRuns(wire.terrainRuns, cells) ?? []).map((i) => wire.palette?.[i] ?? 'terrain:water')
+    : wire.terrain ?? [];
   const columns: Column[] = [];
   for (let z = 0; z < CHUNK_SIZE; z++) {
     for (let x = 0; x < CHUNK_SIZE; x++) {
       const inside = x < stride && z < stride;
       const source = inside ? z * stride + x : -1;
       columns.push({
-        height: source >= 0 ? (wire.heights[source] ?? 0) : 0,
-        terrainId: terrainId(source >= 0 ? (wire.terrain[source] ?? 'terrain:water') : 'terrain:water'),
+        height: source >= 0 ? (heights[source] ?? 0) : 0,
+        terrainId: terrainId(source >= 0 ? (terrain[source] ?? 'terrain:water') : 'terrain:water'),
       });
     }
   }

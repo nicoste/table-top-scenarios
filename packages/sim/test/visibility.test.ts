@@ -3,9 +3,9 @@
 
 import { describe, it, expect } from 'vitest';
 import { apply, emptyHistory } from '@tt/sim';
-import { viewFor } from '@tt/protocol';
+import { viewFor, decodeWorld } from '@tt/protocol';
 import type { HostState, Intent } from '@tt/protocol';
-import { createCampaign, createLiveSave, ORIGIN } from '@tt/domain';
+import { createCampaign, createLiveSave, ORIGIN, chunkAt } from '@tt/domain';
 
 const NOW = '2026-01-01T00:00:00.000Z';
 const run = (s: HostState, i: Intent, role: 'gm' | 'table' = 'gm') => apply(s, role, i, NOW);
@@ -62,7 +62,11 @@ describe('nothing reaches the table until the GM says so', () => {
     const world = tableWorld(state);
     expect(world?.chunks).toHaveLength(1);
     expect(world?.unknownChunks).toEqual([]);
-    expect(world?.chunks[0]?.heights.length).toBeGreaterThan(0);
+    // Decoded rather than inspected: the wire carries runs now (D-220), and
+    // the question was always whether the table receives the chunk's terrain,
+    // not which shape it arrives in.
+    expect(decodeWorld(world!).chunks.size).toBe(1);
+    expect(chunkAt(decodeWorld(world!), ORIGIN)?.columns.length).toBeGreaterThan(0);
   });
 
   it('takes a chunk away again when the GM un-reveals it', () => {

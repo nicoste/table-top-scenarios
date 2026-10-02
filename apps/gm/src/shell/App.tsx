@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { decodeCampaign, decodePlacement } from '@tt/protocol';
 import {
-  CHUNK_SIZE, MAX_HEIGHT, WHOLE_MAP, rangeIn, clampBrush, BRUSHES, DEFAULT_BRUSH, brushById,
+  MAX_HEIGHT, WHOLE_MAP, rangeIn, clampBrush, BRUSHES, DEFAULT_BRUSH, brushById,
+  chunkAt, columnAt,
   creatableSlots, sameWorldCell,
   DEFAULT_MATERIALS, DEFAULT_FLOOR, mapFromJSON, fillRegion, sliceOf, inRange, inMap, blockAt,
   bottomOfMap,
@@ -207,7 +208,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   useEffect(() => {
     if (!stage) return;
     if (!campaign) { stage.setCampaign(null); openedId.current = null; return; }
-    const decoded = decodeCampaign(campaign);
+    if (!decoded) return;
     const fresh = openedId.current !== campaign.id;
     stage.setCampaign(decoded, fresh);
     if (fresh) {
@@ -359,16 +360,27 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     setSelectedChunk(null);
   }, [tool]);
 
+  /**
+   * The campaign as domain types, decoded once per push.
+   *
+   * The scene needed this anyway; the readout below used to reach into the
+   * wire's own arrays instead, which stopped working the day terrain was
+   * packed (D-220) and was the wrong shape before that. A console should not
+   * need to know how a chunk is encoded to say what is under the pointer.
+   */
+  const decoded = useMemo(() => (campaign ? decodeCampaign(campaign) : null), [campaign]);
+
   const columnInfo = useCallback((cell: { cx: number; cz: number; x: number; z: number }) => {
-    const chunk = campaign?.world.chunks.find((c) => c.cx === cell.cx && c.cz === cell.cz);
+    const chunk = decoded ? chunkAt(decoded.world, { cx: cell.cx, cz: cell.cz }) : null;
     if (!chunk) return null;
-    const i = cell.z * CHUNK_SIZE + cell.x;
-    const id = chunk.terrain[i];
+    const column = columnAt(chunk, cell.x, cell.z);
+    if (!column) return null;
     return {
-      height: chunk.heights[i] ?? 0,
-      terrain: campaign?.terrain.find((t) => t.id === id)?.name ?? id ?? '?',
+      height: column.height,
+      terrain: campaign?.terrain.find((t) => t.id === column.terrainId)?.name
+        ?? (column.terrainId as string),
     };
-  }, [campaign]);
+  }, [decoded, campaign]);
 
   useEffect(() => {
     const waiting = pendingPlaceCell.current;
