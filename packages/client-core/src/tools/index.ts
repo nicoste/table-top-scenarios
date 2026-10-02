@@ -9,7 +9,7 @@
 // Neither of them may assume the other's precedence.
 
 import type { MapTool, Tool } from '../store/index.js';
-import type { BlockCoord, LevelRange } from '@tt/domain';
+import type { BlockCoord, Brush, LevelRange } from '@tt/domain';
 import { brushPatch, inRange } from '@tt/domain';
 import type { FacePick } from '@tt/render';
 
@@ -173,8 +173,8 @@ export type MapAction =
  * Pointing at any side of a cube digs under *that cube*.
  */
 export interface MapReach {
-  /** The brush, as a radius: 0 is one cube, 2 is 5×5 (R-162). */
-  readonly radius: number;
+  /** The shape the brush lays down (R-164). */
+  readonly brush: Brush;
   /** Alt/Option — build *under* the cube rather than against its face (R-160). */
   readonly alt: boolean;
   /** Shift — the tool's other mode: erase under Build, fill under Paint. */
@@ -183,9 +183,14 @@ export interface MapReach {
    * The levels a brush may touch, or `null` for all of them.
    *
    * The GM's band while they are levelling. A flat patch is all on one level
-   * (D-213), so this admits the whole gesture or none of it — which is exactly
-   * the band check `mapAllowed` used to make for itself, moved to where the
-   * cells are decided so that there is one mechanism rather than two.
+   * and is admitted or refused whole; a column spans two or three, so it is
+   * **clipped** — it lays down what is inside the band and stops at the cut,
+   * the same way it stops at the edge of the map (R-164).
+   *
+   * Either way an *empty* patch still means one thing, which is what
+   * `mapAllowed` reads: the cube being aimed at is outside the band. A column
+   * grows away from the surface it was aimed at, so it can never reach back
+   * into the band from outside it.
    */
   readonly within: LevelRange | null;
 }
@@ -213,15 +218,9 @@ export function mapAction(
   reach: MapReach,
 ): MapAction {
   if (!face) return { kind: 'nothing' };
-  /**
-   * The patch, flat and on one level, with the band's say applied (D-213).
-   *
-   * Every cell shares the anchor's height, so the band either admits the whole
-   * patch or none of it — and an empty patch is how `mapAllowed` learns that
-   * the cube being aimed at is outside the levels the GM is being shown.
-   */
-  const patch = (at: BlockCoord): readonly BlockCoord[] => {
-    const cells = brushPatch(at, reach.radius);
+  /** The brush's cells, with the band's say applied (R-164). */
+  const patch = (at: BlockCoord, grow: 'up' | 'down' = 'up'): readonly BlockCoord[] => {
+    const cells = brushPatch(at, reach.brush, grow);
     return reach.within ? cells.filter((cell) => inRange(reach.within!, cell.y)) : cells;
   };
 
@@ -231,7 +230,10 @@ export function mapAction(
     if (reach.shift) return { kind: 'erase', at: face.block, cells: patch(face.block) };
     if (reach.alt) {
       const at = { x: face.block.x, y: face.block.y - 1, z: face.block.z };
-      return { kind: 'place', at, cells: patch(at), under: true };
+      // Down, so that a column digs a shaft rather than building up into the
+      // cube that was pointed at. Alt means *downward*, and it means it for
+      // the brush's shape as much as for where the first cube lands.
+      return { kind: 'place', at, cells: patch(at, 'down'), under: true };
     }
     return { kind: 'place', at: face.adjacent, cells: patch(face.adjacent), under: false };
   }

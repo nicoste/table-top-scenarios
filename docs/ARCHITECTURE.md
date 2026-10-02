@@ -2180,18 +2180,29 @@ apps/host/src/
 > mode is discovered now that it has no button of its own, and the same
 > reasoning as the dig modifier's (D-203).
 >
-> **The brush is a radius**, 0 to 2, read as 1×1, 3×3 and 5×5. A radius rather
-> than a width so that "the centre cube is always covered" is arithmetic and not
-> a convention: an even brush is unrepresentable. The world's terrain brush
-> counts *cells* and puts size 2 off-centre, so these are deliberately different
-> things that share their keys (`[` `]`, and 6/7/8) and nothing else.
+> **The brush is a named shape** from a small registry (R-164): Cube, Flat 3×3,
+> Flat 5×5, Column 2, Column 3. Each has an odd `span` and a `rise`, so "the
+> centre cube is always covered" is arithmetic and an even brush is not in the
+> list to be chosen. The world's terrain brush counts *cells* and puts size 2
+> off-centre, so these are deliberately different things that share their keys
+> (`[` `]`, and 6 onward) and nothing else.
 >
-> **A patch is flat and on one level, always** (D-213). It followed the face
-> first — flat on a rooftop, upright on a wall — which sounds right and reads as
-> weird in the hand: the outline changes orientation as the pointer crosses an
-> edge, so one gesture means two shapes depending on which pixel you are over.
-> One shape every time beats a shape that is cleverer about the surface. It also
-> means a patch cannot straddle a cut, so the band admits all of it or none.
+> It was a radius while every brush was a flat square, which lasted exactly as
+> long as that was true: a column is not a radius. A registry is the shape
+> materials and markers already have, and for the same reason — another brush
+> is a line, not a change.
+>
+> **A shape does not depend on the face** (D-213). A flat brush lies flat
+> whichever face was pointed at, and a column stands upright. The brush followed
+> the face first — flat on a rooftop, upright on a wall — which sounds right and
+> reads as weird in the hand: the outline changes orientation as the pointer
+> crosses an edge, so one gesture means two shapes depending on which pixel you
+> are over. A shape chosen by name is a shape you can predict.
+>
+> **A column grows away from the surface** (R-164): upward normally, downward
+> under Alt, so one shape raises a wall and sinks a shaft. Alt means *downward*,
+> and it means it for the brush's shape as much as for where the first cube
+> lands.
 >
 > **A patch clips; it does not refuse.** Cells outside the footprint (R-157),
 > outside the height bounds, already occupied for a build, or empty for a paint
@@ -2210,17 +2221,29 @@ apps/host/src/
 > trust: every cell is checked at the host exactly as it was when each arrived
 > alone.
 >
-> **The band decides the whole patch** (R-159). It lives in the console, because
-> whether the GM is levelling is their own view state (R-84) and never crosses
-> the wire. A patch is one level, so the answer is the same for every cell, and
-> an empty patch *is* the refusal — it happens exactly when the cube being aimed
-> at is outside the band, which is the check it replaces. One mechanism, not
-> two saying the same thing.
+> **The band clips the patch** (R-159). It lives in the console, because whether
+> the GM is levelling is their own view state (R-84) and never crosses the wire.
+> A flat patch is one level and so is admitted or refused whole; a column is the
+> shape that can straddle a cut, and it lays down what fits and stops — the same
+> way it stops at the edge of the map.
+>
+> Either way an **empty patch is the refusal**, which is the band check
+> `mapAllowed` used to make for itself: it happens exactly when the cube being
+> aimed at is outside the band, because a column grows *away* from the surface
+> it was aimed at and so can never reach back in from outside. One mechanism,
+> not two saying the same thing.
 >
 > **The drag rule reads the action, not the tool** (R-153). Paint drags; erase
 > and fill do not, and asking the tool would let a held Shift drag an erase
 > through the geometry it is eating.
 
+> **R-164.** **A brush is a shape with a name, chosen from a registry.**
+>
+> Cube, Flat 3×3, Flat 5×5, Column 2, Column 3 — `span` odd and `rise` upward,
+> and the geometry is one box either way. The GM reached for columns the moment
+> they built a second storey and a cellar, which a flat square cannot do and a
+> radius cannot describe. See R-162 for how a shape is placed, clipped and sent.
+>
 > **R-163.** **A field becomes an edit when it is finished, not per keystroke.**
 >
 > Text and number fields hold a **draft** while they have focus and dispatch on

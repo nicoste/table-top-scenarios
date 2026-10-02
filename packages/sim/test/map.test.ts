@@ -11,7 +11,7 @@ import type { GmView, HostState, Intent, TableView } from '@tt/protocol';
 import type { Campaign } from '@tt/domain';
 import {
   createCampaign, createLiveSave, DEFAULT_MATERIALS, DEFAULT_FLOOR,
-  MAP_PATCH, MAP_MAX_HEIGHT, ORIGIN, MAP_BRUSH_CELLS, brushPatch,
+  MAP_PATCH, MAP_MAX_HEIGHT, ORIGIN, MAP_BRUSH_CELLS, brushById, brushPatch,
 } from '@tt/domain';
 import { IntentSchema } from '@tt/protocol';
 
@@ -389,7 +389,7 @@ describe('a brush arrives as one intent (R-162)', () => {
     // twenty-five undo steps for one click, and a GM who erased a 5×5 by
     // accident would be pressing undo twenty-five times.
     const { state, placeId, poiId } = seeded();
-    const cells = brushPatch({ x: 5, y: 1, z: 5 }, 2);
+    const cells = brushPatch({ x: 5, y: 1, z: 5 }, brushById('flat5'));
     const built = run(state, { kind: 'setBlock', placeId, poiId, cells, materialId: STONE }).state;
     for (const cell_ of cells) {
       expect(poiOf(built).map!.blocks.get(`${cell_.x},${cell_.y},${cell_.z}`)).toBe(STONE);
@@ -407,7 +407,7 @@ describe('a brush arrives as one intent (R-162)', () => {
     }).state;
     // A 3×3 over it: the middle is taken, the eight around it are not.
     const wide = run(one, {
-      kind: 'setBlock', placeId, poiId, cells: brushPatch({ x: 5, y: 1, z: 5 }, 1), materialId: GRASS,
+      kind: 'setBlock', placeId, poiId, cells: brushPatch({ x: 5, y: 1, z: 5 }, brushById('flat3')), materialId: GRASS,
     });
     expect(wide.rejected).toBeUndefined();
     const blocks = poiOf(wide.state).map!.blocks;
@@ -422,7 +422,7 @@ describe('a brush arrives as one intent (R-162)', () => {
     // is the same one a single cube has always got.
     const { state, placeId, poiId } = seeded();
     expect(run(state, {
-      kind: 'setBlock', placeId, poiId, cells: brushPatch({ x: 5, y: 0, z: 5 }, 1), materialId: STONE,
+      kind: 'setBlock', placeId, poiId, cells: brushPatch({ x: 5, y: 0, z: 5 }, brushById('flat3')), materialId: STONE,
     }).rejected).toBe('there is already a block there');
   });
 
@@ -430,7 +430,7 @@ describe('a brush arrives as one intent (R-162)', () => {
     // A brush at the corner laps over the edge of the map. What is inside is
     // placed; what is outside is not a cell and is simply skipped.
     const { state, placeId, poiId } = seeded();
-    const cells = brushPatch({ x: 0, y: 1, z: 0 }, 1);
+    const cells = brushPatch({ x: 0, y: 1, z: 0 }, brushById('flat3'));
     const next = run(state, { kind: 'setBlock', placeId, poiId, cells, materialId: STONE });
     expect(next.rejected).toBeUndefined();
     const blocks = poiOf(next.state).map!.blocks;
@@ -442,7 +442,7 @@ describe('a brush arrives as one intent (R-162)', () => {
   it('refuses a patch that is entirely outside the map', () => {
     const { state, placeId, poiId } = seeded();
     expect(run(state, {
-      kind: 'setBlock', placeId, poiId, cells: brushPatch({ x: 900, y: 1, z: 900 }, 1), materialId: STONE,
+      kind: 'setBlock', placeId, poiId, cells: brushPatch({ x: 900, y: 1, z: 900 }, brushById('flat3')), materialId: STONE,
     }).rejected).toBe('that is outside the map');
   });
 
@@ -450,7 +450,7 @@ describe('a brush arrives as one intent (R-162)', () => {
     const { state, placeId, poiId } = seeded();
     // One level up from the floor, so the patch is entirely air but for the
     // cube put there first — paint must take that one and conjure no others.
-    const cells = brushPatch({ x: 5, y: 1, z: 5 }, 1);
+    const cells = brushPatch({ x: 5, y: 1, z: 5 }, brushById('flat3'));
     const built = run(state, {
       kind: 'setBlock', placeId, poiId, cells: [{ x: 5, y: 1, z: 5 }], materialId: STONE,
     }).state;
@@ -467,7 +467,7 @@ describe('a brush arrives as one intent (R-162)', () => {
 
   it('erases a whole patch, and refuses when the patch is empty', () => {
     const { state, placeId, poiId } = seeded();
-    const cells = brushPatch({ x: 5, y: 0, z: 5 }, 1);
+    const cells = brushPatch({ x: 5, y: 0, z: 5 }, brushById('flat3'));
     const cleared = run(state, { kind: 'clearBlock', placeId, poiId, cells });
     expect(cleared.rejected).toBeUndefined();
     for (const cell_ of cells) {

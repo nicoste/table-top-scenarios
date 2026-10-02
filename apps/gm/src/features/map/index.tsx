@@ -7,7 +7,7 @@
 import type { Intent, MapWire } from '@tt/protocol';
 import type { MapTool } from '@tt/client-core';
 import { CAMERA_HINT } from '@tt/client-core';
-import { MAP_MAX_HEIGHT, MAP_MIN_DEPTH, brushWidth, isFullRange, stepLabel } from '@tt/domain';
+import { MAP_MAX_HEIGHT, MAP_MIN_DEPTH, BRUSHES, isFullRange, stepLabel } from '@tt/domain';
 import type { LevelRange, Material } from '@tt/domain';
 import { Tooltip } from '@tt/ui';
 import { LevelLadder } from '../levels/index.js';
@@ -39,8 +39,8 @@ interface Props {
   readonly poiName: string;
   readonly map: MapWire;
   readonly tool: MapTool;
-  /** The brush, as a radius: 0 is one cube, 2 is 5×5 (R-162). */
-  readonly brush: number;
+  /** Which shape the brush lays down, by id (R-164). */
+  readonly brush: string;
   /** Is Shift held — is the selected tool showing its other mode right now? */
   readonly shifting: boolean;
   readonly materials: readonly Material[];
@@ -56,7 +56,7 @@ interface Props {
   readonly levelling: boolean;
   onLevelling: (on: boolean) => void;
   onTool: (tool: MapTool) => void;
-  onBrush: (radius: number) => void;
+  onBrush: (brushId: string) => void;
   onMaterial: (id: string) => void;
   onLeave: () => void;
   dispatch: (intent: Intent) => void;
@@ -174,21 +174,25 @@ export function MapPanel({
         </div>
 
         {/*
-          The brush, as three widths. A radius under the hood, so the centre
-          cube is always covered by arithmetic rather than by convention — and
-          the outline grows with it, which is how the size is really read.
+          Five named shapes, three flat and two upright (R-164). The flats come
+          first and fill the row, so the two groups read as two groups — and
+          the outline is the real label, since it takes the shape before the
+          click.
         */}
         <p className="lbl" style={{ margin: '8px 0 4px' }}>Brush</p>
         <div className="btn-grid brush">
-          {[0, 1, 2].map((radius) => (
+          {BRUSHES.map((shape, i) => (
             <Tooltip
-              key={radius}
-              label={`A flat ${brushWidth(radius)}×${brushWidth(radius)} square — key ${radius + 6}`}
+              key={shape.id}
+              label={`${shape.rise > 1
+                ? `A column ${shape.rise} blocks tall, growing up — or down while ⌥ alt is held`
+                : shape.span > 1 ? `A flat ${shape.span}×${shape.span} square` : 'One cube'
+              } — key ${['6', '7', '8', '9', '0'][i]}`}
               placement="bottom"
               stretch
             >
-              <button className={brush === radius ? 'on' : ''} onClick={() => onBrush(radius)}>
-                {brushWidth(radius)}×{brushWidth(radius)}
+              <button className={brush === shape.id ? 'on' : ''} onClick={() => onBrush(shape.id)}>
+                {shape.name}
               </button>
             </Tooltip>
           ))}
@@ -197,11 +201,12 @@ export function MapPanel({
         <p className="hint">
           {tool === 'build' && (
             <>
-              Click a block&apos;s face; the new ones land against it, always as a flat
-              square. Blocks already standing are skipped, never overwritten. Hold
+              Click a block&apos;s face; the new ones land against it in the shape of the
+              brush. Blocks already standing are skipped, never overwritten. Hold
               <b>⇧ shift</b> to <b>erase</b> instead — the outline turns red. Hold
-              <b>⌥ alt</b> to build <b>under</b> the cube, the only way down, since a
-              camera above the horizon never sees an underside.
+              <b>⌥ alt</b> to build <b>under</b> the cube — the only way down, since a
+              camera above the horizon never sees an underside — and a column sinks a
+              shaft instead of raising a wall.
             </>
           )}
           {/* Paint is the one mode that drags, because it does not move its own
@@ -215,7 +220,7 @@ export function MapPanel({
           )}
         </p>
         <p className="readout">{hoverLabel ?? '—'}</p>
-        <p className="hint">1–2 tool · 6/7/8 or [ ] brush · {CAMERA_HINT} · Esc leaves</p>
+        <p className="hint">1–2 tool · 6–0 or [ ] brush · {CAMERA_HINT} · Esc leaves</p>
       </div>
 
       {(

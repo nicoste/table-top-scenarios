@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { decodeCampaign, decodePlacement } from '@tt/protocol';
 import {
-  CHUNK_SIZE, MAX_HEIGHT, WHOLE_MAP, rangeIn, clampBrush, clampRadius,
+  CHUNK_SIZE, MAX_HEIGHT, WHOLE_MAP, rangeIn, clampBrush, BRUSHES, DEFAULT_BRUSH, brushById,
   creatableSlots, sameWorldCell,
   DEFAULT_MATERIALS, DEFAULT_FLOOR, mapFromJSON, fillRegion, sliceOf, inRange, inMap, blockAt,
 } from '@tt/domain';
@@ -85,12 +85,14 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    */
   const [shifting, setShifting] = useState(false);
   /**
-   * The brush, as a radius: 0 is one cube, 1 is 3×3, 2 is 5×5 (R-162).
+   * Which shape the brush lays down (R-164).
    *
-   * View state (R-64), like the world's terrain brush and for the same reason —
-   * how wide the GM is working is not a fact about the campaign.
+   * Held as an id rather than the shape itself, so that the registry stays the
+   * one place a brush is defined. View state (R-64), like the world's terrain
+   * brush and for the same reason — how wide the GM is working is not a fact
+   * about the campaign.
    */
-  const [mapBrush, setMapBrush] = useState(0);
+  const [mapBrush, setMapBrush] = useState(DEFAULT_BRUSH.id);
   /**
    * Where the pointer last was over the canvas.
    *
@@ -408,7 +410,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    * same reason `mapEdit` is one function and not a branch in each.
    */
   const reach: MapReach = {
-    radius: mapBrush,
+    brush: brushById(mapBrush),
     alt: digging,
     shift: shifting,
     within: levelling ? openRange ?? WHOLE_MAP : null,
@@ -723,17 +725,30 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (!stage) return;
 
-      const digit = /^(?:Digit|Numpad)([1-9])$/.exec(e.code)?.[1];
+      const digit = /^(?:Digit|Numpad)([0-9])$/.exec(e.code)?.[1];
       if (openMap) {
         if (digit === '1') { setMapTool('build'); return; }
         if (digit === '2') { setMapTool('paint'); return; }
-        // The brush on the same keys as the world's, so the habit transfers
-        // even though one counts cells and the other is a radius (R-162).
-        if (digit === '6') { setMapBrush(0); return; }
-        if (digit === '7') { setMapBrush(1); return; }
-        if (digit === '8') { setMapBrush(2); return; }
-        if (e.code === 'BracketLeft') { setMapBrush((n) => clampRadius(n - 1)); return; }
-        if (e.code === 'BracketRight') { setMapBrush((n) => clampRadius(n + 1)); return; }
+        // The brushes run along the digits from 6, which is where the world's
+        // terrain brushes start — the habit transfers even though the two are
+        // different things (R-164). Five shapes reach 0, which is where the
+        // row ends on the keyboard.
+        const KEYS = ['6', '7', '8', '9', '0'];
+        const picked = digit ? KEYS.indexOf(digit) : -1;
+        if (picked >= 0 && picked < BRUSHES.length) {
+          setMapBrush(BRUSHES[picked]!.id);
+          return;
+        }
+        // And `[` `]` step through them in order, as they do in the world.
+        if (e.code === 'BracketLeft' || e.code === 'BracketRight') {
+          const step = e.code === 'BracketRight' ? 1 : -1;
+          setMapBrush((id) => {
+            const now = BRUSHES.findIndex((brush) => brush.id === id);
+            const next = Math.min(BRUSHES.length - 1, Math.max(0, now + step));
+            return BRUSHES[next]!.id;
+          });
+          return;
+        }
         if (e.code === 'Escape') { setOpenMap(null); return; }
       } else {
         switch (digit) {

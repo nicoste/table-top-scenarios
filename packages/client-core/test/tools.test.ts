@@ -8,6 +8,7 @@ import {
   cameraAction, CAMERA_HINT,
 } from '@tt/client-core';
 import type { MapAction, MapAim, MapReach } from '@tt/client-core';
+import { brushById } from '@tt/domain';
 import type { Tool } from '@tt/client-core';
 
 const cell = (x: number, z: number): Cell => ({ cx: 15, cz: 15, x, z });
@@ -193,7 +194,7 @@ describe('the table display has no tools, so the rule is different (D-174)', () 
 // nothing held and the narrowest brush; `held` names only what differs, so a
 // test about Shift says Shift and nothing else.
 
-const bare: MapReach = { radius: 0, alt: false, shift: false, within: null };
+const bare: MapReach = { brush: brushById('cube'), alt: false, shift: false, within: null };
 const held = (over: Partial<MapReach> = {}): MapReach => ({ ...bare, ...over });
 /** Narrows away `nothing`, which has neither an aim nor any cells. */
 const acting = (action: MapAction) => {
@@ -259,7 +260,7 @@ describe('the modifiers are the toolset (R-162)', () => {
   it('lets a fill keep its whole reach, brush or no brush', () => {
     // A fill already goes as far as the material does; a brush would be a
     // second, smaller answer to the same question.
-    const fill = mapAction('paint', face, held({ shift: true, radius: 2 }));
+    const fill = mapAction('paint', face, held({ shift: true, brush: brushById('flat5') }));
     expect(fill).toEqual({ kind: 'fill', at: face.block });
   });
 
@@ -279,23 +280,43 @@ describe('the modifiers are the toolset (R-162)', () => {
 describe('the brush (R-162)', () => {
   const top = { block: { x: 4, y: 1, z: 7 }, adjacent: { x: 4, y: 2, z: 7 } };
   const side = { block: { x: 4, y: 1, z: 7 }, adjacent: { x: 5, y: 1, z: 7 } };
-  it('is one cube at its narrowest, and always odd', () => {
+  it('lays down the shape it was given', () => {
     expect(cellsOf(mapAction('build', top, bare))).toHaveLength(1);
-    expect(cellsOf(mapAction('build', top, held({ radius: 1 })))).toHaveLength(9);
-    expect(cellsOf(mapAction('build', top, held({ radius: 2 })))).toHaveLength(25);
+    expect(cellsOf(mapAction('build', top, held({ brush: brushById('flat3') })))).toHaveLength(9);
+    expect(cellsOf(mapAction('build', top, held({ brush: brushById('flat5') })))).toHaveLength(25);
+    expect(cellsOf(mapAction('build', top, held({ brush: brushById('column3') })))).toHaveLength(3);
   });
 
   it('always covers the cube it is aimed at', () => {
-    // The GM's own requirement — "so we keep the center cube always" — and a
-    // radius is how it becomes arithmetic rather than a convention.
-    for (const radius of [0, 1, 2]) {
-      const action = acting(mapAction('build', top, held({ radius })));
-      expect(cellsOf(action), `radius ${radius}`).toContainEqual(action.at);
+    // The GM's own requirement — "so we keep the center cube always" — kept by
+    // every shape in the registry rather than by remembering it.
+    for (const id of ['cube', 'flat3', 'flat5', 'column2', 'column3']) {
+      const action = acting(mapAction('build', top, held({ brush: brushById(id) })));
+      expect(cellsOf(action), id).toContainEqual(action.at);
     }
   });
 
+  it('raises a column upward, and sinks it while digging (R-164)', () => {
+    // The same shape doing the two jobs it was asked for: a wall, and the
+    // shaft under a cellar. Alt means downward, for the shape as much as for
+    // where the first cube lands.
+    const up = mapAction('build', top, held({ brush: brushById('column3') }));
+    expect(new Set(cellsOf(up).map((c) => c.y))).toEqual(new Set([2, 3, 4]));
+    const down = mapAction('build', top, held({ brush: brushById('column3'), alt: true }));
+    expect(new Set(cellsOf(down).map((c) => c.y))).toEqual(new Set([0, -1, -2]));
+  });
+
+  it('clips a column at the cut rather than refusing it (R-164)', () => {
+    // A flat patch is one level and is admitted or refused whole; a column is
+    // the shape that can straddle a band, so it lays what fits and stops.
+    const clipped = mapAction('build', top, held({
+      brush: brushById('column3'), within: { lower: 0, upper: 4 },
+    }));
+    expect(new Set(cellsOf(clipped).map((c) => c.y))).toEqual(new Set([2, 3]));
+  });
+
   it('lies flat on a face pointing up', () => {
-    const cells = cellsOf(mapAction('build', top, held({ radius: 1 })));
+    const cells = cellsOf(mapAction('build', top, held({ brush: brushById('flat3') })));
     expect(new Set(cells.map((c) => c.y))).toEqual(new Set([2]));
     expect(new Set(cells.map((c) => c.x))).toEqual(new Set([3, 4, 5]));
     expect(new Set(cells.map((c) => c.z))).toEqual(new Set([6, 7, 8]));
@@ -305,7 +326,7 @@ describe('the brush (R-162)', () => {
     // It used to follow the face and stand upright here. The GM used it and
     // said it reads as weird: the outline changed orientation as the pointer
     // crossed an edge, so one gesture meant two shapes. Flat is one shape.
-    const cells = cellsOf(mapAction('build', side, held({ radius: 1 })));
+    const cells = cellsOf(mapAction('build', side, held({ brush: brushById('flat3') })));
     expect(new Set(cells.map((c) => c.y))).toEqual(new Set([1]));
     expect(new Set(cells.map((c) => c.x))).toEqual(new Set([4, 5, 6]));
     expect(new Set(cells.map((c) => c.z))).toEqual(new Set([6, 7, 8]));
@@ -314,7 +335,7 @@ describe('the brush (R-162)', () => {
   it('lies flat under the cube when digging, whichever side was hit', () => {
     // Digging is aimed at the cube rather than the face (R-160), so its patch
     // is horizontal even when a flank was pointed at.
-    const cells = cellsOf(mapAction('build', side, held({ radius: 1, alt: true })));
+    const cells = cellsOf(mapAction('build', side, held({ brush: brushById('flat3'), alt: true })));
     expect(new Set(cells.map((c) => c.y))).toEqual(new Set([0]));
     expect(cells).toHaveLength(9);
   });
@@ -323,22 +344,22 @@ describe('the brush (R-162)', () => {
     // A flat patch cannot straddle a cut (D-213), so the band's answer is the
     // same for every cell — which is what lets `mapAllowed` read an empty
     // patch as "the cube you are aiming at is outside the levels you show".
-    const inside = mapAction('build', side, held({ radius: 1, within: { lower: 1, upper: 3 } }));
+    const inside = mapAction('build', side, held({ brush: brushById('flat3'), within: { lower: 1, upper: 3 } }));
     expect(cellsOf(inside)).toHaveLength(9);
-    const outside = mapAction('build', side, held({ radius: 1, within: { lower: 4, upper: 8 } }));
+    const outside = mapAction('build', side, held({ brush: brushById('flat3'), within: { lower: 4, upper: 8 } }));
     expect(cellsOf(outside)).toEqual([]);
   });
 
   it('comes back empty when the cube itself is outside the band', () => {
     // Which is the one case that can empty a patch, and what `mapAllowed`
     // reads instead of making the band check a second time.
-    const past = mapAction('build', top, held({ radius: 2, within: { lower: 8, upper: 12 } }));
+    const past = mapAction('build', top, held({ brush: brushById('flat5'), within: { lower: 8, upper: 12 } }));
     expect(cellsOf(past)).toEqual([]);
   });
 
   it('paints and erases through the same brush as it builds', () => {
-    expect(cellsOf(mapAction('paint', top, held({ radius: 2 })))).toHaveLength(25);
-    expect(cellsOf(mapAction('build', top, held({ radius: 2, shift: true })))).toHaveLength(25);
+    expect(cellsOf(mapAction('paint', top, held({ brush: brushById('flat5') })))).toHaveLength(25);
+    expect(cellsOf(mapAction('build', top, held({ brush: brushById('flat5'), shift: true })))).toHaveLength(25);
   });
 });
 
@@ -361,7 +382,7 @@ describe('mapHover — what the GM is told is about to happen (R-153)', () => {
   });
 
   it('outlines every cube a brush would touch', () => {
-    const hover = mapHover(mapAction('build', face, held({ radius: 1 })));
+    const hover = mapHover(mapAction('build', face, held({ brush: brushById('flat3') })));
     expect(hover.ghost).toHaveLength(9);
     expect(hover.label).toBe('Build at 4,2,7 — 9 wide');
   });
@@ -371,7 +392,7 @@ describe('mapHover — what the GM is told is about to happen (R-153)', () => {
   });
 
   it('never disagrees with itself about which cubes it means', () => {
-    for (const reach of [bare, held({ shift: true }), held({ radius: 2 })]) {
+    for (const reach of [bare, held({ shift: true }), held({ brush: brushById('flat5') })]) {
       const action = acting(mapAction('build', face, reach));
       const hover = mapHover(action);
       expect(hover.ghost).toEqual(cellsOf(action));

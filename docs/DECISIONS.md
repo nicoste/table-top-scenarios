@@ -3900,3 +3900,38 @@ and a rule kept by remembering to type it lasts until the next field. Its single
 decision — does this finished draft become an edit? — is a pure function beside
 it, since `@tt/ui` has no DOM to test a component in (R-23b): a field tabbed
 through, or typed into and put back, must not dispatch.
+
+### D-215 — Brushes become named shapes, and two of them stand up · `agreed`
+*"They are actually 1x1x1, 3x3x1 and 5x5x1, they should be called 'Cube', 'Flat
+3x3' and 'Flat 5x5', and then add columns. Because I found that building new
+levels, or walls make them a basic need."*
+
+Agreed, and the renaming is the smaller half. The GM is right that the old names
+described two of the three dimensions and quietly dropped the one that turned
+out to matter — and they only noticed because they went to build a storey and a
+cellar, which a flat square cannot do.
+
+**A radius could not describe a column**, so the brush stopped being a number.
+It is a small registry now — id, name, `span`, `rise` — which is the shape
+materials and markers already have, and for the same reason: another brush is a
+line rather than a change. `span` is odd by construction, so "the centre cube is
+always covered" stays arithmetic rather than becoming a convention again.
+
+**On the names.** Kept as the GM wrote them, with one change: `Column 2` and
+`Column 3` rather than `Column ×2`. In a list where `3×3` means dimensions, `×3`
+means a multiplier, and two senses of one symbol in five adjacent buttons costs
+a beat on every read. Trivial to put back if the GM prefers theirs.
+
+**One thing the request did not settle: which way a column grows.** Upward,
+except under Alt, where it goes down. That falls out of what Alt already means —
+*downward* — and it makes one shape do both jobs the GM named: a column raises a
+wall, and the same column under Alt sinks a shaft for the cellar. Growing *from*
+the anchor rather than centred on it, because a wall grows from where you
+clicked; centring would bury the bottom of every column in whatever it stood on.
+
+**It brings back partial clipping**, which D-213 had just removed. A flat patch
+is one level and the band admits it or refuses it whole; a column spans two or
+three and so can straddle a cut, where it lays down what fits and stops. The
+refusal is unchanged and still exact: an empty patch means the cube being aimed
+at is outside the band, because a column grows *away* from the surface it was
+aimed at and so can never reach back in from outside it.

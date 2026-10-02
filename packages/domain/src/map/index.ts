@@ -137,52 +137,82 @@ export function blockAt(map: EncounterMap, at: BlockCoord): MaterialId | null {
   return map.blocks.get(blockKey(at)) ?? null;
 }
 
-// -- the brush (R-162) ------------------------------------------------------
+// -- the brush (R-162, R-164) -----------------------------------------------
 
 /**
- * The widest brush, as a **radius**: 2, which is 5×5 (R-162).
+ * A brush is a **named shape**, not a number (D-215).
  *
- * A radius rather than a width, so the GM's "keep the centre cube always" is
- * arithmetic and not a convention anyone has to remember. An even brush has no
- * centre cell and is simply unrepresentable here — unlike the world's terrain
- * brush, which counts cells and puts size 2 off-centre.
+ * It was a radius while every brush was a flat square, which was exactly as
+ * long as that lasted: the GM went to build walls and cellars and found that a
+ * flat square is the wrong tool for both. A column is not a radius, so the
+ * brush became a small registry — the same shape as materials and markers, and
+ * the same reason: another entry is a line, not a change.
+ *
+ * `span` is odd so the cube under the pointer is always covered — arithmetic
+ * rather than a convention anyone has to keep. `rise` grows **away from the
+ * surface**: upward normally, downward while digging, so one column builds a
+ * wall and the same column sinks a shaft.
  */
-export const MAP_BRUSH_MAX = 2;
-
-/** How many cells the widest brush reaches: the cap on a single edit. */
-export const MAP_BRUSH_CELLS = (MAP_BRUSH_MAX * 2 + 1) ** 2;
-
-export function clampRadius(radius: number): number {
-  if (!Number.isFinite(radius)) return 0;
-  return Math.min(MAP_BRUSH_MAX, Math.max(0, Math.round(radius)));
+export interface Brush {
+  readonly id: string;
+  readonly name: string;
+  /** Cells across, odd, centred on the anchor. */
+  readonly span: number;
+  /** Cells tall, growing from the anchor. */
+  readonly rise: number;
 }
 
-/** How wide a brush of this radius reads, for a label the GM chooses from. */
-export function brushWidth(radius: number): number {
-  return clampRadius(radius) * 2 + 1;
+export const BRUSHES: readonly Brush[] = [
+  { id: 'cube', name: 'Cube', span: 1, rise: 1 },
+  { id: 'flat3', name: 'Flat 3×3', span: 3, rise: 1 },
+  { id: 'flat5', name: 'Flat 5×5', span: 5, rise: 1 },
+  { id: 'column2', name: 'Column 2', span: 1, rise: 2 },
+  { id: 'column3', name: 'Column 3', span: 1, rise: 3 },
+];
+
+export const DEFAULT_BRUSH = BRUSHES[0]!;
+
+/** How many cells the largest brush reaches: the cap on a single edit. */
+export const MAP_BRUSH_CELLS = BRUSHES
+  .reduce((most, brush) => Math.max(most, brush.span * brush.span * brush.rise), 1);
+
+/**
+ * The brush with this id, or the single cube.
+ *
+ * Falls back rather than failing: an id is view state that outlives a reload
+ * and a rename, and the narrowest brush is the safe answer to "I no longer
+ * know which one you meant".
+ */
+export function brushById(id: string): Brush {
+  return BRUSHES.find((brush) => brush.id === id) ?? DEFAULT_BRUSH;
 }
 
 /**
- * The cells a brush covers: a **flat** square centred on `at`, always (D-213).
+ * The cells a brush covers, anchored on `at`.
  *
- * It used to lie in the plane of whichever face was hit — flat on a rooftop,
- * upright on a wall — on the theory that a brush should follow the surface it
- * is pointed at. The GM used it and said it reads as weird, and they are right:
- * the outline changes orientation as the pointer crosses an edge, so the same
- * gesture means two different shapes depending on which pixel you are over.
- * A brush that is always flat is one shape, and one level, every time.
+ * Flat brushes lie **flat** whichever face was pointed at (D-213) — following
+ * the face read as weird, because the outline changed orientation as the
+ * pointer crossed an edge and one gesture meant two shapes. Columns are
+ * vertical for the same reason in reverse: a shape you choose by name is a
+ * shape you can predict.
  *
  * Not clipped: what the map will accept is `setBlocks`' business and what the
  * GM is being shown is the console's. This answers only "where does the brush
  * reach", so the outline and the edit are drawn from the same list.
  */
-export function brushPatch(at: BlockCoord, radius: number): readonly BlockCoord[] {
-  const r = clampRadius(radius);
-  if (r === 0) return [at];
+export function brushPatch(
+  at: BlockCoord,
+  brush: Brush,
+  grow: 'up' | 'down' = 'up',
+): readonly BlockCoord[] {
+  const half = Math.floor(brush.span / 2);
+  const step = grow === 'up' ? 1 : -1;
   const cells: BlockCoord[] = [];
-  for (let dx = -r; dx <= r; dx += 1) {
-    for (let dz = -r; dz <= r; dz += 1) {
-      cells.push({ x: at.x + dx, y: at.y, z: at.z + dz });
+  for (let level = 0; level < brush.rise; level += 1) {
+    for (let dx = -half; dx <= half; dx += 1) {
+      for (let dz = -half; dz <= half; dz += 1) {
+        cells.push({ x: at.x + dx, y: at.y + level * step, z: at.z + dz });
+      }
     }
   }
   return cells;
