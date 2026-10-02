@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { fileCampaignStore, memoryCampaignStore } from '@tt/persistence';
 import {
   createCampaign, addChunk, ORIGIN, chunkAt, columnAt, setHeight, replaceChunk,
-  addPlace, addPoi, setMapBlock, blockAt, DEFAULT_FLOOR,
+  addPlace, addPoi, setMapBlock, blockAt, DEFAULT_FLOOR, DEFAULT_MARKERS, DEFAULT_TERRAIN,
 } from '@tt/domain';
 import { encodeCampaign } from '@tt/protocol';
 
@@ -80,34 +80,42 @@ describe('the terrain palette is code, not campaign data (D-107)', () => {
     expect(JSON.stringify(manifest)).not.toContain('defaultDifficulty');
   });
 
-  it('serves the current marker set to a campaign written with an older one', () => {
+  it('drops a stale registry carried by an older file, and sends none at all', () => {
+    /*
+     * D-107's property, asked the way it has to be asked now: the registries
+     * are code and no longer cross the wire at all (D-222), so there is no
+     * `wire.markers` to inspect. What still matters is that a registry sitting
+     * in an old file reaches *nothing* — it is stripped on read and never
+     * re-emitted.
+     */
     const store = fileCampaignStore(root);
     const campaign = createCampaign('Legacy');
     store.save(campaign);
     const path = join(root, campaign.id, 'campaign.json');
     const manifest = JSON.parse(readFileSync(path, 'utf8'));
     manifest.markers = [{ id: 'marker:hut', name: 'Hut', parts: [] }];
-    writeFileSync(path, JSON.stringify(manifest), 'utf8');
-    const wire = encodeCampaign(store.load(campaign.id)!);
-    expect(wire.markers.map((m) => m.id)).toContain('marker:castle');
-    expect(wire.markers.map((m) => m.id)).not.toContain('marker:hut');
-  });
-
-  it('serves the current palette to a campaign written with an older one', () => {
-    const store = fileCampaignStore(root);
-    const campaign = createCampaign('Legacy');
-    store.save(campaign);
-    // Fake a manifest carrying a stale palette, as schema 1 files do.
-    const path = join(root, campaign.id, 'campaign.json');
-    const manifest = JSON.parse(readFileSync(path, 'utf8'));
     manifest.terrain = [{ id: 'terrain:swamp', name: 'Bog', colour: '#000000', defaultDifficulty: 99 }];
     writeFileSync(path, JSON.stringify(manifest), 'utf8');
 
-    const wire = encodeCampaign(store.load(campaign.id)!);
-    const swamp = wire.terrain.find((t) => t.id === 'terrain:swamp');
+    const loaded = store.load(campaign.id);
+    expect(loaded).not.toBeNull();
+    const sent = JSON.stringify(encodeCampaign(loaded!));
+    expect(sent).not.toContain('marker:hut');
+    expect(sent).not.toContain('Bog');
+    // Not merely free of the stale one — free of registries entirely.
+    expect(sent).not.toContain('defaultDifficulty');
+    expect(sent).not.toContain('marker:castle');
+    expect(sent).not.toContain('terrain:jungle');
+  });
+
+  it('keeps serving the current registries, from the code they live in', () => {
+    // Which is the other half of D-107: a campaign written a year ago gets
+    // today's markers and today's palette, because they were never its to
+    // carry.
+    expect(DEFAULT_MARKERS.map((m) => m.id as string)).toContain('marker:castle');
+    const swamp = DEFAULT_TERRAIN.find((t) => (t.id as string) === 'terrain:swamp');
     expect(swamp?.name).toBe('Swamp');
-    expect(swamp?.defaultDifficulty).toBe(2);
-    expect(wire.terrain.map((t) => t.id)).toContain('terrain:jungle');
+    expect(DEFAULT_TERRAIN.map((t) => t.id as string)).toContain('terrain:jungle');
   });
 });
 

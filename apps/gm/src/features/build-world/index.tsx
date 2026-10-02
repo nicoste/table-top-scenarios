@@ -1,12 +1,14 @@
 // The paint and height tools (R-88, R-89). Owns its panel, its gesture handling
 // and the intents it sends.
 
-import type { CampaignWire } from '@tt/protocol';
+// The registries are code, not campaign data (D-107), so this imports them
+// rather than reading a copy off the wire — which the renderer always did, and
+// which the panels had quietly not been doing (D-222).
+import { DEFAULT_TERRAIN } from '@tt/domain';
 import type { Tool } from '@tt/client-core';
 import { Tooltip } from '@tt/ui';
 
 interface Props {
-  campaign: CampaignWire;
   tool: Tool;
   terrainId: string;
   brush: number;
@@ -19,9 +21,9 @@ interface Props {
 const BRUSHES = [1, 2, 3] as const;
 
 export function BuildWorldPanel({
-  campaign, tool, terrainId, brush, hoverLabel, onTool, onTerrain, onBrush,
+  tool, terrainId, brush, hoverLabel, onTool, onTerrain, onBrush,
 }: Props) {
-  const selected = campaign.terrain.find((t) => t.id === terrainId);
+  const selected = DEFAULT_TERRAIN.find((t) => t.id === terrainId);
 
   return (
     <>
@@ -102,7 +104,7 @@ export function BuildWorldPanel({
               swatch either way. */}
           <h2>Terrain</h2>
           <ul className="palette">
-            {campaign.terrain.map((t) => (
+            {DEFAULT_TERRAIN.map((t) => (
               <li key={t.id}>
                 <Tooltip
                   label={t.defaultDifficulty === 'impassable'

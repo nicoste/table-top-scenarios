@@ -143,12 +143,16 @@ export function fileCampaignStore(root: string): CampaignStore {
 
     save(campaign) {
       const wire: CampaignWire = encodeCampaign(campaign);
-      // `world` goes to its own file (R-60). Every **registry** is dropped:
-      // they are code, not campaign data, and storing them froze old campaigns
-      // at whatever the registry looked like on the day (D-107). Destructure
-      // each one by name so adding a registry without deciding this again is a
-      // compile error rather than a silent leak into the manifest.
-      const { world, terrain: _terrain, markers: _markers, ...rest } = wire;
+      /*
+       * `world` goes to its own file (R-60).
+       *
+       * There is no longer a registry to strip here. This used to destructure
+       * each one by name — so that adding a registry without deciding again
+       * would be a compile error rather than a silent leak into the manifest —
+       * and that guard moved upstream when the wire stopped carrying them at
+       * all (D-222). A registry cannot leak into a file it never reaches.
+       */
+      const { world, ...rest } = wire;
       const base = dir(campaign.id);
       const bodies = bodyDir(campaign.id);
       mkdirSync(bodies, { recursive: true });

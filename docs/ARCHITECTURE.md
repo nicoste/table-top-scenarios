@@ -2282,6 +2282,22 @@ apps/host/src/
 > and fill do not, and asking the tool would let a held Shift drag an erase
 > through the geometry it is eating.
 
+> **R-167.** **Registries are code. They are neither stored nor sent.**
+>
+> Terrain, markers and materials live in `domain` as constants. A campaign file
+> does not carry them (D-107, so that an old campaign gets today's palette
+> rather than being frozen at the day it was made) and **neither does the
+> wire** (D-222): both screens import them from the same package the host does.
+>
+> They were sent for a long time, and the renderer was already ignoring the
+> copy it received and importing its own — so the same twelve markers arrived
+> by two routes, and a scene could in principle be *drawn* from one and
+> *labelled* from the other. One source, which is the point of the rule.
+>
+> Sending them is no safer against a stale client, which is the only argument
+> for it: a browser holding an old bundle holds an old renderer too, and that
+> renderer would use its own copy regardless.
+
 > **R-166.** **Every screen can say what it is costing.**
 >
 > Backtick opens a panel on the GM console and on the table display: frame

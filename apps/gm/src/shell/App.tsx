@@ -7,7 +7,7 @@ import {
   chunkAt, columnAt,
   creatableSlots, sameWorldCell,
   DEFAULT_MATERIALS, DEFAULT_FLOOR, mapFromJSON, fillRegion, sliceOf, inRange, inMap, blockAt,
-  bottomOfMap,
+  bottomOfMap, DEFAULT_TERRAIN,
 } from '@tt/domain';
 import type { GmView, Intent } from '@tt/protocol';
 import { defaultTarget, worldCentre } from '@tt/render';
@@ -379,7 +379,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     if (!column) return null;
     return {
       height: column.height,
-      terrain: campaign?.terrain.find((t) => t.id === column.terrainId)?.name
+      terrain: DEFAULT_TERRAIN.find((t) => t.id === column.terrainId)?.name
         ?? (column.terrainId as string),
     };
   }, [decoded, campaign]);
@@ -935,8 +935,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
                 </Tooltip>
               </div>
             </div>
-            <BuildWorldPanel
-              campaign={campaign}
+          <BuildWorldPanel
               tool={tool}
               terrainId={terrainId}
               brush={brush}
@@ -948,7 +947,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
               onBrush={setBrush}
             />
             {tool === 'places' && (
-              <PlacesPanel campaign={campaign} markerId={markerId} onMarker={setMarkerId} />
+              <PlacesPanel markerId={markerId} onMarker={setMarkerId} />
             )}
           </div>
 
@@ -956,7 +955,6 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
             {place && (
               <PlaceInspector
                 place={place}
-                markers={campaign.markers}
                 revealed={revealedPois.has(place.id)}
                 chunkKnown={knownChunks.has(`${place.cell.cx},${place.cell.cz}`)}
                 dispatch={dispatch}

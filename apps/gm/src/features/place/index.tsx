@@ -1,22 +1,25 @@
 // The Places tool and the place inspector (R-86, GM console side).
 
 import { useState } from 'react';
-import type { CampaignWire, Intent, PlaceWire } from '@tt/protocol';
+// The registries are code, not campaign data (D-107), so this imports them
+// rather than reading a copy off the wire — which the renderer always did, and
+// which the panels had quietly not been doing (D-222).
+import { DEFAULT_MARKERS } from '@tt/domain';
+import type { Intent, PlaceWire } from '@tt/protocol';
 import { ConfirmDelete, DraftInput, Tooltip } from '@tt/ui';
 
 interface ToolProps {
-  campaign: CampaignWire;
   markerId: string;
   onMarker: (id: string) => void;
 }
 
 /** Which marker a newly placed place gets. */
-export function PlacesPanel({ campaign, markerId, onMarker }: ToolProps) {
+export function PlacesPanel({ markerId, onMarker }: ToolProps) {
   return (
     <div className="card">
       <h2>Marker</h2>
       <ul className="palette">
-        {campaign.markers.map((m) => (
+        {DEFAULT_MARKERS.map((m) => (
           <li key={m.id}>
             <Tooltip label={`${m.name} — cosmetic only`} placement="right" stretch>
               <button
@@ -37,7 +40,6 @@ export function PlacesPanel({ campaign, markerId, onMarker }: ToolProps) {
 
 interface InspectorProps {
   place: PlaceWire;
-  markers: CampaignWire['markers'];
   revealed: boolean;
   chunkKnown: boolean;
   dispatch: (intent: Intent) => void;
@@ -47,7 +49,7 @@ interface InspectorProps {
 }
 
 export function PlaceInspector({
-  place, markers, revealed, chunkKnown, dispatch, onClose, onOpenMap,
+  place, revealed, chunkKnown, dispatch, onClose, onOpenMap,
 }: InspectorProps) {
   const [draft, setDraft] = useState('');
   const [poiDraft, setPoiDraft] = useState('');
@@ -83,7 +85,7 @@ export function PlaceInspector({
           value={place.markerId}
           onChange={(e) => dispatch({ kind: 'setPlaceMarker', id: place.id, markerId: e.target.value })}
         >
-          {markers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+          {DEFAULT_MARKERS.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
         </select>
       </label>
 

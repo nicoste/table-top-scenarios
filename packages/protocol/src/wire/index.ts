@@ -7,7 +7,7 @@ import type {
   Placement, Inside, EncounterMap, LevelRange,
 } from '@tt/domain';
 import {
-  CHUNK_SIZE, DEFAULT_METRES_PER_LEVEL, DEFAULT_TERRAIN, DEFAULT_MARKERS,
+  CHUNK_SIZE, DEFAULT_METRES_PER_LEVEL,
   chunkKey, registryId, discoveryToJSON, discoveryFromJSON, mapToJSON, mapFromJSON, sliceOf,
   packRuns, unpackRuns,
   placementToJSON, placementFromJSON,
@@ -54,6 +54,11 @@ export const ChunkWireSchema = z.object({
 });
 export type ChunkWire = z.infer<typeof ChunkWireSchema>;
 
+/*
+ * Kept although nothing is sent in this shape any more (D-222): an older
+ * campaign file still carries a registry inline, and these are what the
+ * manifest's unknown keys are measured against when they are stripped on read.
+ */
 export const TerrainWireSchema = z.object({
   id: TerrainIdSchema,
   name: z.string(),
@@ -233,9 +238,7 @@ export const CampaignWireSchema = z.object({
    * not stored (D-107): decode discards it and encode always emits the current
    * palette. Optional so files written before this change still load.
    */
-  terrain: z.array(TerrainWireSchema).default([]),
   /** Like terrain, code rather than campaign data (D-107): never stored. */
-  markers: z.array(MarkerWireSchema).default([]),
   places: z.array(PlaceWireSchema).default([]),
 });
 export type CampaignWire = z.infer<typeof CampaignWireSchema>;
@@ -289,19 +292,6 @@ export function encodeCampaign(campaign: Campaign): CampaignWire {
       id: m.id, name: m.name, colour: m.colour, visionRange: m.visionRange,
     })),
     // Always the current palette, never whatever the file was written with.
-    terrain: DEFAULT_TERRAIN.map((t) => ({
-      id: t.id as string, name: t.name, colour: t.colour, defaultDifficulty: t.defaultDifficulty,
-    })),
-    markers: DEFAULT_MARKERS.map((m) => ({
-      id: m.id as string,
-      name: m.name,
-      parts: m.parts.map((part) => ({
-        shape: part.shape,
-        at: [part.at[0], part.at[1], part.at[2]] as [number, number, number],
-        size: [part.size[0], part.size[1], part.size[2]] as [number, number, number],
-        colour: part.colour,
-      })),
-    })),
     places: campaign.places.map(encodePoi),
   };
 }

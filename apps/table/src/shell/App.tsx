@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { decodeCampaign, decodePlacement } from '@tt/protocol';
-import { CHUNK_SIZE, DEFAULT_MATERIALS, mapFromJSON } from '@tt/domain';
+import { CHUNK_SIZE, DEFAULT_MARKERS, DEFAULT_MATERIALS, mapFromJSON } from '@tt/domain';
 import type { Intent, TableView } from '@tt/protocol';
 import type { Travel } from '@tt/client-core';
 import {
@@ -51,7 +51,7 @@ export function App({ view, status, rejection, dispatch }: Props) {
     ? campaign?.places.find((place) => place.id === selectedPlace) ?? null
     : null;
   const markerName = place
-    ? campaign?.markers.find((m) => m.id === place.markerId)?.name ?? null
+    ? DEFAULT_MARKERS.find((m) => m.id === place.markerId)?.name ?? null
     : null;
   const placementWire = view?.placement ?? null;
 

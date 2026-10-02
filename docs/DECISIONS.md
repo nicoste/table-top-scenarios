@@ -4211,3 +4211,42 @@ frame numbers are real — 120 fps on that panel, p50 8.3 ms — and traffic is
 measured. The GPU counters read zero there because no campaign was open and
 nothing was being drawn; they come straight off `renderer.info` and are the one
 part not yet seen with a scene in front of them.
+
+### D-222 — The registries were arriving twice · `agreed`
+I proposed moving the terrain and marker registries into the `hello` message,
+since they are static and were being re-sent on every intent — 5.2 KiB of a
+12.2 KiB push. The GM asked what was actually in them, and looking properly
+turned up something better than the saving.
+
+They were already being used **two ways in the same program**:
+
+| | source |
+| --- | --- |
+| the renderer colouring the terrain mesh | `DEFAULT_TERRAIN`, imported |
+| the renderer building marker models | `DEFAULT_MARKERS`, imported |
+| the GM's palette, the column readout | `campaign.terrain`, off the wire |
+| the GM's marker picker, the table's labels | `campaign.markers`, off the wire |
+
+The renderer had already decided it did not need the wire copy. The panels
+never caught up. So twelve markers — 46 little 3D primitives that *are* the
+marker models — arrived by two routes on every intent, and a scene could be
+drawn from one copy and labelled from the other if they ever diverged.
+
+So they are not sent at all, rather than sent once. 12.2 KiB → **7.0 KiB**, and
+one source of truth instead of two.
+
+**The argument for sending them does not survive examination.** It is "the host
+is the authority if a client is stale" — but a browser holding an old bundle
+holds an old *renderer* too, and that renderer uses its own import regardless.
+Sending buys nothing in the one case it exists for.
+
+Two notes on what moved with them:
+
+- The store used to destructure each registry by name while building the
+  manifest, so that adding one without deciding again would be a compile error
+  rather than a silent leak into a file. That guard is gone because its subject
+  is: a registry cannot leak into a file it never reaches. Said in the comment
+  rather than deleted quietly.
+- D-107's property — an old campaign gets today's palette — is still tested,
+  asked the way it has to be asked now: a stale registry in a file reaches
+  nothing, and the encoded wire contains no registry at all.
