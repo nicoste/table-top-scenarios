@@ -2282,6 +2282,39 @@ apps/host/src/
 > and fill do not, and asking the tool would let a held Shift drag an erase
 > through the geometry it is eating.
 
+> **R-166.** **Every screen can say what it is costing.**
+>
+> Backtick opens a panel on the GM console and on the table display: frame
+> times, draw calls, triangles, cubes, geometries, textures, shader programs,
+> the last map rebuild, the size of the last view and how many arrived this
+> second.
+>
+> **Both screens, because the one that matters is the one nobody is sitting at
+> with a profiler.** The table may be a modest box driving a TV in another
+> room, and it is the screen the players actually watch.
+>
+> **Frame times, not FPS.** A mean hides the only thing that hurts at a table:
+> a screen can read sixty while visibly jolting every time a map rebuilds,
+> because one frame in forty took 200 ms. The headline comes from the median
+> and the hitch gets a column of its own, at p95 and worst.
+>
+> **No library.** `renderer.info` gives draw calls, triangles and resource
+> counts for free; the rest is a rolling window and two percentiles. What a
+> library would add is a graph we would restyle.
+>
+> **GPU memory is not measurable.** No browser offers it. `geometries`,
+> `textures` and `programs` are the nearest honest thing and double as the leak
+> detector: climbing while nothing is being created means something is not
+> being disposed. The heap figure is JS only, Chrome and Edge only, and coarse.
+>
+> **Off by default and free when off.** Frame intervals are collected always,
+> because a hitch cannot be measured by switching the counter on after it
+> happened; nothing else is read and no state is set until the panel is open.
+>
+> The arithmetic — percentiles, the window, the rate — lives in `client-core`
+> and is tested there (R-23b). A frame counter that is wrong is worse than
+> none: it sends you optimising what was already fast.
+
 > **R-165.** **The domain is immutable, and an edit that changes nothing
 > returns the same object.**
 >

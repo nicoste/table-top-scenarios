@@ -13,5 +13,8 @@ export type { DraftInputProps } from './draft-input/index.js';
 export { ColourInput } from './colour-input/index.js';
 export type { ColourInputProps } from './colour-input/index.js';
 
+export { Metrics } from './metrics/index.js';
+export type { MetricsProps, Reading } from './metrics/index.js';
+
 export { Compass } from './compass/index.js';
 export type { CompassProps } from './compass/index.js';

@@ -17,6 +17,7 @@ export { buildPartyPawns } from './pawns/index.js';
 export type { PartyPawns, PawnRef } from './pawns/index.js';
 
 export { Stage } from './stage/index.js';
+export type { StageCost } from './stage/index.js';
 export type { Picked, SlotAddress } from './stage/index.js';
 
 export { intendedCell } from './picking/index.js';

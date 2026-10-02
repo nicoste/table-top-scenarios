@@ -17,8 +17,9 @@ import {
 } from '@tt/client-core';
 import { defaultTarget, worldCentre } from '@tt/render';
 import { useStage } from '../scene/use-stage.js';
+import { useCost, COST_HINT } from '../scene/use-cost.js';
 import { PlaceCard } from '../features/place/index.js';
-import { Compass } from '@tt/ui';
+import { Compass, Metrics } from '@tt/ui';
 
 interface Props {
   view: TableView | null;
@@ -31,7 +32,8 @@ interface Props {
 const CLICK_SLOP = 4;
 
 export function App({ view, status, rejection, dispatch }: Props) {
-  const { setCanvas, stage } = useStage();
+  const { setCanvas, stage, frames } = useStage();
+  const cost = useCost(stage, frames);
   const openedId = useRef<string | null>(null);
   const drag = useRef<{ x: number; y: number; moved: boolean } | null>(null);
   const [travel, setTravel] = useState<Travel>(idle);
@@ -217,6 +219,9 @@ export function App({ view, status, rejection, dispatch }: Props) {
 
   return (
     <>
+      {/* The cost of this screen, on this screen (R-166). Last, so it draws
+          over everything, and absent entirely when it is off. */}
+      {cost.on && cost.reading && <Metrics reading={cost.reading} hint={COST_HINT} />}
       <div className="stage">
         <canvas
           ref={setCanvas}

@@ -13,6 +13,15 @@ export interface Handlers {
   onRole(role: Role): void;
   onRejected(reason: string): void;
   onStatus(status: 'connecting' | 'open' | 'closed'): void;
+  /**
+   * How large each arriving message was, for the cost overlay (R-166).
+   *
+   * Optional, because it is a diagnostic and nothing else should have to care.
+   * Counted in characters rather than bytes: the payload is ASCII JSON but for
+   * the odd name, so the two differ by well under a percent and measuring
+   * properly would mean encoding every message twice.
+   */
+  onTraffic?(chars: number): void;
 }
 
 /**
@@ -45,8 +54,10 @@ export function connect(role: 'gm' | 'table', handlers: Handlers): Connection {
       handlers.onStatus('open');
     };
     ws.onmessage = (event) => {
+      const raw = String(event.data);
+      handlers.onTraffic?.(raw.length);
       let message: OutboundMessage;
-      try { message = JSON.parse(String(event.data)) as OutboundMessage; } catch { return; }
+      try { message = JSON.parse(raw) as OutboundMessage; } catch { return; }
       if (message.type === 'hello') handlers.onRole(message.role);
       else if (message.type === 'view') handlers.onView(message.view);
       else if (message.type === 'rejected') handlers.onRejected(message.reason);

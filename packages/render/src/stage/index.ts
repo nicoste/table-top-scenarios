@@ -54,6 +54,19 @@ export interface Picked {
 
 let instances = 0;
 
+/** What `Stage.cost()` reports (R-166). */
+export interface StageCost {
+  readonly calls: number;
+  readonly triangles: number;
+  readonly geometries: number;
+  readonly textures: number;
+  readonly programs: number;
+  /** Milliseconds the last map body took to build. */
+  readonly rebuildMs: number;
+  /** How many cubes are drawn, or zero outside a map. */
+  readonly blocks: number;
+}
+
 export class Stage {
   /** How many Stages are alive. A leak means a leaked rAF loop and GL context. */
   static get liveCount(): number { return instances; }
@@ -66,6 +79,8 @@ export class Stage {
   private readonly highlight: LineSegments;
   /** The outline of the cube a click would add or remove (R-153). */
   private readonly blockGhost: LineSegments;
+  /** How long the last map body took to build — the usual cause of a hitch. */
+  private rebuildMs = 0;
   private readonly slots = new Group();
   private world: WorldMeshes | null = null;
   private places: PlaceMarkers | null = null;
@@ -274,7 +289,9 @@ export class Stage {
     this.surface = next;
 
     if (map) {
+      const begun = performance.now();
       this.blocks = buildBlockBody(map, materials);
+      this.rebuildMs = performance.now() - begun;
       this.scene.add(this.blocks.group);
     }
     this.applySurface();
@@ -555,6 +572,29 @@ export class Stage {
     );
     this.blockGhost.scale.set(highX - lowX + 1, highY - lowY + 1, highZ - lowZ + 1);
     (this.blockGhost.material as LineBasicMaterial).color.setHex(tint);
+  }
+
+  /**
+   * What this screen is costing the GPU, for the overlay (R-166).
+   *
+   * Straight from `renderer.info`, which three.js keeps for free and resets
+   * every frame — so these are the *last* frame's numbers, which is what makes
+   * them worth watching while something moves. There is no browser API for GPU
+   * memory at all; `geometries`, `textures` and `programs` are the nearest
+   * honest thing, and they are also the leak detector: if they climb while the
+   * GM works, something is not being disposed.
+   */
+  cost(): StageCost {
+    const info = this.renderer.info;
+    return {
+      calls: info.render.calls,
+      triangles: info.render.triangles,
+      geometries: info.memory.geometries,
+      textures: info.memory.textures,
+      programs: info.programs?.length ?? 0,
+      rebuildMs: this.rebuildMs,
+      blocks: this.blocks?.count ?? 0,
+    };
   }
 
   resize(): void {

@@ -194,3 +194,27 @@ button.quiet:hover { background: #3a2222; color: #ffc9c9; border-color: transpar
   background: #212733; border: 1px solid var(--edge); border-radius: 6px;
   padding: 6px 9px; font-size: 12.5px; line-height: 1.45;
 }
+
+/* The cost overlay (R-166). Fixed, small, and out of the way of the thing it
+   is measuring — it reports on the scene, so it must not become part of it. */
+.metrics {
+  position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+  z-index: 60; min-width: 230px;
+  background: #0b0e13ee; border: 1px solid var(--edge); border-radius: 10px;
+  padding: 9px 11px; backdrop-filter: blur(8px);
+  font-variant-numeric: tabular-nums;
+}
+.metrics h2 {
+  margin: 0 0 6px; font-size: 10.5px; letter-spacing: .09em;
+  text-transform: uppercase; color: var(--dim); font-weight: 600;
+}
+.metrics dl {
+  margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 1px 12px;
+  font-size: 11.5px;
+}
+.metrics dt { color: var(--dim); }
+.metrics dd { margin: 0; text-align: right; color: var(--ink); }
+/* Only where a number is worth a second look — a panel that is all warnings
+   is a panel nobody reads. */
+.metrics dd.warn { color: #ffb86b; }
+.metrics .hint { margin: 7px 0 0; font-size: 10.5px; color: var(--dim); }

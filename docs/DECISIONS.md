@@ -4164,3 +4164,50 @@ longer knows how a chunk is encoded.
 
 Verified lossless over all 8,100 columns, height and terrain, before anything
 was written.
+
+### D-221 — The overlay the GM asked for first · `agreed`
+*"Can we add some metrics to every screen? FPS, draw calls, memory usage, I'm
+thinking on real data, that might help us to know if what we are building is
+cheap or not."*
+
+Asked four rounds ago. I went and measured by hand instead, found that one cube
+cost half a megabyte (D-217), and we spent those rounds fixing it — so every
+number in this project so far exists because I ran a script and reported it.
+That is the wrong arrangement: the GM should be able to see the cost of their
+own table, on the machine the players are watching, without me.
+
+What it reports and why those: frame times at p50/p95/worst rather than mean
+FPS, because the hitch is what a table sees; draw calls and triangles, free
+from `renderer.info`; geometries, textures and shader programs, which are both
+a size proxy and a leak detector; the last map rebuild, which is the usual
+cause of a hitch; and **the last view's size and how many arrived this second**,
+which is the pair that explained everything in D-217 and would have found it in
+a minute.
+
+**No library.** stats.js is tiny and well made, and gives FPS, MS and an MB
+panel that is just `performance.memory`. It knows nothing of draw calls, of a
+rebuild, or of a payload, so most of this would have been written anyway — and
+what it adds is a graph widget we would restyle.
+
+**No GPU memory**, because no browser offers it. Worth stating in the rule
+rather than leaving somebody to look for the API.
+
+Three placement calls:
+
+- The **arithmetic** is in `client-core` and tested on its own (R-23b). A frame
+  counter that is wrong is worse than none: it sends you optimising something
+  that was already fast.
+- The **frame interval** is measured in the app's render loop rather than
+  inside the renderer, because `render` sits below `client-core` in the rings
+  and could not use the window helper — and because the interval between
+  callbacks is the frame a viewer sees, where the time spent *inside* `render`
+  would miss everything the browser does between calls.
+- The **hook is duplicated in both apps**, like `use-stage` beside it. Sharing
+  it would mean a parameter per difference between the two screens, and
+  everything with an opinion in it is already shared.
+
+Verified on the table display, which needs no GM seat: the key toggles it, the
+frame numbers are real — 120 fps on that panel, p50 8.3 ms — and traffic is
+measured. The GPU counters read zero there because no campaign was open and
+nothing was being drawn; they come straight off `renderer.info` and are the one
+part not yet seen with a scene in front of them.

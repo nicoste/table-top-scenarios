@@ -6,6 +6,7 @@ import { connect } from '@tt/client-core';
 import type { Connection } from '@tt/client-core';
 import type { Intent, TableView, View } from '@tt/protocol';
 import { App } from './shell/App.js';
+import { recordTraffic } from './scene/use-cost.js';
 
 function Root() {
   const [view, setView] = useState<View | null>(null);
@@ -18,6 +19,8 @@ function Root() {
       onView: setView,
       onRole: () => undefined,
       onStatus: setStatus,
+      // Diagnostic only, and read by the cost overlay (R-166).
+      onTraffic: recordTraffic,
       // The table can be refused now that it can ask for something — moving the
       // party into ground the party has not seen (R-131). Never silently (R-18).
       onRejected: (reason) => {

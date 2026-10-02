@@ -19,6 +19,7 @@ import {
 } from '@tt/client-core';
 import type { MapAction, MapReach, MapTool } from '@tt/client-core';
 import { useStage } from '../scene/use-stage.js';
+import { useCost, COST_HINT } from '../scene/use-cost.js';
 import { Launcher } from '../features/launcher/index.js';
 import { BuildWorldPanel } from '../features/build-world/index.js';
 import { PartyPanel } from '../features/party/index.js';
@@ -26,7 +27,7 @@ import { PlacesPanel, PlaceInspector } from '../features/place/index.js';
 import { ChunkInspector } from '../features/visibility/index.js';
 import { MapPanel } from '../features/map/index.js';
 import { ConnectBadge } from '../features/connect/index.js';
-import { Compass, Tooltip } from '@tt/ui';
+import { Compass, Metrics, Tooltip } from '@tt/ui';
 
 /** Mac shows ⌘, everything else Ctrl. Cosmetic: the binding accepts both (R-140). */
 const MOD = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
@@ -109,7 +110,8 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    * one place per cell (R-119) makes the cell an unambiguous handle until then.
    */
   const pendingPlaceCell = useRef<string | null>(null);
-  const { setCanvas, stage } = useStage();
+  const { setCanvas, stage, frames } = useStage();
+  const cost = useCost(stage, frames);
   const openedId = useRef<string | null>(null);
   const drag = useRef<{ startY: number; base: number; cell: { cx: number; cz: number; x: number; z: number } } | null>(null);
   const panning = useRef<{ x: number; y: number } | null>(null);
@@ -824,6 +826,10 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
           onContextMenu={(e) => e.preventDefault()}
         />
       </div>
+
+      {/* The cost of this screen, on this screen (R-166). Last, so it draws
+          over everything, and absent entirely when it is off. */}
+      {cost.on && cost.reading && <Metrics reading={cost.reading} hint={COST_HINT} />}
 
       {/* Both surfaces, and hidden only when a screen-filling card owns the
           view — there is no north to point at on the launcher (R-155). */}

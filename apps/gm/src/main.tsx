@@ -6,6 +6,7 @@ import { connect } from '@tt/client-core';
 import type { Connection } from '@tt/client-core';
 import type { GmView, Intent, View } from '@tt/protocol';
 import { App } from './shell/App.js';
+import { recordTraffic } from './scene/use-cost.js';
 
 function Root() {
   const [view, setView] = useState<View | null>(null);
@@ -18,6 +19,8 @@ function Root() {
       onView: setView,
       onRole: () => undefined,
       onStatus: setStatus,
+      // Diagnostic only, and read by the cost overlay (R-166).
+      onTraffic: recordTraffic,
       onRejected: (reason) => {
         setRejection(reason);
         setTimeout(() => setRejection(null), 2600);
