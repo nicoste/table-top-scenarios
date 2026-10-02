@@ -4,7 +4,7 @@
  "campaignSchemaVersion": 4,
  "schemaVersion": 3,
  "label": "Live",
- "savedAt": "2026-10-02T16:18:41.291Z",
+ "savedAt": "2026-10-02T17:53:05.309Z",
  "discovery": {
   "chunks": [
    "14,15",
@@ -16,14 +16,27 @@
   ]
  },
  "placement": {
-  "together": true,
+  "together": false,
   "at": {
    "cx": 15,
    "cz": 15,
-   "x": 14,
-   "z": 12
+   "x": 16,
+   "z": 14
   },
-  "members": {}
+  "members": {
+   "member_mu1k3jays1xlkow4": {
+    "cx": 15,
+    "cz": 15,
+    "x": 15,
+    "z": 14
+   },
+   "member_muiztqo76yajruc7": {
+    "cx": 15,
+    "cz": 15,
+    "x": 16,
+    "z": 14
+   }
+  }
  },
  "inside": {
   "placeId": "place_mu1k55pd362oxbn2",
