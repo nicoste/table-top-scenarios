@@ -4250,3 +4250,51 @@ Two notes on what moved with them:
 - D-107's property — an old campaign gets today's palette — is still tested,
   asked the way it has to be asked now: a stale registry in a file reaches
   nothing, and the encoded wire contains no registry at all.
+
+### D-223 — Look for the thing the engine already has · `agreed`
+I proposed ambient occlusion and described the standard voxel implementation:
+mesh every body by hand, bake darkness into vertex colours, and rewrite how a
+click resolves to a cube. The GM read it and said *"AO sounds really complex.
+It sounds as a custom thing when it should be super normal, right? ThreeJS
+should have something for this."*
+
+They were right. Three.js ships **`GTAOPass`**, along with `SAOPass` and
+`SSAOPass`, in `three/addons/postprocessing`, with types. It is a composer
+chain and an afternoon:
+
+```
+EffectComposer → RenderPass → GTAOPass → OutputPass
+```
+
+No geometry change, no instancing change, no picking change — and it shades the
+**world's terrain** too, which the baked version never would have, because it
+works from depth and normals rather than from voxels.
+
+What I had done was read the voxel-engine literature, where baked vertex AO is
+genuinely the right answer, and not ask whether this renderer already had one.
+The lesson is small and general enough to be a rule (R-168): *look for what the
+engine already has before building what the field builds.*
+
+**The trade is honest and worth stating.** Baked AO costs once, at build, and
+is free thereafter; a post-process costs every frame — a normal buffer, the AO
+pass, a denoise blur. Which is better depends entirely on the machine driving
+the table, and that machine is not the one this was written on. So it is a
+switch, with its state beside the numbers that judge it (R-166). The overlay
+from the round before earns its keep immediately: it already shows GTAO's five
+shader programs and eight render targets appearing.
+
+**One trap found while wiring it.** A composer renders into its own buffer,
+where the renderer's `antialias: true` does nothing, and `EffectComposer`'s
+default target has no samples. Wired up naively this swaps soft corners for
+jagged edges on every cube — a bad trade made silently. The target is
+explicitly multisampled.
+
+**And one thing deliberately dropped.** The first plan bundled face culling in,
+because baking AO forced the meshing rewrite anyway and culling came free with
+it. Decoupled, it is a plain performance change worth its own round: the GM's
+church draws 58,284 faces and only 19,770 can be seen.
+
+The judgement that remains is the GM's, and could not be anyone else's: whether
+it looks better, and whether the table can afford it. Verified here only that
+the chain builds, compiles and renders without error — the console's seat
+belongs to the GM and claiming it would have demoted their window mid-session.

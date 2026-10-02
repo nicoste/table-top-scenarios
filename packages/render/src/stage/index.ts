@@ -5,11 +5,16 @@
 import {
   AmbientLight, Color, DirectionalLight, GridHelper, HemisphereLight, Mesh,
   MeshBasicMaterial, PlaneGeometry, Raycaster, Scene, Vector2, WebGLRenderer, BoxGeometry,
+  WebGLRenderTarget, HalfFloatType,
   EdgesGeometry, LineSegments, LineBasicMaterial, Group,
 } from 'three';
 import type {
   BlockCoord, Campaign, EncounterMap, Material, Placement, WorldCell,
 } from '@tt/domain';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { CHUNK_SIZE, brushCentreOffset, mapCentre } from '@tt/domain';
 import type { CameraTarget } from '../camera/index.js';
 import {
@@ -73,6 +78,8 @@ export class Stage {
 
   readonly id = ++instances;
   private readonly renderer: WebGLRenderer;
+  private readonly composer: EffectComposer;
+  private readonly occlusion: GTAOPass;
   private readonly scene = new Scene();
   private readonly camera = createCamera();
   private readonly raycaster = new Raycaster();
@@ -166,6 +173,41 @@ export class Stage {
     this.blockGhost.renderOrder = 11;
 
     this.scene.add(this.highlight, this.blockGhost, this.slots, this.fog);
+
+    /*
+     * Ambient occlusion, as a post-process (R-168).
+     *
+     * Three.js ships this — `GTAOPass` — and the alternative was meshing every
+     * body by hand to bake darkness into vertex colours, plus rewriting how a
+     * click resolves to a cube. This touches neither: it works from depth and
+     * normals, so it shades the world's terrain as well as a map's cubes, and
+     * nothing about the geometry or the picking changes.
+     *
+     * The cost moves from build time to **every frame**, which is the part
+     * worth watching rather than assuming — see `cost()` and R-166.
+     *
+     * The render target is **multisampled on purpose.** A composer draws into
+     * its own buffer, where the renderer's `antialias` does nothing, and the
+     * default target has no samples — so wiring this up naively trades soft
+     * corners for hard jagged edges on every cube, which is a bad swap.
+     */
+    this.composer = new EffectComposer(
+      this.renderer,
+      new WebGLRenderTarget(1, 1, { type: HalfFloatType, samples: 4 }),
+    );
+    this.composer.addPass(new RenderPass(this.scene, this.camera));
+    this.occlusion = new GTAOPass(this.scene, this.camera, 1, 1);
+    /*
+     * A cube is one world unit, and the default radius of 0.25 is tuned for
+     * models measured in metres — at that size the darkening hugs the seam and
+     * reads as dirt rather than as shape. Near a cube's width is what makes a
+     * corner look like a corner.
+     */
+    this.occlusion.updateGtaoMaterial({ radius: 0.8, scale: 1, thickness: 1 });
+    this.composer.addPass(this.occlusion);
+    // Last, because the composer works in half-float and somebody has to put
+    // it back into the colour space the canvas expects.
+    this.composer.addPass(new OutputPass());
 
     this.resize();
   }
@@ -601,6 +643,20 @@ export class Stage {
     const w = this.canvas.clientWidth || 1;
     const h = this.canvas.clientHeight || 1;
     this.renderer.setSize(w, h, false);
+    // The composer owns the buffers now, and an unresized pass renders the
+    // last size into the new canvas.
+    this.composer.setSize(w, h);
+  }
+
+  /**
+   * Turns ambient occlusion off, for a screen that cannot afford it (R-168).
+   *
+   * Kept as a switch rather than a build-time choice because the machine that
+   * matters is the one driving the table, and it is not the one this was
+   * written on.
+   */
+  setOcclusion(on: boolean): void {
+    this.occlusion.enabled = on;
   }
 
   render(): void {
@@ -625,7 +681,7 @@ export class Stage {
       this.pawns.group.visible = markers;
       if (markers) this.pawns.scaleLabels(this.target.zoom, this.canvas.clientHeight || 1);
     }
-    this.renderer.render(this.scene, this.camera);
+    this.composer.render();
   }
 
   dispose(): void {

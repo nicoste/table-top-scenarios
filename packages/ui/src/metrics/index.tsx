@@ -29,6 +29,8 @@ export interface Reading {
   /** JS heap in bytes where the browser offers it — not GPU memory, which no
    *  browser offers at all. */
   readonly heap: number | null;
+  /** Whether ambient occlusion is on, so an A/B is legible (R-168). */
+  readonly occlusion: boolean;
 }
 
 export interface MetricsProps {
@@ -85,6 +87,8 @@ export function Metrics({ reading, hint }: MetricsProps) {
         <dd className={reading.pushes > 20 ? 'warn' : ''}>{count(reading.pushes)}</dd>
         <dt>js heap</dt>
         <dd>{reading.heap === null ? 'n/a' : kib(reading.heap)}</dd>
+        <dt>occlusion</dt>
+        <dd>{reading.occlusion ? 'on' : 'off'}</dd>
       </dl>
       <p className="hint">{hint}</p>
     </div>

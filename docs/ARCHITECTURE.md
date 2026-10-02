@@ -2282,6 +2282,34 @@ apps/host/src/
 > and fill do not, and asking the tool would let a held Shift drag an erase
 > through the geometry it is eating.
 
+> **R-168.** **Ambient occlusion is a post-process, not geometry.**
+>
+> `GTAOPass`, which three.js ships, in a composer: render → occlusion →
+> output. Nothing about the geometry, the instancing or the picking changes,
+> and the world's **terrain** is shaded as well as a map's cubes, because the
+> pass works from depth and normals rather than from voxels.
+>
+> The alternative was baking darkness into vertex colours, which means meshing
+> every body by hand and rewriting how a click resolves to a cube. That is the
+> standard voxel answer and it is the *custom* one here; reaching for it first
+> was a mistake worth not repeating — **look for the thing the engine already
+> has before building the thing the internet says voxel engines build**
+> (D-223).
+>
+> The cost moves from build time to **every frame**, which is a real trade and
+> not obviously the right one on whatever drives the table. So it is a switch,
+> read beside the numbers (R-166): shift+backtick, with its state on the panel.
+>
+> **The composer's target is multisampled on purpose.** A composer draws into
+> its own buffer, where the renderer's `antialias` does nothing, and the
+> default target has no samples — wiring this up naively trades soft corners
+> for jagged edges on every cube.
+>
+> Face culling — drawing only the faces that border air — is worth doing on its
+> own merits and is **not** part of this. A church of 9,714 cubes draws 58,284
+> faces of which 19,770 can be seen. That is a performance change, and tangling
+> it with a visual one was how the first plan grew.
+
 > **R-167.** **Registries are code. They are neither stored nor sent.**
 >
 > Terrain, markers and materials live in `domain` as constants. A campaign file

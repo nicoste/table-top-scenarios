@@ -20,7 +20,7 @@ import type { Reading } from '@tt/ui';
 const SAMPLE_MS = 250;
 
 export const COST_KEY = '`';
-export const COST_HINT = 'backtick closes this';
+export const COST_HINT = 'backtick closes this · shift+backtick toggles occlusion';
 
 /*
  * Traffic is recorded where the socket is and read where the overlay is, and
@@ -49,6 +49,13 @@ export function useCost(stage: Stage | null, frames: { current: number[] }): {
   reading: Reading | null;
 } {
   const [on, setOn] = useState(false);
+  /*
+   * Ambient occlusion costs time every frame rather than once at build
+   * (R-168), and the only machine whose answer matters is the one driving the
+   * table. A switch beside the numbers is what makes that measurable by the
+   * person standing in front of it.
+   */
+  const [occlusion, setOcclusion] = useState(true);
   const [reading, setReading] = useState<Reading | null>(null);
 
   useEffect(() => {
@@ -57,11 +64,14 @@ export function useCost(stage: Stage | null, frames: { current: number[] }): {
       // Not while the GM is naming something: a backtick belongs to the field.
       const to = e.target as HTMLElement | null;
       if (to && /^(INPUT|TEXTAREA|SELECT)$/.test(to.tagName)) return;
-      setOn((showing) => !showing);
+      if (e.shiftKey) setOcclusion((lit) => !lit);
+      else setOn((showing) => !showing);
     };
     addEventListener('keydown', onKey);
     return () => removeEventListener('keydown', onKey);
   }, []);
+
+  useEffect(() => { stage?.setOcclusion(occlusion); }, [stage, occlusion]);
 
   useEffect(() => {
     if (!on) { setReading(null); return undefined; }
@@ -79,12 +89,13 @@ export function useCost(stage: Stage | null, frames: { current: number[] }): {
         payload,
         pushes: rate(arrivals, performance.now()),
         heap: heapNow(),
+        occlusion,
       });
     };
     take();
     const timer = setInterval(take, SAMPLE_MS);
     return () => clearInterval(timer);
-  }, [on, stage, frames]);
+  }, [on, stage, frames, occlusion]);
 
   return { on, reading };
 }
