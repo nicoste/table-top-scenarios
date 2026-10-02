@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { CampaignWire, Intent, PlaceWire } from '@tt/protocol';
-import { ConfirmDelete, Tooltip } from '@tt/ui';
+import { ConfirmDelete, DraftInput, Tooltip } from '@tt/ui';
 
 interface ToolProps {
   campaign: CampaignWire;
@@ -71,9 +71,10 @@ export function PlaceInspector({
     <div className="card">
       <h2>Place</h2>
 
-      <input
+      <DraftInput
         value={place.name}
-        onChange={(e) => dispatch({ kind: 'renamePlace', id: place.id, name: e.target.value })}
+        valid={(name) => name.trim().length > 0}
+        onCommit={(name) => dispatch({ kind: 'renamePlace', id: place.id, name })}
       />
 
       <label className="row" style={{ marginTop: 8 }}>
@@ -138,11 +139,14 @@ export function PlaceInspector({
               </button>
             </Tooltip>
 
-            <textarea
+            {/* Prose, so Enter is a line break and leaving the field is what
+                says the GM is done (R-163). */}
+            <DraftInput
+              multiline
               rows={2}
               value={note.text}
-              onChange={(e) => dispatch({
-                kind: 'editNote', placeId: place.id, noteId: note.id, text: e.target.value,
+              onCommit={(text) => dispatch({
+                kind: 'editNote', placeId: place.id, noteId: note.id, text,
               })}
             />
 
@@ -211,10 +215,11 @@ export function PlaceInspector({
               </button>
             </Tooltip>
 
-            <input
+            <DraftInput
               value={poi.name}
-              onChange={(e) => dispatch({
-                kind: 'renamePoi', placeId: place.id, poiId: poi.id, name: e.target.value,
+              valid={(name) => name.trim().length > 0}
+              onCommit={(name) => dispatch({
+                kind: 'renamePoi', placeId: place.id, poiId: poi.id, name,
               })}
             />
 

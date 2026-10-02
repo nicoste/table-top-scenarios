@@ -7,5 +7,8 @@ export type { TooltipProps, Placement } from './tooltip/index.js';
 export { ConfirmDelete } from './confirm-delete/index.js';
 export type { ConfirmDeleteProps } from './confirm-delete/index.js';
 
+export { DraftInput, commits } from './draft-input/index.js';
+export type { DraftInputProps } from './draft-input/index.js';
+
 export { Compass } from './compass/index.js';
 export type { CompassProps } from './compass/index.js';

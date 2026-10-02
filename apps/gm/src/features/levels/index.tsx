@@ -32,7 +32,7 @@ import type { Intent, MapWire } from '@tt/protocol';
 import { MAP_MAX_HEIGHT, MAP_MIN_DEPTH, planeSteps, stepLabel } from '@tt/domain';
 import type { LevelRange } from '@tt/domain';
 import { grabEnd } from '@tt/client-core';
-import { ConfirmDelete } from '@tt/ui';
+import { ConfirmDelete, DraftInput } from '@tt/ui';
 
 interface Props {
   readonly map: MapWire;
@@ -201,11 +201,12 @@ export function LevelLadder({ map, range, placeId, poiId, dispatch }: Props) {
               </span>
 
               {stop.planeId ? (
-                <input
+                <DraftInput
                   className="plain"
                   value={stop.name}
-                  onChange={(e) => dispatch({
-                    kind: 'renamePlane', placeId, poiId, planeId: stop.planeId!, name: e.target.value,
+                  valid={(name) => name.trim().length > 0}
+                  onCommit={(name) => dispatch({
+                    kind: 'renamePlane', placeId, poiId, planeId: stop.planeId!, name,
                   })}
                 />
               ) : (
@@ -226,17 +227,24 @@ export function LevelLadder({ map, range, placeId, poiId, dispatch }: Props) {
                     kind: 'removePlane', placeId, poiId, planeId: stop.planeId!,
                   })}
                 >
-                  <input
+                  {/*
+                    A height is finished before it is an edit (R-163). Validated
+                    on the way out rather than per keystroke: there is no route
+                    from 3 to 12 that does not pass through 1, which is a
+                    perfectly legal height and would really move the level.
+                  */}
+                  <DraftInput
                     className="tiny"
                     inputMode="numeric"
-                    value={stop.y}
-                    onChange={(e) => {
-                      const next = Number.parseInt(e.target.value, 10);
-                      if (!Number.isInteger(next)) return;
-                      dispatch({
-                        kind: 'movePlane', placeId, poiId, planeId: stop.planeId!, y: next,
-                      });
-                    }}
+                    value={String(stop.y)}
+                    valid={(draft) => Number.isInteger(Number.parseInt(draft, 10))}
+                    onCommit={(draft) => dispatch({
+                      kind: 'movePlane',
+                      placeId,
+                      poiId,
+                      planeId: stop.planeId!,
+                      y: Number.parseInt(draft, 10),
+                    })}
                   />
                 </ConfirmDelete>
               ) : (

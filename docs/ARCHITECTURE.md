@@ -2220,3 +2220,27 @@ apps/host/src/
 > **The drag rule reads the action, not the tool** (R-153). Paint drags; erase
 > and fill do not, and asking the tool would let a held Shift drag an erase
 > through the geometry it is eating.
+
+> **R-163.** **A field becomes an edit when it is finished, not per keystroke.**
+>
+> Text and number fields hold a **draft** while they have focus and dispatch on
+> **blur or Enter**; Escape abandons it. Validation happens on the way out, once.
+>
+> The case that forced it is a level's height. The field is controlled by the
+> stored value, so clearing it to retype puts an empty string through the
+> validator, which refuses, which puts the old value straight back — and there
+> is no route from `3` to `12` that does not pass through `1`, a perfectly legal
+> height that really moves the level. A field that judges a half-typed value is
+> a field that cannot be typed into.
+>
+> Two consequences beyond the one that was reported. A name could not be cleared
+> to be retyped, for the same reason. And every keystroke was its own **undo
+> step** (R-140a), so renaming a place cost as many entries as it had letters —
+> and the history is bounded, so a long enough name pushed real edits off the
+> end of it.
+>
+> One primitive, `DraftInput`, rather than the discipline of remembering: the
+> rule is "every field", and a rule enforced by remembering lasts until the next
+> field. Its one decision — *does this finished draft become an edit?* — is a
+> pure function beside it, because there is no DOM to test the component in
+> (R-23b).

@@ -3865,3 +3865,38 @@ every standing block exactly as it was, material included. It refuses only when
 all twenty-five are occupied. Paint is the mirror — it repaints what is there
 and conjures nothing. That was R-162's "clip, do not refuse", and the panel now
 says it out loud rather than leaving it to be discovered.
+
+### D-214 — A field is finished before it is an edit · `agreed`
+*"When you try to edit the levels' `y` value, it's validating on change, so I
+can't clear a value and write a new one."*
+
+Exactly right, and I had this one written down as a suspect while the trace was
+in and never went back for it — the note said "typing over `1` to make `12` may
+send a move to `1` first". It does. Worse: clearing the box puts an empty string
+through `parseInt`, which is not a number, which is refused, which puts the old
+value straight back. The field cannot be typed into at all.
+
+A draft now lives in the field until the GM leaves it or presses Enter, and is
+validated once, on the way out. Escape abandons it.
+
+**Widened past what was asked, deliberately**, because the same code was in five
+other fields and two of them are worse than they look:
+
+- A **name** could not be cleared either — backspacing to empty is refused, so
+  it snapped back. Every place, point of interest, party member and level name.
+- Every keystroke was **its own undo step** (R-140a). Renaming a place cost as
+  many entries as the name had letters, and the history is bounded, so a long
+  name quietly pushed real edits off the end of the undo stack. That one is
+  invisible until the moment a GM needs it and it is gone.
+
+Left alone, and flagged rather than half-fixed: the party's **colour** picker,
+which has no clearing problem but does dispatch continuously while the picker is
+open, so it has the undo-spam half of the same bug. A colour input does not blur
+when the OS panel closes, so commit-on-blur is the wrong shape for it and it
+needs its own answer.
+
+`DraftInput` is a primitive rather than a convention. "Every field" is a rule,
+and a rule kept by remembering to type it lasts until the next field. Its single
+decision — does this finished draft become an edit? — is a pure function beside
+it, since `@tt/ui` has no DOM to test a component in (R-23b): a field tabbed
+through, or typed into and put back, must not dispatch.

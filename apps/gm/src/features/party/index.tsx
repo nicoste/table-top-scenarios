@@ -7,7 +7,7 @@
 
 import type { Intent, PlacementWire } from '@tt/protocol';
 import type { CampaignWire } from '@tt/protocol';
-import { Tooltip } from '@tt/ui';
+import { DraftInput, Tooltip } from '@tt/ui';
 
 interface Props {
   campaign: CampaignWire;
@@ -60,9 +60,10 @@ export function PartyPanel({ campaign, placement, canPlace, dispatch }: Props) {
         <div className="member" key={m.id}>
           <div className="top">
             <span className="dot" style={{ background: m.colour }} />
-            <input
+            <DraftInput
               value={m.name}
-              onChange={(e) => dispatch({ kind: 'editMember', id: m.id, name: e.target.value })}
+              valid={(name) => name.trim().length > 0}
+              onCommit={(name) => dispatch({ kind: 'editMember', id: m.id, name })}
             />
             <button
               title="Remove"
