@@ -4555,3 +4555,36 @@ to an instrument is a new claim, and a measurement taken at an unusual moment �
 the first frame, an idle frame, a frame behind a composer — is where the claim
 turns out to be false.* The GM has caught all four by looking at the numbers
 and asking whether they could possibly be right.
+
+### D-231 — A ten-second frame, and a box that shoved the column · `agreed`
+Two the GM found in one message, both in the panel rather than the renderer.
+
+**"Worst is normally wrong, it displayed something like 10 thousand ms."**
+The clock that frame times are measured against was only moved forward on
+*real* frames, and heartbeat frames returned before reaching it (D-230). So
+after a quiet minute the next real frame measured the whole minute. The panel
+duly reported a ten-second frame, which is not a frame — it is the gap between
+two of them.
+
+The clock moves for any frame drawn now, and a sample is taken only when this
+frame **and** the one before it were real, and they were closer together than
+the heartbeat. That last condition is the principled one: an interval longer
+than the heartbeat cannot be a slow frame, because the heartbeat guarantees a
+draw sooner than that. It is a gap in drawing, which is what `drawn` reports.
+
+Verified by the sequence that caused it — a burst, eight seconds of silence,
+another burst — which now gives a worst of 37.4 ms instead of 8,000.
+
+**"Remove the rectangle around the bad numbers, they push all the rest of the
+data."** `.warn` was already a component in that stylesheet, with a background,
+a border and padding. The panel's rule added a colour on top and inherited the
+box, which then shifted the column it sat in. Renamed to `hot`, which nothing
+else claims. Colour alone says as much and moves nothing.
+
+Worth noting what that collision cost: a generic class name in a shared
+stylesheet is a global, and `warn` is about the most tempting global there is.
+
+Fifth and sixth misreports from this panel. The pattern from D-230 holds and
+sharpens: **every one of them appeared at a boundary** — the first frame, an
+idle frame, a frame behind a composer, the frame after a silence. Steady state
+has been right every time; it is the edges that lie.

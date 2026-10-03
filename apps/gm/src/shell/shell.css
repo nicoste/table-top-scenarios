@@ -301,6 +301,11 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
 .metrics dt { color: var(--dim); }
 .metrics dd { margin: 0; text-align: right; color: var(--ink); }
 /* Only where a number is worth a second look — a panel that is all warnings
-   is a panel nobody reads. */
-.metrics dd.warn { color: #ffb86b; }
+   is a panel nobody reads.
+
+   `hot`, not `warn`: `.warn` is a component in this sheet with a background,
+   a border and padding, and borrowing the name gave every flagged figure a
+   box that shoved the column it sat in (D-231). Colour alone says as much and
+   moves nothing. */
+.metrics dd.hot { color: #ffb86b; }
 .metrics .hint { margin: 7px 0 0; font-size: 10.5px; color: var(--dim); }

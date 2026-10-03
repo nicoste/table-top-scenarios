@@ -7,7 +7,7 @@
 // dependency the effect can actually see.
 
 import { useEffect, useRef, useState } from 'react';
-import { Stage, FRAME_BUDGET_MS, FRAME_SLOP_MS } from '@tt/render';
+import { Stage, FRAME_BUDGET_MS, FRAME_SLOP_MS, IDLE_HEARTBEAT_MS } from '@tt/render';
 import { keepRecent } from '@tt/client-core';
 
 export function useStage(): {
@@ -37,6 +37,7 @@ export function useStage(): {
   const [stage, setStage] = useState<Stage | null>(null);
   const frames = useRef<number[]>([]);
   const draws = useRef<number[]>([]);
+  const drawnBefore = useRef(false);
   const previous = useRef(0);
 
   useEffect(() => {
@@ -52,20 +53,26 @@ export function useStage(): {
       // still keeps the loop alive.
       const since = previous.current === 0 ? Infinity : now - previous.current;
       if (since < FRAME_BUDGET_MS - FRAME_SLOP_MS) return;
-      // Only when a frame was actually drawn (R-170). A still screen draws
-      // twice a second, and the panel should say so — "2 fps" while nothing
-      // is happening is the saving, reported rather than hidden.
-      /*
-       * A heartbeat frame counts as drawn — it is one — but it is not
-       * sampled: its interval is the heartbeat rather than a cost, and it
-       * would make an idle screen read as a half-second frame (D-230).
-       */
       const kind = created.render();
       if (kind === 'skipped') return;
-      draws.current = [...draws.current.filter((at) => now - at <= 2000), now];
-      if (kind !== 'drawn') return;
-      if (previous.current !== 0) frames.current = keepRecent(frames.current, since);
+      /*
+       * The clock moves on for *any* frame drawn, heartbeat included. It used
+       * to move only for real ones, so the first frame after a quiet minute
+       * measured the whole minute and the panel reported a ten-second frame
+       * (D-231).
+       */
       previous.current = now;
+      draws.current = [...draws.current.filter((at) => now - at <= 2000), now];
+      /*
+       * Sampled only when this frame *and* the one before it were real, and
+       * only when they were close enough together to be a frame rate at all.
+       * An interval longer than the heartbeat cannot be a slow frame — the
+       * heartbeat guarantees a draw sooner than that — so it is a gap in
+       * drawing, which is what `drawn` is for (R-170, D-230).
+       */
+      const measurable = kind === 'drawn' && drawnBefore.current && since <= IDLE_HEARTBEAT_MS;
+      drawnBefore.current = kind === 'drawn';
+      if (measurable) frames.current = keepRecent(frames.current, since);
     };
     loop();
 

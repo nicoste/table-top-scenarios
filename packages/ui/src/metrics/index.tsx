@@ -71,17 +71,17 @@ export function Metrics({ reading, hint }: MetricsProps) {
             30 fps a 33 ms frame is on time, and the same number at 60 is a
             missed one (R-169). */}
         <dt>frame p95</dt>
-        <dd className={frames && frames.p95 > reading.budgetMs * 1.25 ? 'warn' : ''}>
+        <dd className={frames && frames.p95 > reading.budgetMs * 1.25 ? 'hot' : ''}>
           {frames ? ms(frames.p95) : '—'}
         </dd>
         <dt>worst</dt>
-        <dd className={frames && frames.worst > reading.budgetMs * 2 ? 'warn' : ''}>
+        <dd className={frames && frames.worst > reading.budgetMs * 2 ? 'hot' : ''}>
           {frames ? ms(frames.worst) : '—'}
         </dd>
         {/* The one that answers "is this expensive". Frame time cannot: the
             loop is capped, so it reports lateness rather than load (D-226). */}
         <dt>gpu</dt>
-        <dd className={reading.gpuMs !== null && reading.gpuMs > reading.budgetMs * 0.5 ? 'warn' : ''}>
+        <dd className={reading.gpuMs !== null && reading.gpuMs > reading.budgetMs * 0.5 ? 'hot' : ''}>
           {reading.gpuMs === null ? 'n/a' : ms(reading.gpuMs)}
         </dd>
 
@@ -101,11 +101,11 @@ export function Metrics({ reading, hint }: MetricsProps) {
         <dd>{count(reading.programs)}</dd>
 
         <dt>last rebuild</dt>
-        <dd className={reading.rebuildMs > 20 ? 'warn' : ''}>{ms(reading.rebuildMs)}</dd>
+        <dd className={reading.rebuildMs > 20 ? 'hot' : ''}>{ms(reading.rebuildMs)}</dd>
         <dt>last push</dt>
         <dd>{kib(reading.payload)}</dd>
         <dt>pushes/s</dt>
-        <dd className={reading.pushes > 20 ? 'warn' : ''}>{count(reading.pushes)}</dd>
+        <dd className={reading.pushes > 20 ? 'hot' : ''}>{count(reading.pushes)}</dd>
         <dt>js heap</dt>
         <dd>{reading.heap === null ? 'n/a' : kib(reading.heap)}</dd>
         <dt>occlusion</dt>

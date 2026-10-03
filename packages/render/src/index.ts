@@ -16,7 +16,7 @@ export type { PlaceMarkers, Label } from './places/index.js';
 export { buildPartyPawns } from './pawns/index.js';
 export type { PartyPawns, PawnRef } from './pawns/index.js';
 
-export { Stage, FRAME_BUDGET_MS, FRAME_SLOP_MS } from './stage/index.js';
+export { Stage, FRAME_BUDGET_MS, FRAME_SLOP_MS, IDLE_HEARTBEAT_MS } from './stage/index.js';
 export type { StageCost } from './stage/index.js';
 export type { Picked, SlotAddress } from './stage/index.js';
 
