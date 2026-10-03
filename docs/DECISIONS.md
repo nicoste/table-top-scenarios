@@ -4588,3 +4588,51 @@ Fifth and sixth misreports from this panel. The pattern from D-230 holds and
 sharpens: **every one of them appeared at a boundary** — the first frame, an
 idle frame, a frame behind a composer, the frame after a silence. Steady state
 has been right every time; it is the edges that lie.
+
+### O-027 — Face culling bought nothing, and the reason is worth keeping · `closed`
+Built, measured, reverted. The GM asked whether it would affect current or
+future functionality; the answer turned out to be that it would not affect
+*anything*, which was not on either of our lists.
+
+It worked exactly as predicted on the geometry: 58,284 faces down to **19,770**
+on the church, triangles from 116,568 to 39,540, and 233,141 to 79,085 with
+occlusion on. The winding was right — every one of the six sides checked
+against its own normal, which was the part most likely to be quietly wrong.
+
+And it changed the GPU by nothing at all:
+
+| | before culling | after |
+| --- | --- | --- |
+| GPU, occlusion off | 0.5 ms | 0.5 ms |
+| GPU, occlusion on | 5.0 ms | 4.9 ms |
+| **rebuild** | **4.2 ms** | **16.6 ms** |
+
+**The GPU was never the bottleneck.** 116,568 triangles cost this card 0.5 ms;
+there was no win available to take. And the rebuild — which runs on *every
+cube placed*, while building, which is what the GM spends their time doing —
+got four times slower, because the body went from 9,714 instanced matrices to
+118,620 vertices written by hand.
+
+Two theories died here, both mine. D-228 concluded occlusion's cost was the
+second geometry pass, from the observation that it tracked triangle count
+across two scenes. Cutting triangles by 2.9× disproved it. Isolating the chain
+afterwards shows where the time actually is:
+
+| | GPU |
+| --- | --- |
+| no composer | 0.7 ms |
+| composer, occlusion pass disabled | 1.9 ms |
+| composer and occlusion | 6.7 ms |
+
+So occlusion costs about 4.8 ms *fixed* — insensitive to resolution (D-228)
+and now to geometry too — and the composer itself costs 1.2 ms before any of
+it. The evidence was already there and I had already written it down: an
+**empty** scene cost 4.6 ms. I noted that it was "not cheap even with nothing
+in front of it" and then went looking for geometry anyway.
+
+Reverted rather than kept as insurance, because an unused optimisation that
+makes every click worse is not insurance. **What to keep is the number**: this
+machine draws 116,568 triangles for half a millisecond. If the table's box
+turns out to be much weaker, or a map gets several times larger, that number is
+what makes culling worth building again — and it will take an afternoon,
+because it has been built once and the hard part was the winding.
