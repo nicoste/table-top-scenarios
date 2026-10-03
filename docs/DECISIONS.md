@@ -4668,3 +4668,37 @@ occlusion pass, and let `composer.setSize` carry it. It is not worth doing:
 
 Written down rather than left as a maybe, so nobody spends an afternoon on it
 expecting the 4.8.
+
+### D-234 — Occlusion on for both screens, and an exposition failure · `agreed`
+*"Wait, so you kept AO for the table but not for the GM? Then you mentioned
+SMAAPass as a solution to what we have when SMAAPass is an antialiasing
+technique and the GTAOPass is an AO technique. Why are you putting all
+together?"*
+
+**Two separate faults, and the second one is mine twice over.**
+
+**The split was reasoned from stale evidence.** D-233 left occlusion off on the
+console because "the first laptop to try it got warm" — which was measured
+before the frame cap (R-169) and before frames were drawn only on change
+(R-170). Occlusion cost 19.7 ms of *every* frame at 120 a second then. It costs
+4.8 ms of the frames actually drawn now, and the console draws two a second
+while the GM reads the map. The number that justified the decision no longer
+exists.
+
+Worse, the benefit argument was my own and I let the stale cost beat it without
+looking: the original proposal for occlusion opened with *"it helps you build —
+depth is much easier to judge when corners are shaded."* Shading corners is
+worth more to somebody placing cubes than to anybody watching. On for both.
+
+**And antialiasing was dragged in without saying so.** SMAA is not a cheaper
+AO, and presenting it as a lever on occlusion's cost without stating the link
+was the confusion. The link is real: **a composer breaks the renderer's
+antialiasing.** `antialias: true` applies to the canvas's default framebuffer
+only, so the moment GTAO put a composer in the path, the scene began rendering
+into a buffer where it does nothing. The 4× multisampled target is me paying
+that bill back, and SMAA is an alternative way to pay the *same* bill — the
+antialiasing one, never the occlusion one.
+
+That connection has been in the code comments since the composer went in, and
+never once in anything said out loud. A thing explained only to the compiler
+is not explained.

@@ -69,12 +69,18 @@ export function useCost(
    * table. A switch beside the numbers is what makes that measurable by the
    * person standing in front of it.
    *
-   * **Off by default here, and on for the table** (D-225, D-233). This screen
-   * is a tool somebody runs all session and builds in; the table is a stage
-   * the players look at. The first laptop to try occlusion on the console got
-   * warm, and nothing about that screen's job needs it.
+   * **On by default, on both screens** (D-234).
+   *
+   * It was off here on the strength of a laptop getting warm — measured
+   * before frames were capped (R-169) and before they were drawn only when
+   * something changed (R-170). Occlusion cost 19.7 ms of every frame at 120
+   * a second then; it costs 4.8 ms of the frames actually drawn now, and this
+   * screen draws two a second while the GM reads the map.
+   *
+   * And shading corners is what makes depth legible, which is worth more to
+   * somebody placing cubes than to anybody watching.
    */
-  const [occlusion, setOcclusion] = useState(false);
+  const [occlusion, setOcclusion] = useState(true);
   const [reading, setReading] = useState<Reading | null>(null);
 
   useEffect(() => {

@@ -2349,12 +2349,14 @@ apps/host/src/
 > The cost moves from build time to **every frame**, which is a real trade and
 > not obviously the right one on whatever drives the table. So it is a switch,
 > read beside the numbers (R-166): shift+backtick, with its state on the panel
-> — and the default differs by screen (D-233): **on for the table, off for the
-> console.** They have different jobs. The table is a stage the players look
-> at and is still for minutes at a time, so with frames drawn on demand
-> (R-170) occlusion costs nothing while nobody is touching anything. The
-> console is a tool being built in, where the first laptop to try this got
-> warm.
+> — and it is **on by default on both screens** (D-234), having been off on the
+> console on the strength of evidence that predated the frame cap (R-169) and
+> on-demand drawing (R-170). It cost 19.7 ms of every frame at 120 a second
+> then; it costs 4.8 ms of the frames actually drawn now.
+>
+> **It is also not only decoration.** Shading corners is what makes depth
+> legible, which is worth more to somebody placing cubes than to anybody
+> watching.
 >
 > **Off means off, not "the composer with one pass skipped."** The composer is
 > not free on its own: a half-float target, multisampled, at the device pixel
