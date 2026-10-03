@@ -4898,6 +4898,15 @@ that reads as solid — which is what six feet of water does.
 **The cost is nothing**, and finding that out cost the afternoon's real
 discovery.
 
+Asked afterwards whether an opaque block pays anything for living in a scene
+that also has transparent ones, and measured both ways rather than reasoned
+about: with occlusion off, the church rasterises in a median **1.4 ms all
+opaque and 1.3 ms see-through**, six samples each, 21 draw calls either way.
+No, it does not. An opaque material never enters the transparent path —
+`transparent` comes from `opacity < 1`, so stone's is false and it sits in the
+opaque list as it always did, blending off, depth writes on, sorted front to
+back.
+
 The first reading said transparency had cost 3.7 ms — 12.6 ms of GPU before,
 16.3 after. It had not. The two readings were taken at different camera
 distances, and that turns out to be the only variable that matters here. With

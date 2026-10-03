@@ -145,6 +145,25 @@ priced in pixels.
 a transparent sea of 7,239 water cubes in it. Transparency is free (D-239);
 the composer and GTAO are the whole bill.
 
+### Does transparency cost anything? (Pane, the church, one camera)
+
+Asked directly, so measured directly: the same build with water, glass and ice
+forced to opacity 1, then back. Occlusion **off**, because with it on the pass
+swamps the thing being measured — 18.8 ms either way.
+
+| | raster, six samples | median |
+| --- | --- | --- |
+| all opaque | 1.5, 1.4, 1.4, 1.2, 1.2, 0.9 | **1.4 ms** |
+| water, glass and ice see-through | 1.7, 1.0, 1.3, 1.7, 1.1, 1.3 | **1.3 ms** |
+
+The same, inside the noise, and the noise is wider than any difference. Draw
+calls are 21 either way: an opaque material never enters the transparent path
+at all, because `transparent` is set from `opacity < 1` and stone's is false.
+
+A single pair of readings had said 1.1 against 2.3 and looked like a real
+doubling. Six samples each says that pair was noise — which is the whole
+argument for taking more than one.
+
 ### Geometry (the church)
 
 | | |
