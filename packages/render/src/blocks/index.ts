@@ -12,6 +12,10 @@
 // Thirteen draw calls instead of one is nothing here — the world already makes
 // twenty, and 116,568 triangles cost this card 0.7 ms (MEASUREMENTS.md).
 //
+// Which is exactly why a **shade** is not a split (R-176): it only changes the
+// colour, and colour is the thing instances already carry. Dark stone and pale
+// stone share a mesh, and three shades of everything cost nothing at all.
+//
 // Face picking is the reason this exists separately from the world's mesh: the
 // world stores a height per cell and never needs to know *which side* was hit,
 // while placing a block does (R-147).
@@ -21,8 +25,8 @@ import {
   Object3D, Vector3,
 } from 'three';
 import type { Intersection } from 'three';
-import type { BlockCoord, EncounterMap, Material } from '@tt/domain';
-import { parseBlockKey } from '@tt/domain';
+import type { BlockCoord, EncounterMap, Material, SwatchId } from '@tt/domain';
+import { parseBlockKey, materialIn, shadeIn, shadeColour } from '@tt/domain';
 import { grainAt } from '../grain/index.js';
 
 /** Where a click on a block face means a new block should go (R-147). */
@@ -65,19 +69,37 @@ export function buildBlockBody(map: EncounterMap, materials: readonly Material[]
     opacity: 1,
   };
 
+  /*
+   * What a swatch resolves to, worked out once per swatch rather than once per
+   * cube: a body is thousands of blocks and at most a few dozen swatches, and
+   * `shadeColour` is a round trip through HSL.
+   */
+  const cuts = new Map<string, { material: Material; tint: Color }>();
+  const cutOf = (swatch: SwatchId) => {
+    let cut = cuts.get(swatch);
+    if (!cut) {
+      const material = known.get(materialIn(swatch) as string) ?? unknown;
+      cut = { material, tint: new Color(shadeColour(material.colour, shadeIn(swatch).lift)) };
+      cuts.set(swatch, cut);
+    }
+    return cut;
+  };
+
   // Grouped first, because a mesh is per material and its size has to be known
-  // before it is made.
-  const piles = new Map<string, { material: Material; blocks: BlockCoord[] }>();
-  for (const [key, materialId] of map.blocks) {
+  // before it is made. Keyed on the **material**, not the swatch: the shades of
+  // one stone differ only in a per-instance colour and share everything else.
+  const piles = new Map<string, { material: Material; blocks: BlockCoord[]; tints: Color[] }>();
+  for (const [key, swatch] of map.blocks) {
     const at = parseBlockKey(key);
     if (!at) continue;
-    const id = materialId as string;
-    let pile = piles.get(id);
+    const { material, tint } = cutOf(swatch);
+    let pile = piles.get(material.id as string);
     if (!pile) {
-      pile = { material: known.get(id) ?? unknown, blocks: [] };
-      piles.set(id, pile);
+      pile = { material, blocks: [], tints: [] };
+      piles.set(material.id as string, pile);
     }
     pile.blocks.push(at);
+    pile.tints.push(tint);
   }
 
   /*
@@ -94,7 +116,7 @@ export function buildBlockBody(map: EncounterMap, materials: readonly Material[]
   const used: MeshStandardMaterial[] = [];
   let count = 0;
 
-  for (const { material, blocks } of piles.values()) {
+  for (const { material, blocks, tints } of piles.values()) {
     base.set(material.colour);
     const surface = new MeshStandardMaterial({
       roughness: material.roughness,
@@ -143,7 +165,8 @@ export function buildBlockBody(map: EncounterMap, materials: readonly Material[]
        * drags a colour toward black or past white and changes how saturated
        * it looks, where a nudge in HSL keeps the material's own hue (R-172).
        */
-      shade.copy(base);
+      // The shade is already in the tint; grain nudges it from there (R-176).
+      shade.copy(tints[index] ?? base);
       if (material.grain > 0) {
         shade.getHSL(hsl);
         const drift = grainAt(at.x, at.y, at.z) * material.grain;

@@ -10,7 +10,7 @@ import { viewFor } from '@tt/protocol';
 import type { GmView, HostState, Intent, TableView } from '@tt/protocol';
 import type { Campaign } from '@tt/domain';
 import {
-  createCampaign, createLiveSave, DEFAULT_MATERIALS, DEFAULT_FLOOR,
+  createCampaign, createLiveSave, DEFAULT_MATERIALS, DEFAULT_FLOOR, swatchOf,
   MAP_PATCH, MAP_MAX_HEIGHT, ORIGIN, MAP_BRUSH_CELLS, brushById, brushPatch,
   blockAt, mapFromJSON,
 } from '@tt/domain';
@@ -19,7 +19,7 @@ import { IntentSchema } from '@tt/protocol';
 const NOW = '2026-01-01T00:00:00.000Z';
 const run = (s: HostState, i: Intent, role: 'gm' | 'table' = 'gm') => apply(s, role, i, NOW);
 const cell = (x: number, z: number) => ({ cx: ORIGIN.cx, cz: ORIGIN.cz, x, z });
-const STONE = DEFAULT_MATERIALS.find((m) => m.name === 'Stone')!.id as string;
+const STONE = swatchOf(DEFAULT_MATERIALS.find((m) => m.name === 'Stone')!.id) as string;
 
 /**
  * A revealed place with one revealed point of interest, in a Known chunk.
@@ -54,9 +54,9 @@ describe('a point of interest arrives with its map (D-187)', () => {
 
   it('rejects a place or point of interest that is not there', () => {
     const { state, placeId, poiId } = seeded();
-    expect(run(state, { kind: 'setBlock', placeId: 'place_ghost', poiId, cells: [{ x: 0, y: 1, z: 0 }], materialId: STONE }).rejected)
+    expect(run(state, { kind: 'setBlock', placeId: 'place_ghost', poiId, cells: [{ x: 0, y: 1, z: 0 }], swatch: STONE }).rejected)
       .toBe('no such place');
-    expect(run(state, { kind: 'setBlock', placeId, poiId: 'poi_ghost', cells: [{ x: 0, y: 1, z: 0 }], materialId: STONE }).rejected)
+    expect(run(state, { kind: 'setBlock', placeId, poiId: 'poi_ghost', cells: [{ x: 0, y: 1, z: 0 }], swatch: STONE }).rejected)
       .toBe('no such point of interest');
   });
 
@@ -101,7 +101,7 @@ describe('a point of interest arrives with its map (D-187)', () => {
         })),
       },
     };
-    expect(run(leaked, { kind: 'setBlock', placeId, poiId, cells: [{ x: 0, y: 1, z: 0 }], materialId: STONE }).rejected)
+    expect(run(leaked, { kind: 'setBlock', placeId, poiId, cells: [{ x: 0, y: 1, z: 0 }], swatch: STONE }).rejected)
       .toBe('that point of interest has no map');
   });
 });
@@ -111,7 +111,7 @@ describe('building', () => {
 
   it('places and clears a block', () => {
     const { state, placeId, poiId } = withMap();
-    const built = run(state, { kind: 'setBlock', placeId, poiId, cells: [{ x: 2, y: 1, z: 3 }], materialId: STONE }).state;
+    const built = run(state, { kind: 'setBlock', placeId, poiId, cells: [{ x: 2, y: 1, z: 3 }], swatch: STONE }).state;
     expect(poiOf(built).map!.blocks.get('2,1,3')).toBe(STONE);
 
     const cleared = run(built, { kind: 'clearBlock', placeId, poiId, cells: [{ x: 2, y: 1, z: 3  }]}).state;
@@ -125,7 +125,7 @@ describe('building', () => {
       { x: 0, y: MAP_MAX_HEIGHT, z: 0 },
       { x: -1, y: 0, z: 0 },
     ]) {
-      expect(run(state, { kind: 'setBlock', placeId, poiId, cells: [at], materialId: STONE }).rejected)
+      expect(run(state, { kind: 'setBlock', placeId, poiId, cells: [at], swatch: STONE }).rejected)
         .toBe('that is outside the map');
     }
   });
@@ -133,7 +133,7 @@ describe('building', () => {
   it('refuses a material nobody registered', () => {
     const { state, placeId, poiId } = withMap();
     expect(run(state, {
-      kind: 'setBlock', placeId, poiId, cells: [{ x: 0, y: 1, z: 0 }], materialId: 'material:unobtanium',
+      kind: 'setBlock', placeId, poiId, cells: [{ x: 0, y: 1, z: 0 }], swatch: 'material:unobtanium',
     }).rejected).toBe('unknown material');
   });
 
@@ -147,7 +147,7 @@ describe('building', () => {
   it('grows the northerly directions by moving the origin, not the blocks', () => {
     const { state, placeId, poiId } = withMap();
     const built = run(state, {
-      kind: 'setBlock', placeId, poiId, cells: [{ x: 3, y: 1, z: 3 }], materialId: STONE,
+      kind: 'setBlock', placeId, poiId, cells: [{ x: 3, y: 1, z: 3 }], swatch: STONE,
     }).state;
     const grown = run(built, { kind: 'growMap', placeId, poiId, towards: 'northeast' }).state;
     expect(poiOf(grown).map!.origin).toEqual({ x: 0, z: -MAP_PATCH });
@@ -163,7 +163,7 @@ describe('undo covers map edits for free (R-140a)', () => {
     // new intent is undoable the moment it edits the campaign — nothing had to
     // be registered anywhere.
     const { state, placeId, poiId } = seeded();
-    const next = run(state, { kind: 'setBlock', placeId, poiId, cells: [{ x: 1, y: 1, z: 1 }], materialId: STONE }).state;
+    const next = run(state, { kind: 'setBlock', placeId, poiId, cells: [{ x: 1, y: 1, z: 1 }], swatch: STONE }).state;
     expect(poiOf(next).map!.blocks.has('1,1,1')).toBe(true);
 
     const undone = run(next, { kind: 'undo' }).state;
@@ -179,7 +179,7 @@ describe('undo covers map edits for free (R-140a)', () => {
     const { state, placeId, poiId } = seeded();
     let next = state;
     for (let x = 0; x < 5; x += 1) {
-      next = run(next, { kind: 'setBlock', placeId, poiId, cells: [{ x, y: 1, z: 0 }], materialId: STONE }).state;
+      next = run(next, { kind: 'setBlock', placeId, poiId, cells: [{ x, y: 1, z: 0 }], swatch: STONE }).state;
     }
     expect(poiOf(next).map!.blocks.has('4,1,0')).toBe(true);
 
@@ -198,7 +198,7 @@ describe('undo covers map edits for free (R-140a)', () => {
 describe('the boundary (D-184)', () => {
   it('sends the party a point of interest by name, with no body', () => {
     const { state, placeId, poiId } = seeded();
-    const next = run(state, { kind: 'setBlock', placeId, poiId, cells: [{ x: 1, y: 1, z: 1 }], materialId: STONE }).state;
+    const next = run(state, { kind: 'setBlock', placeId, poiId, cells: [{ x: 1, y: 1, z: 1 }], swatch: STONE }).state;
 
     const table = viewFor('table', next) as TableView;
     const poi = table.campaign!.places[0]!.pois[0]!;
@@ -211,7 +211,7 @@ describe('the boundary (D-184)', () => {
     // party has not found, and until the range exists there is no way to send
     // part of one (R-85).
     const { state, placeId, poiId } = seeded();
-    const next = run(state, { kind: 'setBlock', placeId, poiId, cells: [{ x: 7, y: 9, z: 7 }], materialId: STONE }).state;
+    const next = run(state, { kind: 'setBlock', placeId, poiId, cells: [{ x: 7, y: 9, z: 7 }], swatch: STONE }).state;
 
     const payload = JSON.stringify(viewFor('table', next));
     expect(payload).not.toContain('"blocks"');
@@ -220,7 +220,7 @@ describe('the boundary (D-184)', () => {
 
   it('still gives the GM the whole body (D-182)', () => {
     const { state, placeId, poiId } = seeded();
-    const next = run(state, { kind: 'setBlock', placeId, poiId, cells: [{ x: 7, y: 9, z: 7 }], materialId: STONE }).state;
+    const next = run(state, { kind: 'setBlock', placeId, poiId, cells: [{ x: 7, y: 9, z: 7 }], swatch: STONE }).state;
 
     const gm = viewFor('gm', next) as GmView;
     const poi = gm.campaign!.places[0]!.pois[0]!;
@@ -233,7 +233,7 @@ describe('a map is authored content, so the table seat cannot touch it (R-136)',
     const { state, placeId, poiId } = seeded();
     const withMap = state;
     for (const intent of [
-      { kind: 'setBlock', placeId, poiId, cells: [{ x: 0, y: 1, z: 0 }], materialId: STONE },
+      { kind: 'setBlock', placeId, poiId, cells: [{ x: 0, y: 1, z: 0 }], swatch: STONE },
       { kind: 'clearBlock', placeId, poiId, cells: [{ x: 0, y: 0, z: 0  }]},
       { kind: 'growMap', placeId, poiId, towards: 'southeast' },
     ] as Intent[]) {
@@ -255,7 +255,7 @@ describe('deleting a point of interest (R-151)', () => {
     // always take it back" is not a promise the GM should have to rely on.
     const { state, placeId, poiId } = seeded();
     const built = run(state, {
-      kind: 'setBlock', placeId, poiId, cells: [{ x: 4, y: 1, z: 4 }], materialId: STONE,
+      kind: 'setBlock', placeId, poiId, cells: [{ x: 4, y: 1, z: 4 }], swatch: STONE,
     }).state;
     const gone = run(built, { kind: 'removePoi', placeId, poiId }).state;
     expect(gone.active!.places[0]!.pois).toEqual([]);
@@ -267,12 +267,12 @@ describe('deleting a point of interest (R-151)', () => {
 });
 
 describe('the bucket fill through sim (R-154)', () => {
-  const GRASS = DEFAULT_MATERIALS.find((m) => m.name === 'Grass')!.id as string;
+  const GRASS = swatchOf(DEFAULT_MATERIALS.find((m) => m.name === 'Grass')!.id) as string;
 
   it('repaints the region the GM clicked, in one undo', () => {
     const { state, placeId, poiId } = seeded();
     const filled = run(state, {
-      kind: 'fillMaterial', placeId, poiId, x: 0, y: 0, z: 0, materialId: GRASS,
+      kind: 'fillMaterial', placeId, poiId, x: 0, y: 0, z: 0, swatch: GRASS,
     }).state;
     // The whole floor, and nothing added or removed.
     expect(poiOf(filled).map!.blocks.size).toBe(MAP_PATCH * MAP_PATCH);
@@ -287,27 +287,27 @@ describe('the bucket fill through sim (R-154)', () => {
   it('refuses a material nobody registered', () => {
     const { state, placeId, poiId } = seeded();
     expect(run(state, {
-      kind: 'fillMaterial', placeId, poiId, x: 0, y: 0, z: 0, materialId: 'material:unobtanium',
+      kind: 'fillMaterial', placeId, poiId, x: 0, y: 0, z: 0, swatch: 'material:unobtanium',
     }).rejected).toBe('unknown material');
   });
 
   it('says so rather than going quiet outside the map (R-18)', () => {
     const { state, placeId, poiId } = seeded();
     expect(run(state, {
-      kind: 'fillMaterial', placeId, poiId, x: MAP_PATCH, y: 0, z: 0, materialId: STONE,
+      kind: 'fillMaterial', placeId, poiId, x: MAP_PATCH, y: 0, z: 0, swatch: STONE,
     }).rejected).toBe('that is outside the map');
   });
 
   it('is authored content, so the table seat cannot fill (R-136)', () => {
     const { state, placeId, poiId } = seeded();
     expect(run(state, {
-      kind: 'fillMaterial', placeId, poiId, x: 0, y: 0, z: 0, materialId: STONE,
+      kind: 'fillMaterial', placeId, poiId, x: 0, y: 0, z: 0, swatch: STONE,
     }, 'table').rejected).toBe('only the GM can do that');
   });
 });
 
 describe('building never overwrites, painting never conjures (R-159)', () => {
-  const GRASS = DEFAULT_MATERIALS.find((m) => m.name === 'Grass')!.id as string;
+  const GRASS = swatchOf(DEFAULT_MATERIALS.find((m) => m.name === 'Grass')!.id) as string;
 
   it('refuses to build where a block already stands', () => {
     // The hazard the levels toggle would otherwise create: with the band shown
@@ -316,10 +316,10 @@ describe('building never overwrites, painting never conjures (R-159)', () => {
     // domain's setBlock would have silently repainted it.
     const { state, placeId, poiId } = seeded();
     const built = run(state, {
-      kind: 'setBlock', placeId, poiId, cells: [{ x: 2, y: 1, z: 2 }], materialId: STONE,
+      kind: 'setBlock', placeId, poiId, cells: [{ x: 2, y: 1, z: 2 }], swatch: STONE,
     }).state;
     expect(run(built, {
-      kind: 'setBlock', placeId, poiId, cells: [{ x: 2, y: 1, z: 2 }], materialId: GRASS,
+      kind: 'setBlock', placeId, poiId, cells: [{ x: 2, y: 1, z: 2 }], swatch: GRASS,
     }).rejected).toBe('there is already a block there');
     // And the block it refused to overwrite is untouched.
     expect(poiOf(built).map!.blocks.get('2,1,2')).toBe(STONE);
@@ -328,14 +328,14 @@ describe('building never overwrites, painting never conjures (R-159)', () => {
   it('refuses to build on the floor, which is a block like any other', () => {
     const { state, placeId, poiId } = seeded();
     expect(run(state, {
-      kind: 'setBlock', placeId, poiId, cells: [{ x: 0, y: 0, z: 0 }], materialId: STONE,
+      kind: 'setBlock', placeId, poiId, cells: [{ x: 0, y: 0, z: 0 }], swatch: STONE,
     }).rejected).toBe('there is already a block there');
   });
 
   it('paints a block that is there', () => {
     const { state, placeId, poiId } = seeded();
     const painted = run(state, {
-      kind: 'paintBlock', placeId, poiId, cells: [{ x: 0, y: 0, z: 0 }], materialId: STONE,
+      kind: 'paintBlock', placeId, poiId, cells: [{ x: 0, y: 0, z: 0 }], swatch: STONE,
     }).state;
     expect(poiOf(painted).map!.blocks.get('0,0,0')).toBe(STONE);
   });
@@ -345,24 +345,24 @@ describe('building never overwrites, painting never conjures (R-159)', () => {
     // each refuses precisely what the other is for.
     const { state, placeId, poiId } = seeded();
     expect(run(state, {
-      kind: 'paintBlock', placeId, poiId, cells: [{ x: 0, y: 5, z: 0 }], materialId: STONE,
+      kind: 'paintBlock', placeId, poiId, cells: [{ x: 0, y: 5, z: 0 }], swatch: STONE,
     }).rejected).toBe('there is nothing there to paint');
   });
 
   it('checks the bounds and the material before either', () => {
     const { state, placeId, poiId } = seeded();
     expect(run(state, {
-      kind: 'paintBlock', placeId, poiId, cells: [{ x: MAP_PATCH, y: 0, z: 0 }], materialId: STONE,
+      kind: 'paintBlock', placeId, poiId, cells: [{ x: MAP_PATCH, y: 0, z: 0 }], swatch: STONE,
     }).rejected).toBe('that is outside the map');
     expect(run(state, {
-      kind: 'paintBlock', placeId, poiId, cells: [{ x: 0, y: 0, z: 0 }], materialId: 'material:unobtanium',
+      kind: 'paintBlock', placeId, poiId, cells: [{ x: 0, y: 0, z: 0 }], swatch: 'material:unobtanium',
     }).rejected).toBe('unknown material');
   });
 
   it('is refused for the table seat, like every other authored edit (R-136)', () => {
     const { state, placeId, poiId } = seeded();
     expect(run(state, {
-      kind: 'paintBlock', placeId, poiId, cells: [{ x: 0, y: 0, z: 0 }], materialId: STONE,
+      kind: 'paintBlock', placeId, poiId, cells: [{ x: 0, y: 0, z: 0 }], swatch: STONE,
     }, 'table').rejected).toBe('only the GM can do that');
   });
 
@@ -371,7 +371,7 @@ describe('building never overwrites, painting never conjures (R-159)', () => {
     let next = state;
     for (let x = 0; x < 4; x += 1) {
       next = run(next, {
-        kind: 'paintBlock', placeId, poiId, cells: [{ x, y: 0, z: 0 }], materialId: STONE, stroke: 'brush1',
+        kind: 'paintBlock', placeId, poiId, cells: [{ x, y: 0, z: 0 }], swatch: STONE, stroke: 'brush1',
       }).state;
     }
     expect(poiOf(next).map!.blocks.get('3,0,0')).toBe(STONE);
@@ -383,7 +383,7 @@ describe('building never overwrites, painting never conjures (R-159)', () => {
 });
 
 describe('a brush arrives as one intent (R-162)', () => {
-  const GRASS = DEFAULT_MATERIALS.find((m) => m.name === 'Grass')!.id as string;
+  const GRASS = swatchOf(DEFAULT_MATERIALS.find((m) => m.name === 'Grass')!.id) as string;
 
   it('places a whole patch, and one undo takes all of it back (R-140a)', () => {
     // The reason the cells travel together. Twenty-five intents would be
@@ -391,7 +391,7 @@ describe('a brush arrives as one intent (R-162)', () => {
     // accident would be pressing undo twenty-five times.
     const { state, placeId, poiId } = seeded();
     const cells = brushPatch({ x: 5, y: 1, z: 5 }, brushById('flat5'));
-    const built = run(state, { kind: 'setBlock', placeId, poiId, cells, materialId: STONE }).state;
+    const built = run(state, { kind: 'setBlock', placeId, poiId, cells, swatch: STONE }).state;
     for (const cell_ of cells) {
       expect(poiOf(built).map!.blocks.get(`${cell_.x},${cell_.y},${cell_.z}`)).toBe(STONE);
     }
@@ -404,11 +404,11 @@ describe('a brush arrives as one intent (R-162)', () => {
   it('lands on the free cells of a patch and leaves what is standing', () => {
     const { state, placeId, poiId } = seeded();
     const one = run(state, {
-      kind: 'setBlock', placeId, poiId, cells: [{ x: 5, y: 1, z: 5 }], materialId: STONE,
+      kind: 'setBlock', placeId, poiId, cells: [{ x: 5, y: 1, z: 5 }], swatch: STONE,
     }).state;
     // A 3×3 over it: the middle is taken, the eight around it are not.
     const wide = run(one, {
-      kind: 'setBlock', placeId, poiId, cells: brushPatch({ x: 5, y: 1, z: 5 }, brushById('flat3')), materialId: GRASS,
+      kind: 'setBlock', placeId, poiId, cells: brushPatch({ x: 5, y: 1, z: 5 }, brushById('flat3')), swatch: GRASS,
     });
     expect(wide.rejected).toBeUndefined();
     const blocks = poiOf(wide.state).map!.blocks;
@@ -423,7 +423,7 @@ describe('a brush arrives as one intent (R-162)', () => {
     // is the same one a single cube has always got.
     const { state, placeId, poiId } = seeded();
     expect(run(state, {
-      kind: 'setBlock', placeId, poiId, cells: brushPatch({ x: 5, y: 0, z: 5 }, brushById('flat3')), materialId: STONE,
+      kind: 'setBlock', placeId, poiId, cells: brushPatch({ x: 5, y: 0, z: 5 }, brushById('flat3')), swatch: STONE,
     }).rejected).toBe('there is already a block there');
   });
 
@@ -432,7 +432,7 @@ describe('a brush arrives as one intent (R-162)', () => {
     // placed; what is outside is not a cell and is simply skipped.
     const { state, placeId, poiId } = seeded();
     const cells = brushPatch({ x: 0, y: 1, z: 0 }, brushById('flat3'));
-    const next = run(state, { kind: 'setBlock', placeId, poiId, cells, materialId: STONE });
+    const next = run(state, { kind: 'setBlock', placeId, poiId, cells, swatch: STONE });
     expect(next.rejected).toBeUndefined();
     const blocks = poiOf(next.state).map!.blocks;
     expect(blocks.get('0,1,0')).toBe(STONE);
@@ -443,7 +443,7 @@ describe('a brush arrives as one intent (R-162)', () => {
   it('refuses a patch that is entirely outside the map', () => {
     const { state, placeId, poiId } = seeded();
     expect(run(state, {
-      kind: 'setBlock', placeId, poiId, cells: brushPatch({ x: 900, y: 1, z: 900 }, brushById('flat3')), materialId: STONE,
+      kind: 'setBlock', placeId, poiId, cells: brushPatch({ x: 900, y: 1, z: 900 }, brushById('flat3')), swatch: STONE,
     }).rejected).toBe('that is outside the map');
   });
 
@@ -453,9 +453,9 @@ describe('a brush arrives as one intent (R-162)', () => {
     // cube put there first — paint must take that one and conjure no others.
     const cells = brushPatch({ x: 5, y: 1, z: 5 }, brushById('flat3'));
     const built = run(state, {
-      kind: 'setBlock', placeId, poiId, cells: [{ x: 5, y: 1, z: 5 }], materialId: STONE,
+      kind: 'setBlock', placeId, poiId, cells: [{ x: 5, y: 1, z: 5 }], swatch: STONE,
     }).state;
-    const next = run(built, { kind: 'paintBlock', placeId, poiId, cells, materialId: GRASS });
+    const next = run(built, { kind: 'paintBlock', placeId, poiId, cells, swatch: GRASS });
     expect(next.rejected).toBeUndefined();
     const blocks = poiOf(next.state).map!.blocks;
     expect(blocks.get('5,1,5')).toBe(GRASS);
@@ -483,15 +483,15 @@ describe('a brush arrives as one intent (R-162)', () => {
     // intent could name a million cells, and the host would dutifully try.
     const many = Array.from({ length: MAP_BRUSH_CELLS + 1 }, (_, i) => ({ x: i, y: 1, z: 0 }));
     const parsed = IntentSchema.safeParse({
-      kind: 'setBlock', placeId: 'place_1', poiId: 'poi_1', cells: many, materialId: STONE,
+      kind: 'setBlock', placeId: 'place_1', poiId: 'poi_1', cells: many, swatch: STONE,
     });
     expect(parsed.success).toBe(false);
     expect(IntentSchema.safeParse({
-      kind: 'setBlock', placeId: 'place_1', poiId: 'poi_1', cells: many.slice(0, MAP_BRUSH_CELLS), materialId: STONE,
+      kind: 'setBlock', placeId: 'place_1', poiId: 'poi_1', cells: many.slice(0, MAP_BRUSH_CELLS), swatch: STONE,
     }).success).toBe(true);
     // And an empty list is not an edit, so it is not a legal intent either.
     expect(IntentSchema.safeParse({
-      kind: 'setBlock', placeId: 'place_1', poiId: 'poi_1', cells: [], materialId: STONE,
+      kind: 'setBlock', placeId: 'place_1', poiId: 'poi_1', cells: [], swatch: STONE,
     }).success).toBe(false);
   });
 });

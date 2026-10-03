@@ -9,7 +9,7 @@
 // by reference and silently hold duplicates of the same cell, which is the trap
 // R-123 already names for chunk coordinates.
 
-import type { MaterialId } from '../ids/index.js';
+import type { SwatchId } from '../ids/index.js';
 import { freshId } from '../ids/index.js';
 import { DEFAULT_FLOOR } from '../materials/index.js';
 import type { CuttingPlane, LevelRange, PlaneJSON } from '../planes/index.js';
@@ -77,7 +77,7 @@ export interface EncounterMap {
   /** Cells in X and Z. Grows with the expand rose (R-150); never shrinks. */
   readonly size: { readonly x: number; readonly z: number };
   /** Filled cells only, keyed by `blockKey`. Absent means air. */
-  readonly blocks: ReadonlyMap<string, MaterialId>;
+  readonly blocks: ReadonlyMap<string, SwatchId>;
   /**
    * The GM's named horizontal cuts (R-146). Authored, ordered by height.
    *
@@ -133,7 +133,7 @@ export function inMap(map: EncounterMap, at: BlockCoord): boolean {
     && at.y >= MAP_MIN_DEPTH && at.y < MAP_MAX_HEIGHT;
 }
 
-export function blockAt(map: EncounterMap, at: BlockCoord): MaterialId | null {
+export function blockAt(map: EncounterMap, at: BlockCoord): SwatchId | null {
   return map.blocks.get(blockKey(at)) ?? null;
 }
 
@@ -234,7 +234,7 @@ export function brushPatch(
 export function setBlocks(
   map: EncounterMap,
   cells: readonly BlockCoord[],
-  material: MaterialId,
+  swatch: SwatchId,
 ): EncounterMap {
   const blocks = new Map(map.blocks);
   let touched = false;
@@ -242,7 +242,7 @@ export function setBlocks(
     if (!inMap(map, at)) continue;
     const key = blockKey(at);
     if (blocks.has(key)) continue;
-    blocks.set(key, material);
+    blocks.set(key, swatch);
     touched = true;
   }
   return touched ? { ...map, blocks } : map;
@@ -274,7 +274,7 @@ export function clearBlocks(
 export function paintBlocks(
   map: EncounterMap,
   cells: readonly BlockCoord[],
-  material: MaterialId,
+  swatch: SwatchId,
 ): EncounterMap {
   const blocks = new Map(map.blocks);
   let touched = false;
@@ -282,8 +282,8 @@ export function paintBlocks(
     if (!inMap(map, at)) continue;
     const key = blockKey(at);
     const standing = blocks.get(key);
-    if (standing === undefined || standing === material) continue;
-    blocks.set(key, material);
+    if (standing === undefined || standing === swatch) continue;
+    blocks.set(key, swatch);
     touched = true;
   }
   return touched ? { ...map, blocks } : map;
@@ -296,11 +296,11 @@ export function paintBlocks(
  * (R-147) needs a face to begin from — the same reason a new chunk is created
  * flat and entirely water rather than as nothing (R-78).
  */
-export function createMap(material: MaterialId = DEFAULT_FLOOR): EncounterMap {
-  const blocks = new Map<string, MaterialId>();
+export function createMap(swatch: SwatchId = DEFAULT_FLOOR): EncounterMap {
+  const blocks = new Map<string, SwatchId>();
   for (let x = 0; x < MAP_PATCH; x += 1) {
     for (let z = 0; z < MAP_PATCH; z += 1) {
-      blocks.set(blockKey({ x, y: 0, z }), material);
+      blocks.set(blockKey({ x, y: 0, z }), swatch);
     }
   }
   return {
@@ -318,13 +318,13 @@ export function createMap(material: MaterialId = DEFAULT_FLOOR): EncounterMap {
 export function setBlock(
   map: EncounterMap,
   at: BlockCoord,
-  material: MaterialId,
+  swatch: SwatchId,
 ): EncounterMap {
   if (!inMap(map, at)) return map;
   const key = blockKey(at);
-  if (map.blocks.get(key) === material) return map;
+  if (map.blocks.get(key) === swatch) return map;
   const blocks = new Map(map.blocks);
-  blocks.set(key, material);
+  blocks.set(key, swatch);
   return { ...map, blocks };
 }
 
@@ -443,13 +443,13 @@ export function fillRegion(map: EncounterMap, at: BlockCoord): readonly BlockCoo
 export function fillMaterial(
   map: EncounterMap,
   at: BlockCoord,
-  material: MaterialId,
+  swatch: SwatchId,
 ): EncounterMap {
-  if (blockAt(map, at) === material) return map;
+  if (blockAt(map, at) === swatch) return map;
   const region = fillRegion(map, at);
   if (region.length === 0) return map;
   const blocks = new Map(map.blocks);
-  for (const cell of region) blocks.set(blockKey(cell), material);
+  for (const cell of region) blocks.set(blockKey(cell), swatch);
   return { ...map, blocks };
 }
 
@@ -466,10 +466,10 @@ export function fillMaterial(
  * without being shown what is in it.
  */
 export function sliceOf(map: EncounterMap, range: LevelRange): EncounterMap {
-  const blocks = new Map<string, MaterialId>();
-  for (const [key, material] of map.blocks) {
+  const blocks = new Map<string, SwatchId>();
+  for (const [key, swatch] of map.blocks) {
     const at = parseBlockKey(key);
-    if (at && inRange(range, at.y)) blocks.set(key, material);
+    if (at && inRange(range, at.y)) blocks.set(key, swatch);
   }
   return { ...map, blocks };
 }
@@ -540,21 +540,21 @@ function boxOf(size: { readonly x: number; readonly z: number }): number {
 export function packBlocks(
   origin: { readonly x: number; readonly z: number },
   size: { readonly x: number; readonly z: number },
-  blocks: ReadonlyMap<string, MaterialId>,
+  blocks: ReadonlyMap<string, SwatchId>,
 ): { palette: string[]; runs: number[] } {
   const palette = [...new Set(blocks.values())].sort();
   const indexOf = new Map(palette.map((id, i) => [id, i + 1]));
   const perLevel = size.x * size.z;
 
   const cells: { at: number; value: number }[] = [];
-  for (const [key, material] of blocks) {
+  for (const [key, swatch] of blocks) {
     const at = parseBlockKey(key);
     if (!at || at.x < origin.x || at.z < origin.z) continue;
     const dx = at.x - origin.x;
     const dz = at.z - origin.z;
     const dy = at.y - MAP_MIN_DEPTH;
     if (dx >= size.x || dz >= size.z || dy < 0 || dy >= MAP_MAX_HEIGHT - MAP_MIN_DEPTH) continue;
-    cells.push({ at: dy * perLevel + dz * size.x + dx, value: indexOf.get(material)! });
+    cells.push({ at: dy * perLevel + dz * size.x + dx, value: indexOf.get(swatch)! });
   }
   cells.sort((a, b) => a.at - b.at);
 
@@ -592,9 +592,9 @@ export function unpackBlocks(
   size: { readonly x: number; readonly z: number },
   palette: readonly string[],
   runs: readonly number[],
-): Map<string, MaterialId> | null {
+): Map<string, SwatchId> | null {
   if (runs.length % 2 !== 0) return null;
-  const blocks = new Map<string, MaterialId>();
+  const blocks = new Map<string, SwatchId>();
   const perLevel = size.x * size.z;
   let cursor = 0;
   for (let i = 0; i < runs.length; i += 2) {
@@ -602,8 +602,8 @@ export function unpackBlocks(
     const value = runs[i + 1]!;
     if (!Number.isInteger(count) || count < 0) return null;
     if (value !== 0) {
-      const material = palette[value - 1];
-      if (material === undefined) return null;
+      const swatch = palette[value - 1];
+      if (swatch === undefined) return null;
       for (let k = 0; k < count; k += 1) {
         const at = cursor + k;
         const level = Math.floor(at / perLevel);
@@ -612,7 +612,7 @@ export function unpackBlocks(
           x: origin.x + (rest % size.x),
           y: MAP_MIN_DEPTH + level,
           z: origin.z + Math.floor(rest / size.x),
-        }), material as MaterialId);
+        }), swatch as SwatchId);
       }
     }
     cursor += count;
@@ -660,7 +660,7 @@ export type MapJSONIn = {
 export function enclosing(
   origin: { readonly x: number; readonly z: number },
   size: { readonly x: number; readonly z: number },
-  blocks: ReadonlyMap<string, MaterialId>,
+  blocks: ReadonlyMap<string, SwatchId>,
 ): { origin: { x: number; z: number }; size: { x: number; z: number } } {
   let minX = Infinity;
   let minZ = Infinity;
@@ -698,7 +698,7 @@ export function mapFromJSON(json: MapJSONIn | undefined | null): EncounterMap | 
   };
   const blocks = json.runs
     ? unpackBlocks(declared.origin, declared.size, json.palette ?? [], json.runs)
-    : new Map(Object.entries(json.blocks ?? {}) as [string, MaterialId][]);
+    : new Map(Object.entries(json.blocks ?? {}) as [string, SwatchId][]);
   // Runs that do not add up are refused rather than drawn askew — see
   // `unpackBlocks`. Null reads as "that map could not be loaded", which the
   // store already knows how to say.

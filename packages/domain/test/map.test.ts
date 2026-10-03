@@ -1,7 +1,7 @@
 // The encounter map body (R-145, R-149, R-150).
 
 import { describe, it, expect } from 'vitest';
-import type { MaterialId, Place, PlaceCell } from '@tt/domain';
+import type { MaterialId, SwatchId, Place, PlaceCell } from '@tt/domain';
 import {
   addPlace, addPoi, withPoiMaps, fillRegion, fillMaterial, mapCentre, enclosing,
   createMap, setBlock, clearBlock, growMap, blockAt, blockKey, parseBlockKey,
@@ -9,10 +9,11 @@ import {
   MAP_PATCH, MAP_MAX_HEIGHT, MAP_MIN_DEPTH, bottomOfMap,
   BRUSHES, DEFAULT_BRUSH, MAP_BRUSH_CELLS, brushById, brushPatch,
   setBlocks, paintBlocks, clearBlocks,
-  DEFAULT_FLOOR, DEFAULT_MATERIALS, isKnownMaterial,
+  DEFAULT_FLOOR, DEFAULT_MATERIALS, swatchOf, isKnownMaterial,
+  SHADES, PLAIN, materialIn, shadeIn, isKnownSwatch, shadeColour,
 } from '@tt/domain';
 
-const STONE = DEFAULT_MATERIALS.find((m) => m.name === 'Stone')!.id;
+const STONE = swatchOf(DEFAULT_MATERIALS.find((m) => m.name === 'Stone')!.id);
 const at = (x: number, y: number, z: number) => ({ x, y, z });
 
 describe('a new map (R-149)', () => {
@@ -290,7 +291,7 @@ describe('a point of interest owns exactly one map (R-145, D-187)', () => {
 });
 
 describe('the bucket fill (R-154)', () => {
-  const GRASS = DEFAULT_MATERIALS.find((m) => m.name === 'Grass')!.id;
+  const GRASS = swatchOf(DEFAULT_MATERIALS.find((m) => m.name === 'Grass')!.id);
 
   it('repaints the block clicked and its same-material neighbours', () => {
     // A three-block run of stone in the air, floor untouched below it.
@@ -371,7 +372,7 @@ describe('a map never holds a block outside its own bounds (R-157)', () => {
     // 47, on a map whose stored origin said zero. The size was right, the
     // blocks were right, only the origin had gone missing — so `inMap` rejected
     // a quarter of the floor and the GM could not touch it.
-    const blocks = new Map<string, MaterialId>();
+    const blocks = new Map<string, SwatchId>();
     for (let x = -16; x < 48; x += 1) {
       for (let z = -16; z < 48; z += 1) blocks.set(blockKey(at(x, 0, z)), DEFAULT_FLOOR);
     }
@@ -383,7 +384,7 @@ describe('a map never holds a block outside its own bounds (R-157)', () => {
   });
 
   it('widens only when the blocks genuinely span more than the declared size', () => {
-    const blocks = new Map<string, MaterialId>();
+    const blocks = new Map<string, SwatchId>();
     for (let x = -2; x < 20; x += 1) blocks.set(blockKey(at(x, 0, 0)), DEFAULT_FLOOR);
     const fixed = enclosing({ x: 0, z: 0 }, { x: 16, z: 16 }, blocks);
     expect(fixed.origin.x).toBe(-2);
@@ -569,19 +570,19 @@ describe('the brush (R-162, R-164)', () => {
       // built: refusing all twenty-five because one was occupied would not be.
       const map = createMap();
       const cells = brushPatch(at(2, 0, 2), FLAT3);
-      const next = setBlocks(map, cells, STONE as MaterialId);
+      const next = setBlocks(map, cells, STONE);
       // A new map is a floor at y0, so every cell of a flat patch there is taken.
       expect(next).toBe(map);
 
       const above = brushPatch(at(2, 1, 2), FLAT3);
-      const built = setBlocks(map, above, STONE as MaterialId);
+      const built = setBlocks(map, above, STONE);
       expect(built).not.toBe(map);
       for (const cell of above) expect(blockAt(built, cell)).toBe(STONE);
     });
 
     it('never overwrites, which is the difference from paint (R-159)', () => {
-      const map = setBlock(createMap(), at(2, 1, 2), STONE as MaterialId);
-      const other = DEFAULT_MATERIALS.find((m) => m.id !== STONE)!.id;
+      const map = setBlock(createMap(), at(2, 1, 2), STONE);
+      const other = swatchOf(DEFAULT_MATERIALS.find((m) => swatchOf(m.id) !== STONE)!.id);
       const next = setBlocks(map, brushPatch(at(2, 1, 2), FLAT3), other);
       expect(blockAt(next, at(2, 1, 2))).toBe(STONE);
       // The eight neighbours were empty, so they take the new material.
@@ -593,7 +594,7 @@ describe('the brush (R-162, R-164)', () => {
       // not placed and not an error — the same way it clips at the band.
       const map = createMap();
       const cells = brushPatch(at(0, 1, 0), FLAT3);
-      const next = setBlocks(map, cells, STONE as MaterialId);
+      const next = setBlocks(map, cells, STONE);
       const placed = cells.filter((cell) => blockAt(next, cell));
       expect(placed).toHaveLength(4);
       for (const cell of placed) expect(inMap(next, cell)).toBe(true);
@@ -601,8 +602,8 @@ describe('the brush (R-162, R-164)', () => {
 
     it('keeps identity when there was nothing to do (R-165)', () => {
       const map = createMap();
-      expect(setBlocks(map, [at(-500, 1, -500)], STONE as MaterialId)).toBe(map);
-      expect(setBlocks(map, [], STONE as MaterialId)).toBe(map);
+      expect(setBlocks(map, [at(-500, 1, -500)], STONE)).toBe(map);
+      expect(setBlocks(map, [], STONE)).toBe(map);
     });
   });
 
@@ -610,7 +611,7 @@ describe('the brush (R-162, R-164)', () => {
     it('repaints only the cells that hold a block', () => {
       const map = createMap();
       const cells = [...brushPatch(at(2, 0, 2), FLAT3), at(2, 5, 2)];
-      const other = DEFAULT_MATERIALS.find((m) => m.id !== DEFAULT_FLOOR)!.id;
+      const other = swatchOf(DEFAULT_MATERIALS.find((m) => swatchOf(m.id) !== DEFAULT_FLOOR)!.id);
       const next = paintBlocks(map, cells, other);
       expect(blockAt(next, at(2, 0, 2))).toBe(other);
       // The cell in the air stayed empty rather than becoming a block.
@@ -679,7 +680,7 @@ describe('the packed body (R-59, D-217)', () => {
   it('keeps every material distinct through the palette', () => {
     let map = createMap();
     const some = DEFAULT_MATERIALS.slice(0, 5);
-    some.forEach((material, i) => { map = setBlock(map, at(i, 5, 0), material.id); });
+    some.forEach((material, i) => { map = setBlock(map, at(i, 5, 0), swatchOf(material.id)); });
     const back = roundTrip(map);
     some.forEach((material, i) => {
       expect(blockAt(back, at(i, 5, 0)), material.name).toBe(material.id);
@@ -742,5 +743,90 @@ describe('the packed body (R-59, D-217)', () => {
       Object.fromEntries([...map.blocks].map(([k, v]) => [k, v])),
     ).length;
     expect(packed).toBeLessThan(perCube / 4);
+  });
+});
+
+describe('shades: one material, cut lighter or darker (R-176)', () => {
+  const STONE_ID = DEFAULT_MATERIALS.find((m) => m.name === 'Stone')!.id;
+
+  it('writes the plain shade bare, so a map from before shades reads back the same', () => {
+    // The whole reason this needed no migration and no schema bump (D-241).
+    expect(swatchOf(STONE_ID)).toBe(STONE_ID as string);
+    expect(swatchOf(STONE_ID, PLAIN)).toBe(STONE_ID as string);
+    expect(materialIn(STONE_ID as unknown as SwatchId)).toBe(STONE_ID);
+    expect(shadeIn(STONE_ID as unknown as SwatchId).id).toBe(PLAIN);
+  });
+
+  it('round-trips every shade of every material', () => {
+    for (const material of DEFAULT_MATERIALS) {
+      for (const shade of SHADES) {
+        const swatch = swatchOf(material.id, shade.id);
+        expect(materialIn(swatch)).toBe(material.id);
+        expect(shadeIn(swatch).id).toBe(shade.id);
+        expect(isKnownSwatch(swatch)).toBe(true);
+      }
+    }
+  });
+
+  it('refuses a swatch whose material or whose shade is not ours', () => {
+    expect(isKnownSwatch('material:unobtanium/dark' as SwatchId)).toBe(false);
+    expect(isKnownSwatch(swatchOf(STONE_ID, 'chartreuse'))).toBe(false);
+    // Spelled-out plain is not a swatch anyone writes, so it is not one we read.
+    expect(isKnownSwatch(`${STONE_ID}/plain` as SwatchId)).toBe(false);
+  });
+
+  it('survives the packing, which is what puts a shade on disk', () => {
+    let map = createMap();
+    SHADES.forEach((shade, i) => {
+      map = setBlock(map, at(i, 5, 0), swatchOf(STONE_ID, shade.id));
+    });
+    const back = mapFromJSON(mapToJSON(map))!;
+    SHADES.forEach((shade, i) => {
+      expect(blockAt(back, at(i, 5, 0))).toBe(swatchOf(STONE_ID, shade.id));
+    });
+  });
+
+  it('is a different colour per shade, and keeps the material its hue', () => {
+    const stone = DEFAULT_MATERIALS.find((m) => m.id === STONE_ID)!;
+    const [dark, plain, pale] = SHADES.map((s) => shadeColour(stone.colour, s.lift));
+    expect(plain).toBe(stone.colour);
+    expect(dark).not.toBe(plain);
+    expect(pale).not.toBe(plain);
+    // Darker is darker and paler is paler, by the sum of the channels.
+    const weight = (hex: string) => Number.parseInt(hex.slice(1), 16) === 0 ? 0
+      : [1, 3, 5].reduce((n, at) => n + Number.parseInt(hex.slice(at, at + 2), 16), 0);
+    expect(weight(dark!)).toBeLessThan(weight(plain!));
+    expect(weight(pale!)).toBeGreaterThan(weight(plain!));
+  });
+
+  it('leaves a colour exactly alone when there is no lift', () => {
+    // Not "near enough": plain has to be byte-identical or the palette would
+    // hold two entries for one colour and the chips would drift from the map.
+    for (const material of DEFAULT_MATERIALS) {
+      expect(shadeColour(material.colour, 0)).toBe(material.colour);
+    }
+  });
+});
+
+describe('a fill stops where the shade changes (R-176)', () => {
+  const STONE_ID = DEFAULT_MATERIALS.find((m) => m.name === 'Stone')!.id;
+  const DARK = swatchOf(STONE_ID, 'dark');
+  const PALE = swatchOf(STONE_ID, 'pale');
+
+  it('treats two cuts of one stone as different, which is what makes a course repaintable', () => {
+    // A wall of dark stone with one pale course through it.
+    let map = createMap();
+    for (let y = 1; y <= 3; y += 1) {
+      for (let x = 0; x < 4; x += 1) {
+        map = setBlock(map, at(x, y, 0), y === 2 ? PALE : DARK);
+      }
+    }
+    const course = fillRegion(map, at(0, 2, 0));
+    expect(course).toHaveLength(4);
+    expect(course.every((cell) => cell.y === 2)).toBe(true);
+
+    const repainted = fillMaterial(map, at(0, 2, 0), DARK);
+    expect(blockAt(repainted, at(3, 2, 0))).toBe(DARK);
+    expect(blockAt(repainted, at(3, 1, 0))).toBe(DARK);
   });
 });

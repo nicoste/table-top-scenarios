@@ -11,14 +11,14 @@ import { apply, emptyHistory, openedWith } from '@tt/sim';
 import { viewFor } from '@tt/protocol';
 import type { GmView, HostState, Intent, TableView } from '@tt/protocol';
 import {
-  createCampaign, createLiveSave, rangeFor, planeSteps, DEFAULT_MATERIALS,
+  createCampaign, createLiveSave, rangeFor, planeSteps, DEFAULT_MATERIALS, swatchOf,
   MAP_MAX_HEIGHT, MAP_MIN_DEPTH, WHOLE_MAP, ORIGIN, blockAt, mapFromJSON,
 } from '@tt/domain';
 
 const NOW = '2026-01-01T00:00:00.000Z';
 const run = (s: HostState, i: Intent, role: 'gm' | 'table' = 'gm') => apply(s, role, i, NOW);
 const cell = (x: number, z: number) => ({ cx: ORIGIN.cx, cz: ORIGIN.cz, x, z });
-const STONE = DEFAULT_MATERIALS.find((m) => m.name === 'Stone')!.id as string;
+const STONE = swatchOf(DEFAULT_MATERIALS.find((m) => m.name === 'Stone')!.id) as string;
 
 /**
  * A tavern the party can see: Known chunk, revealed place, visible point of
@@ -41,7 +41,7 @@ function tavern() {
 
   for (const [y, tag] of [[1, 'cellar'], [5, 'ground'], [9, 'upstairs']] as const) {
     state = run(state, {
-      kind: 'setBlock', placeId, poiId, cells: [{ x: 2, y, z: 2 }], materialId: STONE,
+      kind: 'setBlock', placeId, poiId, cells: [{ x: 2, y, z: 2 }], swatch: STONE,
     }).state;
     void tag;
   }
@@ -202,7 +202,7 @@ describe('what the table is sent (R-158, D-184 answered)', () => {
     let next = run(state, { kind: 'addPoi', placeId, name: 'The church', visibleToParty: true }).state;
     const churchId = next.active!.places[0]!.pois[1]!.id;
     next = run(next, {
-      kind: 'setBlock', placeId, poiId: churchId, cells: [{ x: 1, y: 1, z: 1 }], materialId: STONE,
+      kind: 'setBlock', placeId, poiId: churchId, cells: [{ x: 1, y: 1, z: 1 }], swatch: STONE,
     }).state;
     next = run(next, { kind: 'enterMap', placeId, poiId }).state;
 

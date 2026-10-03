@@ -10,13 +10,13 @@ import {
   planeSteps, fullRange, clampRange, inRange, sameRange, isFullRange, validPlaneY,
   planesToJSON, planesFromJSON,
   createMap, setBlock, sliceOf, blockAt, blockKey, WATER_LEVEL,
-  MAP_MAX_HEIGHT, MAP_MIN_DEPTH, WHOLE_MAP, rangeIn, stepLabel, DEFAULT_MATERIALS,
+  MAP_MAX_HEIGHT, MAP_MIN_DEPTH, WHOLE_MAP, rangeIn, stepLabel, DEFAULT_MATERIALS, swatchOf,
 } from '@tt/domain';
-import type { CuttingPlane, MaterialId, PlaneId } from '@tt/domain';
+import type { CuttingPlane, SwatchId, PlaneId } from '@tt/domain';
 
 const CAP = MAP_MAX_HEIGHT;
 const FLOOR = MAP_MIN_DEPTH;
-const STONE = DEFAULT_MATERIALS.find((m) => m.name === 'Stone')!.id;
+const STONE = swatchOf(DEFAULT_MATERIALS.find((m) => m.name === 'Stone')!.id);
 const at = (x: number, y: number, z: number) => ({ x, y, z });
 
 /** The GM's tavern: a cellar, a ground floor, an upstairs and a roof. */
@@ -276,7 +276,7 @@ describe('planes on the wire and on disk', () => {
     // A cut at "cellar ceiling" is still at that height after the map grows
     // sideways — the planes are part of the building.
     const map = { ...createMap(), planes: tavern() };
-    const grown = { ...map, blocks: new Map(map.blocks).set(blockKey(at(0, 0, 0)), STONE as MaterialId) };
+    const grown = { ...map, blocks: new Map(map.blocks).set(blockKey(at(0, 0, 0)), STONE as SwatchId) };
     expect(grown.planes).toHaveLength(3);
   });
 });

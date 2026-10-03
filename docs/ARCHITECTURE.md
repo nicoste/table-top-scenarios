@@ -2376,6 +2376,34 @@ apps/host/src/
 > when the camera does, and it will not show up in a measurement taken at one
 > camera (D-240).
 
+> **R-176.** **A shade is the other axis of a material, not another material.**
+>
+> A cube holds a **swatch**: a material and the cut it was made in. Three
+> stones, three woods, fourteen materials and three shades — forty-two
+> appearances from a registry of seventeen entries.
+>
+> **Never new material ids.** R-11 makes them permanent and every saved map
+> references them, so "dark stone" as its own entry is a registry that grows
+> by the *product* of substance and tint, forever, and a GM scrolling past
+> forty-two rows to find a wall. Shades multiply; entries add.
+>
+> **Plain writes bare.** `material:stone`, not `material:stone/plain`, so a
+> map saved before shades existed reads back as plain stone with no migration
+> and no schema bump — the same reasoning as the three absences in `MapJSONIn`
+> (D-187, R-137a). And it is enforced in the other direction: a swatch
+> spelling plain out is *refused*, because a swatch is compared as a string
+> and two spellings of one cut would stop a fill in the middle of a flat wall.
+>
+> **A shade changes the colour and nothing else.** Not `blocksSight`, not
+> roughness, not what any rule makes of it — dark glass is still glass. Which
+> is also why it is free: colour is the one thing an instance already carries
+> (R-173), so three shades of everything cost no extra mesh and no extra draw
+> call.
+>
+> **A fill stops where the shade changes** (R-154), and that falls out of
+> matching the swatch rather than the material. It is not a side effect to be
+> tolerated: it is what lets a GM repaint one course of a wall.
+
 > **R-170.** **A frame is drawn when something changed, not thirty times a
 > second.**
 >

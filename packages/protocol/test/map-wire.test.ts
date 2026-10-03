@@ -7,12 +7,12 @@
 import { describe, it, expect } from 'vitest';
 import {
   createCampaign, addPlace, addPoi, setMapBlock, blockAt, mapFromJSON,
-  DEFAULT_MATERIALS, ORIGIN,
+  DEFAULT_MATERIALS, ORIGIN, swatchOf,
 } from '@tt/domain';
 import type { Campaign } from '@tt/domain';
 import { encodeCampaign, mapWire } from '@tt/protocol';
 
-const STONE = DEFAULT_MATERIALS.find((m) => m.name === 'Stone')!.id;
+const STONE = swatchOf(DEFAULT_MATERIALS.find((m) => m.name === 'Stone')!.id);
 
 /** A campaign with two places, each with a point of interest and a map. */
 function twoMaps(): Campaign {

@@ -5002,3 +5002,63 @@ The thing to carry forward is in R-175: **a screen-space pass is priced in
 pixels.** Anything scaling it in world units is a cost that moves when the
 camera does, and five careful readings taken at one camera will all agree with
 each other and all be wrong.
+
+### D-241 — Shades: the same stone, cut three ways · `agreed`
+The GM asked for this before the appearance round even started: *"I will love
+to have material variations but just in color, for example, having 3 types of
+wood, one darker than the other, same with stones. These materials are right
+now applied to define 'is this rock'? But in the future I see myself building
+a house and using different types of rock."*
+
+The whole design is in the second sentence. Different **types of rock**, which
+is still rock. So not three materials — **two axes**.
+
+**Why not just add entries to the registry.** It is the obvious move and it is
+a one-way door: R-11 makes material ids permanent because every saved map
+references them, so a dark stone added today can never be renamed, merged or
+removed. Worse, it is multiplicative in the wrong place — fourteen materials
+wanting three cuts is forty-two permanent ids and a palette the GM has to
+scroll. Two axes give the same forty-two appearances from fourteen entries and
+three, and a fourth shade later is one line rather than fourteen.
+
+**What a cube holds** is a `SwatchId`: `material:stone`, or
+`material:stone/dark`. A string, not a pair, because the body is a
+`Map<string, …>` of nine thousand entries compared by identity — the palette
+dedupes on it, `fillRegion` matches on it, and the whole packed encoding
+(D-217) works on it unchanged. An object per cube would have cost nine
+thousand allocations to express the same thing.
+
+**Plain writes bare**, which is the trick that made this cost nothing:
+
+- A map saved before today reads back as plain stone. No migration, no schema
+  bump (R-137a, R-144), and the third time D-187's "the absence says what it
+  means" has paid for itself.
+- A body of plain blocks packs to exactly the bytes it did yesterday.
+- And `material:stone/plain` is **refused** on the way in, even though its
+  meaning is obvious. One value, one spelling — two spellings of one cut would
+  put two entries in a palette that holds one colour, and stop a fill in the
+  middle of a flat wall.
+
+**It is free to draw.** Shades change only the colour, and colour is the one
+thing an instance already carries (R-173) — dark stone and pale stone share a
+mesh. Fourteen materials still make fourteen meshes. The swatch is resolved to
+a tint once per *swatch*, not once per cube: a body has thousands of blocks
+and at most a few dozen cuts, and `shadeColour` is a round trip through HSL.
+
+**HSL lightness, ±0.1**, the same arithmetic grain uses and for the same
+reason (D-237): scaling RGB drags a colour toward black or past white and
+changes how saturated it looks, where a nudge in HSL keeps the hue the GM
+picked. The two compose — a shade moves the whole cut, grain still wanders
+each cube a few percent around it.
+
+**`shadeColour` lives in the domain**, not the renderer, because two things
+ask it and they must agree: the cubes on the table and the chip under the
+GM's pointer. A panel that paints its swatch one way while the map draws
+another is a panel that lies about what the next click will do. The material
+list is drawn in the chosen cut for the same reason.
+
+**The fill falls out of it.** `fillRegion` already matched on the stored
+value, so matching on the swatch rather than the material needed no code at
+all — and it is the behaviour the GM confirmed wanting when the fill tool was
+built. One course of a wall in a different cut is a region, and repainting it
+is one click.

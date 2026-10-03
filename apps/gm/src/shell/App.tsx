@@ -8,7 +8,9 @@ import {
   creatableSlots, sameWorldCell,
   DEFAULT_MATERIALS, DEFAULT_FLOOR, mapFromJSON, fillRegion, sliceOf, inRange, inMap, blockAt,
   bottomOfMap, DEFAULT_TERRAIN,
+  PLAIN, swatchOf, materialIn,
 } from '@tt/domain';
+import type { MaterialId } from '@tt/domain';
 import type { GmView, Intent } from '@tt/protocol';
 import { defaultTarget, worldCentre } from '@tt/render';
 import type { Tool, Travel } from '@tt/client-core';
@@ -103,7 +105,15 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    * re-picking at a position no pointer event is going to supply.
    */
   const lastPointer = useRef<{ x: number; y: number } | null>(null);
-  const [materialId, setMaterialId] = useState<string>(DEFAULT_FLOOR);
+  const [materialId, setMaterialId] = useState<string>(materialIn(DEFAULT_FLOOR));
+  /**
+   * Which cut of that material (R-176). Separate state, because the two are
+   * separate choices: picking Pale and then walking down the material list
+   * keeps everything pale, which is how somebody builds a wall out of one
+   * shade of three different stones.
+   */
+  const [shadeId, setShadeId] = useState<string>(PLAIN);
+  const swatch = swatchOf(materialId as MaterialId, shadeId);
   /**
    * The cell a place was just placed on, waiting for the snapshot that will carry
    * it. The host assigns the id, so the client cannot know it in advance — but
@@ -463,13 +473,13 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       case 'place':
         // The whole patch in one intent: one undo, one write, one broadcast,
         // however wide the brush (R-162).
-        dispatch({ kind: 'setBlock', ...which, cells: action.cells, materialId, ...tagged });
+        dispatch({ kind: 'setBlock', ...which, cells: action.cells, swatch, ...tagged });
         return;
       case 'paint':
         // Its own intent, not `setBlock` with different cells. The two are
         // refused for opposite reasons — build will not overwrite, paint will
         // not conjure — and one intent could not do both (R-159).
-        dispatch({ kind: 'paintBlock', ...which, cells: action.cells, materialId, ...tagged });
+        dispatch({ kind: 'paintBlock', ...which, cells: action.cells, swatch, ...tagged });
         return;
       case 'erase':
         dispatch({ kind: 'clearBlock', ...which, cells: action.cells, ...tagged });
@@ -477,7 +487,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       case 'fill':
         // No stroke: a fill is already one intent covering a whole region, so
         // it is one undo without any help.
-        dispatch({ kind: 'fillMaterial', ...which, ...action.at, materialId });
+        dispatch({ kind: 'fillMaterial', ...which, ...action.at, swatch });
         return;
     }
   };
@@ -878,6 +888,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
             tool={mapTool}
             materials={DEFAULT_MATERIALS}
             materialId={materialId}
+            shadeId={shadeId}
             hoverLabel={hoverLabel}
             partyHere={partyHere}
             partyCanSee={
@@ -893,6 +904,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
             onTool={setMapTool}
             onBrush={setMapBrush}
             onMaterial={setMaterialId}
+            onShade={setShadeId}
             onLeave={() => setOpenMap(null)}
             dispatch={dispatch}
             placeId={openPlace.id}

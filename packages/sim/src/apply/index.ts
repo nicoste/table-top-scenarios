@@ -4,7 +4,7 @@
 
 import type { Campaign, ChunkCoord, WorldCell } from '@tt/domain';
 import type {
-  PartyMember, PlaceId, NoteId, PoiId, PlaneId, MemberId, MaterialId, Save, Place,
+  PartyMember, PlaceId, NoteId, PoiId, PlaneId, MemberId, SwatchId, Save, Place,
 } from '@tt/domain';
 import {
   createCampaign, duplicateCampaign, uniqueCampaignName, createMember, editMember, removeMember,
@@ -14,7 +14,7 @@ import {
   addNote, editNote, setNoteVisible, removeNote, moveNote, isKnownMarker,
   addPoi, renamePoi, setPoiVisible, removePoi, movePoi,
   setMapBlocks, paintMapBlocks, clearMapBlocks, fillPoiMaterial, growPoiMap,
-  inMap, blockAt, isKnownMaterial,
+  inMap, blockAt, isKnownSwatch,
   MAP_MAX_HEIGHT, MAP_MIN_DEPTH,
   addPoiPlane, renamePoiPlane, movePoiPlane, removePoiPlane,
   validPlaneY, planeAt, planeById, clampRange, settleRange, rangeFor, isPoiOnTable,
@@ -681,9 +681,9 @@ function applyToMap(
   if (intent.kind === 'fillMaterial') {
     const at = { x: intent.x, y: intent.y, z: intent.z };
     if (!inMap(poi.map, at)) return reject_('that is outside the map');
-    const material = intent.materialId as MaterialId;
-    if (!isKnownMaterial(material)) return reject_('unknown material');
-    return withPlaces(fillPoiMaterial(campaign.places, placeId, poiId, at, material));
+    const swatch = intent.swatch as SwatchId;
+    if (!isKnownSwatch(swatch)) return reject_('unknown material');
+    return withPlaces(fillPoiMaterial(campaign.places, placeId, poiId, at, swatch));
   }
 
   /*
@@ -710,8 +710,8 @@ function applyToMap(
     return withPlaces(clearMapBlocks(campaign.places, placeId, poiId, cells));
   }
 
-  const materialId = intent.materialId as MaterialId;
-  if (!isKnownMaterial(materialId)) return reject_('unknown material');
+  const swatch = intent.swatch as SwatchId;
+  if (!isKnownSwatch(swatch)) return reject_('unknown material');
 
   /*
    * Placing and repainting are different operations and are refused for
@@ -728,10 +728,10 @@ function applyToMap(
   if (intent.kind === 'setBlock') {
     const empty = cells.some((at) => inMap(map, at) && !blockAt(map, at));
     if (!empty) return reject_('there is already a block there');
-    return withPlaces(setMapBlocks(campaign.places, placeId, poiId, cells, materialId));
+    return withPlaces(setMapBlocks(campaign.places, placeId, poiId, cells, swatch));
   }
   if (!standing) return reject_('there is nothing there to paint');
-  return withPlaces(paintMapBlocks(campaign.places, placeId, poiId, cells, materialId));
+  return withPlaces(paintMapBlocks(campaign.places, placeId, poiId, cells, swatch));
 }
 
 // -- what the party knows ---------------------------------------------------

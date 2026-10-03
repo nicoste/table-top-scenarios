@@ -13,7 +13,7 @@ import type { PlaneId } from '../ids/index.js';
 import { addPlane, renamePlane, movePlane, removePlane } from '../planes/index.js';
 import { MAP_MAX_HEIGHT, MAP_MIN_DEPTH } from '../map/index.js';
 import type { BlockCoord } from '../map/index.js';
-import type { MaterialId } from '../ids/index.js';
+import type { SwatchId } from '../ids/index.js';
 import type { ChunkCoord, GlobalCell, WorldCell } from '../world/index.js';
 import { toGlobal, fromGlobal, sameWorldCell, isValidWorldCell } from '../world/index.js';
 
@@ -376,9 +376,9 @@ export function setMapBlock(
   placeId: PlaceId,
   poiId: PoiId,
   at: BlockCoord,
-  material: MaterialId,
+  swatch: SwatchId,
 ): readonly Place[] {
-  return mapOfPoi(places, placeId, poiId, (map) => setBlock(map, at, material));
+  return mapOfPoi(places, placeId, poiId, (map) => setBlock(map, at, swatch));
 }
 
 export function clearMapBlock(
@@ -399,9 +399,9 @@ export function setMapBlocks(
   placeId: PlaceId,
   poiId: PoiId,
   cells: readonly BlockCoord[],
-  material: MaterialId,
+  swatch: SwatchId,
 ): readonly Place[] {
-  return mapOfPoi(places, placeId, poiId, (map) => setBlocks(map, cells, material));
+  return mapOfPoi(places, placeId, poiId, (map) => setBlocks(map, cells, swatch));
 }
 
 export function paintMapBlocks(
@@ -409,9 +409,9 @@ export function paintMapBlocks(
   placeId: PlaceId,
   poiId: PoiId,
   cells: readonly BlockCoord[],
-  material: MaterialId,
+  swatch: SwatchId,
 ): readonly Place[] {
-  return mapOfPoi(places, placeId, poiId, (map) => paintBlocks(map, cells, material));
+  return mapOfPoi(places, placeId, poiId, (map) => paintBlocks(map, cells, swatch));
 }
 
 export function clearMapBlocks(
@@ -423,15 +423,15 @@ export function clearMapBlocks(
   return mapOfPoi(places, placeId, poiId, (map) => clearBlocks(map, cells));
 }
 
-/** Repaints a connected same-material region of a point of interest's map (R-154). */
+/** Repaints a connected region of one swatch in a point of interest's map (R-154). */
 export function fillPoiMaterial(
   places: readonly Place[],
   placeId: PlaceId,
   poiId: PoiId,
   at: BlockCoord,
-  material: MaterialId,
+  swatch: SwatchId,
 ): readonly Place[] {
-  return mapOfPoi(places, placeId, poiId, (map) => fillMaterial(map, at, material));
+  return mapOfPoi(places, placeId, poiId, (map) => fillMaterial(map, at, swatch));
 }
 
 export function growPoiMap(

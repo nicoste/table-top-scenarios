@@ -6,7 +6,7 @@
 // (D-183). It ships now because R-75 already defined the field, and adding it
 // later would mean editing every material instead of one file.
 
-import type { MaterialId } from '../ids/index.js';
+import type { MaterialId, SwatchId } from '../ids/index.js';
 import { registryId } from '../ids/index.js';
 
 export interface Material {
@@ -142,9 +142,6 @@ export const DEFAULT_MATERIALS: readonly Material[] = [
   m('ice', 'Ice', '#b9d6e4', false, SMOOTH, POLISHED, 0, FROSTED),
 ];
 
-/** What a new map's floor is made of (R-149). */
-export const DEFAULT_FLOOR: MaterialId = registryId<'MaterialId'>('material', 'dirt');
-
 export function materialById(
   materials: readonly Material[],
   id: MaterialId,
@@ -161,3 +158,155 @@ export function requireMaterial(id: MaterialId): Material {
   if (!found) throw new Error(`unknown material: ${id}`);
   return found;
 }
+
+// -- shades (R-176) ----------------------------------------------------------
+
+/**
+ * One material, cut lighter or darker. Three stones, three woods.
+ *
+ * **Not three materials.** Material ids are permanent and referenced by every
+ * saved map (R-11), so "dark stone" as its own entry would mean a registry
+ * that grows by the product of every substance and every tint, forever, and
+ * a GM scrolling past forty-two entries to find a wall. A shade is the other
+ * axis, and it multiplies instead of adding (D-241).
+ *
+ * `lift` is added to the material's lightness in HSL, the same arithmetic
+ * grain uses (R-172) and for the same reason: scaling RGB drags a colour
+ * toward black or past white and changes how saturated it looks, where a
+ * nudge in HSL keeps the hue the GM picked.
+ */
+export interface Shade {
+  readonly id: string;
+  readonly name: string;
+  readonly lift: number;
+}
+
+/**
+ * Append-only, like the materials above and for the same reason: a saved map
+ * holds these ids.
+ *
+ * `plain` is the material exactly as the registry has it, and it is what every
+ * map held before shades existed.
+ */
+export const SHADES: readonly Shade[] = [
+  { id: 'dark', name: 'Dark', lift: -0.1 },
+  { id: 'plain', name: 'Plain', lift: 0 },
+  { id: 'pale', name: 'Pale', lift: 0.1 },
+];
+
+export const PLAIN = 'plain';
+
+/** The shade with this id, or plain. Falls back for the reason `brushById` does. */
+export function shadeById(id: string): Shade {
+  return SHADES.find((shade) => shade.id === id) ?? SHADES.find((s) => s.id === PLAIN)!;
+}
+
+/**
+ * Separates a material from its shade inside a swatch.
+ *
+ * Not a character a registry id may contain (R-11's grammar is lowercase,
+ * digits and hyphens), so a swatch can always be split back apart and no
+ * material can ever be mistaken for one.
+ */
+const SHADE_MARK = '/';
+
+/**
+ * A cube's value: the material, and the shade it was cut in.
+ *
+ * **Plain writes bare.** `material:stone` rather than `material:stone/plain`,
+ * so a map saved before shades existed reads back as plain stone with no
+ * migration and no schema bump, and a map full of plain blocks costs the same
+ * bytes it always did — the same reasoning as the three absences in
+ * `MapJSONIn` (D-187, D-241).
+ */
+export function swatchOf(material: MaterialId, shade: string = PLAIN): SwatchId {
+  return (shade === PLAIN ? material : `${material}${SHADE_MARK}${shade}`) as SwatchId;
+}
+
+export function materialIn(swatch: SwatchId): MaterialId {
+  const cut = swatch.indexOf(SHADE_MARK);
+  return (cut < 0 ? swatch : swatch.slice(0, cut)) as unknown as MaterialId;
+}
+
+export function shadeIn(swatch: SwatchId): Shade {
+  const cut = swatch.indexOf(SHADE_MARK);
+  return shadeById(cut < 0 ? PLAIN : swatch.slice(cut + 1));
+}
+
+/**
+ * Both halves have to be ones we know, and **plain has to be spelled bare**.
+ *
+ * `material:stone/plain` is refused even though it is obvious what it means,
+ * because a swatch is compared by string: two spellings of one cut would make
+ * a fill stop in the middle of a flat wall, and put two palette entries where
+ * there is one colour. One value, one spelling.
+ */
+export function isKnownSwatch(swatch: SwatchId): boolean {
+  const cut = swatch.indexOf(SHADE_MARK);
+  if (cut < 0) return isKnownMaterial(swatch as unknown as MaterialId);
+  const shade = swatch.slice(cut + 1);
+  return shade !== PLAIN
+    && SHADES.some((s) => s.id === shade)
+    && isKnownMaterial(swatch.slice(0, cut) as unknown as MaterialId);
+}
+
+/**
+ * What colour a material is in a given shade, as `#rrggbb`.
+ *
+ * Here rather than in the renderer because **two things ask it and they must
+ * agree**: the cubes on the table and the swatch under the GM's pointer. A
+ * panel that paints its chip one way while the map draws another is a panel
+ * that lies about what the next click will do.
+ */
+export function shadeColour(colour: string, lift: number): string {
+  if (lift === 0) return colour;
+  const { h, s, l } = toHSL(colour);
+  return fromHSL(h, s, Math.min(1, Math.max(0, l + lift)));
+}
+
+/** `#rrggbb` to hue, saturation and lightness, all 0..1. */
+function toHSL(hex: string): { h: number; s: number; l: number } {
+  const n = Number.parseInt(hex.replace('#', ''), 16);
+  const r = ((n >> 16) & 255) / 255;
+  const g = ((n >> 8) & 255) / 255;
+  const b = (n & 255) / 255;
+  const high = Math.max(r, g, b);
+  const low = Math.min(r, g, b);
+  const l = (high + low) / 2;
+  const span = high - low;
+  if (span === 0) return { h: 0, s: 0, l };
+  const s = span / (l > 0.5 ? 2 - high - low : high + low);
+  const h = high === r ? ((g - b) / span + (g < b ? 6 : 0))
+    : high === g ? (b - r) / span + 2
+      : (r - g) / span + 4;
+  return { h: h / 6, s, l };
+}
+
+function fromHSL(h: number, s: number, l: number): string {
+  if (s === 0) return channels(l, l, l);
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+  return channels(hue(p, q, h + 1 / 3), hue(p, q, h), hue(p, q, h - 1 / 3));
+}
+
+function hue(p: number, q: number, at: number): number {
+  const t = at < 0 ? at + 1 : at > 1 ? at - 1 : at;
+  if (t < 1 / 6) return p + (q - p) * 6 * t;
+  if (t < 1 / 2) return q;
+  if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+  return p;
+}
+
+function channels(r: number, g: number, b: number): string {
+  const byte = (v: number) => Math.round(v * 255).toString(16).padStart(2, '0');
+  return `#${byte(r)}${byte(g)}${byte(b)}`;
+}
+
+/**
+ * What a new map's floor is made of (R-149).
+ *
+ * A **swatch**, not a material, because that is what a cube holds — and down
+ * here rather than beside the registry because `swatchOf` needs `PLAIN`, and
+ * a constant cannot read one declared below it.
+ */
+export const DEFAULT_FLOOR: SwatchId = swatchOf(registryId<'MaterialId'>('material', 'dirt'));

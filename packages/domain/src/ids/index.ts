@@ -14,6 +14,15 @@ export type PoiId = Brand<string, 'PoiId'>;
 export type PlaneId = Brand<string, 'PlaneId'>;
 export type MarkerId = Brand<string, 'MarkerId'>;
 export type MaterialId = Brand<string, 'MaterialId'>;
+/**
+ * A material in one of its shades (R-176) — `material:stone`, or
+ * `material:stone/dark`. What a cube actually holds.
+ *
+ * Branded apart from `MaterialId` on purpose: every bare material id is a
+ * valid swatch, and no swatch is reliably a material id, so the two must not
+ * be interchangeable in either direction by accident.
+ */
+export type SwatchId = Brand<string, 'SwatchId'>;
 
 /** Registry ids are namespaced strings: `terrain:swamp`, never an index (R-11). */
 const REGISTRY_ID = /^[a-z][a-z0-9]*:[a-z0-9]+(-[a-z0-9]+)*$/;
