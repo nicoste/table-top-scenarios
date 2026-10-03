@@ -39,10 +39,16 @@ export interface Material {
   readonly grain: number;
 }
 
-/** Enough to break up a wall and not enough to look like a mistake. */
-const ROUGH = 0.055;
-const USUAL = 0.035;
-const SMOOTH = 0.012;
+/**
+ * Enough to break up a wall and not enough to look like a mistake.
+ *
+ * Toned down about a third from the first attempt, which read as noisy rather
+ * than as surface. The test is whether you notice the *variation* — if you
+ * do, it is too strong; it should only register as the wall not being flat.
+ */
+const ROUGH = 0.034;
+const USUAL = 0.022;
+const SMOOTH = 0.008;
 
 const m = (
   value: string,
