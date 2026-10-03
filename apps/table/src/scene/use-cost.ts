@@ -69,10 +69,14 @@ export function useCost(
    * table. A switch beside the numbers is what makes that measurable by the
    * person standing in front of it.
    *
-   * **Off by default** (D-225). It is a visual nicety and the console is a
-   * tool somebody runs all session; the first laptop to try it got warm.
+   * **On by default here, and off on the console** (D-233). The two screens
+   * have different jobs: this one is a stage the players look at, and it is
+   * still for minutes at a time — so with frames drawn on demand (R-170) the
+   * occlusion costs nothing at all while nobody is touching anything. The
+   * console is a tool being worked in, where every cube placed already pays
+   * for a rebuild.
    */
-  const [occlusion, setOcclusion] = useState(false);
+  const [occlusion, setOcclusion] = useState(true);
   const [reading, setReading] = useState<Reading | null>(null);
 
   useEffect(() => {

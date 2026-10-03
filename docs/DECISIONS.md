@@ -4636,3 +4636,35 @@ machine draws 116,568 triangles for half a millisecond. If the table's box
 turns out to be much weaker, or a map gets several times larger, that number is
 what makes culling worth building again — and it will take an afternoon,
 because it has been built once and the hard part was the winding.
+
+### D-233 — Occlusion on for the table, off for the console · `agreed`
+*"Lets keep AO"* — so the question became where it should be on, and the two
+screens answer differently.
+
+The **table is a stage.** Players look at it, it is still for minutes at a
+time, and with frames drawn only when something changes (R-170) occlusion
+costs nothing at all while nobody is touching anything. On by default.
+
+The **console is a tool.** The GM builds in it, every cube already pays for a
+rebuild, and the first laptop to run occlusion there got warm. Off by default,
+and shift+backtick where it is wanted.
+
+That split has been implicit since the first conversation about giving the app
+some life — *the console wants clarity while working, the table wants
+atmosphere* — and this is the first place it has cost a line of code.
+
+**On SMAA, which was the other half of the question.** It would be four lines:
+drop `samples` from the composer's target, add `new SMAAPass(w, h)` after the
+occlusion pass, and let `composer.setSize` carry it. It is not worth doing:
+
+- It attacks the wrong number. The composer costs **1.2 ms** and occlusion
+  **4.8 ms** (O-027); the best SMAA can do is shave part of the 1.2.
+- It would likely look *worse here*. A voxel scene is nothing but long,
+  straight, high-contrast edges — the case 4× MSAA handles best and the one a
+  morphological filter handles worst, since it infers the edge from the image
+  and can soften or wobble a near-vertical line.
+- It adds three full-screen passes and two lookup textures, spending back part
+  of what it saves.
+
+Written down rather than left as a maybe, so nobody spends an afternoon on it
+expecting the 4.8.

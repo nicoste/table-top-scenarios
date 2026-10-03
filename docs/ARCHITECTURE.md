@@ -2349,8 +2349,12 @@ apps/host/src/
 > The cost moves from build time to **every frame**, which is a real trade and
 > not obviously the right one on whatever drives the table. So it is a switch,
 > read beside the numbers (R-166): shift+backtick, with its state on the panel
-> — and it is **off by default** (D-225). The console is a tool somebody runs
-> all session, and the first laptop to try this got warm.
+> — and the default differs by screen (D-233): **on for the table, off for the
+> console.** They have different jobs. The table is a stage the players look
+> at and is still for minutes at a time, so with frames drawn on demand
+> (R-170) occlusion costs nothing while nobody is touching anything. The
+> console is a tool being built in, where the first laptop to try this got
+> warm.
 >
 > **Off means off, not "the composer with one pass skipped."** The composer is
 > not free on its own: a half-float target, multisampled, at the device pixel
