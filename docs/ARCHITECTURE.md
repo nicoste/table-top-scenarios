@@ -2333,6 +2333,26 @@ apps/host/src/
 > are nothing on this card; the rebuild is the figure to watch, and it is paid
 > once per edit against a 33 ms budget (MEASUREMENTS.md).
 
+> **R-174.** **A material you can see through is drawn see-through**, and its
+> depth writes stay on.
+>
+> `opacity` joins `roughness` and `glow` on the registry: 1 is solid, water is
+> 0.58, ice 0.72, glass 0.26. It is the **look**, where `blocksSight` is the
+> **rule**, and the two are never derived from one another (R-172, D-237).
+>
+> **Depth writes stay on**, which is the opposite of the usual advice for
+> transparency and the only workable choice here. Instances inside one mesh
+> are drawn in buffer order and nothing sorts them, so with depth writes off a
+> sea blends with itself in whatever order its cubes happen to sit in — a cube
+> at the far edge washing over one at the near. Left on, the nearest face at
+> each pixel wins and blends with the ground behind it: one layer of overdraw
+> instead of sixty, and a stack that reads as solid, which is what six feet of
+> water looks like anyway.
+>
+> **It is free.** With occlusion off, the whole scene rasterises in 0.8–2.2 ms
+> at every zoom, transparent sea and all. Nobody needs to weigh "is this cube
+> worth being see-through" (D-239).
+
 > **R-170.** **A frame is drawn when something changed, not thirty times a
 > second.**
 >

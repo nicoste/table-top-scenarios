@@ -4879,3 +4879,69 @@ paid once per edit, the remaining 2.8 ms buys the feature.
 **The thing worth remembering**: a parameter object with a conditional
 `undefined` in it is not free. three.js answers each one with a `console.warn`,
 and a console being captured turns that into milliseconds on the hot path.
+
+### D-239 — Water you can see into, and the thing it uncovered · `agreed`
+Third of the material-appearance round, and the one the GM named first:
+*"the lava emitting, the water transmiting."* `opacity` on the registry —
+water 0.58, ice 0.72, glass 0.26, everything else 1.
+
+The interesting choice is **depth writes, which stay on**. Every guide says to
+turn them off for transparency so surfaces behind show through, and that
+advice assumes the renderer sorts your surfaces back to front. Nothing sorts
+instances inside an `InstancedMesh`: they are drawn in buffer order, so with
+depth writes off a sea of seven thousand cubes blends with itself in the order
+the blocks happen to sit in the map, and a cube at the far edge washes over
+one at the near. Left on, the nearest face at each pixel wins and blends with
+the ground behind it. One layer of overdraw rather than sixty, and a stack
+that reads as solid — which is what six feet of water does.
+
+**The cost is nothing**, and finding that out cost the afternoon's real
+discovery.
+
+The first reading said transparency had cost 3.7 ms — 12.6 ms of GPU before,
+16.3 after. It had not. The two readings were taken at different camera
+distances, and that turns out to be the only variable that matters here. With
+the occlusion pass switched off, the entire scene — transparent sea, 9,771
+cubes, 234,509 triangles — rasterises in **0.8 to 2.2 ms at every zoom**.
+
+Everything above that is **GTAO, and it scales with how close the camera is**:
+
+| camera | GPU, occlusion on | occlusion off | occlusion costs |
+| --- | --- | --- | --- |
+| church fully out | 11.3 ms | 0.8 ms | 10.5 ms |
+| 12 ticks in | 17.9 ms | 2.1 ms | 15.8 ms |
+| 24 ticks in | 20.4 ms | 2.1 ms | 18.3 ms |
+| 36 ticks in | **31.8 ms** | 1.1 ms | **30.7 ms** |
+| 48 ticks in | 31.8 ms | 2.2 ms | 29.6 ms |
+
+At 36 ticks the frame is **entirely occlusion** and sitting on the 33 ms cap.
+This is the opposite of what D-228 concluded and what MEASUREMENTS.md has said
+since — "very nearly a fixed cost", 4.6 ms on an empty scene, insensitive to
+resolution and to geometry. Those were all true and all taken at one camera.
+The radius is in **world units**, so its footprint in pixels grows as the
+camera comes in, and the cost follows the footprint.
+
+Which makes it the thing to fix, and it is worth noticing *when* it bites:
+hardest exactly when the GM is close in placing cubes. O-028.
+
+### O-028 — Occlusion costs three times more up close, and the fix is probably one line · `open`
+From D-239's table: GTAO is 10.5 ms with the church framed and 30.7 ms zoomed
+in, because its radius is in world units and its real cost follows how many
+pixels that radius covers.
+
+Three candidates, in the order they should be tried:
+
+1. **Scale the radius with the camera**, so the footprint in pixels stays
+   roughly fixed. One line where the camera distance is already known, and it
+   makes the shading *look* the same at every zoom too, which the current
+   build does not.
+2. **Re-test half resolution.** D-228 measured it and found nothing, at a
+   camera where occlusion cost 3.1 ms. A cost that is bound by pixel footprint
+   is exactly the kind that quartering the pixels should cut, so that
+   measurement should not be trusted in this regime.
+3. **Drop occlusion past a zoom threshold**, which is the crude one and the
+   last resort: the shading would pop.
+
+Not urgent in the sense that the cap is holding — 31.8 ms fits inside 33 —
+but there is no headroom left at all, and the GM's own screen is larger than
+the one these were taken on.

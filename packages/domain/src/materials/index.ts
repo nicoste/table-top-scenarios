@@ -56,6 +56,19 @@ export interface Material {
    * colour than it is would need a second field, and none does yet.
    */
   readonly glow: number;
+  /**
+   * How much of it a light gets through, 1 solid and 0 invisible (R-174).
+   *
+   * **The look, not the rule.** `blocksSight` above is what the material does
+   * to a line of sight and this is what it does to a photograph of itself;
+   * they agree on water and glass today and the one-way mirror is exactly the
+   * case where they will not (D-237).
+   *
+   * A stack reads as solid long before a single cube does — six feet of water
+   * at 0.6 each lets through less than a percent — which is both physically
+   * right and the reason a sea does not turn into a hole in the map.
+   */
+  readonly opacity: number;
 }
 
 /**
@@ -76,6 +89,12 @@ const DULL = 0.8;
 const SHEEN = 0.35;
 const POLISHED = 0.12;
 
+/** Settled by eye on a sea and a window, which are the only two cases. */
+const SOLID = 1;
+const FROSTED = 0.72;
+const WATERY = 0.58;
+const CLEAR = 0.26;
+
 const m = (
   value: string,
   name: string,
@@ -84,6 +103,7 @@ const m = (
   grain = USUAL,
   roughness = DULL,
   glow = 0,
+  opacity = SOLID,
 ): Material => ({
   id: registryId<'MaterialId'>('material', value),
   name,
@@ -92,6 +112,7 @@ const m = (
   grain,
   roughness,
   glow,
+  opacity,
 });
 
 /**
@@ -114,10 +135,11 @@ export const DEFAULT_MATERIALS: readonly Material[] = [
   m('snow', 'Snow', '#e4e9ef', true, SMOOTH, 0.7),
   m('metal', 'Metal', '#7e8794', true, SMOOTH, SHEEN),
   m('lava', 'Lava', '#c2542a', true, USUAL, DULL, 0.75),
-  // Transparent: present as geometry, invisible to sight (R-75).
-  m('water', 'Water', '#4a7fb5', false, SMOOTH, 0.22),
-  m('glass', 'Glass', '#a8c7dd', false, 0, POLISHED),
-  m('ice', 'Ice', '#b9d6e4', false, SMOOTH, POLISHED),
+  // Transparent: present as geometry, invisible to sight (R-75), and now
+  // see-through to look at as well (R-174).
+  m('water', 'Water', '#4a7fb5', false, SMOOTH, 0.22, 0, WATERY),
+  m('glass', 'Glass', '#a8c7dd', false, 0, POLISHED, 0, CLEAR),
+  m('ice', 'Ice', '#b9d6e4', false, SMOOTH, POLISHED, 0, FROSTED),
 ];
 
 /** What a new map's floor is made of (R-149). */

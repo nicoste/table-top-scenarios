@@ -111,8 +111,31 @@ So the composer costs about **1.2 ms** and occlusion about **4.8 ms** on top.
 
 Occlusion is insensitive to resolution — full 3.1 ms, half 3.5, a third 3.5
 (D-228) — and insensitive to geometry: cutting the church's triangles by 2.9×
-left it at 4.9 ms against 5.0 (O-027). An **empty** scene costs 4.6 ms. It is
-very nearly a fixed cost.
+left it at 4.9 ms against 5.0 (O-027). An **empty** scene costs 4.6 ms.
+
+**Every figure in this section was taken at one camera, and that is the one
+variable that moves it.** See the next table. Read "insensitive to resolution
+and geometry", not "fixed".
+
+### Occlusion against camera distance (Pane, the church, 3 October 2026)
+
+Zooming in costs nothing to rasterise and triples the occlusion pass, because
+GTAO's radius is in world units and its cost follows how many pixels that
+radius covers.
+
+| camera | gpu, occlusion on | occlusion off | occlusion costs |
+| --- | --- | --- | --- |
+| church fully out | 11.3 ms | 0.8 ms | 10.5 ms |
+| 12 wheel ticks in | 17.9 ms | 2.1 ms | 15.8 ms |
+| 24 ticks in | 20.4 ms | 2.1 ms | 18.3 ms |
+| 36 ticks in | **31.8 ms** | 1.1 ms | **30.7 ms** |
+| 48 ticks in | 31.8 ms | 2.2 ms | 29.6 ms |
+
+At 36 ticks the frame is entirely occlusion, against a 33 ms cap. O-028.
+
+**And everything that is not occlusion costs 0.8–2.2 ms**, at every zoom, with
+a transparent sea of 7,239 water cubes in it. Transparency is free (D-239);
+the composer and GTAO are the whole bill.
 
 ### Geometry (the church)
 
@@ -155,13 +178,21 @@ rebuild about an `emissive: undefined` (7.4 ms before that was fixed, D-238).
 
 These outlive any particular figure, and each one cost a wrong theory to learn.
 
-**The GPU is not the bottleneck at this scale.** This machine draws 116,568
-triangles in 0.7 ms. Every optimisation aimed at geometry has returned nothing
-(O-027). Look at the wire, the disk and the rebuild before looking at the card.
+**The GPU is not the bottleneck at this scale — the post-processing is.**
+This machine draws 116,568 triangles in 0.7 ms, and a whole scene with a
+transparent sea in 2 ms. Every optimisation aimed at geometry has returned
+nothing (O-027). Occlusion costs ten to thirty times the thing it is shading
+(D-239). Look at the wire, the disk and the rebuild before looking at the
+card, and at the passes before the triangles.
 
 **Frame time cannot see load.** It is capped and vsync-locked, so it measures
 *lateness*. A GPU doing three times the work reads the same until it drops a
 frame. The GM's fan found what the panel could not (D-226).
+
+**A figure needs the condition that moves it, and you do not always know
+which one that is.** Occlusion was called "very nearly a fixed cost" on five
+readings that varied resolution and geometry — both of which it genuinely
+ignores — and none that varied the camera, which triples it (D-239).
 
 **Measure at the boundaries, because that is where instruments lie.** Six
 misreports from the cost panel, every one at an edge: the first frame, an idle

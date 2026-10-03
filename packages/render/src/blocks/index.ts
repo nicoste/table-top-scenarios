@@ -62,6 +62,7 @@ export function buildBlockBody(map: EncounterMap, materials: readonly Material[]
     grain: 0,
     roughness: 1,
     glow: 0,
+    opacity: 1,
   };
 
   // Grouped first, because a mesh is per material and its size has to be known
@@ -104,6 +105,18 @@ export function buildBlockBody(map: EncounterMap, materials: readonly Material[]
        * replaces. Metal is a decision with an environment attached (D-238).
        */
       metalness: 0,
+      /*
+       * **Depth writes stay on** (R-174). Instances inside one mesh are drawn
+       * in buffer order and nothing sorts them, so switching depth writes off
+       * — the usual move for transparency — makes a sea blend with itself in
+       * whatever order its cubes happen to sit in the buffer, and a cube at
+       * the far edge can wash over one at the near. Left on, the nearest face
+       * at each pixel wins and blends with the ground behind it, which is
+       * both what water looks like and one layer of overdraw instead of
+       * sixty (D-239).
+       */
+      transparent: material.opacity < 1,
+      opacity: material.opacity,
     });
     /*
      * Set after construction rather than passed as `emissive: undefined`,
