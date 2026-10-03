@@ -55,9 +55,15 @@ export function useStage(): {
       // Only when a frame was actually drawn (R-170). A still screen draws
       // twice a second, and the panel should say so — "2 fps" while nothing
       // is happening is the saving, reported rather than hidden.
-      const drawn = created.render();
-      if (!drawn) return;
+      /*
+       * A heartbeat frame counts as drawn — it is one — but it is not
+       * sampled: its interval is the heartbeat rather than a cost, and it
+       * would make an idle screen read as a half-second frame (D-230).
+       */
+      const kind = created.render();
+      if (kind === 'skipped') return;
       draws.current = [...draws.current.filter((at) => now - at <= 2000), now];
+      if (kind !== 'drawn') return;
       if (previous.current !== 0) frames.current = keepRecent(frames.current, since);
       previous.current = now;
     };

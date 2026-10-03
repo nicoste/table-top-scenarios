@@ -4521,3 +4521,37 @@ Three times this panel has reported something false — the per-pass counters
 rate. Each was caught by someone looking at it sceptically rather than by the
 panel noticing. That is worth remembering about instruments generally: they are
 only as good as the next person's suspicion of them.
+
+### D-230 — A screen that got faster the busier it was · `agreed`
+*"GPU on 10ms, but when rotating the camera, it goes down... Not up... Same for
+frame p95."*
+
+Both had the same cause and neither was the renderer. The panel was measuring
+**heartbeat frames** — the half-second safety net from R-170 — as though they
+were representative.
+
+- **p95** was reporting the heartbeat itself. The interval between draws is
+  500 ms when nothing is happening, by design; as a "frame time" it reads as a
+  catastrophe.
+- **GPU** was worse, because it was *true* and still misleading: a frame drawn
+  half a second after the last one is a cold frame. The card downclocks in
+  between, so an isolated frame genuinely takes longer than one drawn in a
+  stream. Total energy is far lower; the per-frame figure is higher. Reported
+  as a cost, it says the opposite of what is happening.
+
+So heartbeat frames are drawn and **not measured**: not sampled into the
+interval window, and not timed on the GPU. The cost figures now answer "what
+does a frame cost when we draw one", and the rate answers "how often do we need
+to", which are the two separate questions.
+
+Verified: turning gives 30 fps with p50 33.3 and p95 34.4; perfectly still
+gives 2 fps with p50 33.3 and p95 34.3. The costs hold steady and only the rate
+moves, which is the shape the truth has.
+
+**Fourth time the panel has misreported something**, after the per-pass
+counters (D-226), the resolution theory (D-228) and the rate (D-229). A
+pattern worth naming rather than apologising for each time: *every number added
+to an instrument is a new claim, and a measurement taken at an unusual moment —
+the first frame, an idle frame, a frame behind a composer — is where the claim
+turns out to be false.* The GM has caught all four by looking at the numbers
+and asking whether they could possibly be right.

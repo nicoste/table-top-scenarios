@@ -2304,6 +2304,12 @@ apps/host/src/
 > would advance only on the frames that happened to be drawn and arrive in
 > steps.
 >
+> **A heartbeat frame is drawn but not measured** (D-230). It is half a second
+> after the last one, so its interval is the heartbeat rather than a cost, and
+> the card has had time to clock down between frames — it measures *slower*
+> than a frame drawn while something is happening. Counted as a cost it reads
+> as a screen that gets faster the busier it is, which is how the GM found it.
+>
 > **The rate on the panel is counted against the clock**, not derived from the
 > median frame time. The interval window is counted in *samples*, so at two
 > frames a second it holds a minute of history — and it duly went on reporting

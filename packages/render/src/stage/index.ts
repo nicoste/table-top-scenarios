@@ -786,8 +786,17 @@ export class Stage {
     this.occlusion.enabled = on;
   }
 
-  /** Draws if a frame is owed, and says whether it did (R-170). */
-  render(): boolean {
+  /**
+   * Draws if a frame is owed, and says what kind of frame it was (R-170).
+   *
+   * The distinction is not bookkeeping: a **heartbeat** frame is half a second
+   * after the last one, and is not representative of anything. Its interval is
+   * the heartbeat rather than a cost, and the GPU has had time to clock down
+   * between frames so it measures *slower* than a frame drawn while something
+   * is happening. Reported as a cost, it reads as a screen that gets faster
+   * the busier it is (D-230). So only real frames are measured.
+   */
+  render(): 'skipped' | 'drawn' | 'heartbeat' {
     const now = performance.now();
     // First frame has no previous one to measure against; a zero `dt` leaves the
     // camera exactly where it starts, which is what an unstarted turn means.
@@ -798,8 +807,8 @@ export class Stage {
      * only on the frames that happened to be drawn and arrive in steps.
      */
     const moving = this.advance(dt);
-    const owed = this.dirty || moving || now - this.lastDrawn >= IDLE_HEARTBEAT_MS;
-    if (!owed) return false;
+    const changed = this.dirty || moving;
+    if (!changed && now - this.lastDrawn < IDLE_HEARTBEAT_MS) return 'skipped';
     this.dirty = false;
     this.lastDrawn = now;
     this.syncCamera();
@@ -820,7 +829,8 @@ export class Stage {
     this.renderer.info.reset();
     const gl = this.renderer.getContext() as WebGL2RenderingContext;
     this.readTimer(gl);
-    if (this.timer && !this.pending) {
+    // Timed only when it is a real frame, for the reason in the doc above.
+    if (changed && this.timer && !this.pending) {
       this.pending = gl.createQuery();
       if (this.pending) gl.beginQuery(this.timer.TIME_ELAPSED_EXT, this.pending);
     }
@@ -837,8 +847,8 @@ export class Stage {
      */
     if (this.occluding) this.composer.render();
     else this.renderer.render(this.scene, this.camera);
-    if (this.timer && this.pending) gl.endQuery(this.timer.TIME_ELAPSED_EXT);
-    return true;
+    if (changed && this.timer && this.pending) gl.endQuery(this.timer.TIME_ELAPSED_EXT);
+    return changed ? 'drawn' : 'heartbeat';
   }
 
   dispose(): void {
