@@ -4445,3 +4445,42 @@ measurement that decides this is the GM's, on their machine with their church.
 What this is really a record of: the overlay has now paid for itself twice
 over. It caught its own lie about triangles (D-226), and it turned "my laptop
 is warm" into two numbers with two different causes and two different answers.
+
+### D-228 — The half-resolution change did nothing, and the reason matters · `agreed`
+D-227 moved occlusion to half resolution on the theory that a per-pixel effect
+at a 2× device ratio was drowning in pixels. Measured on the GM's own church,
+through the console the GM pointed out I should have been driving myself:
+
+| occlusion pass at | GPU |
+| --- | --- |
+| full resolution | 3.1 ms |
+| half | 3.5 ms |
+| a third | 3.5 ms |
+
+**Nine times fewer pixels, no change.** The theory was wrong, so the change is
+reverted: it was trading softness for nothing.
+
+What the cost actually is, from the same session:
+
+| scene | triangles | GPU off | GPU on | occlusion costs |
+| --- | --- | --- | --- | --- |
+| the church | 116,568 | 0.7 ms | 5.0 ms | **4.3 ms** |
+| the world map | 97,896 | 0.5 ms | 3.9 ms | **3.4 ms** |
+
+Nineteen percent fewer triangles, twenty-one percent less cost. **It is the
+second geometry pass** — GTAO rasterises every cube again to build a normal
+buffer, one draw call becoming seven and 116,568 triangles becoming 233,141.
+
+So **face culling is the lever**, and it is worth twice what it looked like
+when I set it aside as "a separate performance round": 58,284 faces to 19,770
+cuts the scene pass *and* the normal pass.
+
+Two things about how this was found, both the GM's doing:
+
+- They asked why they had to keep telling me to use tools I already had. Fair:
+  I had a browser, I held the seat in it, and I was still asking them to take
+  screenshots. The measurements above took four minutes once I stopped asking.
+- Repeating a reading caught a click that had not registered — the "world map"
+  numbers were the church measured twice. Worth keeping as a habit: *check the
+  state you think you are in before trusting what it reports.* The accidental
+  repeat did pay for itself, by showing the measurement repeats to ±0.3 ms.

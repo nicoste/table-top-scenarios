@@ -78,20 +78,6 @@ let instances = 0;
 export const FRAME_BUDGET_MS = 1000 / 30;
 export const FRAME_SLOP_MS = 2;
 
-/**
- * Occlusion is computed at half the canvas's width and height (D-227).
- *
- * It is a per-pixel effect and the composer runs at the device pixel ratio, so
- * on a 2× display a 1024×768 canvas means 3.1 million pixels and sixteen
- * samples at each — about 50 million a frame, measured at 9.4 ms of GPU
- * against a 0.5 ms scene. A quarter of the pixels is the standard lever and
- * the one `GTAOPass` does not offer as a parameter.
- *
- * Occlusion is the lowest-frequency thing in the picture — broad shadow in
- * corners — so it is also the thing that loses least to being computed coarse
- * and sampled back up.
- */
-export const OCCLUSION_SCALE = 0.5;
 
 /** What `Stage.cost()` reports (R-166). */
 export interface StageCost {
@@ -738,16 +724,6 @@ export class Stage {
     // The composer owns the buffers now, and an unresized pass renders the
     // last size into the new canvas.
     this.composer.setSize(w, h);
-    /*
-     * Then shrink the occlusion pass again, because `setSize` above has just
-     * told every pass to match the canvas at the device's pixel ratio. Last
-     * word wins, and this one wants a quarter of the pixels (D-227).
-     */
-    const dpr = this.renderer.getPixelRatio();
-    this.occlusion.setSize(
-      Math.max(1, Math.round(w * dpr * OCCLUSION_SCALE)),
-      Math.max(1, Math.round(h * dpr * OCCLUSION_SCALE)),
-    );
   }
 
   /**
