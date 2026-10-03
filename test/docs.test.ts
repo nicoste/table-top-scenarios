@@ -42,6 +42,36 @@ describe('PLAYBOOK.md stays honest', () => {
   });
 });
 
+describe('MEASUREMENTS.md stays honest', () => {
+  const measurements = read('docs/MEASUREMENTS.md');
+
+  it('cites rules and decisions that exist', () => {
+    // Same guard the playbook gets: a figure is only worth keeping if the
+    // reasoning it points at can still be found.
+    const architecture = read('docs/ARCHITECTURE.md');
+    const decisions = read('docs/DECISIONS.md');
+    const rules = new Set(
+      [...architecture.matchAll(/\*\*(R-\d+[a-z]?)\.\*\*/g)].map((m) => m[1]!),
+    );
+    const recorded = new Set([...decisions.matchAll(/^### ([DO]-\d+)/gm)].map((m) => m[1]!));
+    const citedRules = [...measurements.matchAll(/\b(R-\d+[a-z]?)\b/g)].map((m) => m[1]!);
+    const citedCalls = [...measurements.matchAll(/\b([DO]-\d+)\b/g)].map((m) => m[1]!);
+    expect(citedRules.filter((r) => !rules.has(r))).toEqual([]);
+    expect(citedCalls.filter((d) => !recorded.has(d))).toEqual([]);
+  });
+
+  it('says which machine every section was measured on', () => {
+    /*
+     * The rule the file itself states: a number without its conditions is
+     * noise. Two readings nearly misled us by coming from different machines,
+     * so every table of timings names one.
+     */
+    expect(measurements).toContain("GM's Chrome");
+    expect(measurements).toContain('Pane');
+    expect(measurements).toContain('not comparable');
+  });
+});
+
 describe('the rule set stays coherent', () => {
   const architecture = read('docs/ARCHITECTURE.md');
 

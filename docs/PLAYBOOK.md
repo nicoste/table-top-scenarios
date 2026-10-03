@@ -100,6 +100,9 @@ onCellTap(cell) { dispatch({ kind: 'paintTerrain', ...cell, terrainId: selected 
 - [ ] a numbered entry in [DECISIONS.md](DECISIONS.md) for anything the docs did not
       already cover (**R-0** — this is not optional)
 - [ ] no new dependency without a decision naming what it replaces (R-24)
+- [ ] a row in [MEASUREMENTS.md](MEASUREMENTS.md) if the change moved a number
+      worth comparing against later — **with the machine and the scene it was
+      measured on**, because a figure without its conditions is noise
 
 ---
 

@@ -4702,3 +4702,37 @@ antialiasing one, never the occlusion one.
 That connection has been in the code comments since the composer went in, and
 never once in anything said out loud. A thing explained only to the compiler
 is not explained.
+
+### D-235 — A place for the numbers · `agreed`
+*"Can you create a doc to store performance metrics based on key moments? So
+we don't lose them?"*
+
+They were spread across a dozen decision entries, which is the right home for
+*why* something changed and the wrong one for what it cost. Asking "is this
+slower than it was" meant reading the whole argument back.
+
+`docs/MEASUREMENTS.md` holds the figures, and three things make it worth
+keeping rather than a list that rots:
+
+- **Every row names the machine and the scene.** Twice in one afternoon a
+  reading nearly misled us by coming from a different machine or a different
+  canvas — the "world map" numbers that were the church measured twice
+  (D-228), and a half-resolution comparison made across two GPUs (D-227). The
+  file says a figure without its conditions is noise, and a test checks that
+  both machines are named and that the file says they are not comparable.
+- **There is a procedure.** Open the panel, make the screen *busy* — frames
+  are drawn on demand now (R-170), so an idle screen reports the heartbeat
+  rather than a cost — wait three seconds, write down the conditions. A
+  measurement nobody can repeat is an anecdote.
+- **It ends with what the numbers taught**, separately from the numbers,
+  because those outlive any particular figure: the GPU is not the bottleneck
+  at this scale; frame time cannot see load; instruments lie at boundaries;
+  an optimisation that is not measured is not an optimisation.
+
+Guarded like the playbook: a test checks that every rule and decision it cites
+still exists. A broken citation in a file of evidence is worse than in prose —
+prose can be re-reasoned, a number cannot be re-derived once the conditions
+are lost.
+
+The commit checklist now asks for a row when a change moves a number worth
+comparing against later.
