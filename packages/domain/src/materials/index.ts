@@ -47,7 +47,7 @@ export interface Material {
  * *variation* — if you do, it is too strong; it should only register as the
  * wall not being flat.
  */
-const ROUGH = 0.024;
+const ROUGH = 0.02;
 const USUAL = 0.016;
 const SMOOTH = 0.008;
 
