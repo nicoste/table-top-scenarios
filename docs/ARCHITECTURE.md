@@ -2337,7 +2337,7 @@ apps/host/src/
 > depth writes stay on.
 >
 > `opacity` joins `roughness` and `glow` on the registry: 1 is solid, water is
-> 0.58, ice 0.72, glass 0.26. It is the **look**, where `blocksSight` is the
+> 0.75, ice 0.72, glass 0.4 — tuned at the table, like grain before it. It is the **look**, where `blocksSight` is the
 > **rule**, and the two are never derived from one another (R-172, D-237).
 >
 > **Depth writes stay on**, which is the opposite of the usual advice for

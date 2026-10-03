@@ -4883,7 +4883,12 @@ and a console being captured turns that into milliseconds on the hot path.
 ### D-239 — Water you can see into, and the thing it uncovered · `agreed`
 Third of the material-appearance round, and the one the GM named first:
 *"the lava emitting, the water transmiting."* `opacity` on the registry —
-water 0.58, ice 0.72, glass 0.26, everything else 1.
+water 0.58, ice 0.72, glass 0.26, everything else 1 — **retuned at the table
+to water 0.75 and glass 0.4** once there was something to look at, the same
+way grain was (D-237). A sea is most of the screen on an island map and at
+0.58 the depth showing through it read as hatching rather than as water; 0.75
+keeps a pool see-through and quiets the sea. Glass at 0.26 was so clear that
+a window read as a gap.
 
 The interesting choice is **depth writes, which stay on**. Every guide says to
 turn them off for transparency so surfaces behind show through, and that

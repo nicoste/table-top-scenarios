@@ -92,8 +92,8 @@ const POLISHED = 0.12;
 /** Settled by eye on a sea and a window, which are the only two cases. */
 const SOLID = 1;
 const FROSTED = 0.72;
-const WATERY = 0.58;
-const CLEAR = 0.26;
+const WATERY = 0.75;
+const CLEAR = 0.4;
 
 const m = (
   value: string,
