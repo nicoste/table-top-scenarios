@@ -4736,3 +4736,44 @@ are lost.
 
 The commit checklist now asks for a row when a change moves a number worth
 comparing against later.
+
+### D-236 — Nine pieces of maths three.js already owned · `agreed`
+The audit's own recommendation, acted on. Each of these was correct, tested,
+and written by hand when `three/src/math/MathUtils` had it:
+
+| ours | theirs | sites |
+| --- | --- | --- |
+| `current + (goal - current) * (1 - exp(-dt / tau))` | `MathUtils.damp` | 1 |
+| `(((d) % 360) + 540) % 360 - 180` | `MathUtils.euclideanModulo` | 1 |
+| `(deg * Math.PI) / 180` | `MathUtils.degToRad` | 4 |
+| `Math.min(hi, Math.max(lo, v))` | `MathUtils.clamp` | 3 |
+
+Two are worth more than the line count.
+
+**`approach` was `damp`, down to the citation.** Both are
+`lerp(x, y, 1 - exp(-lambda·dt))` and both point at the same article on
+frame-rate-independent damping. What stays ours is the **snap** — three.js
+does not do it, and without it the easing never arrives and the render loop
+never rests, which matters a great deal more here now that frames are drawn
+on demand (R-170).
+
+**`nearestAngle`'s `+ 540` was a euclidean modulo spelled out.** JavaScript's
+`%` keeps the sign of its left operand, so `-10 % 360` is `-10`; adding 540
+before the remainder forced it positive. Correct, and a magic number standing
+in for a named function.
+
+**The proof is that nothing changed.** Twenty-one existing camera tests —
+frame-rate independence across 30 and 240 Hz, never taking the long way round,
+arriving exactly rather than approaching forever — pass untouched. That is
+what made this safe to do mechanically.
+
+**Two left alone, deliberately:**
+
+- **The cost panel's percentile clamp.** It lives in `client-core`, which has
+  no business depending on a renderer's maths library for `Math.min`. The ring
+  it sits in is worth more than the line.
+- **The block ghost's bounding box.** `Box3.setFromPoints` exists, but the
+  cells are plain `{x, y, z}` and it would mean allocating twenty-five
+  `Vector3`s on every pointer move to replace an allocation-free loop. The
+  rule from O-027 applies to tidiness as much as to performance: a change that
+  measurably costs something and buys only neatness is not an improvement.

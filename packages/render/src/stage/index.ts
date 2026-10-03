@@ -5,7 +5,7 @@
 import {
   AmbientLight, Color, DirectionalLight, GridHelper, HemisphereLight, Mesh,
   MeshBasicMaterial, PlaneGeometry, Raycaster, Scene, Vector2, WebGLRenderer, BoxGeometry,
-  WebGLRenderTarget, HalfFloatType,
+  WebGLRenderTarget, HalfFloatType, MathUtils,
   EdgesGeometry, LineSegments, LineBasicMaterial, Group,
 } from 'three';
 import type {
@@ -526,7 +526,7 @@ export class Stage {
     // Pan in the camera's own screen plane, projected onto the ground.
     const scale = this.target.zoom / this.canvas.clientHeight;
     const yaw = yawRadians(this.target);
-    const pitch = ((PITCH_STEPS[this.target.pitchStep] ?? 45) * Math.PI) / 180;
+    const pitch = MathUtils.degToRad(PITCH_STEPS[this.target.pitchStep] ?? 45);
     const right = { x: Math.cos(yaw), z: -Math.sin(yaw) };
     const forward = { x: Math.sin(yaw) / Math.sin(pitch), z: Math.cos(yaw) / Math.sin(pitch) };
     this.setTarget({

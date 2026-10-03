@@ -1,7 +1,7 @@
 // The god view (R-29 to R-32): orthographic, stepped yaw and pitch, no free
 // orbit. Holds no game state — it is driven by a CameraTarget and nothing else.
 
-import { OrthographicCamera, Vector3 } from 'three';
+import { MathUtils, OrthographicCamera, Vector3 } from 'three';
 
 /**
  * Four yaw positions, 90 degrees apart, all offset by 45 (R-31).
@@ -30,7 +30,7 @@ export function yawDegrees(target: Pick<CameraTarget, 'yawStep'>): number {
 
 /** The camera's yaw in radians, for anything that needs to move in its plane. */
 export function yawRadians(target: Pick<CameraTarget, 'yawStep'>): number {
-  return (yawDegrees(target) * Math.PI) / 180;
+  return MathUtils.degToRad(yawDegrees(target));
 }
 
 /**
@@ -52,7 +52,14 @@ export const TURN_TAU = 0.085;
  * Returns 405 instead, which is the same bearing and the short way.
  */
 export function nearestAngle(goal: number, current: number): number {
-  return current + (((goal - current) % 360) + 540) % 360 - 180;
+  /*
+   * `euclideanModulo` rather than `%`, because JavaScript's remainder keeps
+   * the sign of its left-hand side: `-10 % 360` is `-10`, not `350`. This
+   * used to add 540 before taking the remainder to force the sign — correct,
+   * and a magic number standing in for a function three.js already has
+   * (D-236).
+   */
+  return current + MathUtils.euclideanModulo(goal - current + 180, 360) - 180;
 }
 
 /**
@@ -67,7 +74,13 @@ export function nearestAngle(goal: number, current: number): number {
  */
 export function approach(current: number, goal: number, dt: number, tau = TURN_TAU): number {
   if (dt <= 0) return current;
-  const next = current + (goal - current) * (1 - Math.exp(-dt / tau));
+  /*
+   * `MathUtils.damp` is this exact formula — `lerp(x, y, 1 - exp(-lambda dt))`
+   * — and cites the same source the hand-written version did (D-236). What is
+   * still ours is the snap below, which is the part three.js does not do and
+   * the part this project actually needs.
+   */
+  const next = MathUtils.damp(current, goal, 1 / tau, dt);
   return Math.abs(goal - next) < 0.05 ? goal : next;
 }
 
@@ -116,9 +129,9 @@ export function defaultTarget(focus = { x: 0, y: 0, z: 0 }): CameraTarget {
 export function clampTarget(target: CameraTarget): CameraTarget {
   return {
     focus: target.focus,
-    zoom: Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, target.zoom)),
+    zoom: MathUtils.clamp(target.zoom, MIN_ZOOM, MAX_ZOOM),
     yawStep: ((target.yawStep % YAW_STEPS) + YAW_STEPS) % YAW_STEPS,
-    pitchStep: Math.min(PITCH_STEPS.length - 1, Math.max(0, target.pitchStep)),
+    pitchStep: MathUtils.clamp(target.pitchStep, 0, PITCH_STEPS.length - 1),
   };
 }
 
@@ -155,8 +168,8 @@ export function placeCamera(
   camera.bottom = -halfH;
   camera.updateProjectionMatrix();
 
-  const yawRad = (view.yawDeg * Math.PI) / 180;
-  const pitchRad = (view.pitchDeg * Math.PI) / 180;
+  const yawRad = MathUtils.degToRad(view.yawDeg);
+  const pitchRad = MathUtils.degToRad(view.pitchDeg);
 
   const horizontal = Math.cos(pitchRad) * DISTANCE;
   camera.position.set(
@@ -183,5 +196,5 @@ export function applyTarget(
 
 /** The pitch in degrees a target is asking for. */
 export function pitchDegrees(target: Pick<CameraTarget, 'pitchStep'>): number {
-  return PITCH_STEPS[Math.min(PITCH_STEPS.length - 1, Math.max(0, target.pitchStep))] ?? 45;
+  return PITCH_STEPS[MathUtils.clamp(target.pitchStep, 0, PITCH_STEPS.length - 1)] ?? 45;
 }
