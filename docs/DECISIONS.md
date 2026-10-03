@@ -4924,7 +4924,7 @@ camera comes in, and the cost follows the footprint.
 Which makes it the thing to fix, and it is worth noticing *when* it bites:
 hardest exactly when the GM is close in placing cubes. O-028.
 
-### O-028 — Occlusion costs three times more up close, and the fix is probably one line · `open`
+### O-028 — Occlusion costs three times more up close, and the fix is probably one line · `closed`
 From D-239's table: GTAO is 10.5 ms with the church framed and 30.7 ms zoomed
 in, because its radius is in world units and its real cost follows how many
 pixels that radius covers.
@@ -4945,3 +4945,46 @@ Three candidates, in the order they should be tried:
 Not urgent in the sense that the cap is holding — 31.8 ms fits inside 33 —
 but there is no headroom left at all, and the GM's own screen is larger than
 the one these were taken on.
+
+**Closed by D-240**, with the first candidate and a flag three.js already had.
+
+### D-240 — Occlusion priced in pixels · `agreed`
+O-028's first candidate, and it turned out to be a flag three.js already has:
+`screenSpaceRadius`, which reads GTAO's radius in hundreds of pixels instead
+of world units. Four lines.
+
+| camera | before | after |
+| --- | --- | --- |
+| church fully out | 10.5 ms | 10.8 ms |
+| 12 ticks in | 15.8 ms | 16.1 ms |
+| 24 ticks in | 18.3 ms | 17.6 ms |
+| 36 ticks in | **30.7 ms** | **17.7 ms** |
+| 48 ticks in | 29.6 ms | 17.5 ms |
+
+The cliff is gone and nothing got worse. It does not go flat, and should not:
+what is left scales with how much of the screen has geometry on it, which is
+the pass doing its job. The world map zoomed in reads 18.8 ms on 97,890
+triangles against the church's 17.7 on 234,509 — same cost, a third of the
+geometry, which is the clearest statement yet that **this pass is priced in
+pixels and not in triangles.**
+
+Fifteen pixels, chosen so a framed map looks exactly as it did — that is what
+0.8 world units came to at that zoom. Only the close-up changed, and for the
+better: the old radius at 48 ticks in was shading most of a cube face, which
+is softer than a corner wants.
+
+**What it gives up** is that occlusion is no longer a fact about the geometry.
+Zoomed out it reaches further in world terms than it should, zoomed in less.
+Nobody at a table is measuring whether a shadow is one cube deep; they are
+reading depth off the corners, and before this the corners cost a whole frame
+at the zoom a GM builds at.
+
+**Still on the table if 17 ms ever needs to be less**: `samples`, which is 16
+and is the sampling loop itself. Halving it halves the pass and adds noise for
+the denoise step to hide. Not needed — 17.6 ms sits inside a 33 ms cap with
+room — but it is the next lever and it is one number.
+
+The thing to carry forward is in R-175: **a screen-space pass is priced in
+pixels.** Anything scaling it in world units is a cost that moves when the
+camera does, and five careful readings taken at one camera will all agree with
+each other and all be wrong.

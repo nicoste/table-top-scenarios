@@ -123,15 +123,23 @@ Zooming in costs nothing to rasterise and triples the occlusion pass, because
 GTAO's radius is in world units and its cost follows how many pixels that
 radius covers.
 
-| camera | gpu, occlusion on | occlusion off | occlusion costs |
-| --- | --- | --- | --- |
-| church fully out | 11.3 ms | 0.8 ms | 10.5 ms |
-| 12 wheel ticks in | 17.9 ms | 2.1 ms | 15.8 ms |
-| 24 ticks in | 20.4 ms | 2.1 ms | 18.3 ms |
-| 36 ticks in | **31.8 ms** | 1.1 ms | **30.7 ms** |
-| 48 ticks in | 31.8 ms | 2.2 ms | 29.6 ms |
+| camera | gpu, occlusion on | occlusion off | occlusion costs | **after R-175** |
+| --- | --- | --- | --- | --- |
+| church fully out | 11.3 ms | 0.8 ms | 10.5 ms | 10.8 ms |
+| 12 wheel ticks in | 17.9 ms | 2.1 ms | 15.8 ms | 16.1 ms |
+| 24 ticks in | 20.4 ms | 2.1 ms | 18.3 ms | 17.6 ms |
+| 36 ticks in | **31.8 ms** | 1.1 ms | **30.7 ms** | **17.7 ms** |
+| 48 ticks in | 31.8 ms | 2.2 ms | 29.6 ms | 17.5 ms |
 
-At 36 ticks the frame is entirely occlusion, against a 33 ms cap. O-028.
+At 36 ticks the frame was entirely occlusion, against a 33 ms cap. The last
+column is the same sweep with the radius measured in pixels instead of world
+units — fifteen of them, chosen so a framed map looks as it did (R-175,
+D-240). The cliff is gone; the rest scales with how much of the screen has
+geometry on it, which is the pass doing its job.
+
+**The world map, zoomed in: 18.8 ms on 97,890 triangles**, against the
+church's 17.7 ms on 234,509. Same cost, a third of the geometry. This pass is
+priced in pixels.
 
 **And everything that is not occlusion costs 0.8–2.2 ms**, at every zoom, with
 a transparent sea of 7,239 water cubes in it. Transparency is free (D-239);

@@ -89,6 +89,15 @@ export const FRAME_SLOP_MS = 2;
  */
 export const IDLE_HEARTBEAT_MS = 500;
 
+/**
+ * How far occlusion reaches, in device pixels (R-175).
+ *
+ * Tuned by eye against the old world-space radius of 0.8 cubes, which is
+ * about 15 pixels with a map framed — so framed looks the same as it did and
+ * only the close-up changed.
+ */
+const OCCLUSION_RADIUS_PX = 15;
+
 
 /** What `Stage.cost()` reports (R-166). */
 export interface StageCost {
@@ -271,12 +280,30 @@ export class Stage {
     this.composer.addPass(new RenderPass(this.scene, this.camera));
     this.occlusion = new GTAOPass(this.scene, this.camera, 1, 1);
     /*
-     * A cube is one world unit, and the default radius of 0.25 is tuned for
-     * models measured in metres — at that size the darkening hugs the seam and
-     * reads as dirt rather than as shape. Near a cube's width is what makes a
-     * corner look like a corner.
+     * **The radius is in pixels, not in cubes** (R-175).
+     *
+     * It was 0.8 world units — near a cube's width, which is what makes a
+     * corner look like a corner, and the obviously right answer: occlusion is
+     * a fact about geometry and should not care where the camera is.
+     *
+     * It costs what its *footprint* costs. A world radius covers more pixels
+     * the closer the camera comes, and the pass went from 10.5 ms with the
+     * church framed to 30.7 ms zoomed in — a 33 ms frame with nothing else in
+     * it, worst exactly when the GM is close in placing cubes (D-240).
+     *
+     * `screenSpaceRadius` reads `radius` in hundreds of pixels instead, so
+     * the footprint and the cost are the same at every zoom. What it gives up
+     * is world-correctness: zoomed out the shading reaches further in world
+     * terms than it should, zoomed in less. At a table nobody is checking
+     * that — they are reading depth off the corners, and the corners are
+     * drawn at every zoom now.
      */
-    this.occlusion.updateGtaoMaterial({ radius: 0.8, scale: 1, thickness: 1 });
+    this.occlusion.updateGtaoMaterial({
+      radius: OCCLUSION_RADIUS_PX / 100,
+      screenSpaceRadius: true,
+      scale: 1,
+      thickness: 1,
+    });
     this.composer.addPass(this.occlusion);
     // Last, because the composer works in half-float and somebody has to put
     // it back into the colour space the canvas expects.

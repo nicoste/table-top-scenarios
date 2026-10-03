@@ -2353,6 +2353,29 @@ apps/host/src/
 > at every zoom, transparent sea and all. Nobody needs to weigh "is this cube
 > worth being see-through" (D-239).
 
+> **R-175.** **Occlusion's radius is measured in pixels, not in cubes.**
+>
+> A post-process costs what its *footprint* costs. GTAO's radius was 0.8 world
+> units — near a cube's width, which is the physically right answer and the
+> one that made the pass cost 10.5 ms with a map framed and **30.7 ms zoomed
+> in**, because a world radius covers more pixels the closer the camera comes.
+> The pass was the entire frame at the zoom a GM builds at.
+>
+> `screenSpaceRadius` reads the radius in hundreds of pixels instead, and the
+> cost stops following the camera: **17.6 ms at every zoom past framing**, no
+> worse where it was already affordable.
+>
+> What it gives up is world-correctness — zoomed out the shading reaches
+> further in world terms than it should, zoomed in less. That is the right
+> thing to give up here. Nobody at a table is checking whether a corner's
+> shadow is one cube deep; they are reading depth off the corners, and the
+> corners are drawn at every zoom now.
+>
+> **The general rule is the one worth keeping**: a screen-space pass is priced
+> in pixels, so anything that scales it in world units is a cost that moves
+> when the camera does, and it will not show up in a measurement taken at one
+> camera (D-240).
+
 > **R-170.** **A frame is drawn when something changed, not thirty times a
 > second.**
 >
