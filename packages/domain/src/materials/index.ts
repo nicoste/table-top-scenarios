@@ -42,13 +42,14 @@ export interface Material {
 /**
  * Enough to break up a wall and not enough to look like a mistake.
  *
- * Toned down about a third from the first attempt, which read as noisy rather
- * than as surface. The test is whether you notice the *variation* — if you
- * do, it is too strong; it should only register as the wall not being flat.
+ * Settled by eye at the table, on a real map, after two passes: the first
+ * read as noise rather than as surface. The test is whether you notice the
+ * *variation* — if you do, it is too strong; it should only register as the
+ * wall not being flat.
  */
-const ROUGH = 0.034;
-const USUAL = 0.022;
-const SMOOTH = 0.008;
+const ROUGH = 0.03;
+const USUAL = 0.02;
+const SMOOTH = 0.01;
 
 const m = (
   value: string,
