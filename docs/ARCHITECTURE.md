@@ -2303,6 +2303,36 @@ apps/host/src/
 > it **does** (D-237). The same line will separate a shade from a material
 > when variants arrive.
 
+> **R-173.** **A material owns how it draws, so there is one mesh per material.**
+>
+> An instance can carry a colour and nothing else. Roughness and emission are
+> uniforms on the material, which means one mesh can draw a thousand shades of
+> one substance and cannot draw thatch beside ice. Grouping the body by
+> material is what lets `roughness` and `glow` be fields on the registry rather
+> than a special case in the renderer.
+>
+> The registry says **what the material is**, never which three.js class to
+> use: `roughness` is how scattered the light off it is and `glow` is how lit
+> from inside it looks. A field naming a shader or a material class would put
+> the renderer's vocabulary in the domain, and the domain is the ring that does
+> not know three.js exists.
+>
+> **`glow` looks lit; it does not light.** A glowing block casts nothing on its
+> neighbours. That needs a light in the scene, which is a separate decision
+> with a cost attached (D-238).
+>
+> **`metalness` stays at zero until there is an environment to reflect.** A
+> metal in this lighting model scatters almost nothing and reflects its
+> surroundings, so metalness without an environment map renders black — worse
+> than the painted grey it replaces. Metal is a decision with an environment
+> attached, not a number to raise.
+>
+> Measured on the church: **seven meshes instead of one, +12 draw calls** (the
+> occlusion pass rasterises the scene twice, so each mesh is counted twice),
+> **GPU unchanged** at 12.6 ms, rebuild 3.2 ms to 6.0 ms. Thirteen draw calls
+> are nothing on this card; the rebuild is the figure to watch, and it is paid
+> once per edit against a 33 ms budget (MEASUREMENTS.md).
+
 > **R-170.** **A frame is drawn when something changed, not thirty times a
 > second.**
 >

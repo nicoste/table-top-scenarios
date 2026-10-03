@@ -125,6 +125,30 @@ very nearly a fixed cost.
 | rebuild, meshed with culling | 16.6 ms — built and reverted (O-027) |
 | rebuild, instanced with grain | **5.3 ms** — a hash and an HSL nudge per cube (R-172) |
 
+### One mesh per material (Pane, the church, 3 October 2026)
+
+Before and after on the same canvas minutes apart, which is the only way these
+two columns are comparable. The body held **7 materials** that day — the roof's
+thatch and the one lava block had been filled over, so a restored church would
+read 9 meshes and 23 draw calls.
+
+| | one mesh | one per material |
+| --- | --- | --- |
+| block meshes | 1 | 7 |
+| draw calls, whole scene | 7 | **19** |
+| triangles | 233,141 | 233,141 |
+| gpu | 12.6 ms | **12.6 ms** |
+| rebuild | 3.2 ms | **6.0 ms** |
+
+Draw calls rose by twelve, not six: **occlusion rasterises the scene twice**,
+so every mesh is counted in both passes. The GPU figure did not move, because
+the GTAO pass is almost all of it.
+
+The same `buildBlockBody` in node, warm, is **2.83 ms before and 2.99 after** —
+the split itself costs nothing. The browser's extra milliseconds are setup
+under a live renderer, and 1.4 ms of them were three.js warning twelve times a
+rebuild about an `emissive: undefined` (7.4 ms before that was fixed, D-238).
+
 ---
 
 ## What the numbers taught, beyond the numbers
@@ -150,3 +174,8 @@ produced a "world map" reading that was the church measured twice (D-228).
 **An optimisation that is not measured is not an optimisation.** Half-
 resolution occlusion and face culling were both built on sound-sounding
 theories, both measured, both reverted (D-228, O-027).
+
+**Measure the same thing twice in two places before blaming the change.** A
+rebuild that doubled in the browser was identical in node, which is what
+turned the suspect from "thirteen meshes" into "twelve `console.warn`s"
+(D-238).

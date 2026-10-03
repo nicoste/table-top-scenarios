@@ -4818,3 +4818,64 @@ and that looks fine — stone does that). Both would have been passed by tuning
 the threshold until green, which is how a test ends up passing for the wrong
 reason. They assert the real property now: neighbours differ **on average**,
 and the row has no short period.
+
+### D-238 — One mesh per material, so a material can own how it draws · `agreed`
+The second of the material-appearance round, and the structural one. The GM's
+shape for it: *"a cube with a material and that material concentrates the data
+that describes how it looks, like you exemplified, the lava emitting, the
+water transmiting."*
+
+Grain (D-237) fitted in the old renderer because **colour is the one thing an
+instance can carry**. Roughness and emission cannot: they are uniforms on the
+material, so a single `InstancedMesh` can draw a thousand shades of one
+substance and cannot draw thatch beside ice. Either the registry stops at
+colour, or the body is grouped by material. Grouped, then — thirteen meshes
+where there was one, `MeshLambertMaterial` to `MeshStandardMaterial`.
+
+Two fields, both describing the **substance** and neither naming a renderer:
+
+- **`roughness`**, how scattered the light off it is. At a table's distance it
+  reads almost entirely as how differently the top face catches the sun from
+  the sides. Dirt is chalk at 1, ice and glass are 0.12, metal 0.35.
+- **`glow`**, how lit from inside it looks. Zero for everything but lava, at
+  0.75. **It looks lit; it does not light** — a glowing block casts nothing on
+  its neighbours, which needs an actual light in the scene and is a separate
+  decision with a per-light cost. It glows in its own colour, right for every
+  case we have; a material wanting to glow a *different* colour than it is
+  would need a second field, and none does.
+
+**`metalness` stays at zero.** It is the obvious third field and it is a trap:
+a metal in this lighting model scatters almost nothing and reflects its
+surroundings, so metalness with no environment map renders **black**. Metal
+is a decision with an environment attached, not a number to raise. Same for
+`opacity` on water, glass and ice — transparency needs render-order care and
+is its own round.
+
+**What it cost**, measured on the church before and after, same canvas, minutes
+apart:
+
+| | before | after |
+| --- | --- | --- |
+| block meshes | 1 | 7 (the church's palette) |
+| draw calls, whole scene | 7 | 19 |
+| GPU | 12.6 ms | 12.6 ms |
+| triangles | 233,141 | 233,141 |
+| rebuild | 3.2 ms | 6.0 ms |
+
+Draw calls went up by twelve rather than six because **occlusion rasterises
+the scene twice** — every mesh is counted in both passes. Nineteen is nothing
+on this card and the GPU figure says so: unchanged, because the GTAO pass is
+almost all of it (MEASUREMENTS.md).
+
+The rebuild is the figure that moved, and it is **not the split**. The same
+function in node is 2.83 ms before and 2.99 ms after — the grouping loop and
+the thirteen smaller buffers cost nothing measurable. The browser's extra
+milliseconds are object and buffer setup under a live renderer, and 1.4 ms of
+them were **three.js warning twelve times a rebuild** that `emissive` had been
+passed as `undefined`. Fixed by setting emission after construction instead of
+passing a key that is usually not there; 7.4 ms to 6.0. Against a 33 ms budget
+paid once per edit, the remaining 2.8 ms buys the feature.
+
+**The thing worth remembering**: a parameter object with a conditional
+`undefined` in it is not free. three.js answers each one with a `console.warn`,
+and a console being captured turns that into milliseconds on the hot path.

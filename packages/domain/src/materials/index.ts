@@ -37,6 +37,25 @@ export interface Material {
    * GM will want one day (D-237).
    */
   readonly grain: number;
+  /**
+   * How scattered the light off it is, 0 polished to 1 chalky (R-173).
+   *
+   * At a table's distance this reads almost entirely as *how differently the
+   * top face catches the sun from the sides* — thatch and dirt stay flat from
+   * every angle, ice and water pick up a hard bright edge on the one facing
+   * the light.
+   */
+  readonly roughness: number;
+  /**
+   * How much it appears lit from inside, 0 for everything that is not lava.
+   *
+   * **It looks lit; it does not light.** A glowing block casts nothing on its
+   * neighbours — that needs an actual light in the scene, which is a separate
+   * decision with a cost attached (D-238). It glows in its own colour, which
+   * is right for every case we have; a material wanting to glow a *different*
+   * colour than it is would need a second field, and none does yet.
+   */
+  readonly glow: number;
 }
 
 /**
@@ -51,18 +70,28 @@ const ROUGH = 0.018;
 const USUAL = 0.012;
 const SMOOTH = 0.006;
 
+/** Most things in a dungeon are closer to chalk than to glass. */
+const MATT = 0.95;
+const DULL = 0.8;
+const SHEEN = 0.35;
+const POLISHED = 0.12;
+
 const m = (
   value: string,
   name: string,
   colour: string,
   blocksSight = true,
   grain = USUAL,
+  roughness = DULL,
+  glow = 0,
 ): Material => ({
   id: registryId<'MaterialId'>('material', value),
   name,
   colour,
   blocksSight,
   grain,
+  roughness,
+  glow,
 });
 
 /**
@@ -74,21 +103,21 @@ const m = (
  * shared screen, and saturated blocks fight whatever stands on them.
  */
 export const DEFAULT_MATERIALS: readonly Material[] = [
-  m('stone', 'Stone', '#8d93a1'),
-  m('brick', 'Brick', '#9c5f4e'),
-  m('wood', 'Wood', '#9c7a4a'),
-  m('plank', 'Plank', '#b49364'),
-  m('thatch', 'Thatch', '#c2a35c', true, ROUGH),
-  m('dirt', 'Dirt', '#7a6248', true, ROUGH),
-  m('grass', 'Grass', '#6f8f52', true, ROUGH),
-  m('sand', 'Sand', '#cbb887', true, ROUGH),
-  m('snow', 'Snow', '#e4e9ef', true, SMOOTH),
-  m('metal', 'Metal', '#7e8794', true, SMOOTH),
-  m('lava', 'Lava', '#c2542a'),
+  m('stone', 'Stone', '#8d93a1', true, USUAL, DULL),
+  m('brick', 'Brick', '#9c5f4e', true, USUAL, MATT),
+  m('wood', 'Wood', '#9c7a4a', true, USUAL, DULL),
+  m('plank', 'Plank', '#b49364', true, USUAL, 0.7),
+  m('thatch', 'Thatch', '#c2a35c', true, ROUGH, MATT),
+  m('dirt', 'Dirt', '#7a6248', true, ROUGH, 1),
+  m('grass', 'Grass', '#6f8f52', true, ROUGH, MATT),
+  m('sand', 'Sand', '#cbb887', true, ROUGH, MATT),
+  m('snow', 'Snow', '#e4e9ef', true, SMOOTH, 0.7),
+  m('metal', 'Metal', '#7e8794', true, SMOOTH, SHEEN),
+  m('lava', 'Lava', '#c2542a', true, USUAL, DULL, 0.75),
   // Transparent: present as geometry, invisible to sight (R-75).
-  m('water', 'Water', '#4a7fb5', false, SMOOTH),
-  m('glass', 'Glass', '#a8c7dd', false, 0),
-  m('ice', 'Ice', '#b9d6e4', false, SMOOTH),
+  m('water', 'Water', '#4a7fb5', false, SMOOTH, 0.22),
+  m('glass', 'Glass', '#a8c7dd', false, 0, POLISHED),
+  m('ice', 'Ice', '#b9d6e4', false, SMOOTH, POLISHED),
 ];
 
 /** What a new map's floor is made of (R-149). */

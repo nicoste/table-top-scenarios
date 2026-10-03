@@ -1,5 +1,4 @@
-// An encounter map's voxel body. One InstancedMesh for every block, coloured per
-// instance from the materials registry (R-75).
+// An encounter map's voxel body: **one InstancedMesh per material** (R-173).
 //
 // Instanced because a body is thousands of identical cubes: a draw call each
 // would stall, and a merged geometry would have to be rebuilt to move one block.
@@ -7,12 +6,18 @@
 // size and far simpler than tracking dirty regions — the world mesh made the
 // same trade.
 //
+// Split per material because **colour is the only thing an instance can carry**.
+// Roughness and emission are uniforms on the material, so a single mesh can
+// draw a thousand shades of one substance and cannot draw thatch beside ice.
+// Thirteen draw calls instead of one is nothing here — the world already makes
+// twenty, and 116,568 triangles cost this card 0.7 ms (MEASUREMENTS.md).
+//
 // Face picking is the reason this exists separately from the world's mesh: the
 // world stores a height per cell and never needs to know *which side* was hit,
 // while placing a block does (R-147).
 
 import {
-  BoxGeometry, Color, DynamicDrawUsage, Group, InstancedMesh, MeshLambertMaterial,
+  BoxGeometry, Color, DynamicDrawUsage, Group, InstancedMesh, MeshStandardMaterial,
   Object3D, Vector3,
 } from 'three';
 import type { Intersection } from 'three';
@@ -48,69 +53,105 @@ const CUBE = 1;
 export function buildBlockBody(map: EncounterMap, materials: readonly Material[]): BlockBody {
   const group = new Group();
   const geometry = new BoxGeometry(CUBE, CUBE, CUBE);
-  const material = new MeshLambertMaterial();
-  const colours = new Map(materials.map((m) => [m.id as string, new Color(m.colour)]));
-  const grains = new Map(materials.map((m) => [m.id as string, m.grain]));
-  const fallback = new Color('#ff00ff');
-  /*
-   * One scratch colour for every cube in the body (R-172). Nine thousand
-   * `new Color` would be nine thousand allocations on the rebuild that runs
-   * each time a cube is placed, to produce a value three.js copies out of
-   * immediately.
-   */
-  const shade = new Color();
-  const hsl = { h: 0, s: 0, l: 0 };
+  const known = new Map(materials.map((m) => [m.id as string, m]));
+  const unknown: Material = {
+    id: 'material:unknown' as Material['id'],
+    name: 'Unknown',
+    colour: '#ff00ff',
+    blocksSight: true,
+    grain: 0,
+    roughness: 1,
+    glow: 0,
+  };
 
-  const entries: { at: BlockCoord; colour: Color; grain: number }[] = [];
+  // Grouped first, because a mesh is per material and its size has to be known
+  // before it is made.
+  const piles = new Map<string, { material: Material; blocks: BlockCoord[] }>();
   for (const [key, materialId] of map.blocks) {
     const at = parseBlockKey(key);
     if (!at) continue;
-    // Every block handed over is drawn, at its material's own colour. Which
-    // blocks those are is the caller's decision — the console hands over a
-    // slice when the GM is levelling, and the table only ever had one (R-159).
-    entries.push({
-      at,
-      colour: colours.get(materialId as string) ?? fallback,
-      grain: grains.get(materialId as string) ?? 0,
-    });
+    const id = materialId as string;
+    let pile = piles.get(id);
+    if (!pile) {
+      pile = { material: known.get(id) ?? unknown, blocks: [] };
+      piles.set(id, pile);
+    }
+    pile.blocks.push(at);
   }
 
-  const mesh = new InstancedMesh(geometry, material, Math.max(1, entries.length));
-  mesh.instanceMatrix.setUsage(DynamicDrawUsage);
-  mesh.count = entries.length;
-
-  // Instance index -> block, so a raycast hit can be turned back into a
-  // coordinate. `instanceId` is the only thing three.js hands back.
-  const byIndex: BlockCoord[] = [];
+  /*
+   * One scratch colour for the whole body (R-172). Nine thousand `new Color`
+   * would be nine thousand allocations on the rebuild that runs each time a
+   * cube is placed, to make a value three.js copies out of immediately.
+   */
+  const base = new Color();
+  const shade = new Color();
+  const hsl = { h: 0, s: 0, l: 0 };
   const pose = new Object3D();
-  entries.forEach(({ at, colour, grain }, index) => {
-    // Blocks are addressed by their corner; the mesh is centred, so add a half.
-    pose.position.set(at.x + 0.5, at.y + 0.5, at.z + 0.5);
-    pose.updateMatrix();
-    mesh.setMatrixAt(index, pose.matrix);
+  /** Which mesh holds which blocks, so a hit can be turned back into a cube. */
+  const byMesh = new Map<InstancedMesh, BlockCoord[]>();
+  const used: MeshStandardMaterial[] = [];
+  let count = 0;
+
+  for (const { material, blocks } of piles.values()) {
+    base.set(material.colour);
+    const surface = new MeshStandardMaterial({
+      roughness: material.roughness,
+      /*
+       * Flat zero, deliberately. A metal in this lighting model reflects its
+       * surroundings and scatters almost nothing, so metalness without an
+       * environment map renders **black** — worse than the painted grey it
+       * replaces. Metal is a decision with an environment attached (D-238).
+       */
+      metalness: 0,
+    });
     /*
-     * Lightness rather than a plain multiply: scaling r, g and b together
-     * drags a colour toward black or past white and shifts how saturated it
-     * looks, where a nudge in HSL keeps the material's own hue.
+     * Set after construction rather than passed as `emissive: undefined`,
+     * which three.js answers with a warning for every material that does not
+     * glow. Twelve warnings a rebuild cost 4 ms in a browser capturing the
+     * console — more than the split they were blamed on (D-238).
      */
-    shade.copy(colour);
-    if (grain > 0) {
-      shade.getHSL(hsl);
-      shade.setHSL(hsl.h, hsl.s, Math.min(1, Math.max(0, hsl.l + grainAt(at.x, at.y, at.z) * grain)));
+    if (material.glow > 0) {
+      surface.emissive = base.clone();
+      surface.emissiveIntensity = material.glow;
     }
-    mesh.setColorAt(index, shade);
-    byIndex[index] = at;
-  });
-  mesh.instanceMatrix.needsUpdate = true;
-  if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-  group.add(mesh);
+    used.push(surface);
+
+    const mesh = new InstancedMesh(geometry, surface, Math.max(1, blocks.length));
+    mesh.instanceMatrix.setUsage(DynamicDrawUsage);
+    mesh.count = blocks.length;
+    blocks.forEach((at, index) => {
+      // Blocks are addressed by their corner; the mesh is centred, so add a half.
+      pose.position.set(at.x + 0.5, at.y + 0.5, at.z + 0.5);
+      pose.updateMatrix();
+      mesh.setMatrixAt(index, pose.matrix);
+      /*
+       * Lightness rather than a plain multiply: scaling r, g and b together
+       * drags a colour toward black or past white and changes how saturated
+       * it looks, where a nudge in HSL keeps the material's own hue (R-172).
+       */
+      shade.copy(base);
+      if (material.grain > 0) {
+        shade.getHSL(hsl);
+        const drift = grainAt(at.x, at.y, at.z) * material.grain;
+        shade.setHSL(hsl.h, hsl.s, Math.min(1, Math.max(0, hsl.l + drift)));
+      }
+      mesh.setColorAt(index, shade);
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    group.add(mesh);
+    byMesh.set(mesh, blocks);
+    count += blocks.length;
+  }
 
   return {
     group,
-    count: entries.length,
+    count,
     faceOf(hit) {
-      if (hit.object !== mesh || hit.instanceId === undefined) return null;
-      const block = byIndex[hit.instanceId];
+      const blocks = byMesh.get(hit.object as InstancedMesh);
+      if (!blocks || hit.instanceId === undefined) return null;
+      const block = blocks[hit.instanceId];
       if (!block) return null;
       const normal = hit.face?.normal;
       if (!normal) return null;
@@ -126,8 +167,8 @@ export function buildBlockBody(map: EncounterMap, materials: readonly Material[]
     },
     dispose() {
       geometry.dispose();
-      material.dispose();
-      mesh.dispose();
+      for (const surface of used) surface.dispose();
+      for (const mesh of byMesh.keys()) mesh.dispose();
     },
   };
 }
