@@ -54,7 +54,11 @@ function heapNow(): number | null {
   return perf.memory?.usedJSHeapSize ?? null;
 }
 
-export function useCost(stage: Stage | null, frames: { current: number[] }): {
+export function useCost(
+  stage: Stage | null,
+  frames: { current: number[] },
+  draws: { current: number[] },
+): {
   on: boolean;
   reading: Reading | null;
 } {
@@ -101,6 +105,7 @@ export function useCost(stage: Stage | null, frames: { current: number[] }): {
         blocks: cost?.blocks ?? 0,
         payload,
         pushes: rate(arrivals, performance.now()),
+        drawn: rate(draws.current, performance.now()),
         heap: heapNow(),
         occlusion,
         gpuMs: cost?.gpuMs ?? null,
@@ -110,7 +115,7 @@ export function useCost(stage: Stage | null, frames: { current: number[] }): {
     take();
     const timer = setInterval(take, SAMPLE_MS);
     return () => clearInterval(timer);
-  }, [on, stage, frames, occlusion]);
+  }, [on, stage, frames, draws, occlusion]);
 
   return { on, reading };
 }

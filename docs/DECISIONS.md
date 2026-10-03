@@ -4484,3 +4484,40 @@ Two things about how this was found, both the GM's doing:
   numbers were the church measured twice. Worth keeping as a habit: *check the
   state you think you are in before trusting what it reports.* The accidental
   repeat did pay for itself, by showing the measurement repeats to ±0.3 ms.
+
+### D-229 — Draw when something changes · `agreed`
+*"Should we buy more room and lower it to 20 so this tool becomes super
+cheap?"* — the right instinct aimed at the wrong number. Twenty frames a second
+buys a third less work and costs real things: the camera eases over about
+300 ms, which is six frames at 20 and ten at 30, and that easing exists because
+a sudden rotation confused people (R-156). Panning and the hover outline follow
+a pointer, where 50 ms of latency is felt.
+
+The bigger lever was sitting next to it, unasked: **nothing in this scene moves
+on its own.** A map on a table is still for minutes while the GM looks at it
+and talks. Thirty identical pictures a second is the waste, not the thirtieth.
+
+Measured: **2 frames a second idle, 30 while anything is happening** — a
+fifteenth of the work, against the third that lowering the cap would have
+bought, and with no cost to how motion feels when there is any.
+
+Two details that are the whole of whether this is safe:
+
+- **The heartbeat is slow on purpose.** Half a second, as a net under a missed
+  invalidation rather than as the mechanism. A stale screen that heals in
+  500 ms is a bug somebody reports; one that heals in 30 ms is a bug nobody
+  finds, and the second is worse.
+- **The camera eases on every tick**, drawn or not, or a turn would advance
+  only on the frames that happened to be drawn and arrive in steps.
+
+**And the panel lied again, a third time.** It read "30 fps" while the screen
+drew two, because the interval window is counted in *samples*: at two frames a
+second, 120 samples is a minute of history. Frame *duration* and frame *rate*
+are different questions and the second has to be counted against the clock.
+It reads 2 and 30 correctly now, and immediately.
+
+Three times this panel has reported something false — the per-pass counters
+(D-226), the resolution theory it was used to disprove (D-228), and now the
+rate. Each was caught by someone looking at it sceptically rather than by the
+panel noticing. That is worth remembering about instruments generally: they are
+only as good as the next person's suspicion of them.

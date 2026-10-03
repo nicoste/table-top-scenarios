@@ -23,10 +23,20 @@ export function useStage(): {
    * switching the counter on after it has happened.
    */
   frames: { current: number[] };
+  /**
+   * When each frame was drawn (R-170).
+   *
+   * Separate from the intervals, because the window of intervals is counted
+   * in samples: at two frames a second it holds a minute of history, and the
+   * panel went on reporting thirty while the screen drew two. A rate has to
+   * be measured against the clock, not against a sample count.
+   */
+  draws: { current: number[] };
 } {
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
   const [stage, setStage] = useState<Stage | null>(null);
   const frames = useRef<number[]>([]);
+  const draws = useRef<number[]>([]);
   const previous = useRef(0);
 
   useEffect(() => {
@@ -42,12 +52,14 @@ export function useStage(): {
       // still keeps the loop alive.
       const since = previous.current === 0 ? Infinity : now - previous.current;
       if (since < FRAME_BUDGET_MS - FRAME_SLOP_MS) return;
-      // The interval between *renders*, which is what the screen shows. A
-      // window of skipped ticks would read as a flattering 8 ms and mean
-      // nothing.
+      // Only when a frame was actually drawn (R-170). A still screen draws
+      // twice a second, and the panel should say so — "2 fps" while nothing
+      // is happening is the saving, reported rather than hidden.
+      const drawn = created.render();
+      if (!drawn) return;
+      draws.current = [...draws.current.filter((at) => now - at <= 2000), now];
       if (previous.current !== 0) frames.current = keepRecent(frames.current, since);
       previous.current = now;
-      created.render();
     };
     loop();
 
@@ -67,5 +79,5 @@ export function useStage(): {
     };
   }, [canvas]);
 
-  return { setCanvas, stage, frames };
+  return { setCanvas, stage, frames, draws };
 }

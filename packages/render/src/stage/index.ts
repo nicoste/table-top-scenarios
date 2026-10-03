@@ -78,6 +78,17 @@ let instances = 0;
 export const FRAME_BUDGET_MS = 1000 / 30;
 export const FRAME_SLOP_MS = 2;
 
+/**
+ * How long a still screen may go without redrawing anyway (R-170).
+ *
+ * A safety net, not the mechanism: everything that changes the picture says so
+ * (`invalidate`), and this only catches the one that forgets. Half a second is
+ * chosen to be *noticeable* if it ever fires — a stale screen that heals in
+ * 500 ms is a bug somebody reports, where one that heals in 30 ms is a bug
+ * nobody finds.
+ */
+export const IDLE_HEARTBEAT_MS = 500;
+
 
 /** What `Stage.cost()` reports (R-166). */
 export interface StageCost {
@@ -112,6 +123,15 @@ export class Stage {
   private readonly blockGhost: LineSegments;
   /** How long the last map body took to build — the usual cause of a hitch. */
   private rebuildMs = 0;
+  /*
+   * Nothing in this scene moves on its own (R-170). A map on a table is still
+   * for minutes at a time while the GM looks at it and talks, and redrawing an
+   * identical picture thirty times a second is the whole of what was making a
+   * laptop warm. So a frame is drawn when something has changed, when the
+   * camera is still easing, or when the heartbeat says it has been too long.
+   */
+  private dirty = true;
+  private lastDrawn = 0;
   /*
    * GPU time, which is the number the overlay was missing and the reason a
    * fan noticed what the panel could not (D-226). `requestAnimationFrame` is
@@ -266,6 +286,7 @@ export class Stage {
   }
 
   setCampaign(campaign: Campaign | null, recentre = false): void {
+    this.invalidate();
     if (this.world) { this.scene.remove(this.world.mesh); this.world.dispose(); this.world = null; }
     if (this.places) { this.scene.remove(this.places.group); this.places.dispose(); this.places = null; }
     this.dropPawns();
@@ -348,6 +369,7 @@ export class Stage {
    * same reason geometry and play state travel on separate channels (R-19a).
    */
   setPlacement(placement: Placement | null): void {
+    this.invalidate();
     this.placement = placement;
     this.rebuildPawns();
   }
@@ -373,6 +395,7 @@ export class Stage {
     materials: readonly Material[],
     key: string | null = null,
   ): void {
+    this.invalidate();
     if (this.blocks) {
       this.scene.remove(this.blocks.group);
       this.blocks.dispose();
@@ -413,6 +436,7 @@ export class Stage {
 
   /** Puts the travel ghost on a cell, or takes it off (R-132). */
   aimAt(cell: WorldCell | null): void {
+    this.invalidate();
     this.pawns?.aimAt(cell);
   }
 
@@ -426,6 +450,7 @@ export class Stage {
    * the same on purpose.
    */
   setFogChunks(coords: readonly SlotAddress[]): void {
+    this.invalidate();
     for (const mesh of this.fogMeshes) {
       this.fog.remove(mesh);
       mesh.geometry.dispose();
@@ -447,6 +472,7 @@ export class Stage {
 
   /** The `+` slots the GM may create a chunk in (R-79). GM console only. */
   setSlots(slots: readonly SlotAddress[]): void {
+    this.invalidate();
     for (const { mesh } of this.slotMeshes) {
       this.slots.remove(mesh);
       mesh.geometry.dispose();
@@ -465,6 +491,7 @@ export class Stage {
   }
 
   setTarget(target: CameraTarget): void {
+    this.invalidate();
     this.target = clampTarget(target);
   }
 
@@ -483,15 +510,19 @@ export class Stage {
   getTarget(): CameraTarget { return this.target; }
 
   nudgeZoom(factor: number): void {
+    this.invalidate();
     this.setTarget({ ...this.target, zoom: this.target.zoom * factor });
   }
   rotate(steps: number): void {
+    this.invalidate();
     this.setTarget({ ...this.target, yawStep: this.target.yawStep + steps });
   }
   tilt(steps: number): void {
+    this.invalidate();
     this.setTarget({ ...this.target, pitchStep: this.target.pitchStep + steps });
   }
   pan(dxScreen: number, dyScreen: number): void {
+    this.invalidate();
     // Pan in the camera's own screen plane, projected onto the ground.
     const scale = this.target.zoom / this.canvas.clientHeight;
     const yaw = yawRadians(this.target);
@@ -519,15 +550,28 @@ export class Stage {
    * can happen many times between frames, and feeding it a made-up `dt` would
    * make the turn's speed depend on how much the pointer moved.
    */
-  private advance(dt: number): void {
+  /**
+   * Says the picture has changed and a frame is owed (R-170).
+   *
+   * Public as well as internal, because a caller may change something the
+   * stage cannot see — and an extra frame costs nothing while a missed one is
+   * a screen that lies.
+   */
+  invalidate(): void {
+    this.dirty = true;
+  }
+
+  /** Returns whether the camera actually moved, which is one reason to draw. */
+  private advance(dt: number): boolean {
     const goalYaw = nearestAngle(yawDegrees(this.target), this.live.yawDeg);
     const yawDeg = approach(this.live.yawDeg, goalYaw, dt);
     const pitchDeg = approach(this.live.pitchDeg, pitchDegrees(this.target), dt);
-    if (yawDeg === this.live.yawDeg && pitchDeg === this.live.pitchDeg) return;
+    if (yawDeg === this.live.yawDeg && pitchDeg === this.live.pitchDeg) return false;
     this.live = { yawDeg, pitchDeg };
     // Only while it is actually turning, so a pan or a zoom costs a watcher
     // nothing.
     this.onCamera?.(northBearing(yawDeg));
+    return true;
   }
 
   /**
@@ -613,6 +657,7 @@ export class Stage {
    * are about to change is what is outlined.
    */
   showHighlight(address: ColumnAddress | null, height: number, size = 1): void {
+    this.invalidate();
     if (!address) { this.highlight.visible = false; return; }
     const n = Math.max(1, Math.round(size));
     const centre = columnCentre(address);
@@ -646,6 +691,7 @@ export class Stage {
    * from (D-212).
    */
   showBlockGhost(cells: readonly BlockCoord[], tint = 0xffffff): void {
+    this.invalidate();
     if (cells.length === 0 || !this.showingMap) { this.blockGhost.visible = false; return; }
     let lowX = Infinity; let lowY = Infinity; let lowZ = Infinity;
     let highX = -Infinity; let highY = -Infinity; let highZ = -Infinity;
@@ -718,6 +764,7 @@ export class Stage {
   }
 
   resize(): void {
+    this.invalidate();
     const w = this.canvas.clientWidth || 1;
     const h = this.canvas.clientHeight || 1;
     this.renderer.setSize(w, h, false);
@@ -734,17 +781,27 @@ export class Stage {
    * written on.
    */
   setOcclusion(on: boolean): void {
+    this.invalidate();
     this.occluding = on;
     this.occlusion.enabled = on;
   }
 
-  render(): void {
+  /** Draws if a frame is owed, and says whether it did (R-170). */
+  render(): boolean {
     const now = performance.now();
     // First frame has no previous one to measure against; a zero `dt` leaves the
     // camera exactly where it starts, which is what an unstarted turn means.
     const dt = this.lastFrame === 0 ? 0 : (now - this.lastFrame) / 1000;
     this.lastFrame = now;
-    this.advance(dt);
+    /*
+     * Eased every tick even when no frame is drawn, or a turn would advance
+     * only on the frames that happened to be drawn and arrive in steps.
+     */
+    const moving = this.advance(dt);
+    const owed = this.dirty || moving || now - this.lastDrawn >= IDLE_HEARTBEAT_MS;
+    if (!owed) return false;
+    this.dirty = false;
+    this.lastDrawn = now;
     this.syncCamera();
     // Markers and their names share one threshold and toggle together (R-83),
     // and neither belongs to a map's surface at all (R-148). This line used to
@@ -781,6 +838,7 @@ export class Stage {
     if (this.occluding) this.composer.render();
     else this.renderer.render(this.scene, this.camera);
     if (this.timer && this.pending) gl.endQuery(this.timer.TIME_ELAPSED_EXT);
+    return true;
   }
 
   dispose(): void {

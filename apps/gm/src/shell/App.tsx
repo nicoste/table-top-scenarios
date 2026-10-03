@@ -110,8 +110,8 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    * one place per cell (R-119) makes the cell an unambiguous handle until then.
    */
   const pendingPlaceCell = useRef<string | null>(null);
-  const { setCanvas, stage, frames } = useStage();
-  const cost = useCost(stage, frames);
+  const { setCanvas, stage, frames, draws } = useStage();
+  const cost = useCost(stage, frames, draws);
   const openedId = useRef<string | null>(null);
   const drag = useRef<{ startY: number; base: number; cell: { cx: number; cz: number; x: number; z: number } } | null>(null);
   const panning = useRef<{ x: number; y: number } | null>(null);

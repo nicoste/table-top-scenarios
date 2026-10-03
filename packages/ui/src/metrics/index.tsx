@@ -35,6 +35,14 @@ export interface Reading {
   readonly gpuMs: number | null;
   /** The frame budget this screen is capped to, which is what p95 is judged against. */
   readonly budgetMs: number;
+  /**
+   * Frames actually drawn in the last second.
+   *
+   * Counted against the clock rather than derived from the median frame time
+   * — a still screen draws twice a second and must say so (R-170), where a
+   * sample-counted window went on reporting thirty for a minute.
+   */
+  readonly drawn: number;
 }
 
 export interface MetricsProps {
@@ -55,8 +63,8 @@ export function Metrics({ reading, hint }: MetricsProps) {
       <dl>
         {/* The headline is the median, and the hitch gets its own row — a
             screen can read sixty and still jolt every time a map rebuilds. */}
-        <dt>rate</dt>
-        <dd>{frames ? `${frames.fps.toFixed(0)} fps` : '—'}</dd>
+        <dt>drawn</dt>
+        <dd>{`${reading.drawn} fps`}</dd>
         <dt>frame p50</dt>
         <dd>{frames ? ms(frames.p50) : '—'}</dd>
         {/* Judged against the cap this screen runs at, not an absolute: at

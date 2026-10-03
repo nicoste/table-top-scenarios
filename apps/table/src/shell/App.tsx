@@ -32,8 +32,8 @@ interface Props {
 const CLICK_SLOP = 4;
 
 export function App({ view, status, rejection, dispatch }: Props) {
-  const { setCanvas, stage, frames } = useStage();
-  const cost = useCost(stage, frames);
+  const { setCanvas, stage, frames, draws } = useStage();
+  const cost = useCost(stage, frames, draws);
   const openedId = useRef<string | null>(null);
   const drag = useRef<{ x: number; y: number; moved: boolean } | null>(null);
   const [travel, setTravel] = useState<Travel>(idle);

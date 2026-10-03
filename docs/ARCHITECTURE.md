@@ -2282,6 +2282,34 @@ apps/host/src/
 > and fill do not, and asking the tool would let a held Shift drag an erase
 > through the geometry it is eating.
 
+> **R-170.** **A frame is drawn when something changed, not thirty times a
+> second.**
+>
+> Nothing in this scene moves on its own. A map on a table is still for minutes
+> while the GM looks at it and talks, and redrawing an identical picture thirty
+> times a second was most of what made a laptop warm. A frame is owed when
+> something called `invalidate`, when the camera is still easing, or when the
+> heartbeat says it has been too long. Measured: **2 frames a second idle, 30
+> while anything is happening.**
+>
+> **Every method that changes the picture invalidates**, and `invalidate` is
+> public besides, because an extra frame costs nothing and a missed one is a
+> screen that lies.
+>
+> The **heartbeat is a safety net, not the mechanism**, and it is deliberately
+> slow — half a second. A stale screen that heals in 500 ms is a bug somebody
+> reports; one that heals in 30 ms is a bug nobody ever finds.
+>
+> The camera is **eased on every tick even when no frame is drawn**, or a turn
+> would advance only on the frames that happened to be drawn and arrive in
+> steps.
+>
+> **The rate on the panel is counted against the clock**, not derived from the
+> median frame time. The interval window is counted in *samples*, so at two
+> frames a second it holds a minute of history — and it duly went on reporting
+> thirty while the screen drew two (D-229). Frame *duration* and frame *rate*
+> are different questions and need different windows.
+
 > **R-169.** **Both screens are capped at 30 frames a second.**
 >
 > This is a map on a table. Nothing in it moves except a camera easing between
