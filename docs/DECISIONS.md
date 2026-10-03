@@ -4777,3 +4777,44 @@ what made this safe to do mechanically.
   `Vector3`s on every pointer move to replace an allocation-free loop. The
   rule from O-027 applies to tidiness as much as to performance: a change that
   measurably costs something and buys only neatness is not an improvement.
+
+### D-237 — Grain, so a wall is not forty identical swatches · `agreed`
+The first of the material-appearance round, and the one the GM remembered from
+the original brainstorm as *"an effect to the sides of the cubes so they don't
+look like legos"*.
+
+What reads as moulded plastic is not the cube shape — it is that every cube of
+one material is the **exact same colour**. A few percent of drift per cube
+removes it, and costs no texture, no shader, no art, and 1.1 ms of rebuild:
+4.2 ms to 5.3 on a 9,714-cube church.
+
+Three choices inside it:
+
+- **Deterministic, from the coordinate.** The body is rebuilt whole on every
+  edit (R-171 was reverted but the rebuild remains), so a random shade would
+  mean every cube in the map shimmering each time one is placed. A hash of
+  x, y and z gives the same cube the same shade forever, and two maps built
+  the same way look the same.
+- **An integer hash, not `Math.sin(n * 12.9898)`.** The usual one-liner bands
+  on integer grids, which is the precise arrangement every cube here is in —
+  a run of them picks up a visible ripple that looks worse than no grain.
+- **Lightness in HSL, not a multiply on RGB.** Scaling the channels together
+  drags a colour toward black or past white and changes its apparent
+  saturation. The registry's colours are muted deliberately — *"saturated
+  blocks fight whatever stands on them"* — and a hue-preserving nudge keeps
+  that intact.
+
+The amount belongs to the material, which is the shape the GM asked for:
+*"a cube with a material and that material concentrates the data that
+describes how it looks."* Thatch, dirt, grass and sand wander most; snow,
+metal, water and ice barely; glass not at all.
+
+**A note on the tests, because two of them were wrong first.** The property
+here is statistical and I twice asserted something stronger than a hash can
+promise: that 256 samples would land in more than 160 distinct buckets (a
+perfect hash collides into about 148 by birthday alone), and that *every*
+adjacent pair differs (a uniform hash will occasionally match two neighbours,
+and that looks fine — stone does that). Both would have been passed by tuning
+the threshold until green, which is how a test ends up passing for the wrong
+reason. They assert the real property now: neighbours differ **on average**,
+and the row has no short period.

@@ -18,6 +18,7 @@ import {
 import type { Intersection } from 'three';
 import type { BlockCoord, EncounterMap, Material } from '@tt/domain';
 import { parseBlockKey } from '@tt/domain';
+import { grainAt } from '../grain/index.js';
 
 /** Where a click on a block face means a new block should go (R-147). */
 export interface FacePick {
@@ -49,16 +50,29 @@ export function buildBlockBody(map: EncounterMap, materials: readonly Material[]
   const geometry = new BoxGeometry(CUBE, CUBE, CUBE);
   const material = new MeshLambertMaterial();
   const colours = new Map(materials.map((m) => [m.id as string, new Color(m.colour)]));
+  const grains = new Map(materials.map((m) => [m.id as string, m.grain]));
   const fallback = new Color('#ff00ff');
+  /*
+   * One scratch colour for every cube in the body (R-172). Nine thousand
+   * `new Color` would be nine thousand allocations on the rebuild that runs
+   * each time a cube is placed, to produce a value three.js copies out of
+   * immediately.
+   */
+  const shade = new Color();
+  const hsl = { h: 0, s: 0, l: 0 };
 
-  const entries: { at: BlockCoord; colour: Color }[] = [];
+  const entries: { at: BlockCoord; colour: Color; grain: number }[] = [];
   for (const [key, materialId] of map.blocks) {
     const at = parseBlockKey(key);
     if (!at) continue;
     // Every block handed over is drawn, at its material's own colour. Which
     // blocks those are is the caller's decision — the console hands over a
     // slice when the GM is levelling, and the table only ever had one (R-159).
-    entries.push({ at, colour: colours.get(materialId as string) ?? fallback });
+    entries.push({
+      at,
+      colour: colours.get(materialId as string) ?? fallback,
+      grain: grains.get(materialId as string) ?? 0,
+    });
   }
 
   const mesh = new InstancedMesh(geometry, material, Math.max(1, entries.length));
@@ -69,12 +83,22 @@ export function buildBlockBody(map: EncounterMap, materials: readonly Material[]
   // coordinate. `instanceId` is the only thing three.js hands back.
   const byIndex: BlockCoord[] = [];
   const pose = new Object3D();
-  entries.forEach(({ at, colour }, index) => {
+  entries.forEach(({ at, colour, grain }, index) => {
     // Blocks are addressed by their corner; the mesh is centred, so add a half.
     pose.position.set(at.x + 0.5, at.y + 0.5, at.z + 0.5);
     pose.updateMatrix();
     mesh.setMatrixAt(index, pose.matrix);
-    mesh.setColorAt(index, colour);
+    /*
+     * Lightness rather than a plain multiply: scaling r, g and b together
+     * drags a colour toward black or past white and shifts how saturated it
+     * looks, where a nudge in HSL keeps the material's own hue.
+     */
+    shade.copy(colour);
+    if (grain > 0) {
+      shade.getHSL(hsl);
+      shade.setHSL(hsl.h, hsl.s, Math.min(1, Math.max(0, hsl.l + grainAt(at.x, at.y, at.z) * grain)));
+    }
+    mesh.setColorAt(index, shade);
     byIndex[index] = at;
   });
   mesh.instanceMatrix.needsUpdate = true;

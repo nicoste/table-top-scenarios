@@ -2282,6 +2282,27 @@ apps/host/src/
 > and fill do not, and asking the tool would let a held Shift drag an erase
 > through the geometry it is eating.
 
+> **R-172.** **No two cubes of one material are quite the same shade.**
+>
+> Each cube's lightness is nudged by a few percent, by an amount the material
+> owns — `grain`, high for thatch and dirt, nothing for glass. What makes a
+> voxel wall read as moulded plastic is forty identical swatches in a row, and
+> a few percent of drift breaks it with no texture, no shader and no art.
+>
+> **Deterministic from the coordinate, never random.** The body is rebuilt
+> whole on every edit, so a random shade would mean every cube in the map
+> shimmering each time the GM places one. The same cube is the same shade for
+> the life of the map.
+>
+> **Lightness in HSL, not a multiply on RGB**, which drags a colour toward
+> black or past white and changes how saturated it looks. The material's hue
+> is what the GM picked from the palette and it survives.
+>
+> `grain` sits beside `blocksSight` in the registry and the two must never be
+> derived from one another: one is how a material **draws**, the other is what
+> it **does** (D-237). The same line will separate a shade from a material
+> when variants arrive.
+
 > **R-170.** **A frame is drawn when something changed, not thirty times a
 > second.**
 >

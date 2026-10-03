@@ -122,7 +122,8 @@ very nearly a fixed cost.
 | triangles with occlusion on | 233,141 — the scene is rasterised twice for the normal buffer |
 | triangles if faces were culled | 39,540 — built, measured, reverted (O-027) |
 | rebuild, instanced | **4.2 ms** |
-| rebuild, meshed with culling | 16.6 ms |
+| rebuild, meshed with culling | 16.6 ms — built and reverted (O-027) |
+| rebuild, instanced with grain | **5.3 ms** — a hash and an HSL nudge per cube (R-172) |
 
 ---
 
