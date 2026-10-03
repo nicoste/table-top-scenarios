@@ -4409,3 +4409,39 @@ and occlusion cost about 19.7 — so it *fits*, where uncapped it was saturating
 That does not make it free, and it stays off by default, but it moves the
 question from "can this run at all" to "is it worth 60% of a frame", which is
 the GM's to answer with the panel open.
+
+### D-227 — Occlusion at half resolution, and what the doubling meant · `agreed`
+With GPU time finally on the panel, the GM read the two states and named both
+numbers: *"with the AO enabled, we have doubled the triangles and GPU is many
+times above without it."*
+
+| | GPU | draw calls | triangles |
+| --- | --- | --- | --- |
+| occlusion off | **0.5 ms** | 2 | 116,568 |
+| occlusion on | **9.4 ms** | 8 | **233,141** |
+
+Both halves have precise causes, and they point in different directions.
+
+**The doubling is a second render of the scene.** GTAO needs a normal buffer,
+so every cube is rasterised again through an override material: 116,568 × 2,
+plus the full-screen quads. Nothing can be done about that from here — the pass
+can take an external g-buffer, but producing one means an MRT setup we do not
+have. What it *does* mean is that **face culling now pays twice**: the round
+set aside earlier would take 58,284 faces to 19,770, and occlusion re-draws all
+of them.
+
+**The nineteen-fold GPU is per-pixel, not geometry.** A 0.5 ms scene says the
+cubes cost the card almost nothing; the 8.9 ms on top is the AO shader at the
+device pixel ratio — sixteen samples at each of three million pixels. So the
+lever is resolution, and `GTAOPass` does not offer it as a parameter: the
+composer sizes every pass to the canvas, and the pass has to be shrunk again
+afterwards. Occlusion is the lowest-frequency thing in the picture, so it is
+also what loses least to being computed coarse.
+
+Measured here on an empty scene it costs 4.6 ms at half resolution, which says
+plainly that the pass is not cheap even with nothing in front of it. The
+measurement that decides this is the GM's, on their machine with their church.
+
+What this is really a record of: the overlay has now paid for itself twice
+over. It caught its own lie about triangles (D-226), and it turned "my laptop
+is warm" into two numbers with two different causes and two different answers.

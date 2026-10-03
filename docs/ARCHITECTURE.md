@@ -2337,6 +2337,17 @@ apps/host/src/
 > default target has no samples — wiring this up naively trades soft corners
 > for jagged edges on every cube.
 >
+> **The occlusion pass runs at half the canvas's width and height** (D-227).
+> It is a per-pixel effect at the device pixel ratio, so full size on a 2×
+> display means fifty million samples a frame; and broad shadow in corners is
+> the lowest-frequency thing in the picture, so it loses least to being
+> computed coarse and sampled back up.
+>
+> **It renders the scene twice.** GTAO needs a normal buffer, so every cube is
+> rasterised again with an override material — 116,568 triangles became
+> 233,141 with occlusion on, which is the measurement that makes face culling
+> worth twice what it looked like.
+>
 > Face culling — drawing only the faces that border air — is worth doing on its
 > own merits and is **not** part of this. A church of 9,714 cubes draws 58,284
 > faces of which 19,770 can be seen. That is a performance change, and tangling
