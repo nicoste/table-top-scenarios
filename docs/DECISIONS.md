@@ -5287,3 +5287,54 @@ migration that rewrites every map that holds it.
 The Eight's Church — 9,714 cubes, 96×96, fifteen levels — and that campaign no
 longer exists. The numbers remain true of the build that produced them and are
 no longer reproducible as written. Noted there rather than quietly left to rot.
+
+### D-246 — Six figures, and the three families that were still flat · `agreed`
+The GM went through the palette row by row. Brick *"perfect"*; wood and grass
+*"subtle, I like it"* with a request to take the contrast *"a REALLY small up"*;
+mineral, soil and vegetation *"I don't see the figure, looks plain"* — which was
+exactly right, because those three had `pattern: 'none'` and nothing had been
+written for them yet.
+
+**Three new figures, and two of them share one idea.** Cellular noise — the
+distance to the nearest of a set of scattered points, and to the second
+nearest — read two ways:
+
+- **`plates`, for Mineral.** The *gap* between the two distances goes to zero
+  exactly on the line equidistant from two points, which draws a seam. Irregular
+  plates divided by cracks is what a cave wall is, and it is what no amount of
+  plain noise looks like. Each plate takes its own shade from the cell's id, so
+  a rock face is cut from one rock without being one colour.
+- **`leaves`, for Vegetation.** The same cells read by *distance* instead of
+  seam: each cell is a lobe, bright at its middle and dark at the gap.
+- **`grit`, for Soil.** Not cells but two octaves of value noise, much finer
+  than grass's. The whole difference between soil and grass is grain size, so
+  that is the only thing the two figures differ in.
+
+**And a rule fell out of writing them.** `grit`'s fine octave is 26 cycles per
+world unit, which is smaller than a pixel as soon as the camera pulls back —
+and a detail finer than its pixel does not read as texture, it crawls. Faded
+out with `fwidth` before it can shimmer, now in R-177, and applied to grass's
+fine octave too, which had the same latent problem and nobody had zoomed out
+far enough to see it.
+
+Wood and grass went from 0.10 to **0.12** — the "really small up" asked for, and
+the same kind of number the GM has tuned four times before on grain.
+
+**Three registry changes in the same breath**, all the GM's:
+
+- **Ice leaves Liquids for Glassy.** What ice has in common with glass is that
+  you look *through* it at something hard; what it has in common with water is
+  only its chemistry, and the family is the look (R-178).
+- **Mana goes.** Lava and acid are enough glow.
+- **Glass becomes "Glassy."** A display-name change, which R-11 leaves free —
+  the id stays `material:glass` forever, and that distinction is the whole
+  reason the law is about ids rather than names.
+
+**What it cost: nothing, again.** Occlusion off, same camera, six samples:
+1.4 ms with figures and 1.5 without, which is noise reading slightly in the
+wrong direction. Shader programs 22 → 25 with no compile stall; worst frame
+34.2 ms.
+
+The test that every declared pattern has a shader (R-177) earned itself here:
+three families gained a `pattern` name in one edit and a shader in another, and
+it is the thing that would have caught them shipping apart.

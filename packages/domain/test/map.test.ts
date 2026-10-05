@@ -234,9 +234,11 @@ describe('the materials registry (R-75)', () => {
     const byName = (n: string) => DEFAULT_MATERIALS.find((m) => m.name === n)!;
     expect(byName('Brick').blocksSight).toBe(true);
     expect(byName('Mineral').blocksSight).toBe(true);
-    expect(byName('Glass').blocksSight).toBe(false);
+    expect(byName('Glassy').blocksSight).toBe(false);
     expect(byName('Liquids').blocksSight).toBe(false);
-    expect(byName('Liquids').cuts.map((cut) => cut.name)).toContain('Ice');
+    // Ice is glassy, not liquid: what it shares with glass is that you look
+    // through it at something hard (D-246).
+    expect(byName('Glassy').cuts.map((cut) => cut.name)).toContain('Ice');
   });
 });
 
@@ -775,7 +777,7 @@ describe('families and their cuts (R-178)', () => {
 
   it('refuses a cut that belongs to another family', () => {
     // Gold is a mineral; it is not a kind of glass.
-    const glass = DEFAULT_MATERIALS.find((m) => m.name === 'Glass')!;
+    const glass = DEFAULT_MATERIALS.find((m) => m.name === 'Glassy')!;
     expect(isKnownSwatch(swatchOf(MINERAL.id, 'gold'))).toBe(true);
     expect(isKnownSwatch(swatchOf(glass.id, 'gold'))).toBe(false);
   });
@@ -797,7 +799,7 @@ describe('families and their cuts (R-178)', () => {
 
   it('keeps the families the registry is organised by, and drops what folded in', () => {
     expect(DEFAULT_MATERIALS.map((m) => m.name)).toEqual([
-      'Brick', 'Mineral', 'Wood', 'Soil', 'Grass', 'Vegetation', 'Liquids', 'Glowing', 'Glass',
+      'Brick', 'Mineral', 'Wood', 'Soil', 'Grass', 'Vegetation', 'Liquids', 'Glowing', 'Glassy',
     ]);
     // Metal, thatch, stone, sand, dirt, snow and ice are cuts now, not families.
     for (const gone of ['metal', 'thatch', 'stone', 'sand', 'dirt', 'snow', 'ice', 'water']) {

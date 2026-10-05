@@ -2457,6 +2457,13 @@ apps/host/src/
 > measured at 2.8 ms against 2.9 with the whole scene rasterising in 2.9
 > (D-244).
 >
+> **No octave finer than a pixel.** A detail smaller than the pixel it is drawn
+> into does not read as texture; it reads as noise crawling over the map every
+> time the camera moves — the same thing grain was careful to avoid on the CPU
+> side (R-172). Fine octaves are faded out by `fwidth` before they can shimmer,
+> which costs one instruction and is the difference between a figure and a
+> fizz.
+>
 > **A switch, like occlusion** (R-168), on `T` and with its state on the cost
 > panel — so the person in front of the screen can A/B it against the numbers.
 > On by default, on both screens.

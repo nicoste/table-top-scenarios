@@ -29,14 +29,22 @@ describe('a material cannot ask for a figure that is not there (R-177)', () => {
   });
 
   it('leaves a family with no figure alone', () => {
-    const mineral = DEFAULT_MATERIALS.find((m) => m.name === 'Mineral')!;
-    expect(mineral.pattern).toBe('none');
-    expect(isFigured(mineral)).toBe(false);
+    // The ones with no structure to draw: a liquid's surface is its motion and
+    // glass has nothing in it at all.
+    const glassy = DEFAULT_MATERIALS.find((m) => m.name === 'Glassy')!;
+    expect(glassy.pattern).toBe('none');
+    expect(isFigured(glassy)).toBe(false);
   });
 
-  it('figures the three that have one, and only those', () => {
+  it('figures every family that has a structure, and only those', () => {
     const figured = DEFAULT_MATERIALS.filter((m) => m.pattern !== 'none');
-    expect(figured.map((m) => `${m.name}:${m.pattern}`).sort())
-      .toEqual(['Brick:courses', 'Grass:speckle', 'Wood:stripes']);
+    expect(figured.map((m) => `${m.name}:${m.pattern}`).sort()).toEqual([
+      'Brick:courses',
+      'Grass:speckle',
+      'Mineral:plates',
+      'Soil:grit',
+      'Vegetation:leaves',
+      'Wood:stripes',
+    ]);
   });
 });

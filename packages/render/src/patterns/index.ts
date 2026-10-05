@@ -27,9 +27,17 @@ import type { MeshStandardMaterial, WebGLProgramParametersWithUniforms } from 't
  * *within* one cube's face and wants to be stronger to read at a table's
  * distance, but it is still a surface and not a paint job.
  */
-const DEPTH = 0.1;
+const DEPTH = 0.12;
 /** Mortar is a groove, so it only ever darkens, and harder than the rest. */
 const MORTAR = 0.22;
+/** A crack between two plates of rock is a shadow, so it is harder still. */
+const SEAM = 0.26;
+/** And each plate is cut from the same rock, so it wanders less than the seam. */
+const PLATE = 0.09;
+/** Grit is many small grains rather than a few big marks. */
+const GRIT = 0.14;
+/** A leaf catches more light than the gap beside it; this is the one with relief. */
+const LEAF = 0.22;
 
 /**
  * Multiplies the diffuse colour rather than nudging lightness in HSL the way
@@ -81,6 +89,46 @@ float ttNoise(vec2 uv) {
     u.y
   );
 }
+
+/*
+  Cellular noise: distance to the nearest scattered point, the distance to the
+  second nearest, and a number belonging to the nearest cell.
+
+  The gap between the two distances is a *seam* — it goes to zero exactly on
+  the line equidistant from two points — which is what draws a cracked rock
+  face without drawing a grid. The third component gives every cell its own
+  shade, so plates and leaves are cut from the same stuff without being
+  identical.
+*/
+vec3 ttCells(vec2 uv) {
+  vec2 i = floor(uv);
+  vec2 f = fract(uv);
+  float near = 8.0;
+  float next = 8.0;
+  float id = 0.0;
+  for (int y = -1; y <= 1; y += 1) {
+    for (int x = -1; x <= 1; x += 1) {
+      vec2 g = vec2(float(x), float(y));
+      vec2 at = i + g;
+      vec2 to = g + vec2(ttHash(at), ttHash(at + 71.3)) - f;
+      float d = dot(to, to);
+      if (d < near) { next = near; near = d; id = ttHash(at + 13.7); }
+      else if (d < next) { next = d; }
+    }
+  }
+  return vec3(sqrt(near), sqrt(next), id);
+}
+
+/*
+  How much of a detail at this frequency survives.
+
+  An octave finer than a pixel does not read as texture — it reads as noise
+  crawling over the map every time the camera moves, which is what grain was
+  careful to avoid on the CPU side (R-172). Faded out before it can shimmer.
+*/
+float ttDetail(vec2 uv, float freq) {
+  return clamp(1.0 - fwidth(uv.x) * freq * 2.0, 0.0, 1.0);
+}
 `;
 
 /**
@@ -107,8 +155,49 @@ float ttFigured(vec2 uv) {
    */
   speckle: /* glsl */ `
 float ttFigured(vec2 uv) {
-  float n = ttNoise(uv * 5.0) * 0.65 + ttNoise(uv * 17.0) * 0.35;
-  return 1.0 + (n - 0.5) * ${DEPTH.toFixed(3)};
+  float broad = ttNoise(uv * 5.0) - 0.5;
+  float fine = (ttNoise(uv * 17.0) - 0.5) * ttDetail(uv, 17.0);
+  return 1.0 + (broad * 0.65 + fine * 0.35) * ${DEPTH.toFixed(3)};
+}
+`,
+  /*
+   * Rock: irregular plates divided by seams, which is what a cave wall is and
+   * what no amount of noise looks like. The seam is the gap between the two
+   * nearest cell points, so it follows the cells rather than a grid — turn the
+   * camera and nothing about it reads as repeating.
+   */
+  plates: /* glsl */ `
+float ttFigured(vec2 uv) {
+  vec3 cell = ttCells(uv * 2.0);
+  float seam = smoothstep(0.0, 0.07, cell.y - cell.x);
+  float plate = (cell.z - 0.5) * ${PLATE.toFixed(3)};
+  return mix(1.0 - ${SEAM.toFixed(3)}, 1.0 + plate, seam);
+}
+`,
+  /*
+   * Soil: many small grains rather than a few broad patches, which is the
+   * whole difference between this and grass. The fine octave is the one doing
+   * the work, so it is also the one that would crawl — faded with distance.
+   */
+  grit: /* glsl */ `
+float ttFigured(vec2 uv) {
+  float broad = ttNoise(uv * 6.0) - 0.5;
+  float fine = (ttNoise(uv * 26.0) - 0.5) * ttDetail(uv, 26.0);
+  return 1.0 + (broad * 0.4 + fine * 0.6) * ${GRIT.toFixed(3)} * 2.0;
+}
+`,
+  /*
+   * Foliage: rounded lobes with dark between them. The same cells as rock,
+   * read the other way round — the *distance* rather than the seam, so each
+   * cell is a leaf bright at its middle instead of a plate with a crack
+   * around it.
+   */
+  leaves: /* glsl */ `
+float ttFigured(vec2 uv) {
+  vec3 cell = ttCells(uv * 4.0);
+  float leaf = smoothstep(0.62, 0.12, cell.x);
+  float tint = (cell.z - 0.5) * ${(LEAF * 0.5).toFixed(3)};
+  return 1.0 + (leaf - 0.5) * ${LEAF.toFixed(3)} + tint;
 }
 `,
   /*

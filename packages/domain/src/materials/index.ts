@@ -100,7 +100,7 @@ export interface Material {
    * that means in a shader is the renderer's business, the same way
    * `roughness` names a property and not a lighting model (R-173).
    */
-  readonly pattern: 'none' | 'stripes' | 'speckle' | 'courses';
+  readonly pattern: 'none' | 'stripes' | 'speckle' | 'courses' | 'plates' | 'grit' | 'leaves';
   /**
    * The substances in this family, **the first of them being the default**.
    *
@@ -182,7 +182,7 @@ export const DEFAULT_MATERIALS: readonly Material[] = [
     c('dark-rock', 'Dark rock', '#5f6672'),
     c('gold', 'Gold', '#b89a4e'),
     c('copper', 'Copper', '#a8714c'),
-  ]),
+  ], { pattern: 'plates' }),
 
   family('wood', 'Wood', [
     c('oak', 'Oak', '#9c7a4a'),
@@ -194,7 +194,7 @@ export const DEFAULT_MATERIALS: readonly Material[] = [
     c('dirt', 'Dirt', '#7a6248'),
     c('sand', 'Sand', '#cbb887'),
     c('snow', 'Snow', '#e4e9ef'),
-  ], { grain: ROUGH, roughness: 1 }),
+  ], { pattern: 'grit', grain: ROUGH, roughness: 1 }),
 
   // `dried` is the old thatch. A roof of it reads as a lawn rather than as laid
   // bundles, which is the thing traded away for not carrying a whole family in
@@ -209,27 +209,28 @@ export const DEFAULT_MATERIALS: readonly Material[] = [
     c('leaves', 'Leaves', '#4f7a3f'),
     c('light', 'Light leaves', '#6b9a52'),
     c('dark', 'Dark leaves', '#3a5c30'),
-  ], { grain: ROUGH, roughness: MATT }),
+  ], { pattern: 'leaves', grain: ROUGH, roughness: MATT }),
 
   // Transparent: present as geometry, invisible to sight (R-75), and
-  // see-through to look at as well (R-174). Ice is in here because it is frozen
-  // water, and because 0.72 and 0.75 are the same number at a table.
+  // see-through to look at as well (R-174).
   family('liquid', 'Liquids', [
     c('water', 'Water', '#4a7fb5'),
     c('green', 'Green water', '#4a8f7a'),
     c('shore', 'Shore', '#8fb8d4'),
-    c('ice', 'Ice', '#b9d6e4'),
   ], { blocksSight: false, grain: SMOOTH, roughness: 0.22, opacity: WATERY }),
 
   family('glowing', 'Glowing', [
     c('lava', 'Lava', '#c2542a'),
     c('acid', 'Acid', '#7ab52a'),
-    c('mana', 'Mana', '#4a6fd4'),
   ], { glow: 0.75 }),
 
-  family('glass', 'Glass', [
+  // Ice sits here rather than with the liquids: what it has in common with
+  // glass is that you look *through* it at something hard, and the family is
+  // the look, not the chemistry. The name is the family's display name, which
+  // R-11 leaves free — the id stays `material:glass` forever (D-246).
+  family('glass', 'Glassy', [
     c('glass', 'Glass', '#a8c7dd'),
-    c('frosted', 'Frosted', '#cdd9e2'),
+    c('ice', 'Ice', '#b9d6e4'),
   ], { blocksSight: false, grain: 0, roughness: POLISHED, opacity: CLEAR }),
 ];
 
