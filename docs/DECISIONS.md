@@ -5110,3 +5110,39 @@ campaign in it, where the GM said *"forget about maps, I don't care, feel free
 to touch them."* Once a campaign exists that anyone minds losing, R-11 applies
 with no exception, and removing an entry means a migration that rewrites every
 map that holds it.
+
+### D-243 — One strip, and the shared class that quietly broke the terrain list · `agreed`
+D-242's row kept the old chip on the left and put the variations on the right,
+which was not what the GM had asked for and they said so: *"we have now a
+shade on the left and a shade or more to the right. I was specific about
+having the name to the left and all the shade variations to the right."*
+
+They were right twice. It is not what they specified, and it was **two
+indicators for one selection**: picking plain lit a ring on the left chip,
+picking a cut lit a square on the right, so the eye had to learn that one row
+had two places to look. Now the name is the left and every look is the right,
+plain included, ordered darkest first so the strip reads as a ramp.
+
+Plain stays out of `shades` — a material is its plain cut (D-242), and nothing
+about the encoding changes. The panel asks `cutsOf(material)`, which adds plain
+and sorts by lift. The **ordering is a decision, not a detail**: by lift, so
+the row is a ramp rather than the order somebody happened to type.
+
+**The hover they pointed at.** Three highlights were landing on one row at
+once: the row's own hover, the white ring on the left chip, and the browser's
+focus ring on a square. The ring is now a single `outline` on the chosen
+square — outside the border, moving nothing, legible on a dark row and on the
+accent alike — and focus has a style of its own instead of the browser's.
+
+**And the real bug underneath it**, which the screenshot showed without
+either of us looking for it: the world's terrain list uses the *same*
+`.palette` class. D-242 renamed `.palette button` to `.palette .pick` for the
+material rows, and nothing in the terrain list is called `.pick` — so every
+terrain row silently lost its width, padding, gap and transparent background.
+Nobody had opened the world map between that commit and this one.
+
+Two things follow. The shared rules are shared again, and what belongs only to
+the material rows is scoped under `.swatches`. And the lesson, which is cheap
+to state and was not cheap to find: **renaming a selector is an edit to every
+component that matches it**, and a class named for what it looks like rather
+than what it is will be matched by components you are not thinking about.

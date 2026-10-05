@@ -9,7 +9,7 @@ import type { MapTool } from '@tt/client-core';
 import { CAMERA_HINT } from '@tt/client-core';
 import {
   MAP_MAX_HEIGHT, MAP_MIN_DEPTH, BRUSHES, isFullRange, stepLabel,
-  PLAIN, swatchOf, materialIn, shadeIdIn, colourOf,
+  swatchOf, materialIn, shadeIdIn, cutsOf, colourOf,
 } from '@tt/domain';
 import type { LevelRange, Material, SwatchId } from '@tt/domain';
 import { Tooltip } from '@tt/ui';
@@ -199,9 +199,9 @@ export function MapPanel({
           {tool === 'build' && (
             <>
               Click a block&apos;s face; the new ones land against it in the shape of the
-              brush. Blocks already standing are skipped, never overwritten. Hold
-              <b>⇧ shift</b> to <b>erase</b> instead — the outline turns red. Hold
-              <b>⌥ alt</b> to build <b>under</b> the cube — the only way down, since a
+              brush. Blocks already standing are skipped, never overwritten.
+              Hold <b>⇧ shift</b> to <b>erase</b> instead — the outline turns red.
+              Hold <b>⌥ alt</b> to build <b>under</b> the cube — the only way down, since a
               camera above the horizon never sees an underside — and a column sinks a
               shaft instead of raising a wall.
             </>
@@ -212,7 +212,7 @@ export function MapPanel({
             <>
               Click a block to repaint it, or drag the brush across several. Nothing moves.
               Hold <b>⇧ shift</b> to <b>fill</b>: everything joined to the block you click,
-              of the same material, is repainted. The readout says how many.
+              of the same cut of the same material, is repainted. The readout says how many.
             </>
           )}
         </p>
@@ -223,51 +223,49 @@ export function MapPanel({
       {(
         <div className="card">
           <h2>Material</h2>
-          <ul className="palette">
+          <ul className="palette swatches">
             {materials.map((material) => (
               <li key={material.id} className={material.id === chosenMaterial ? 'on' : ''}>
                 {/*
-                  The row picks the material in its plain cut; each rectangle
-                  beside it picks one of that material's own (R-176). Two
-                  buttons rather than one with hit-testing inside it: they are
-                  two actions, and a keyboard has to reach both.
+                  The name picks the material plain; the squares beside it are
+                  **all** of that material's looks, plain among them, darkest
+                  first (R-176). One strip rather than a chip on the left and
+                  variations on the right, which asked the eye to read one row
+                  as two different things.
                 */}
-                <button
-                  className={`pick${
-                    material.id === chosenMaterial && chosenCut === PLAIN ? ' lit' : ''
-                  }`}
-                  onClick={() => onSwatch(swatchOf(material.id))}
-                >
-                  <span className="chip" style={{ background: material.colour }} />
+                <button className="pick" onClick={() => onSwatch(swatchOf(material.id))}>
                   <span className="nm">{material.name}</span>
                   {/* Said out loud at a table, and the reason it is a material
                       property rather than a block one (R-75). */}
                   {!material.blocksSight && <span className="diff">see-through</span>}
                 </button>
-                {material.shades.map((shade) => (
-                  <Tooltip
-                    key={shade.id}
-                    label={`${shade.name} ${material.name.toLowerCase()}`}
-                    placement="left"
-                  >
-                    <button
-                      className={`cut${
-                        material.id === chosenMaterial && shade.id === chosenCut ? ' lit' : ''
-                      }`}
-                      style={{ background: colourOf(material, shade.id) }}
-                      onClick={() => onSwatch(swatchOf(material.id, shade.id))}
-                      aria-label={`${shade.name} ${material.name.toLowerCase()}`}
-                    />
-                  </Tooltip>
-                ))}
+                <span className="cuts">
+                  {cutsOf(material).map((shade) => (
+                    <Tooltip
+                      key={shade.id}
+                      label={`${shade.name} ${material.name.toLowerCase()}`}
+                      placement="left"
+                    >
+                      <button
+                        className={`cut${
+                          material.id === chosenMaterial && shade.id === chosenCut ? ' lit' : ''
+                        }`}
+                        style={{ background: colourOf(material, shade.id) }}
+                        onClick={() => onSwatch(swatchOf(material.id, shade.id))}
+                        aria-label={`${shade.name} ${material.name.toLowerCase()}`}
+                        aria-pressed={material.id === chosenMaterial && shade.id === chosenCut}
+                      />
+                    </Tooltip>
+                  ))}
+                </span>
               </li>
             ))}
           </ul>
           <p className="hint">
-            Tap a row for the material plain, or one of the squares beside it
-            for a cut of that same material — still the same stone, so it
-            weighs the same in every rule. A <b>fill</b> stops where the cut
-            changes, which is what lets you repaint one course of a wall.
+            A material&apos;s cuts sit in its own row, darkest first. Still the
+            same stone either way, so it weighs the same in every rule — and
+            a <b>fill</b> stops where the cut changes, which is what lets you
+            repaint one course of a wall.
           </p>
         </div>
       )}

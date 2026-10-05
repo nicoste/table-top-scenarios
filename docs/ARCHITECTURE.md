@@ -2410,6 +2410,13 @@ apps/host/src/
 > material". One piece of state, and the panel cannot show a combination that
 > does not exist.
 >
+> **And one strip, not a chip and a strip.** A row is the material's name on
+> the left and *every* look it has on the right, plain among them, darkest
+> first. Plain is still absent from `shades` — the domain is unchanged — and
+> the panel asks `cutsOf` for the row it draws. Splitting plain onto a chip at
+> the left and the variations at the right made one row read as two different
+> controls, and gave one selection two places to light up (D-243).
+>
 > **A shade changes the colour and nothing else.** Not `blocksSight`, not
 > roughness, not what any rule makes of it — dark glass is still glass. Which
 > is also why it is free: colour is the one thing an instance already carries

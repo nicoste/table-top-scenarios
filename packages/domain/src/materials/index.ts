@@ -253,6 +253,22 @@ export function shadeOf(material: Material, id: string): Shade | null {
   return material.shades.find((shade) => shade.id === id) ?? null;
 }
 
+/** Plain as a shade, for the one place that has to *show* it: a swatch list. */
+const PLAIN_SHADE: Shade = { id: PLAIN, name: 'Plain', lift: 0 };
+
+/**
+ * Every look this material has, **darkest first**, plain among them.
+ *
+ * `shades` deliberately leaves plain out — a material *is* its plain cut, and
+ * that is what lets a swatch write bare (D-242). But a palette has to draw all
+ * of a material's looks in one row, and which order they go in is a decision,
+ * not a detail: sorted by lift, the row reads as a ramp from dark to pale
+ * rather than as the order somebody happened to type them in.
+ */
+export function cutsOf(material: Material): readonly Shade[] {
+  return [...material.shades, PLAIN_SHADE].sort((a, b) => a.lift - b.lift);
+}
+
 /**
  * What colour a material is in a given cut, as `#rrggbb`.
  *
