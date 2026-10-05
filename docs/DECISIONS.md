@@ -5428,3 +5428,46 @@ found it in thirty seconds was turning off everything except the one light
 under test**, which is the oldest trick there is and was reached for last.
 
 Fill is now 0.4 and 0.12 against a key of 1.9.
+
+### D-249 — The GM's light controls · `agreed`
+Asked for as: a directional light with angle, colour, intensity and a switch;
+an ambient light with colour, intensity and a switch. Built as four controls
+rather than six, and the reasons are the interesting part.
+
+**The single angle is the best idea in the request.** Ten to a hundred and
+seventy, one arc, which makes it an *hour* rather than a bearing — a thing a
+GM says out loud. Elevation alone is enough because the compass direction the
+sun rises in is a fact about the world, not a knob. Named as well as numbered:
+dawn, morning, midday, afternoon, dusk.
+
+**The switches went.** A level that reaches zero already is one, and two
+controls for one state invites "on, but at zero". The cost panel's toggles are
+not a precedent: those are diagnostics, there so a reading can be A/B'd
+against the numbers beside it.
+
+**There were two fill lights, not one.** A `HemisphereLight` *and* an
+`AmbientLight`, which is two of something a GM was about to be handed one
+control for. Collapsed to the hemisphere, because it tints by surface normal —
+a cube's top reads sky-coloured against its sides, where a flat ambient lights
+all six faces identically, and for a scene made of cubes that is most of what
+shape there is. The GM picks one colour; the ground half is that colour
+darkened.
+
+**The hour has to refit the shadow camera, not just redraw it.** At the lowest
+angle a shadow is five and a half times its caster's height, so a box sized
+for midday clips the evening — and the growth is capped at the footprint,
+because every texel the box gains is a texel the map loses (R-180).
+
+**Console-local, deliberately and temporarily.** It belongs in the save beside
+the level band, so the table is lit the way the GM set it — "it is dusk" is
+scene-setting for the players, and a sun only one screen can see is worse than
+no sun. But the table receives only its band (R-85, R-146), so the moment the
+GM cuts away a roof the table's scene has no roof, and what a sun should do
+then is a question the GM is still thinking about. The panel does not change
+when it moves; only where the state is kept does.
+
+**Two small ones found by looking at it.** The colour swatch ate its row,
+because `input { width: 100% }` is a base rule and a swatch left to itself
+obeys it, collapsing the slider beside it to its thumb. And a native range
+control in a dark dock renders as a bright grey bar with a blue thumb, which
+reads as something broken — it gets the dock's own colours.

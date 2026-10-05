@@ -3,20 +3,22 @@
 // anything from an app, the protocol or the simulation.
 
 import {
-  AmbientLight, Color, DirectionalLight, GridHelper, HemisphereLight, Mesh, PCFSoftShadowMap,
+  Color, DirectionalLight, GridHelper, HemisphereLight, Mesh, PCFSoftShadowMap,
   Vector3,
   MeshBasicMaterial, PlaneGeometry, Raycaster, Scene, Vector2, WebGLRenderer, BoxGeometry,
   WebGLRenderTarget, HalfFloatType, MathUtils,
   EdgesGeometry, LineSegments, LineBasicMaterial, Group,
 } from 'three';
 import type {
-  BlockCoord, Campaign, EncounterMap, Material, Placement, WorldCell,
+  BlockCoord, Campaign, EncounterMap, Lighting, Material, Placement, WorldCell,
 } from '@tt/domain';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { CHUNK_SIZE, brushCentreOffset, mapCentre } from '@tt/domain';
+import {
+  CHUNK_SIZE, brushCentreOffset, mapCentre, DAYLIGHT, sunDirection, shadowReach, bounceOf,
+} from '@tt/domain';
 import type { CameraTarget } from '../camera/index.js';
 import {
   approach, clampTarget, createCamera, defaultTarget, nearestAngle, northBearing,
@@ -99,6 +101,14 @@ export const IDLE_HEARTBEAT_MS = 500;
  */
 const OCCLUSION_RADIUS_PX = 15;
 
+/**
+ * How tall a thing the shadow box is sized to clear, in cells.
+ *
+ * Not `MAP_MAX_HEIGHT`: a map *may* be 32 tall and almost none are, and sizing
+ * for the worst case spends the shadow map's resolution on sky.
+ */
+const TALLEST = 12;
+
 
 /** What `Stage.cost()` reports (R-166). */
 export interface StageCost {
@@ -124,6 +134,9 @@ export class Stage {
   private readonly composer: EffectComposer;
   private readonly occlusion: GTAOPass;
   private readonly key: DirectionalLight;
+  private readonly fill: HemisphereLight;
+  /** What the GM has set. The lights are its consequence, not its home. */
+  private lighting: Lighting = DAYLIGHT;
   /**
    * Where the sun is, as a **direction**, kept apart from the light's position.
    *
@@ -133,12 +146,42 @@ export class Stage {
    * position is what the first version did, and since the position by then
    * included the surface's centre, every refit rotated the sun somewhere new.
    * `setMap` runs on every edit, so the sun wandered off with the building
-   * (D-248).
+   * (D-248). It is derived from the hour the GM set (R-181).
    */
-  private readonly sun = new Vector3(90, 70, -60).normalize();
+  private readonly sun = new Vector3();
   /** Set by anything that moves geometry; cleared by the frame that redraws the map. */
   private shadowsStale = true;
+  /** What the shadow camera was last fitted to, so an hour can refit it. */
+  private staged: { span: number; centre: { x: number; z: number } } | null = null;
   /** Off until a screen is shown to afford it (R-168, D-225). */
+  /**
+   * How the scene is lit (R-181): an hour, two colours and two levels.
+   *
+   * The description is the GM's; which lights exist to honour it is the
+   * renderer's. Changing it restages, because a sun that moved has moved every
+   * shadow with it (R-180).
+   */
+  setLighting(lighting: Lighting): void {
+    this.lighting = lighting;
+    this.applyLighting();
+    // The shadow camera has to be refitted as well as redrawn: a low sun
+    // throws a shadow five times its caster's height, and a box sized for
+    // midday clips it (R-181).
+    if (this.staged) this.fitShadows(this.staged.span, this.staged.centre);
+    this.restage();
+  }
+
+  private applyLighting(): void {
+    const { x, y, z } = sunDirection(this.lighting.angle);
+    this.sun.set(x, y, z);
+    this.key.position.copy(this.sun);
+    this.key.color.set(this.lighting.sun);
+    this.key.intensity = this.lighting.sunLevel;
+    this.fill.color.set(this.lighting.fill);
+    this.fill.groundColor.set(bounceOf(this.lighting.fill));
+    this.fill.intensity = this.lighting.fillLevel;
+  }
+
   /** Whether materials draw the figure in their surface (R-177). */
   private figuring = true;
   private occluding = false;
@@ -274,10 +317,18 @@ export class Stage {
      * double, which leaves a shadowed cube at about a quarter of a lit one:
      * plainly darker, and still a cube you can build with.
      */
-    this.scene.add(
-      new HemisphereLight(0xcfe4ff, 0x2a2f38, 0.4),
-      new AmbientLight(0x4a5266, 0.12),
-    );
+    /*
+     * **One fill light, not two** (R-181).
+     *
+     * This was a hemisphere *and* an ambient, which is two controls for one
+     * idea once a GM is given them. The hemisphere is the one worth keeping:
+     * it tints by surface normal, so a cube's top reads sky-coloured against
+     * its sides, where a plain ambient flattens all six faces equally — and
+     * for a scene made of cubes that difference is most of what shape there
+     * is (D-249).
+     */
+    this.fill = new HemisphereLight(0xcfe4ff, 0x2a2f38, 0.4);
+    this.scene.add(this.fill);
     this.key = new DirectionalLight(0xfff6e8, 1.9);
     /*
      * **Chosen so the shadows land where they can be seen** (R-180).
@@ -300,7 +351,7 @@ export class Stage {
      * underneath itself. Late afternoon is the hour at which a building looks
      * like a building.
      */
-    this.key.position.copy(this.sun);
+    this.applyLighting();
     this.key.castShadow = true;
     /*
      * A thousand square is plenty, because the *frustum* is what buys
@@ -707,10 +758,19 @@ export class Stage {
    * box can be refitted whenever that changes.
    */
   private fitShadows(span: number, centre: { x: number; z: number }): void {
-    // A map rotated 45° to the shadow camera is 1.41 times its own width, and
-    // a low sun pushes its shadows further still — so the box is the footprint
-    // with room, not the footprint.
-    const reach = Math.max(span, 8) * 0.85;
+    this.staged = { span, centre };
+    /*
+     * A map rotated 45° to the shadow camera is 1.41 times its own width, and
+     * a low sun pushes its shadows further still: at the lowest hour a shadow
+     * is five and a half times its caster's height, so a box sized for midday
+     * clips the evening (R-181).
+     *
+     * Capped at twice the footprint, because every texel the box grows by is a
+     * texel the map does not get. Past that the far end of a dusk shadow is
+     * allowed to fall off rather than blurring everything that casts one.
+     */
+    const cast = Math.min(TALLEST * shadowReach(this.lighting.angle), span);
+    const reach = Math.max(span, 8) * 0.85 + cast * 0.5;
     const shadow = this.key.shadow.camera;
     shadow.left = -reach;
     shadow.right = reach;

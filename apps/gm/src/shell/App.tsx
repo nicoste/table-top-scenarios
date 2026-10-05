@@ -8,8 +8,9 @@ import {
   creatableSlots, sameWorldCell,
   DEFAULT_MATERIALS, DEFAULT_FLOOR, mapFromJSON, fillRegion, sliceOf, inRange, inMap, blockAt,
   bottomOfMap, DEFAULT_TERRAIN,
+  DAYLIGHT, clampLighting,
 } from '@tt/domain';
-import type { SwatchId } from '@tt/domain';
+import type { SwatchId, Lighting } from '@tt/domain';
 import type { GmView, Intent } from '@tt/protocol';
 import { defaultTarget, worldCentre } from '@tt/render';
 import type { Tool, Travel } from '@tt/client-core';
@@ -22,6 +23,7 @@ import type { MapAction, MapReach, MapTool } from '@tt/client-core';
 import { useStage } from '../scene/use-stage.js';
 import { useCost, COST_HINT } from '../scene/use-cost.js';
 import { Launcher } from '../features/launcher/index.js';
+import { LightPanel } from '../features/light/index.js';
 import { BuildWorldPanel } from '../features/build-world/index.js';
 import { PartyPanel } from '../features/party/index.js';
 import { PlacesPanel, PlaceInspector } from '../features/place/index.js';
@@ -114,6 +116,16 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    */
   const [swatch, setSwatch] = useState<SwatchId>(DEFAULT_FLOOR);
   /**
+   * How the scene is lit (R-181).
+   *
+   * **Console-local for now.** It belongs in the save beside the level band,
+   * so the table is lit the same way — but the table only ever receives its
+   * band, and what a sun should do when the GM has cut away the roof is still
+   * being decided (D-249). The panel does not change when it moves; only where
+   * this line keeps it does.
+   */
+  const [lighting, setLighting] = useState<Lighting>(DAYLIGHT);
+  /**
    * The cell a place was just placed on, waiting for the snapshot that will carry
    * it. The host assigns the id, so the client cannot know it in advance — but
    * one place per cell (R-119) makes the cell an unambiguous handle until then.
@@ -121,6 +133,8 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   const pendingPlaceCell = useRef<string | null>(null);
   const { setCanvas, stage, frames, draws } = useStage();
   const cost = useCost(stage, frames, draws);
+  // The stage holds lights; this holds the description of them (R-181).
+  useEffect(() => { stage?.setLighting(lighting); }, [stage, lighting]);
   const openedId = useRef<string | null>(null);
   const drag = useRef<{ startY: number; base: number; cell: { cx: number; cz: number; x: number; z: number } } | null>(null);
   const panning = useRef<{ x: number; y: number } | null>(null);
@@ -907,6 +921,10 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
             placeId={openPlace.id}
             poiId={openPoi.id}
           />
+          <LightPanel
+            lighting={lighting}
+            onLighting={(next) => setLighting(clampLighting(next))}
+          />
         </div>
       )}
 
@@ -958,6 +976,10 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
             {tool === 'places' && (
               <PlacesPanel markerId={markerId} onMarker={setMarkerId} />
             )}
+            <LightPanel
+              lighting={lighting}
+              onLighting={(next) => setLighting(clampLighting(next))}
+            />
           </div>
 
           <div className="dock dock-right">

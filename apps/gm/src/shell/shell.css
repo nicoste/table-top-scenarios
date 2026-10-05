@@ -371,3 +371,34 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
    moves nothing. */
 .metrics dd.hot { color: #ffb86b; }
 .metrics .hint { margin: 7px 0 0; font-size: 10.5px; color: var(--dim); }
+
+/*
+  The light card (R-181). A slider is the one control here that is not a
+  button, so it gets the dock's own colours rather than the browser's — a
+  native range control in a dark panel renders as a bright grey bar with a
+  blue thumb, which reads as a mistake.
+*/
+.dial {
+  width: 100%; height: 18px; margin: 0 0 2px; padding: 0;
+  background: transparent; border: 0; appearance: none; cursor: pointer;
+}
+.dial::-webkit-slider-runnable-track {
+  height: 4px; border-radius: 2px; background: #2b323d;
+}
+.dial::-webkit-slider-thumb {
+  appearance: none; width: 13px; height: 13px; margin-top: -4.5px;
+  border-radius: 50%; background: var(--accent); border: 0;
+}
+.dial:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+/* The hour, in the words a GM would use, beside the number they nudge. */
+.hour { float: right; font-weight: 400; color: var(--ink); text-transform: none; }
+/* A colour and its strength on one line: the swatch is fixed, the dial takes the rest. */
+.lamp { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+/*
+  `input { width: 100% }` is the base rule, so a colour swatch left to itself
+  eats the row and the slider beside it collapses to its thumb. Fixed width,
+  and the dial takes what is left.
+*/
+.lamp input[type="color"] { flex: none; width: 34px; height: 22px; padding: 0; }
+.lamp .dial { flex: 1; min-width: 0; }
+.lamp .dial { margin: 0; }

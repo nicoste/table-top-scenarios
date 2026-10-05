@@ -41,6 +41,11 @@ export type { Marker, MarkerPart, PartShape } from './markers/index.js';
 export { DEFAULT_MARKERS, DEFAULT_MARKER, markerById, isKnownMarker } from './markers/index.js';
 
 export type { Place, PlaceNote, PlaceCell, Poi } from './place/index.js';
+export type { Lighting } from './light/index.js';
+export {
+  DAYLIGHT, MIN_ANGLE, MAX_ANGLE, MIN_SUN, MAX_SUN, MIN_FILL, MAX_FILL,
+  clampLighting, sunDirection, shadowReach, hourLabel, bounceOf,
+} from './light/index.js';
 export type { Material, Cut } from './materials/index.js';
 export {
   DEFAULT_MATERIALS, DEFAULT_FLOOR, materialById, isKnownMaterial, requireMaterial,

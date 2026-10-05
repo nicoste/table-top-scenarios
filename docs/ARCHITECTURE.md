@@ -2431,6 +2431,41 @@ apps/host/src/
 >
 > A family always has at least one cut, and the first is its default.
 
+> **R-181.** **Lighting is a description the GM writes, not a rig.**
+>
+> An hour, two colours and two levels. What lights exist to honour that is the
+> renderer's business — the same division as `roughness`, which names a
+> property and not a lighting model (R-173). It lives in `domain` so the arc
+> and the clamping are settled in a test rather than by squinting at a screen.
+>
+> **One angle, because it is an hour and not a bearing.** A sun needs an
+> elevation *and* a compass direction, and the second is a fact about the world
+> rather than something a GM wants to adjust. The arc is fixed, chosen so
+> shadows fall across the faces the default camera can see (R-31, D-248), and
+> the slider is the time of day. A GM who wants the sun somewhere else wants a
+> second angle, not a different default.
+>
+> **It never reaches the horizon.** At zero a shadow is infinitely long and
+> every surface is grazed, which is where acne lives and where a shadow stops
+> fitting in any frustum you can afford. Ten degrees is a long evening shadow —
+> five and a half times its caster — and it is finite. The shadow camera grows
+> with the hour, capped, because every texel it grows by is a texel the map
+> does not get (R-180).
+>
+> **One fill light, not two.** A hemisphere, because it tints by surface normal
+> so a cube's top reads sky-coloured against its sides, where a flat ambient
+> lights all six faces equally — and for a scene made of cubes that difference
+> is most of what shape there is.
+>
+> **No on/off switches.** A level that reaches zero is an off switch, and two
+> controls for one state invites the ambiguous one. The toggles on the cost
+> panel are diagnostics, there so a measurement can be A/B'd against the
+> numbers beside it; these are scene controls (D-249).
+>
+> **The hour has a name as well as a number** — dawn, morning, midday,
+> afternoon, dusk — beside the slider and not instead of it, the same
+> arrangement the level ladder settled on for heights (R-161).
+
 > **R-180.** **Shadows are redrawn on change, not on every frame.**
 >
 > `renderer.shadowMap.autoUpdate = false`, and `needsUpdate` is set by the
