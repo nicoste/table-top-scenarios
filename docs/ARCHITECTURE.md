@@ -2431,6 +2431,36 @@ apps/host/src/
 >
 > A family always has at least one cut, and the first is its default.
 
+> **R-180.** **Shadows are redrawn on change, not on every frame.**
+>
+> `renderer.shadowMap.autoUpdate = false`, and `needsUpdate` is set by the
+> frame that was going to draw anyway. Nothing in this scene moves by itself:
+> the sun is where the GM left it and the geometry changes when a cube is
+> placed, so the shadow map is redrawn on those events and on no others. It is
+> R-170's trade one level down, and idle it costs nothing.
+>
+> **Geometry moving and the camera moving are different things.** A directional
+> light's shadow camera is fixed to the scene, not to the view, so turning the
+> camera owes a *frame* and owes the shadows nothing. `restage` and
+> `invalidate` are separate for that reason — conflating them redraws the
+> shadow map on every mouse move.
+>
+> **The shadow camera is fitted to the surface on screen**, and only one is ever
+> shown (R-148). Sharpness is the frustum, not the resolution: 1024 texels
+> across a map's 96 cells is eleven to a cube, and the same 1024 across a world
+> would be one to a chunk.
+>
+> **The light's direction is its own value**, never read back out of
+> `position`. three.js takes the bearing from the position, and the position
+> has to be *moved* to sit over the open surface — so deriving the direction
+> from it means every refit rotates the sun (D-248).
+>
+> **Fill is balanced against the shadows, not against the dark.** A rig built
+> for a world where nothing casts wants plenty of ambient so no face is
+> unreadable; the same ambient erases every shadow you then switch on. Here a
+> shadowed cube sits at about a quarter of a lit one — plainly darker, still a
+> cube you can build with.
+
 > **R-179.** **The reference scene is a script.**
 >
 > `npm run seed` builds the scene MEASUREMENTS.md is anchored to, and building

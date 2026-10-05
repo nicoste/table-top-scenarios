@@ -1,10 +1,10 @@
 {
- "id": "campaign_muvgopfg7h1rp9fb",
+ "id": "campaign_muvkhud0vnvld4ys",
  "schemaVersion": 4,
  "name": "The Reference",
  "party": [
   {
-   "id": "member_muvgopfgci47snjg",
+   "id": "member_muvkhud0idynile6",
    "name": "player",
    "colour": "#57d9a3",
    "visionRange": 12
@@ -12,7 +12,7 @@
  ],
  "places": [
   {
-   "id": "place_muvgopfgju34rytd",
+   "id": "place_muvkhud0kjcy4r25",
    "name": "Toll Crossing",
    "cell": {
     "cx": 15,
@@ -23,7 +23,7 @@
    "markerId": "marker:village",
    "pois": [
     {
-     "id": "poi_muvgopfhqlb80f9c",
+     "id": "poi_muvkhud0tm1w148l",
      "name": "Tollkeep",
      "visibleToParty": true,
      "map": null

@@ -3,7 +3,8 @@
 // anything from an app, the protocol or the simulation.
 
 import {
-  AmbientLight, Color, DirectionalLight, GridHelper, HemisphereLight, Mesh,
+  AmbientLight, Color, DirectionalLight, GridHelper, HemisphereLight, Mesh, PCFSoftShadowMap,
+  Vector3,
   MeshBasicMaterial, PlaneGeometry, Raycaster, Scene, Vector2, WebGLRenderer, BoxGeometry,
   WebGLRenderTarget, HalfFloatType, MathUtils,
   EdgesGeometry, LineSegments, LineBasicMaterial, Group,
@@ -122,6 +123,21 @@ export class Stage {
   private readonly renderer: WebGLRenderer;
   private readonly composer: EffectComposer;
   private readonly occlusion: GTAOPass;
+  private readonly key: DirectionalLight;
+  /**
+   * Where the sun is, as a **direction**, kept apart from the light's position.
+   *
+   * A directional light has no place, only a bearing — but three.js takes the
+   * bearing from `position`, and the shadow camera has to be *moved* to sit
+   * over whatever surface is open. Deriving the direction back out of that
+   * position is what the first version did, and since the position by then
+   * included the surface's centre, every refit rotated the sun somewhere new.
+   * `setMap` runs on every edit, so the sun wandered off with the building
+   * (D-248).
+   */
+  private readonly sun = new Vector3(90, 70, -60).normalize();
+  /** Set by anything that moves geometry; cleared by the frame that redraws the map. */
+  private shadowsStale = true;
   /** Off until a screen is shown to afford it (R-168, D-225). */
   /** Whether materials draw the figure in their surface (R-177). */
   private figuring = true;
@@ -212,6 +228,21 @@ export class Stage {
     this.renderer = new WebGLRenderer({ canvas, antialias: true });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     /*
+     * Shadows, **never updated on their own** (R-180).
+     *
+     * A shadow map is one extra pass over the scene, and three.js redraws it
+     * every frame unless told otherwise. Nothing in this scene moves by
+     * itself: the sun is where the GM left it and the geometry changes when a
+     * cube is placed, so the map is redrawn on those events and on no others —
+     * which is R-170's trade one level down. Idle, it costs nothing at all.
+     *
+     * `PCFSoft` rather than VSM: softer edges are not worth light leaking
+     * through a wall in a scene made entirely of walls.
+     */
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = PCFSoftShadowMap;
+    this.renderer.shadowMap.autoUpdate = false;
+    /*
      * Counted across the whole frame, not per pass (D-226).
      *
      * `info` resets itself before each render by default, so once a composer
@@ -227,13 +258,65 @@ export class Stage {
       : null;
     this.scene.background = new Color('#0f1216');
 
+    /*
+     * **Rebalanced for a world that casts shadows** (R-180).
+     *
+     * This was a hemisphere at 0.9 and an ambient at 0.4 against a key of 1.1,
+     * which is a sensible rig for a scene where nothing casts: plenty of fill
+     * so no face is ever unreadably dark. Switch shadows on under it and a
+     * shadowed surface still collects more than half its light from the sky,
+     * so the shadow is a dimming you have to be told about.
+     *
+     * That cost an afternoon. The shadows were working from the first build —
+     * the sun was moved twice and the frustum refitted on the theory that they
+     * were falling out of view, and all of it was invisible for the same
+     * reason (D-248). Fill is now a third of what it was and the key is nearly
+     * double, which leaves a shadowed cube at about a quarter of a lit one:
+     * plainly darker, and still a cube you can build with.
+     */
     this.scene.add(
-      new HemisphereLight(0xcfe4ff, 0x2a2f38, 0.9),
-      new AmbientLight(0x4a5266, 0.4),
+      new HemisphereLight(0xcfe4ff, 0x2a2f38, 0.4),
+      new AmbientLight(0x4a5266, 0.12),
     );
-    const key = new DirectionalLight(0xfff6e8, 1.1);
-    key.position.set(60, 120, 40);
-    this.scene.add(key);
+    this.key = new DirectionalLight(0xfff6e8, 1.9);
+    /*
+     * **Chosen so the shadows land where they can be seen** (R-180).
+     *
+     * It used to sit at (60, 120, 40), which shades the visible faces nicely
+     * and throws every shadow up the screen, directly behind the thing casting
+     * it — invisible at the camera a campaign opens on, which is the only
+     * camera most scenes are ever looked at from. That cost nothing while
+     * nothing cast a shadow, and was the first thing switching them on
+     * revealed (D-248).
+     *
+     * `-Z` climbs to the upper right on this camera and `+X` falls to the
+     * lower right (R-31), so a light over the far side throws shadows down and
+     * left, across ground the viewer is looking at, while still lighting the
+     * two faces that are towards them.
+     *
+     * **And it is a low sun, about 33° up.** At the old elevation of nearly
+     * 60° a shadow is 0.6 of its caster's height, so a keep twenty cells wide
+     * and nine tall threw its shadow almost entirely onto its own footprint,
+     * underneath itself. Late afternoon is the hour at which a building looks
+     * like a building.
+     */
+    this.key.position.copy(this.sun);
+    this.key.castShadow = true;
+    /*
+     * A thousand square is plenty, because the *frustum* is what buys
+     * sharpness and this one is fitted to the surface on screen (R-148 says
+     * there is only ever one). A shadow camera sized to the whole world would
+     * spend most of its texels on ground nobody is looking at.
+     */
+    this.key.shadow.mapSize.set(1024, 1024);
+    /*
+     * Bias along the normal rather than along the view. Every face here is
+     * axis-aligned and a cube's own top is the surface most likely to shade
+     * itself; a flat depth bias fixes that by sliding the shadow off the thing
+     * casting it, which is worse (D-248).
+     */
+    this.key.shadow.normalBias = 0.05;
+    this.scene.add(this.key, this.key.target);
 
     // The snapped hover highlight, shared by both tools (R-87).
     this.highlight = new LineSegments(
@@ -331,7 +414,10 @@ export class Stage {
     if (!campaign) return;
 
     this.world = buildWorldMeshes(campaign);
+    this.world.mesh.castShadow = true;
+    this.world.mesh.receiveShadow = true;
     this.scene.add(this.world.mesh);
+    if (!this.showingMap) this.fitShadows(CHUNK_SIZE * 3, worldCentre(campaign.world));
 
     this.places = buildPlaceMarkers(campaign);
     this.scene.add(this.places.group);
@@ -442,7 +528,13 @@ export class Stage {
       // A body is rebuilt on every edit, so the switch has to be re-applied to
       // the new materials or placing one cube would turn the figures back on.
       this.blocks.setFigures(this.figuring);
+      for (const mesh of this.blocks.group.children) {
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+      }
       this.scene.add(this.blocks.group);
+      // A map is tens of cells across; the world is hundreds (R-148).
+      this.fitShadows(Math.max(map.size.x, map.size.z), mapCentre(map));
     }
     this.applySurface();
 
@@ -591,6 +683,50 @@ export class Stage {
    */
   invalidate(): void {
     this.dirty = true;
+  }
+
+  /**
+   * The shadow map is out of date, because something it was drawn from moved.
+   *
+   * Separate from `invalidate` on purpose: turning the camera owes a *frame*
+   * and owes nothing to the shadows, because a directional light's shadow
+   * camera is fixed to the scene and not to the view. Conflating the two would
+   * have redrawn the shadow map on every mouse move (R-180).
+   */
+  private restage(): void {
+    this.shadowsStale = true;
+    this.invalidate();
+  }
+
+  /**
+   * Fits the shadow camera to what is on screen.
+   *
+   * Sharpness is the frustum, not the resolution: 1024 texels across a map's
+   * 96 cells is eleven to a cube, and the same 1024 across the whole world
+   * would be one to a chunk. Only one surface is ever shown (R-148), so the
+   * box can be refitted whenever that changes.
+   */
+  private fitShadows(span: number, centre: { x: number; z: number }): void {
+    // A map rotated 45° to the shadow camera is 1.41 times its own width, and
+    // a low sun pushes its shadows further still — so the box is the footprint
+    // with room, not the footprint.
+    const reach = Math.max(span, 8) * 0.85;
+    const shadow = this.key.shadow.camera;
+    shadow.left = -reach;
+    shadow.right = reach;
+    shadow.top = reach;
+    shadow.bottom = -reach;
+    shadow.near = 1;
+    shadow.far = reach * 6;
+    shadow.updateProjectionMatrix();
+    // The light is a *direction*; its position only has to be far enough back
+    // that the near plane clears the tallest thing in the scene. Read from
+    // `sun`, never from the position this line is about to overwrite.
+    const from = this.sun.clone().multiplyScalar(reach * 2.5);
+    this.key.position.set(centre.x + from.x, from.y, centre.z + from.z);
+    this.key.target.position.set(centre.x, 0, centre.z);
+    this.key.target.updateMatrixWorld();
+    this.restage();
   }
 
   /** Returns whether the camera actually moved, which is one reason to draw. */
@@ -890,6 +1026,15 @@ export class Stage {
      * make the switch useless as a comparison — which is the only thing it is
      * for.
      */
+    /*
+     * Redrawn here and only here, in the frame that was going to render
+     * anyway. `needsUpdate` is read by that render and cleared by three.js, so
+     * setting it earlier would have it consumed by a frame we skipped (R-180).
+     */
+    if (this.shadowsStale) {
+      this.renderer.shadowMap.needsUpdate = true;
+      this.shadowsStale = false;
+    }
     if (this.occluding) this.composer.render();
     else this.renderer.render(this.scene, this.camera);
     if (changed && this.timer && this.pending) gl.endQuery(this.timer.TIME_ELAPSED_EXT);

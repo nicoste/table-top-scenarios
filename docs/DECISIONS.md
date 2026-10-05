@@ -5377,3 +5377,54 @@ fix you are taking on trust.
 
 The old figures are kept under a heading that says they are not comparable,
 rather than deleted. What they taught outlived the scene they were taken on.
+
+### D-248 — Shadows, and an afternoon spent moving a sun that was never the problem · `agreed`
+The GM wanted the building tool to look like somewhere playable before moving
+on to tokens and vision, and thought lighting was the gap. Half right: there
+were already three lights. What was missing was that **nothing cast a shadow
+onto anything else** — `castShadow` appeared nowhere in the renderer. Faces were
+shaded by angle and corners by occlusion, which is why it read as a well-shaded
+diagram.
+
+**three.js has the cheap version and this codebase was already shaped for it.**
+Shadow mapping is one extra pass over the scene, redrawn every frame by
+default; `shadowMap.autoUpdate = false` makes it redraw only when told. Nothing
+here moves by itself, so "when told" is: the geometry changed, or the sun did.
+That is R-170 one level down.
+
+**What it costs**, on the Tollkeep at the reference camera (R-179), which is
+exactly the comparison the reference scene was built to allow:
+
+| | before shadows | after |
+| --- | --- | --- |
+| gpu, occlusion **off** | 1.9 ms | **3.3 ms** |
+| gpu, occlusion on | 11.6 ms | 11.2 ms |
+| draw calls | 23 | 23 |
+| the frame that opens the map | 48.9 ms | 47.8 ms |
+
+So **1.4 ms** of per-frame cost, which is the fragment shader sampling the
+shadow map — and nothing at all against the occlusion pass, which swallows it.
+Redrawing the map itself is not in that figure: it happens on the frame that
+rebuilds the body anyway, and that frame did not get slower.
+
+**And then the part worth writing down.** The first build looked unchanged. So
+the sun was moved, on the theory that it threw its shadows up the screen behind
+their casters; then lowered from 58° to 33°, on the theory that a keep twenty
+wide and nine tall was shadowing its own footprint; then a genuine bug was found
+and fixed, where `fitShadows` re-derived the light's *direction* from a position
+it had just overwritten with a surface-centred one, so every edit rotated the
+sun. Three changes, three rebuilds, and the scene still looked identical.
+
+It was none of them. Setting the hemisphere and ambient lights to zero made an
+enormous black shadow appear instantly: **the shadows had worked from the first
+build**, and were invisible because the rig was built for a world where nothing
+casts. A hemisphere at 0.9 and an ambient at 0.4 against a key of 1.1 leaves a
+shadowed surface collecting more than half its light from the sky.
+
+Two of those three changes were worth keeping anyway — the sun's angle is
+better and the drift was a real bug — but they were fixes in search of a
+symptom, and the symptom had one cause nobody had looked at. **The thing that
+found it in thirty seconds was turning off everything except the one light
+under test**, which is the oldest trick there is and was reached for last.
+
+Fill is now 0.4 and 0.12 against a key of 1.9.

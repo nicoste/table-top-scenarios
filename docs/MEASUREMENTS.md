@@ -102,6 +102,22 @@ samples a figure, median reported.
 | as the map frames | **11.6 ms** | 1.9 ms | 9.7 ms |
 | 12 wheel ticks in | **11.8 ms** | 2.7 ms | 9.1 ms |
 
+### What shadows cost (added 5 October 2026)
+
+Same scene, same camera, before and after switching them on (R-180, D-248):
+
+| | before | after |
+| --- | --- | --- |
+| gpu, occlusion **off** | 1.9 ms | **3.3 ms** |
+| gpu, occlusion on | 11.6 ms | 11.2 ms |
+| draw calls | 23 | 23 |
+| the frame that opens the map | 48.9 ms | 47.8 ms |
+
+**1.4 ms** per frame, all of it the fragment shader sampling the shadow map,
+and nothing measurable once occlusion is on. Redrawing the shadow map is not in
+that figure: it happens only when the geometry or the sun moves (R-180), on the
+frame that rebuilds the body anyway — and that frame did not get slower.
+
 **Occlusion is flat across the camera now**, which is R-175 holding on a scene
 it was not tuned against — before that change the same sweep went from 10.5 ms
 to 30.7 (D-240). Everything that is not occlusion costs 2–3 ms, with the figures
