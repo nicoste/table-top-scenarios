@@ -187,6 +187,25 @@ A single pair of readings had said 1.1 against 2.3 and looked like a real
 doubling. Six samples each says that pair was noise — which is the whole
 argument for taking more than one.
 
+### What the figure in a surface costs (Pane, the church)
+
+Occlusion **off**, to isolate the raster from the pass that swamps it. Same
+camera, alternating, six samples each (R-177, D-244).
+
+| | gpu | median |
+| --- | --- | --- |
+| figure off | 2.8, 2.8, 2.9, 2.9, 2.8, 2.8 | **2.8 ms** |
+| figure on | 2.9, 2.9, 2.9, 2.9, 2.8, 2.7 | **2.9 ms** |
+| figure off | 2.8, 2.9, 2.9, 2.8, 2.9, 2.5 | **2.9 ms** |
+| figure on | 2.9, 3, 2.8, 2.9, 2.9, 2.8 | **2.9 ms** |
+
+Nothing, inside the noise. No extra draw calls, no extra triangles, no
+textures — arithmetic on fragments the card was shading anyway.
+
+**Shader programs 13 → 22**, and programs compile on first draw, so the map was
+reopened cold to look for a stall: **worst frame 35.2 ms**, inside the
+34.7–40.7 ms already measured without patterns. None.
+
 ### Geometry (the church)
 
 | | |

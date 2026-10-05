@@ -2427,6 +2427,40 @@ apps/host/src/
 > matching the swatch rather than the material. It is not a side effect to be
 > tolerated: it is what lets a GM repaint one course of a wall.
 
+> **R-177.** **A material's figure is arithmetic, not an image.**
+>
+> Wood runs in stripes along the grain, brick is laid in courses, grass is
+> mottled. `pattern` names what the stuff *looks like* and the renderer decides
+> what that means in a shader — the same division as `roughness`, which names a
+> property and not a lighting model (R-173). `none` is the ordinary case.
+>
+> **Patched into three.js's material, never replacing it.** `onBeforeCompile`
+> injects into `MeshStandardMaterial`, so lighting, occlusion, instancing,
+> transparency and the per-instance shade all keep working untouched. A custom
+> `ShaderMaterial` would have meant reimplementing every one of them — the same
+> mistake R-168 names about occlusion, and the same answer: **look for the
+> thing the engine already has.**
+>
+> **The coordinate is the cube's place in the world, not a UV.** No image to
+> load, no atlas to pack, no seams, and — the point — the figure is *continuous
+> across cubes*, so a brick wall reads as one wall rather than as forty copies
+> of one tile. It follows that courses do not align to cube edges, which is
+> right for masonry and would be wrong for something meant to read per cube.
+>
+> **Colour only; it does not perturb the normal.** So there is no relief: the
+> figure does not catch the light differently as the camera turns. Adding that
+> is possible and *would* cost something real, where this costs nothing —
+> measured at 2.8 ms against 2.9 with the whole scene rasterising in 2.9
+> (D-244).
+>
+> **A switch, like occlusion** (R-168), on `T` and with its state on the cost
+> panel — so the person in front of the screen can A/B it against the numbers.
+> On by default, on both screens.
+>
+> Every pattern a material names must be one the renderer implements. That is
+> a rule and not a shader, so it is tested (R-23b): the failure mode is silent,
+> a flat face and nothing anywhere saying why.
+
 > **R-170.** **A frame is drawn when something changed, not thirty times a
 > second.**
 >

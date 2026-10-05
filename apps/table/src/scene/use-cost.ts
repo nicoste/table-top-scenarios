@@ -30,7 +30,7 @@ const SAMPLE_MS = 250;
  * of the console already follows for its digits and brackets.
  */
 export const COST_CODE = 'Backquote';
-export const COST_HINT = 'backtick closes this · shift+backtick toggles occlusion';
+export const COST_HINT = 'backtick closes this · shift+backtick occlusion · T surface figure';
 
 /*
  * Traffic is recorded where the socket is and read where the overlay is, and
@@ -77,11 +77,17 @@ export function useCost(
    * for a rebuild.
    */
   const [occlusion, setOcclusion] = useState(true);
+  /** The figure in a material's surface (R-177), on T. On, like occlusion. */
+  const [figures, setFigures] = useState(true);
   const [reading, setReading] = useState<Reading | null>(null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.code !== COST_CODE || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const typing = (e.target as HTMLElement | null)?.tagName;
+      if (typing && /^(INPUT|TEXTAREA|SELECT)$/.test(typing)) return;
+      if (e.code === 'KeyT') { setFigures((drawn) => !drawn); return; }
+      if (e.code !== COST_CODE) return;
       // Not while the GM is naming something: a backtick belongs to the field.
       const to = e.target as HTMLElement | null;
       if (to && /^(INPUT|TEXTAREA|SELECT)$/.test(to.tagName)) return;
@@ -93,6 +99,7 @@ export function useCost(
   }, []);
 
   useEffect(() => { stage?.setOcclusion(occlusion); }, [stage, occlusion]);
+  useEffect(() => { stage?.setFigures(figures); }, [stage, figures]);
 
   useEffect(() => {
     if (!on) { setReading(null); return undefined; }
@@ -112,6 +119,7 @@ export function useCost(
         drawn: rate(draws.current, performance.now()),
         heap: heapNow(),
         occlusion,
+        figures,
         gpuMs: cost?.gpuMs ?? null,
         budgetMs: FRAME_BUDGET_MS,
       });
@@ -119,7 +127,7 @@ export function useCost(
     take();
     const timer = setInterval(take, SAMPLE_MS);
     return () => clearInterval(timer);
-  }, [on, stage, frames, draws, occlusion]);
+  }, [on, stage, frames, draws, occlusion, figures]);
 
   return { on, reading };
 }

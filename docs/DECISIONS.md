@@ -5146,3 +5146,65 @@ the material rows is scoped under `.swatches`. And the lesson, which is cheap
 to state and was not cheap to find: **renaming a selector is an edit to every
 component that matches it**, and a class named for what it looks like rather
 than what it is will be matched by components you are not thinking about.
+
+### D-244 — Figure in the surface, and a config panel we did not build · `agreed`
+The last open question from the original materials brainstorm — *"an effect to
+the sides of the cubes so they don't look like legos"* — answered properly.
+Grain (D-237) took the flatness out of a *wall*; this takes it out of a *face*.
+
+Three figures, named by the GM: wood in vertical stripes, grass with inner
+noise, brick with squares inside.
+
+**Built on `onBeforeCompile`**, which patches three.js's own standard material
+rather than replacing it. Everything keeps working — lighting, the occlusion
+pass, instancing, transparency, the per-instance shade — because none of it was
+touched. D-223's lesson a second time: look for the thing the engine already
+has before building the thing the internet says voxel engines build.
+
+**No textures and no UVs.** The coordinate is the cube's own position in the
+world, which the vertex shader already has. That buys three things: nothing to
+load, no seams, and a figure that is continuous across cubes — a brick wall
+reads as one wall instead of forty copies of one tile. The cost is that courses
+do not line up with cube edges, which is correct for masonry and would be wrong
+for something meant to read per cube.
+
+**It costs nothing.** Occlusion off to isolate the raster, same camera, four
+alternating passes, six samples each:
+
+| | gpu | median |
+| --- | --- | --- |
+| figure off | 2.8, 2.8, 2.9, 2.9, 2.8, 2.8 | **2.8 ms** |
+| figure on | 2.9, 2.9, 2.9, 2.9, 2.8, 2.7 | **2.9 ms** |
+| figure off | 2.8, 2.9, 2.9, 2.8, 2.9, 2.5 | **2.9 ms** |
+| figure on | 2.9, 3, 2.8, 2.9, 2.9, 2.8 | **2.9 ms** |
+
+No extra draw calls, no extra triangles. The one risk worth checking was shader
+programs — the church goes from 13 to 22, and programs compile on first draw —
+so the map was reopened cold: **worst frame 35.2 ms**, inside the 34.7–40.7 ms
+range measured before patterns existed. No compile stall.
+
+**What it deliberately does not do** is perturb the normal, so there is no
+relief and the figure does not catch the light as the camera turns. That is the
+version that would cost something, and it can be decided on its own.
+
+**And the panel we did not build.** The GM asked whether these graphic
+additions should get a config button for enabling and disabling. The answer was
+no, and the reasoning is worth keeping, because it is the shape of a mistake
+this project has made twice:
+
+- The three things are not alike. Grain costs ~1 ms at rebuild and nothing per
+  frame; figure measures at zero; **occlusion is the only one with a real
+  case**, at 17 ms, and R-168 already gave it a switch for exactly that reason.
+  A panel would be a control for one real toggle and two that need none.
+- The motive for wanting occlusion off was a warm laptop, and that was *already
+  fixed* by the frame cap (R-169) and drawing on change (R-170). Building a
+  setting for a solved problem is how half-resolution occlusion and face culling
+  got built — both on sound reasoning, both measured, both reverted (D-228,
+  O-027).
+- The question did expose a real gap, just not the one asked: the occlusion
+  switch is per-screen React state with no persistence anywhere in this codebase,
+  and **the screen that most needs it is the one nobody has a keyboard at**. If
+  the table's box ever struggles, the control belongs on the GM's console and
+  travels over the socket, because the GM is the only person with input and
+  keeping the table readable is their job. Not built, because nobody has yet run
+  the table display on the box that will drive the TV. **Measure that first.**

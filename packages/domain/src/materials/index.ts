@@ -80,6 +80,17 @@ export interface Material {
    * plain shade.
    */
   readonly shades: readonly Shade[];
+  /**
+   * The figure in the surface, if it has one (R-177).
+   *
+   * Names what the stuff *looks like*, never how to draw it: wood runs in
+   * stripes along the grain, brick is laid in courses, grass is mottled. What
+   * that means in a shader is the renderer's business, the same way
+   * `roughness` names a property and not a lighting model (R-173).
+   *
+   * `none` is the ordinary case. Most things in a dungeon are a colour.
+   */
+  readonly pattern: 'none' | 'stripes' | 'speckle' | 'courses';
 }
 
 /**
@@ -146,6 +157,9 @@ const PALE: Shade = { id: 'pale', name: 'Pale', lift: 0.1 };
 /** The cuts this material comes in, besides itself. */
 const cut = (material: Material, ...shades: readonly Shade[]): Material => ({ ...material, shades });
 
+/** The figure in this material's surface (R-177). */
+const figured = (material: Material, pattern: Material['pattern']): Material => ({ ...material, pattern });
+
 const m = (
   value: string,
   name: string,
@@ -165,6 +179,7 @@ const m = (
   glow,
   opacity,
   shades: [],
+  pattern: 'none',
 });
 
 /**
@@ -177,12 +192,12 @@ const m = (
  */
 export const DEFAULT_MATERIALS: readonly Material[] = [
   cut(m('stone', 'Stone', '#8d93a1', true, USUAL, DULL), DARK, PALE),
-  cut(m('brick', 'Brick', '#9c5f4e', true, USUAL, MATT), DARK, PALE),
-  cut(m('wood', 'Wood', '#9c7a4a', true, USUAL, DULL), DARK, PALE),
+  figured(cut(m('brick', 'Brick', '#9c5f4e', true, USUAL, MATT), DARK, PALE), 'courses'),
+  figured(cut(m('wood', 'Wood', '#9c7a4a', true, USUAL, DULL), DARK, PALE), 'stripes'),
   cut(m('thatch', 'Thatch', '#c2a35c', true, ROUGH, MATT), DARK, PALE),
   // Earth is wet or it is dry; there is no pale dirt.
   cut(m('dirt', 'Dirt', '#7a6248', true, ROUGH, 1), DARK),
-  cut(m('grass', 'Grass', '#6f8f52', true, ROUGH, MATT), DARK, PALE),
+  figured(cut(m('grass', 'Grass', '#6f8f52', true, ROUGH, MATT), DARK, PALE), 'speckle'),
   cut(m('sand', 'Sand', '#cbb887', true, ROUGH, MATT), DARK),
   // Snow and lava are each one thing. A darker snow is a shadow, which the
   // occlusion pass already draws, and lava does not come in cuts.

@@ -123,6 +123,8 @@ export class Stage {
   private readonly composer: EffectComposer;
   private readonly occlusion: GTAOPass;
   /** Off until a screen is shown to afford it (R-168, D-225). */
+  /** Whether materials draw the figure in their surface (R-177). */
+  private figuring = true;
   private occluding = false;
   private readonly scene = new Scene();
   private readonly camera = createCamera();
@@ -437,6 +439,9 @@ export class Stage {
       const begun = performance.now();
       this.blocks = buildBlockBody(map, materials);
       this.rebuildMs = performance.now() - begun;
+      // A body is rebuilt on every edit, so the switch has to be re-applied to
+      // the new materials or placing one cube would turn the figures back on.
+      this.blocks.setFigures(this.figuring);
       this.scene.add(this.blocks.group);
     }
     this.applySurface();
@@ -811,6 +816,19 @@ export class Stage {
     this.invalidate();
     this.occluding = on;
     this.occlusion.enabled = on;
+  }
+
+  /**
+   * Draws the figure in each material's surface, or does not (R-177).
+   *
+   * A switch for the same reason occlusion has one (R-168): so the person
+   * standing in front of the screen can A/B it against the numbers beside it.
+   * **On by default**, because it costs nothing measurable.
+   */
+  setFigures(on: boolean): void {
+    this.invalidate();
+    this.figuring = on;
+    this.blocks?.setFigures(on);
   }
 
   /**

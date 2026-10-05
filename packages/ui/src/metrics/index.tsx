@@ -31,6 +31,8 @@ export interface Reading {
   readonly heap: number | null;
   /** Whether ambient occlusion is on, so an A/B is legible (R-168). */
   readonly occlusion: boolean;
+  /** Whether materials draw the figure in their surface, so an A/B is legible. */
+  readonly figures: boolean;
   /** What the GPU spent on a recent frame, or null where the browser hides it. */
   readonly gpuMs: number | null;
   /** The frame budget this screen is capped to, which is what p95 is judged against. */
@@ -108,6 +110,8 @@ export function Metrics({ reading, hint }: MetricsProps) {
         <dd className={reading.pushes > 20 ? 'hot' : ''}>{count(reading.pushes)}</dd>
         <dt>js heap</dt>
         <dd>{reading.heap === null ? 'n/a' : kib(reading.heap)}</dd>
+        <dt>figure</dt>
+        <dd>{reading.figures ? 'on' : 'off'}</dd>
         <dt>occlusion</dt>
         <dd>{reading.occlusion ? 'on' : 'off'}</dd>
       </dl>

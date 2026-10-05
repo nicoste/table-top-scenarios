@@ -28,6 +28,7 @@ import type { Intersection } from 'three';
 import type { BlockCoord, EncounterMap, Material, SwatchId } from '@tt/domain';
 import { parseBlockKey, materialIn, shadeIdIn, colourOf } from '@tt/domain';
 import { grainAt } from '../grain/index.js';
+import { figure } from '../patterns/index.js';
 
 /** Where a click on a block face means a new block should go (R-147). */
 export interface FacePick {
@@ -39,6 +40,8 @@ export interface FacePick {
 
 export interface BlockBody {
   readonly group: Group;
+  /** Draws the figure in each material's surface, or does not (R-177). */
+  setFigures(on: boolean): void;
   /** How many blocks are drawn. Zero means an empty body, not a missing one. */
   readonly count: number;
   /**
@@ -68,6 +71,7 @@ export function buildBlockBody(map: EncounterMap, materials: readonly Material[]
     glow: 0,
     opacity: 1,
     shades: [],
+    pattern: 'none',
   };
 
   /*
@@ -115,6 +119,7 @@ export function buildBlockBody(map: EncounterMap, materials: readonly Material[]
   /** Which mesh holds which blocks, so a hit can be turned back into a cube. */
   const byMesh = new Map<InstancedMesh, BlockCoord[]>();
   const used: MeshStandardMaterial[] = [];
+  const figures: ((on: boolean) => void)[] = [];
   let count = 0;
 
   for (const { material, blocks, tints } of piles.values()) {
@@ -152,6 +157,7 @@ export function buildBlockBody(map: EncounterMap, materials: readonly Material[]
       surface.emissiveIntensity = material.glow;
     }
     used.push(surface);
+    figures.push(figure(surface, material));
 
     const mesh = new InstancedMesh(geometry, surface, Math.max(1, blocks.length));
     mesh.instanceMatrix.setUsage(DynamicDrawUsage);
@@ -185,6 +191,9 @@ export function buildBlockBody(map: EncounterMap, materials: readonly Material[]
   return {
     group,
     count,
+    setFigures(on) {
+      for (const set of figures) set(on);
+    },
     faceOf(hit) {
       const blocks = byMesh.get(hit.object as InstancedMesh);
       if (!blocks || hit.instanceId === undefined) return null;

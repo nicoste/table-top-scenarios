@@ -30,3 +30,6 @@ export type { SurfaceMove } from './surface/index.js';
 
 export { buildBlockBody } from './blocks/index.js';
 export type { BlockBody, FacePick } from './blocks/index.js';
+
+// The figure in a material's surface (R-177).
+export { isFigured } from './patterns/index.js';
