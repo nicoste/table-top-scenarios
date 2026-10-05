@@ -116,15 +116,24 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    */
   const [swatch, setSwatch] = useState<SwatchId>(DEFAULT_FLOOR);
   /**
-   * How the scene is lit (R-181).
+   * How the scene is lit (R-181) — sent to the host, and **held here while it
+   * is being set**.
    *
-   * **Console-local for now.** It belongs in the save beside the level band,
-   * so the table is lit the same way — but the table only ever receives its
-   * band, and what a sun should do when the GM has cut away the roof is still
-   * being decided (D-249). The panel does not change when it moves; only where
-   * this line keeps it does.
+   * It lives in the save, because the GM sets it for the table (D-250). But a
+   * control that rebuilt the whole description from the *view* every time lost
+   * changes: two fields moved inside one round trip each compose against a
+   * value that has not come back yet, so the second overwrites the first.
+   *
+   * So the console owns it while the GM is working and adopts the save's value
+   * when a campaign opens — the same shape as the tool and the brush beside
+   * it, with a broadcast attached.
    */
   const [lighting, setLighting] = useState<Lighting>(DAYLIGHT);
+  const relight = (next: Lighting) => {
+    const lit = clampLighting(next);
+    setLighting(lit);
+    dispatch({ kind: 'setLighting', lighting: lit });
+  };
   /**
    * The cell a place was just placed on, waiting for the snapshot that will carry
    * it. The host assigns the id, so the client cannot know it in advance — but
@@ -239,6 +248,8 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     if (fresh) {
       stage.setTarget({ ...defaultTarget(worldCentre(decoded.world)), zoom: 34 });
       openedId.current = campaign.id;
+      // Whatever hour this campaign was left at (R-181).
+      setLighting(clampLighting(view?.save?.lighting ?? DAYLIGHT));
     }
     // R-79 lives in domain; the console draws from it and never restates it.
     stage.setSlots(creatableSlots(decoded.world));
@@ -923,7 +934,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
           />
           <LightPanel
             lighting={lighting}
-            onLighting={(next) => setLighting(clampLighting(next))}
+            onLighting={relight}
           />
         </div>
       )}
@@ -978,7 +989,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
             )}
             <LightPanel
               lighting={lighting}
-              onLighting={(next) => setLighting(clampLighting(next))}
+              onLighting={relight}
             />
           </div>
 

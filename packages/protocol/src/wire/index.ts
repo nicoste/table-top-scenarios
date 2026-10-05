@@ -11,7 +11,18 @@ import {
   chunkKey, registryId, discoveryToJSON, discoveryFromJSON, mapToJSON, mapFromJSON, sliceOf,
   packRuns, unpackRuns,
   placementToJSON, placementFromJSON,
+  DAYLIGHT, clampLighting,
 } from '@tt/domain';
+
+/** The GM's description of the light (R-181), as it travels. */
+export const LightingWireSchema = z.object({
+  angle: z.number(),
+  sun: z.string(),
+  sunLevel: z.number(),
+  fill: z.string(),
+  fillLevel: z.number(),
+});
+export type LightingWire = z.infer<typeof LightingWireSchema>;
 
 export const TerrainIdSchema = z.string().regex(/^terrain:[a-z0-9]+(-[a-z0-9]+)*$/);
 export const CellIndex = z.number().int().min(0).max(CHUNK_SIZE - 1);
@@ -201,6 +212,12 @@ export const SaveWireSchema = z.object({
     z.string(),
     z.object({ lower: z.number().int(), upper: z.number().int() }),
   ).default({}),
+  /**
+   * How the scene is lit (R-181). Absent means daylight, which is what every
+   * save written before there was a sun to set already meant — no bump, for
+   * the same reason as the three absences above (D-187, R-144).
+   */
+  lighting: LightingWireSchema.default(DAYLIGHT),
 });
 export type SaveWire = z.infer<typeof SaveWireSchema>;
 
@@ -326,6 +343,7 @@ export function encodeSave(save: Save): SaveWire {
     ranges: Object.fromEntries(
       [...save.ranges].map(([poiId, range]) => [poiId, { lower: range.lower, upper: range.upper }]),
     ),
+    lighting: { ...save.lighting },
   };
 }
 
@@ -346,6 +364,8 @@ export function decodeSave(wire: SaveWire): Save {
       }
       : null,
     ranges: new Map(Object.entries(wire.ranges)),
+    // Clamped on the way in: a save file is as much an input as a socket is.
+    lighting: clampLighting(wire.lighting),
   };
 }
 

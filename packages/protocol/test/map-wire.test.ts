@@ -7,10 +7,12 @@
 import { describe, it, expect } from 'vitest';
 import {
   createCampaign, addPlace, addPoi, setMapBlock, blockAt, mapFromJSON,
-  DEFAULT_MATERIALS, ORIGIN, swatchOf,
+  DEFAULT_MATERIALS, ORIGIN, swatchOf, createLiveSave, DAYLIGHT,
 } from '@tt/domain';
 import type { Campaign } from '@tt/domain';
-import { encodeCampaign, mapWire } from '@tt/protocol';
+import {
+  encodeCampaign, mapWire, encodeSave, decodeSave, SaveWireSchema,
+} from '@tt/protocol';
 
 const STONE = swatchOf(DEFAULT_MATERIALS.find((m) => m.name === 'Mineral')!.id);
 
@@ -106,5 +108,33 @@ describe('an edit to one map costs nothing for the others (D-219)', () => {
     const wire = encodeCampaign(campaign);
     const fromWire = wire.places.find((p) => p.name === 'Fisherton')!.pois[0]!.map;
     expect(mapWire(campaign.places[0]!.pois[0]!.map!)).toBe(fromWire);
+  });
+});
+
+describe('lighting travels, and a save written before it reads as daylight (R-181)', () => {
+  const dusk = { angle: 165, sun: '#ff9a52', sunLevel: 2.2, fill: '#4a5f8f', fillLevel: 0.18 };
+
+  it('round-trips an hour the GM set', () => {
+    const save = { ...createLiveSave(createCampaign('Lit'), '2026-10-05T00:00:00.000Z'), lighting: dusk };
+    expect(decodeSave(SaveWireSchema.parse(encodeSave(save))).lighting).toEqual(dusk);
+  });
+
+  it('reads a save with no lighting at all as daylight', () => {
+    // Every save written before there was a sun to set meant this, which is why
+    // it needed no schema bump (D-187, D-250).
+    const save = createLiveSave(createCampaign('Old'), '2026-10-05T00:00:00.000Z');
+    const wire = encodeSave(save) as Record<string, unknown>;
+    delete wire.lighting;
+
+    expect(decodeSave(SaveWireSchema.parse(wire)).lighting).toEqual(DAYLIGHT);
+  });
+
+  it('clamps a file that has been edited by hand', () => {
+    const save = createLiveSave(createCampaign('Bent'), '2026-10-05T00:00:00.000Z');
+    const wire = { ...encodeSave(save), lighting: { ...DAYLIGHT, angle: -40, sunLevel: 400 } };
+
+    const back = decodeSave(SaveWireSchema.parse(wire));
+    expect(back.lighting.angle).toBe(10);
+    expect(back.lighting.sunLevel).toBe(3);
   });
 });

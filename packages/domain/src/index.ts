@@ -91,7 +91,7 @@ export {
   SAVE_SCHEMA_VERSION, LIVE_LABEL,
   liveSaveId, createLiveSave, belongsTo, matchesCampaignVersion,
   touch, upgraded, withDiscovery, withPlacement, pruneDiscovery, pruneMembers,
-  enteringMap, leavingMap, rangeFor, rangeIn, withRange, pruneInside, pruneRanges, settleRanges,
+  enteringMap, leavingMap, rangeFor, rangeIn, withRange, withLighting, pruneInside, pruneRanges, settleRanges,
 } from './save/index.js';
 
 export type { Placement, PlacementJSON } from './placement/index.js';

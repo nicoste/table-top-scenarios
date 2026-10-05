@@ -21,6 +21,7 @@ import {
   poiById as poiOfPlace,
   createLiveSave, withDiscovery, withPlacement, touch, upgraded, upgradedCampaign, belongsTo,
   pruneDiscovery, pruneMembers, enteringMap, leavingMap, withRange, pruneInside, pruneRanges,
+  withLighting,
   settleRanges,
   pawns, withGroupAt, withMemberAt, gathered, scattered,
   isValidWorldCell, chunkOf, isChunkKnown,
@@ -511,6 +512,14 @@ function applyToPois(
     case 'leaveMap': {
       if (!state.activeSave) return reject_('no save');
       return commitSave(state, state.activeSave, leavingMap(state.activeSave), now);
+    }
+
+    case 'setLighting': {
+      const save = state.activeSave;
+      if (!save) return reject_('no save');
+      // Clamped here and not trusted from the client (R-18a) — the console
+      // clamps too, and the console is not the authority (R-3).
+      return commitSave(state, save, withLighting(save, intent.lighting), now);
     }
 
     case 'setRange': {

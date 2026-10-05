@@ -233,16 +233,52 @@ describe('the permission line (R-136)', () => {
 });
 
 describe('what the table is told', () => {
-  it('receives the party position, and only that, out of the save', () => {
+  it('receives the party position and the hour out of the save, and nothing else', () => {
+    // The guard on the trust boundary (R-85). It is meant to fail whenever the
+    // table is sent something new, so that adding a field is a decision rather
+    // than a diff — which is how `lighting` came to be argued for in D-250.
     let state = revealed();
     state = run(state, { kind: 'moveParty', cell: at(4, 4) }).state;
     const view = tableView(state);
 
     expect(view.role).toBe('table');
-    expect(Object.keys(view).sort()).toEqual(['campaign', 'placement', 'role']);
+    expect(Object.keys(view).sort()).toEqual(['campaign', 'lighting', 'placement', 'role']);
     expect(view.placement).toMatchObject({ together: true, at: at(4, 4) });
-    // Discovery stays behind: which chunks are Known is itself the secret.
-    expect(JSON.stringify(view)).not.toContain('discovery');
+  });
+
+  it('never sends discovery or the bands, whatever else it sends', () => {
+    // The two that are answers to what is hidden: which chunks are Known, and
+    // which levels the GM has cut away.
+    let state = revealed();
+    state = run(state, { kind: 'moveParty', cell: at(4, 4) }).state;
+    const wire = JSON.stringify(tableView(state));
+
+    expect(wire).not.toContain('discovery');
+    expect(wire).not.toContain('ranges');
+  });
+
+  it('lights the table the way the GM set it', () => {
+    let state = revealed();
+    const dusk = { angle: 165, sun: '#ff9a52', sunLevel: 2.2, fill: '#4a5f8f', fillLevel: 0.18 };
+    state = run(state, { kind: 'setLighting', lighting: dusk }).state;
+
+    expect(tableView(state).lighting).toEqual(dusk);
+    // And the GM sees the same thing, out of the save rather than a second copy.
+    expect(state.activeSave?.lighting).toEqual(dusk);
+  });
+
+  it('clamps an hour the console should never have sent', () => {
+    // The console clamps too, and the console is not the authority (R-3).
+    let state = revealed();
+    state = run(state, {
+      kind: 'setLighting',
+      lighting: { angle: 900, sun: '#ffffff', sunLevel: 99, fill: '#000000', fillLevel: -3 },
+    }).state;
+
+    const lit = tableView(state).lighting;
+    expect(lit.angle).toBe(170);
+    expect(lit.sunLevel).toBe(3);
+    expect(lit.fillLevel).toBe(0);
   });
 
   it('sends no pawns when no campaign is on the table', () => {

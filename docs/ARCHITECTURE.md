@@ -2465,6 +2465,22 @@ apps/host/src/
 > **The hour has a name as well as a number** — dawn, morning, midday,
 > afternoon, dusk — beside the slider and not instead of it, the same
 > arrangement the level ladder settled on for heights (R-161).
+>
+> **It lives in the save and it reaches the table.** The GM sets it *for the
+> players*: "it is dusk" is scene-setting, and a sun only one screen can see is
+> worse than no sun. So it is play state beside the party's position and the
+> level band — not authored, because a keep is a keep at every hour.
+>
+> It is the **second** piece of save data the table is sent, and it is named
+> one field at a time in `viewFor` rather than by widening what the table's
+> `save` means (R-85). It is not a secret: discovery answers what is hidden and
+> the bands answer what has been cut away, while the hour tells a player
+> nothing they are not looking straight at (D-250).
+>
+> **The console holds it while the GM is setting it.** A control that rebuilt
+> the whole description from the view each time lost changes — two fields moved
+> inside one round trip both compose against a value that has not come back
+> yet, so the second overwrites the first.
 
 > **R-180.** **Shadows are redrawn on change, not on every frame.**
 >

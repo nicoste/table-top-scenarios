@@ -3,9 +3,11 @@
 
 import type { Campaign, Save } from '@tt/domain';
 import {
-  isPlaceOnTable, isChunkKnown, belongsTo, placementToJSON, rangeFor,
+  isPlaceOnTable, isChunkKnown, belongsTo, placementToJSON, rangeFor, DAYLIGHT,
 } from '@tt/domain';
-import type { CampaignWire, SaveWire, PlacementWire, MapWire } from '../wire/index.js';
+import type {
+  CampaignWire, SaveWire, PlacementWire, MapWire, LightingWire,
+} from '../wire/index.js';
 import { encodeCampaign, encodeSave, mapWire } from '../wire/index.js';
 
 export type Role = 'gm' | 'table' | 'spectator';
@@ -66,13 +68,26 @@ export interface TableView {
   readonly role: 'table';
   readonly campaign: CampaignWire | null;
   /**
-   * Where the party stands — the **only** save data the table ever receives.
+   * Where the party stands.
    *
-   * It has to: they are the players' own pawns, and the players move them
-   * (R-136). Discovery is not sent and must never be: knowing *which* chunks are
-   * Known is itself the answer to what is hidden.
+   * It has to be sent: they are the players' own pawns, and the players move
+   * them (R-136). Discovery is not sent and must never be — knowing *which*
+   * chunks are Known is itself the answer to what is hidden.
    */
   readonly placement: PlacementWire | null;
+  /**
+   * How the GM has lit the scene (R-181).
+   *
+   * The **second** piece of save data the table is ever sent, and sent as its
+   * own field rather than by widening what `save` means — so adding it is one
+   * auditable line in this filter rather than a quiet change of category
+   * (R-85).
+   *
+   * It is not a secret. Discovery is the answer to what is hidden and ranges
+   * are the answer to what has been cut away; the hour of the day tells a
+   * player nothing they are not looking straight at (D-250).
+   */
+  readonly lighting: LightingWire;
 }
 
 export type View = GmView | TableView;
@@ -86,8 +101,10 @@ export type OutboundMessage =
  * The role filter.
  *
  * Everything a client is not entitled to is removed here and nowhere else. The
- * table display never receives the save either — knowing *which* chunks are
- * Known is itself the answer to what is hidden.
+ * table display never receives the *save* — knowing which chunks are Known is
+ * itself the answer to what is hidden — so the two pieces of play state it does
+ * get, the party's position and the hour of the day, are named one at a time
+ * and justified where they are declared (R-85, D-250).
  */
 export function viewFor(role: Role, state: HostState, connect: readonly string[] = []): View {
   if (role === 'gm') {
@@ -108,6 +125,9 @@ export function viewFor(role: Role, state: HostState, connect: readonly string[]
     // No campaign on the table means no pawns either, rather than pawns floating
     // over an empty screen.
     placement: campaign && state.activeSave ? placementToJSON(state.activeSave.placement) : null,
+    // Daylight with no save, so a table waiting for a campaign is lit rather
+    // than black.
+    lighting: { ...(state.activeSave?.lighting ?? DAYLIGHT) },
   };
 }
 

@@ -5471,3 +5471,49 @@ because `input { width: 100% }` is a base rule and a swatch left to itself
 obeys it, collapsing the slider beside it to its thumb. And a native range
 control in a dark dock renders as a bright grey bar with a blue thumb, which
 reads as something broken — it gets the dock's own colours.
+
+### D-250 — The hour belongs to the table · `agreed`
+D-249 shipped the light controls console-local, with a note saying they
+belonged in the save. The GM's answer: *"I want the light configuration to be a
+scene shareable thing, I want the GM setting it and players receiving the
+configuration."* Which is right, and for the reason the note gave — a sun only
+one screen can see is worse than no sun.
+
+**It is play state, not authored.** A keep is a keep at every hour; what time
+it is belongs to the session, beside where the party is standing and which band
+the table is shown. A dungeon that is *always* dark would be a property of the
+place, and is a different field on a different object.
+
+**No schema bump.** A save with no `lighting` reads as daylight, which is what
+every save written before there was a sun to set already meant — the fourth
+time D-187's "the absence says what it means" has paid for itself, and the
+reason R-144 has not been tripped once.
+
+**The trust boundary moved, deliberately.** The table view carried exactly one
+piece of save data — the party's position — with a comment saying so and a test
+asserting it. That test failed the moment lighting was added, which is the test
+doing its job: it exists so that sending the table something new is a decision
+rather than a diff. Lighting is not a secret. Discovery answers *what is
+hidden*; the bands answer *what has been cut away*; the hour tells a player
+nothing they are not looking straight at. So it is sent, as its own named field
+in `viewFor` rather than by widening what `save` means there, and the test now
+reads "the party position and the hour, and nothing else" with a second test
+that no wire ever contains `discovery` or `ranges`.
+
+**And a bug that only shows on a round trip.** With the console reading
+lighting straight from the view, setting the sun's colour and then its strength
+inside one round trip lost the first: both compose a whole description from a
+value that has not come back yet, so the second overwrites the first. Three of
+five settings vanished in the first end-to-end test. The console now holds the
+hour while the GM is working and adopts the save's value when a campaign opens
+— the same shape as the tool and the brush, with a broadcast attached.
+
+Verified on two screens: the GM set dusk with a warm sun and the table's
+terrain went orange; set midday and the same terrain, same camera, went blue
+and sand half a minute later.
+
+**Still open**, and the GM is thinking about it: what a sun should do when the
+band has cut the roof away. The table receives only its band, so a cellar it is
+shown has no roof above it and a sun floods it, while the console — which holds
+the whole body — shows it dark. Shipping shadows created that; making the hour
+shareable did not change it either way.

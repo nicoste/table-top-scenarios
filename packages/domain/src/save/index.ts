@@ -5,6 +5,8 @@
 // There is no second kind and no save/load verb anywhere in the UI (D-147).
 
 import type { CampaignId, SaveId, PlaceId, PoiId, MemberId } from '../ids/index.js';
+import type { Lighting } from '../light/index.js';
+import { DAYLIGHT, clampLighting } from '../light/index.js';
 import type { Discovery } from '../discovery/index.js';
 import { emptyDiscovery } from '../discovery/index.js';
 import type { Placement } from '../placement/index.js';
@@ -57,6 +59,19 @@ export interface Save {
    * Absent means the whole body, so a map nobody has cut needs no entry.
    */
   readonly ranges: ReadonlyMap<string, LevelRange>;
+  /**
+   * How the scene is lit (R-181).
+   *
+   * **Play state, not authored.** A keep is a keep at every hour; what time it
+   * is belongs to the session, beside where the party is standing and which
+   * band the table is shown. A dungeon that is *always* dark would be a
+   * property of the place, and is a different field on a different object.
+   *
+   * In the save rather than on the console because the GM sets it **for the
+   * table** — "it is dusk" is scene-setting for the players, and a sun only
+   * one screen can see is worse than no sun (D-250).
+   */
+  readonly lighting: Lighting;
 }
 
 /** Which map the party has gone into. Where they are, and nothing else. */
@@ -88,6 +103,7 @@ export function createLiveSave(campaign: Campaign, savedAt: string): Save {
     placement: emptyPlacement(),
     inside: null,
     ranges: new Map(),
+    lighting: DAYLIGHT,
   };
 }
 
@@ -243,4 +259,20 @@ export function pruneDiscovery(save: Save, livePlaceIds: ReadonlySet<PlaceId>): 
 /** The same tolerance for a member who has left the roster (D-155). */
 export function pruneMembers(save: Save, liveMemberIds: ReadonlySet<MemberId>): Save {
   return withPlacement(save, prunePlacement(save.placement, liveMemberIds));
+}
+
+/**
+ * The scene's lighting, clamped (R-181). Identity-preserving (R-165).
+ *
+ * Compared field by field rather than by reference, because the console sends
+ * the whole description on every drag of a slider and most of those are the
+ * same values it already holds.
+ */
+export function withLighting(save: Save, lighting: Lighting): Save {
+  const next = clampLighting(lighting);
+  const now = save.lighting;
+  const same = now.angle === next.angle
+    && now.sun === next.sun && now.sunLevel === next.sunLevel
+    && now.fill === next.fill && now.fillLevel === next.fillLevel;
+  return same ? save : { ...save, lighting: next };
 }
