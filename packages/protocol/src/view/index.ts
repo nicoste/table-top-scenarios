@@ -4,6 +4,7 @@
 import type { Campaign, Save } from '@tt/domain';
 import {
   isPlaceOnTable, isChunkKnown, belongsTo, placementToJSON, rangeFor, DAYLIGHT, OPEN_SKY,
+  sunReaches, litBy, MAP_MAX_HEIGHT,
 } from '@tt/domain';
 import type {
   CampaignWire, SaveWire, PlacementWire, MapWire, LightingWire,
@@ -243,10 +244,17 @@ function litFor(state: HostState): LightingWire {
       .find((place) => place.id === inside.placeId)?.pois
       .find((it) => it.id === inside.poiId)
     : null;
+  /*
+   * Indoors when the band the table is being shown stops below the sun
+   * (R-183). The table has no band of its own — it is sent a slice and never
+   * the cut — so this is worked out here and arrives as a sun of zero.
+   */
+  const sunlit = !inside || sunReaches(rangeFor(save, inside.poiId), MAP_MAX_HEIGHT);
+  const lit = litBy(save.lighting, poi?.ambience ?? save.lighting.ambience, sunlit);
   return {
-    angle: save.lighting.angle,
-    sun: save.lighting.sun,
-    sunLevel: save.lighting.sunLevel,
-    ambience: { ...(poi?.ambience ?? save.lighting.ambience) },
+    angle: lit.angle,
+    sun: lit.sun,
+    sunLevel: lit.sunLevel,
+    ambience: { ...lit.ambience },
   };
 }

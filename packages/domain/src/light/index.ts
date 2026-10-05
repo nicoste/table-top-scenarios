@@ -163,3 +163,27 @@ export function bounceOf(fill: string): string {
     .toString(16).padStart(2, '0');
   return `#${dim(16)}${dim(8)}${dim(0)}`;
 }
+
+/**
+ * The lighting a surface is actually drawn with (R-183).
+ *
+ * One function, used by the table's filter *and* by the GM's console, because
+ * two screens working it out separately is two chances to disagree — and the
+ * console is not looking at a view of its own screen, so it cannot simply be
+ * told (D-253).
+ *
+ * The GM's `sunLevel` is **not changed**, only the one handed to the renderer:
+ * raise the band back to the sun and the daylight returns at the strength it
+ * was left at, rather than at nothing.
+ */
+export function litBy(
+  lighting: Lighting,
+  ambience: Ambience,
+  sunlit: boolean,
+): Lighting {
+  return {
+    ...lighting,
+    sunLevel: sunlit ? lighting.sunLevel : 0,
+    ambience,
+  };
+}

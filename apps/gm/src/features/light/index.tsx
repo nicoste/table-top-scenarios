@@ -23,12 +23,20 @@ export interface LightPanelProps {
   readonly ambience: Ambience;
   /** What that ambience belongs to, said plainly. */
   readonly where: string;
+  /**
+   * Whether the sun is in what the GM is looking at (R-183).
+   *
+   * False when the band stops below the Sun step — the GM is looking inside
+   * something, so there is no daylight to configure and saying so is better
+   * than leaving two dead sliders that quietly do nothing.
+   */
+  readonly sunlit: boolean;
   onLighting: (lighting: Lighting) => void;
   onAmbience: (ambience: Ambience) => void;
 }
 
 export function LightPanel({
-  lighting, ambience, where, onLighting, onAmbience,
+  lighting, ambience, where, sunlit, onLighting, onAmbience,
 }: LightPanelProps) {
   const set = (patch: Partial<Lighting>) => onLighting({ ...lighting, ...patch });
 
@@ -41,9 +49,17 @@ export function LightPanel({
         elevation and a compass direction, and the second is a fact about the
         world rather than something a GM wants to adjust (R-181).
       */}
+      {!sunlit && (
+        <p className="notice">
+          The band stops below the <b>Sun</b>, so this is somewhere indoors —
+          only the ambience lights it. Raise the band to the Sun to get the
+          daylight back.
+        </p>
+      )}
+
       <p className="lbl">
         Hour
-        <span className="hour">{hourLabel(lighting.angle)}</span>
+        <span className="hour">{sunlit ? hourLabel(lighting.angle) : 'no sun'}</span>
       </p>
       <Tooltip
         label="Where the sun sits on its arc — low at either end, overhead in the middle"
@@ -57,6 +73,7 @@ export function LightPanel({
           max={MAX_ANGLE}
           value={lighting.angle}
           aria-label="hour of the day"
+          disabled={!sunlit}
           onChange={(e) => set({ angle: Number(e.target.value) })}
         />
       </Tooltip>
@@ -67,6 +84,7 @@ export function LightPanel({
           value={lighting.sun}
           onCommit={(sun) => set({ sun })}
           aria-label="sun colour"
+          disabled={!sunlit}
         />
         <input
           type="range"
@@ -76,6 +94,7 @@ export function LightPanel({
           step={0.05}
           value={lighting.sunLevel}
           aria-label="sun strength"
+          disabled={!sunlit}
           onChange={(e) => set({ sunLevel: Number(e.target.value) })}
         />
       </div>

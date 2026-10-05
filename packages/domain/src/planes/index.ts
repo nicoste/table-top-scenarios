@@ -276,10 +276,34 @@ export const WATER_LEVEL = 'Water level';
  * What the two fixed bounds are called (R-161), or `null` for a height that is
  * the GM's to name.
  */
+/**
+ * The two ends of the ladder, named.
+ *
+ * The top is **the Sun**, not the sky (R-183). The rename is the feature: a
+ * band that reaches it is a place with daylight in it, and a band that stops
+ * short is somewhere indoors — so the name says what leaving it out costs, and
+ * the GM sets the lighting by dragging the thing they were already dragging
+ * (D-253).
+ */
 export function stepLabel(y: number, cap: number, floor: number): string | null {
-  if (y >= cap) return 'Sky';
+  if (y >= cap) return 'Sun';
   if (y <= floor) return 'Bedrock';
   return null;
+}
+
+/**
+ * Whether the sun reaches what this band is showing (R-183).
+ *
+ * A cut is the GM looking *into* a building, and the slice they get has no
+ * roof on it — so a directional light pours straight in and the walls throw
+ * shadows across a room that should be indoors. Nothing in the geometry can
+ * say which of those a missing cube means, because they are the same geometry.
+ *
+ * This is the GM saying it, with the control they already use: if the top of
+ * the ladder is not in the band, there is no sun in the scene.
+ */
+export function sunReaches(range: LevelRange, cap: number): boolean {
+  return range.upper >= cap;
 }
 
 export interface PlaneJSON {

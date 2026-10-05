@@ -7,7 +7,7 @@ import {
   chunkAt, columnAt,
   creatableSlots, sameWorldCell,
   DEFAULT_MATERIALS, DEFAULT_FLOOR, mapFromJSON, fillRegion, sliceOf, inRange, inMap, blockAt,
-  bottomOfMap, DEFAULT_TERRAIN,
+  bottomOfMap, DEFAULT_TERRAIN, sunReaches, litBy, MAP_MAX_HEIGHT,
   DAYLIGHT, clampLighting,
 } from '@tt/domain';
 import type { SwatchId, Lighting, Ambience } from '@tt/domain';
@@ -198,9 +198,6 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    * table and the console has to do it for itself, because it is not looking
    * at a view of its own screen.
    */
-  useEffect(() => {
-    stage?.setLighting({ ...lighting, ambience });
-  }, [stage, lighting, ambience]);
 
   const reambience = (next: Ambience) => {
     if (litPoi && openPlace) {
@@ -231,6 +228,17 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    * building gets built (D-201).
    */
   const openRange = openMap ? rangeIn(view?.save?.ranges ?? {}, openMap.poiId) : null;
+
+  /**
+   * Whether the sun is in what the GM is looking at (R-183).
+   *
+   * Only while levelling: with the whole body on screen the roof is there and
+   * the sun belongs, however the band is set for the table.
+   */
+  const sunlit = !levelling || !openRange || sunReaches(openRange, MAP_MAX_HEIGHT);
+  useEffect(() => {
+    stage?.setLighting(litBy(lighting, ambience, sunlit));
+  }, [stage, lighting, ambience, sunlit]);
 
   const cellKey = (c: { cx: number; cz: number; x: number; z: number }) => `${c.cx}:${c.cz}:${c.x}:${c.z}`;
   const memberName = (id: string) => campaign?.party.find((m) => m.id === id)?.name ?? null;
@@ -964,6 +972,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
             lighting={lighting}
             ambience={ambience}
             where={litWhere}
+            sunlit={sunlit}
             onLighting={relight}
             onAmbience={reambience}
           />
@@ -1022,6 +1031,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
               lighting={lighting}
               ambience={lighting.ambience}
               where="the world"
+              sunlit
               onLighting={relight}
               onAmbience={(next) => relight({ ...lighting, ambience: next })}
             />

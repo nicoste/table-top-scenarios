@@ -480,3 +480,51 @@ describe('an uncut map carries no band, and everyone must agree what that means 
     expect(rangeFor(cellar.activeSave!, poiId)).toEqual({ lower: MAP_MIN_DEPTH, upper: 4 });
   });
 });
+
+const tableView = (state: HostState) => viewFor('table', state) as TableView;
+
+describe('cutting one place’s band does not darken anywhere else (R-183)', () => {
+  it('takes the sun out of the place being cut, and only that one', () => {
+    // The GM's clarification, as a test rather than a promise: the band is a
+    // property of one point of interest, so the rule it drives has to be too.
+    const { state, placeId, poiId } = tavern();
+    let next = run(state, { kind: 'addPoi', placeId, name: 'The yard', visibleToParty: true }).state;
+    const otherId = next.active!.places[0]!.pois[1]!.id;
+
+    // Out on the world, with nobody inside anything: full daylight.
+    const outside = tableView(next).lighting.sunLevel;
+    expect(outside).toBeGreaterThan(0);
+
+    // Cut the tavern's band below the sky, and walk the party into it.
+    next = run(next, {
+      kind: 'setRange', placeId, poiId, lower: MAP_MIN_DEPTH, upper: 6,
+    }).state;
+    next = run(next, { kind: 'enterMap', placeId, poiId }).state;
+    expect(tableView(next).lighting.sunLevel).toBe(0);
+
+    // The yard, whose band nobody touched, still has its sun.
+    next = run(next, { kind: 'leaveMap' }).state;
+    next = run(next, { kind: 'enterMap', placeId, poiId: otherId }).state;
+    expect(tableView(next).lighting.sunLevel).toBe(outside);
+
+    // And so does the world they came back out to.
+    next = run(next, { kind: 'leaveMap' }).state;
+    expect(tableView(next).lighting.sunLevel).toBe(outside);
+  });
+
+  it('keeps the GM’s own setting, so raising the band gives it back', () => {
+    const { state, placeId, poiId } = tavern();
+    let next = run(state, {
+      kind: 'setRange', placeId, poiId, lower: MAP_MIN_DEPTH, upper: 6,
+    }).state;
+    next = run(next, { kind: 'enterMap', placeId, poiId }).state;
+    expect(tableView(next).lighting.sunLevel).toBe(0);
+    // Nothing was written away: the save still holds what the GM chose.
+    expect(next.activeSave!.lighting.sunLevel).toBeGreaterThan(0);
+
+    next = run(next, {
+      kind: 'setRange', placeId, poiId, lower: MAP_MIN_DEPTH, upper: MAP_MAX_HEIGHT,
+    }).state;
+    expect(tableView(next).lighting.sunLevel).toBe(next.activeSave!.lighting.sunLevel);
+  });
+});

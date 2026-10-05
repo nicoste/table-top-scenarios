@@ -114,7 +114,7 @@ describe('the steps a range may snap to (R-161)', () => {
   });
 
   it('names the two bounds, and lets the GM name everything else', () => {
-    expect(stepLabel(CAP, CAP, FLOOR)).toBe('Sky');
+    expect(stepLabel(CAP, CAP, FLOOR)).toBe('Sun');
     expect(stepLabel(FLOOR, CAP, FLOOR)).toBe('Bedrock');
     // Every other height is the GM's to name, zero included — a new map simply
     // starts with a plane there called water level.

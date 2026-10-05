@@ -44,7 +44,7 @@ export type { Place, PlaceNote, PlaceCell, Poi } from './place/index.js';
 export type { Lighting, Ambience } from './light/index.js';
 export {
   DAYLIGHT, OPEN_SKY, MIN_ANGLE, MAX_ANGLE, MIN_SUN, MAX_SUN, MIN_FILL, MAX_FILL,
-  clampLighting, clampAmbience, sunDirection, shadowReach, hourLabel, bounceOf,
+  clampLighting, clampAmbience, sunDirection, shadowReach, hourLabel, bounceOf, litBy,
 } from './light/index.js';
 export type { Material, Cut } from './materials/index.js';
 export {
@@ -57,7 +57,7 @@ export { withPoiAmbience } from './place/index.js';
 export {
   MAX_PLANE_NAME, validPlaneY, planeAt, planeById,
   addPlane, renamePlane, movePlane, removePlane,
-  planeSteps, fullRange, clampRange, settleRange, inRange, sameRange, isFullRange, stepLabel, WATER_LEVEL,
+  planeSteps, fullRange, clampRange, settleRange, inRange, sameRange, isFullRange, stepLabel, sunReaches, WATER_LEVEL,
   planesToJSON, planesFromJSON,
 } from './planes/index.js';
 export type { CuttingPlane, LevelRange, PlaneJSON } from './planes/index.js';

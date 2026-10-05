@@ -5577,3 +5577,49 @@ compose it itself.
 Verified by hand afterwards: the cave green, the sun turned to zero to show it
 plainly, then the sun restored and the world stepped back out to — unchanged,
 blue and sand, with the card relabelling itself from "Tollkeep" to "the world".
+
+### D-253 — The Sun is a step on the ladder · `agreed`
+The GM's idea, and it is better than either option I had put up: *"we change
+the 'sky' wording on levels to 'sun', whenever the GM takes the 'sun' out of
+the leveling (meaning is showing something inside), we disable the sunlight and
+its configuration."*
+
+**Why it is better.** My two candidates were a heuristic (infer "interior" from
+whether the band had been cut) and a derived bit sent to the table. Both have
+the renderer guessing at meaning. This has the GM *stating* it — with a control
+they were already using, where the consequence is visible, and where the name
+of the thing says what leaving it out costs. Nothing is inferred.
+
+It also closes the question honestly rather than cleverly. A slice does not
+hide a roof, it removes it: the body handed to the renderer is an open-topped
+box, and "cut away" and "no roof" are the same cubes. No amount of looking at
+geometry distinguishes them. Somebody has to say which, and the GM is the only
+one who knows.
+
+**Per point of interest**, on the GM's correction mid-build — *"this is a
+per-POI rule, so if I edit the levels band, it doesn't affect the world map or
+other POIs."* It already was, because the band is: `rangeFor(save, poiId)`. But
+"already true" is worth a test rather than a claim, so there is one that cuts
+one place's band and then checks the world and a second place still have their
+sun.
+
+**The GM's setting is not written away.** Only the lighting handed to the
+renderer has its sun zeroed; the save keeps the strength they chose, so raising
+the band gives back the daylight they had rather than nothing. Also tested,
+because the tempting implementation is to write the zero and lose it.
+
+**One function for two screens.** `litBy` is used by `viewFor` for the table
+and by the console for itself. The console is not looking at a view of its own
+screen, so it cannot be told — and two screens deciding separately is two
+chances to disagree, which is the shape of D-252's bug from an hour before.
+
+**What it costs, stated plainly.** The rule applies to the whole slice, not to
+the enclosed part of it: cut the roof off a keep standing on an island and the
+island loses its sun too, because the GM is looking at a cross-section of
+everything. Whether that is right is a judgement rather than a bug — a
+cross-section of a building is not a place the sun is shining on — but it is
+the thing to look at first if this ever feels wrong.
+
+**And a known false positive**: an outdoor place with nothing above it, whose
+band the GM trims to hide a tower, goes dark. Raising the band to the Sun fixes
+it, and that is discoverable from the notice.

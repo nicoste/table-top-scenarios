@@ -402,3 +402,18 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
 .lamp input[type="color"] { flex: none; width: 34px; height: 22px; padding: 0; }
 .lamp .dial { flex: 1; min-width: 0; }
 .lamp .dial { margin: 0; }
+
+/*
+  Why a control is switched off, said where the control is (R-183).
+  `.hot` was not reusable for this: it is a colour on a metrics figure, not a
+  block, and borrowing it would have styled nothing at all.
+*/
+.notice {
+  margin: 0 0 10px; padding: 7px 9px; border-radius: 6px;
+  background: #3a2e1b; border: 1px solid #5c4824; color: #ffd9a0;
+  font-size: 11.5px; line-height: 1.45;
+}
+.notice b { color: #ffe9c7; }
+/* A dial or a swatch that is off should look it, and not take a click. */
+.dial:disabled { opacity: .35; cursor: not-allowed; }
+.lamp input[type="color"]:disabled { opacity: .35; cursor: not-allowed; }

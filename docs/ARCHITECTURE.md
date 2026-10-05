@@ -2431,6 +2431,37 @@ apps/host/src/
 >
 > A family always has at least one cut, and the first is its default.
 
+> **R-183.** **A band that stops below the Sun is indoors, and indoors has no
+> sun.**
+>
+> The top of the level ladder is named **Sun**, not Sky, and the rename is the
+> feature: a band that reaches it is a place with daylight in it, and a band
+> that stops short is the GM looking *inside* something.
+>
+> **Because nothing in the geometry can say which.** A slice does not hide a
+> roof, it removes it — so the body the renderer receives is an open-topped box
+> and a directional light pours straight in, with the walls throwing shadows
+> across a floor that should be indoors. "Cut away" and "no roof" are the same
+> cubes. The GM distinguishes them, with the control they were already using
+> (D-253).
+>
+> **It is per point of interest**, because the band is. Cutting one place's
+> levels leaves the world and every other place in full daylight — asserted by
+> a test, not by inspection.
+>
+> **The GM's own setting is never written away.** Only the lighting *handed to
+> the renderer* has its sun zeroed, so raising the band back gives the daylight
+> at the strength it was left at rather than at nothing.
+>
+> **One function does it for both screens.** `litBy` is used by `viewFor` for
+> the table and by the console for itself — the console is not looking at a
+> view of its own screen, and two screens working it out separately is two
+> chances to disagree.
+>
+> **The controls say so.** With no sun in the band the hour and the sun's
+> colour and strength are disabled under a notice that explains why. A dead
+> slider that silently does nothing teaches the GM that the panel is unreliable.
+
 > **R-181.** **Lighting is a description the GM writes, not a rig.**
 >
 > An hour, two colours and two levels. What lights exist to honour that is the

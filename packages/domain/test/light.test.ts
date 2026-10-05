@@ -3,8 +3,10 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-  DAYLIGHT, MIN_ANGLE, MAX_ANGLE, MAX_SUN, MAX_FILL,
-  OPEN_SKY, clampLighting, clampAmbience, sunDirection, shadowReach, hourLabel, bounceOf,
+  DAYLIGHT, OPEN_SKY, MIN_ANGLE, MAX_ANGLE, MAX_SUN, MAX_FILL,
+  MAP_MAX_HEIGHT, MAP_MIN_DEPTH,
+  clampLighting, clampAmbience, sunDirection, shadowReach, hourLabel, bounceOf,
+  sunReaches, litBy,
 } from '@tt/domain';
 
 const length = (v: { x: number; y: number; z: number }) => Math.hypot(v.x, v.y, v.z);
@@ -137,5 +139,37 @@ describe('the ambience belongs to a place, not to the hour (R-182)', () => {
     for (const angle of [MIN_ANGLE, 90, MAX_ANGLE]) {
       expect(clampLighting({ ...DAYLIGHT, angle, ambience: cave }).ambience).toEqual(cave);
     }
+  });
+});
+
+describe('a band that stops below the Sun is indoors (R-183)', () => {
+  const band = (lower: number, upper: number) => ({ lower, upper });
+
+  it('is sunlit only when the band reaches the top of the ladder', () => {
+    expect(sunReaches(band(MAP_MIN_DEPTH, MAP_MAX_HEIGHT), MAP_MAX_HEIGHT)).toBe(true);
+    expect(sunReaches(band(MAP_MIN_DEPTH, MAP_MAX_HEIGHT - 1), MAP_MAX_HEIGHT)).toBe(false);
+    // Cutting the *floor* away is still outdoors: the roof is what matters.
+    expect(sunReaches(band(4, MAP_MAX_HEIGHT), MAP_MAX_HEIGHT)).toBe(true);
+  });
+
+  it('keeps the GM’s sun where they left it, and only dims what is drawn', () => {
+    // So raising the band back gives the daylight they had, not nothing.
+    const dusk = { ...DAYLIGHT, sunLevel: 2.4 };
+    const indoors = litBy(dusk, OPEN_SKY, false);
+    expect(indoors.sunLevel).toBe(0);
+    expect(dusk.sunLevel).toBe(2.4);
+    expect(litBy(dusk, OPEN_SKY, true).sunLevel).toBe(2.4);
+  });
+
+  it('leaves the hour and the colours alone, because only the sun goes out', () => {
+    const indoors = litBy(DAYLIGHT, OPEN_SKY, false);
+    expect(indoors.angle).toBe(DAYLIGHT.angle);
+    expect(indoors.sun).toBe(DAYLIGHT.sun);
+  });
+
+  it('carries the ambience it is given, lit or not', () => {
+    const cave = { colour: '#2f7a4a', level: 0.55 };
+    expect(litBy(DAYLIGHT, cave, false).ambience).toEqual(cave);
+    expect(litBy(DAYLIGHT, cave, true).ambience).toEqual(cave);
   });
 });
