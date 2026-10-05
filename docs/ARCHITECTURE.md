@@ -2379,13 +2379,23 @@ apps/host/src/
 > **R-176.** **A shade is the other axis of a material, not another material.**
 >
 > A cube holds a **swatch**: a material and the cut it was made in. Three
-> stones, three woods, fourteen materials and three shades — forty-two
-> appearances from a registry of seventeen entries.
+> stones, three woods, one snow.
 >
 > **Never new material ids.** R-11 makes them permanent and every saved map
 > references them, so "dark stone" as its own entry is a registry that grows
 > by the *product* of substance and tint, forever, and a GM scrolling past
-> forty-two rows to find a wall. Shades multiply; entries add.
+> forty rows to find a wall. Shades multiply; entries add.
+>
+> **The cuts belong to the material**, not to a ladder every material climbs
+> (D-242). Snow is one thing and stone is three; a wood that wants an `oak`
+> and a `pine` gets them without stone growing the same two. So a shade id
+> only means something *through* a material — `material:snow/dark` is refused
+> where `material:stone/dark` is fine — and `isKnownSwatch` asks the material,
+> never a global list.
+>
+> **Plain is the absence of a shade**, not an entry in anybody's list: a
+> material *is* its plain cut. That is what lets it write bare, and what makes
+> "no variations" the ordinary case rather than a special one.
 >
 > **Plain writes bare.** `material:stone`, not `material:stone/plain`, so a
 > map saved before shades existed reads back as plain stone with no migration
@@ -2393,6 +2403,12 @@ apps/host/src/
 > (D-187, R-137a). And it is enforced in the other direction: a swatch
 > spelling plain out is *refused*, because a swatch is compared as a string
 > and two spellings of one cut would stop a fill in the middle of a flat wall.
+>
+> **One choice, not two.** The GM picks a swatch, never a material and then a
+> shade: the list shows each material's own cuts in its row, and because cuts
+> belong to materials there is no such move as "keep the shade, change the
+> material". One piece of state, and the panel cannot show a combination that
+> does not exist.
 >
 > **A shade changes the colour and nothing else.** Not `blocksSight`, not
 > roughness, not what any rule makes of it — dark glass is still glass. Which

@@ -8,9 +8,10 @@ import type { Intent, MapWire } from '@tt/protocol';
 import type { MapTool } from '@tt/client-core';
 import { CAMERA_HINT } from '@tt/client-core';
 import {
-  MAP_MAX_HEIGHT, MAP_MIN_DEPTH, BRUSHES, isFullRange, stepLabel, SHADES, shadeById, shadeColour,
+  MAP_MAX_HEIGHT, MAP_MIN_DEPTH, BRUSHES, isFullRange, stepLabel,
+  PLAIN, swatchOf, materialIn, shadeIdIn, colourOf,
 } from '@tt/domain';
-import type { LevelRange, Material } from '@tt/domain';
+import type { LevelRange, Material, SwatchId } from '@tt/domain';
 import { Tooltip } from '@tt/ui';
 import { LevelLadder } from '../levels/index.js';
 
@@ -49,8 +50,8 @@ interface Props {
   /** Is Shift held — is the selected tool showing its other mode right now? */
   readonly shifting: boolean;
   readonly materials: readonly Material[];
-  readonly materialId: string;
-  readonly shadeId: string;
+  /** The material **and** the cut of it the next click lays down (R-176). */
+  readonly swatch: SwatchId;
   readonly hoverLabel: string | null;
   /** Is the party standing in *this* map (R-158)? */
   readonly partyHere: boolean;
@@ -63,8 +64,7 @@ interface Props {
   onLevelling: (on: boolean) => void;
   onTool: (tool: MapTool) => void;
   onBrush: (brushId: string) => void;
-  onMaterial: (id: string) => void;
-  onShade: (id: string) => void;
+  onSwatch: (swatch: SwatchId) => void;
   onLeave: () => void;
   dispatch: (intent: Intent) => void;
   readonly placeId: string;
@@ -72,14 +72,13 @@ interface Props {
 }
 
 export function MapPanel({
-  placeName, poiName, map, blocks, dug, tool, brush, shifting, materials, materialId, shadeId, hoverLabel,
+  placeName, poiName, map, blocks, dug, tool, brush, shifting, materials, swatch, hoverLabel,
   partyHere, partyCanSee, range, levelling, onLevelling,
-  onTool, onBrush, onMaterial, onShade, onLeave, dispatch, placeId, poiId,
+  onTool, onBrush, onSwatch, onLeave, dispatch, placeId, poiId,
 }: Props) {
-  // What the chips should be painted in: the palette previews the cut that is
-  // actually about to be laid down, not the registry's own colour.
-  const shade = shadeById(shadeId);
-  const chosen = materials.find((m) => m.id === materialId) ?? materials[0];
+  // One selection, split for the two things the list highlights.
+  const chosenMaterial = materialIn(swatch);
+  const chosenCut = shadeIdIn(swatch);
   return (
     <>
       <div className="card">
@@ -226,54 +225,48 @@ export function MapPanel({
           <h2>Material</h2>
           <ul className="palette">
             {materials.map((material) => (
-              <li key={material.id}>
+              <li key={material.id} className={material.id === chosenMaterial ? 'on' : ''}>
+                {/*
+                  The row picks the material in its plain cut; each rectangle
+                  beside it picks one of that material's own (R-176). Two
+                  buttons rather than one with hit-testing inside it: they are
+                  two actions, and a keyboard has to reach both.
+                */}
                 <button
-                  className={material.id === materialId ? 'on' : ''}
-                  onClick={() => onMaterial(material.id)}
+                  className={`pick${
+                    material.id === chosenMaterial && chosenCut === PLAIN ? ' lit' : ''
+                  }`}
+                  onClick={() => onSwatch(swatchOf(material.id))}
                 >
-                  <span
-                    className="chip"
-                    style={{ background: shadeColour(material.colour, shade.lift) }}
-                  />
+                  <span className="chip" style={{ background: material.colour }} />
                   <span className="nm">{material.name}</span>
                   {/* Said out loud at a table, and the reason it is a material
                       property rather than a block one (R-75). */}
                   {!material.blocksSight && <span className="diff">see-through</span>}
                 </button>
+                {material.shades.map((shade) => (
+                  <Tooltip
+                    key={shade.id}
+                    label={`${shade.name} ${material.name.toLowerCase()}`}
+                    placement="left"
+                  >
+                    <button
+                      className={`cut${
+                        material.id === chosenMaterial && shade.id === chosenCut ? ' lit' : ''
+                      }`}
+                      style={{ background: colourOf(material, shade.id) }}
+                      onClick={() => onSwatch(swatchOf(material.id, shade.id))}
+                      aria-label={`${shade.name} ${material.name.toLowerCase()}`}
+                    />
+                  </Tooltip>
+                ))}
               </li>
             ))}
           </ul>
-
-          {/*
-            Shades (R-176). Its own row rather than three entries per material
-            in the list above, which is the whole point: the two are separate
-            choices and the list stays fourteen long instead of forty-two.
-          */}
-          <p className="lbl" style={{ margin: '10px 0 4px' }}>Shade</p>
-          <div className="btn-grid shades">
-            {SHADES.map((cut) => (
-              <Tooltip
-                key={cut.id}
-                label={chosen ? `${cut.name} ${chosen.name.toLowerCase()}` : cut.name}
-                placement="bottom"
-                stretch
-              >
-                <button
-                  className={cut.id === shadeId ? 'on' : ''}
-                  onClick={() => onShade(cut.id)}
-                >
-                  <span
-                    className="chip"
-                    style={{ background: shadeColour(chosen?.colour ?? '#888', cut.lift) }}
-                  />
-                  {cut.name}
-                </button>
-              </Tooltip>
-            ))}
-          </div>
           <p className="hint">
-            One material, cut lighter or darker — still the same stone, so it
-            weighs the same in every rule. A <b>fill</b> stops where the shade
+            Tap a row for the material plain, or one of the squares beside it
+            for a cut of that same material — still the same stone, so it
+            weighs the same in every rule. A <b>fill</b> stops where the cut
             changes, which is what lets you repaint one course of a wall.
           </p>
         </div>

@@ -5062,3 +5062,51 @@ value, so matching on the swatch rather than the material needed no code at
 all — and it is the behaviour the GM confirmed wanting when the fill tool was
 built. One course of a wall in a different cut is a region, and repainting it
 is one click.
+
+### D-242 — The cuts belong to the material, and plank is gone · `agreed`
+D-241 shipped one ladder — dark, plain, pale — that every material climbed.
+The GM read it back and found the flaw in a sentence: *"all of them are the
+same subtypes, dark plain and pale. Do we have 3 subtypes as requirement?"*
+
+No. Three was their own phrasing repeated back at them, and a uniform ladder
+is the wrong shape twice over. Snow does not come in three — a darker snow is
+a shadow, which the occlusion pass already draws. And the future the GM
+actually described is *"3 types of wood"*, which one day wants to be oak, pine
+and ash: names that mean nothing to stone.
+
+So `shades` is a field on the material, free-length, and empty is the
+ordinary case. **Plain is not in the list** — a material *is* its plain cut,
+which is why it writes bare (D-241) and why "no variations" needs no special
+value. A shade id is only meaningful *through* a material, so `shadeIn` had to
+stop returning a `Shade` and start returning an id, and `isKnownSwatch` asks
+the material rather than a global registry: `material:snow/dark` is refused
+where `material:stone/dark` is fine.
+
+Today: stone, brick, wood, thatch, grass, metal and water carry two cuts;
+dirt and sand carry one (earth is wet or dry, and there is no pale dirt);
+snow, lava, glass and ice carry none. Lifts stay at ∓0.1 — the GM asked to
+fine-tune them later, per material, which this shape now allows.
+
+**The list stopped having a shade row.** The GM's design, and it is better
+than the one it replaced: the cuts sit at the right of each material's row
+where "see-through" already sits, so a material and its variations are one
+line. Tap the row for plain, tap a square for that cut. Which means the whole
+selection is **one piece of state** — a swatch — rather than a material and a
+shade held apart, and the panel cannot offer a combination that does not
+exist. The old row could: pick Pale, scroll to Snow, and the console believed
+in a pale snow nobody had defined.
+
+**And `plank` is removed**, which is a deliberate exception to R-11. The GM
+asked and it is the right call here, but it should be recorded as what it is:
+R-11 says registries are append-only because removing an entry is a migration,
+not an edit. The cost is bounded and was checked before doing it — no saved
+map anywhere in `data/` holds a `material:plank`, so nothing rots. Had one,
+those blocks would have drawn in the renderer's magenta unknown and any intent
+touching them would have been refused as an unknown material: visible and
+safe, but wrong.
+
+The exception is **this project, at this stage**: a playground with no real
+campaign in it, where the GM said *"forget about maps, I don't care, feel free
+to touch them."* Once a campaign exists that anyone minds losing, R-11 applies
+with no exception, and removing an entry means a migration that rewrites every
+map that holds it.

@@ -44,7 +44,7 @@ export type { Place, PlaceNote, PlaceCell, Poi } from './place/index.js';
 export type { Material, Shade } from './materials/index.js';
 export {
   DEFAULT_MATERIALS, DEFAULT_FLOOR, materialById, isKnownMaterial, requireMaterial,
-  SHADES, PLAIN, shadeById, swatchOf, materialIn, shadeIn, isKnownSwatch, shadeColour,
+  PLAIN, swatchOf, materialIn, shadeIdIn, shadeOf, colourOf, isKnownSwatch, shadeColour,
 } from './materials/index.js';
 export type { EncounterMap, BlockCoord, Brush, Expand, MapJSON, MapJSONIn } from './map/index.js';
 

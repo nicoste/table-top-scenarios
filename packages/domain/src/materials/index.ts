@@ -69,6 +69,17 @@ export interface Material {
    * right and the reason a sea does not turn into a hole in the map.
    */
   readonly opacity: number;
+  /**
+   * The cuts this material comes in, besides itself (R-176).
+   *
+   * **Per material, not a global ladder.** Snow has one look and stone has
+   * three, and a wood that later wants an `oak` and a `pine` can have them
+   * without every other material growing the same two entries (D-242).
+   *
+   * Empty is the ordinary case, and plain is not in here: a material *is* its
+   * plain shade.
+   */
+  readonly shades: readonly Shade[];
 }
 
 /**
@@ -95,6 +106,46 @@ const FROSTED = 0.72;
 const WATERY = 0.75;
 const CLEAR = 0.4;
 
+/**
+ * One cut of one material. Three stones, three woods.
+ *
+ * **Not three materials.** Material ids are permanent and referenced by every
+ * saved map (R-11), so "dark stone" as its own entry would mean a registry
+ * that grows by the product of every substance and every tint, forever, and
+ * a GM scrolling past forty rows to find a wall. A shade is the other axis,
+ * and it multiplies instead of adding (D-241).
+ *
+ * `lift` is added to the material's lightness in HSL, the same arithmetic
+ * grain uses (R-172) and for the same reason: scaling RGB drags a colour
+ * toward black or past white and changes how saturated it looks, where a
+ * nudge in HSL keeps the hue the GM picked.
+ */
+export interface Shade {
+  readonly id: string;
+  readonly name: string;
+  readonly lift: number;
+}
+
+/**
+ * The material exactly as the registry has it — what every map held before
+ * shades existed, and what a material with no cuts at all is.
+ *
+ * Not an entry in anybody's list. Plain is the *absence* of a shade, which is
+ * why it writes bare (D-242) and why `shades` below counts only variations.
+ */
+export const PLAIN = 'plain';
+
+/**
+ * Shared by several materials today, and deliberately **not a global
+ * registry** (D-242): the ids live on the material, so wood is free to grow
+ * an `oak` and a `pine` that stone has never heard of.
+ */
+const DARK: Shade = { id: 'dark', name: 'Dark', lift: -0.1 };
+const PALE: Shade = { id: 'pale', name: 'Pale', lift: 0.1 };
+
+/** The cuts this material comes in, besides itself. */
+const cut = (material: Material, ...shades: readonly Shade[]): Material => ({ ...material, shades });
+
 const m = (
   value: string,
   name: string,
@@ -113,6 +164,7 @@ const m = (
   roughness,
   glow,
   opacity,
+  shades: [],
 });
 
 /**
@@ -124,20 +176,22 @@ const m = (
  * shared screen, and saturated blocks fight whatever stands on them.
  */
 export const DEFAULT_MATERIALS: readonly Material[] = [
-  m('stone', 'Stone', '#8d93a1', true, USUAL, DULL),
-  m('brick', 'Brick', '#9c5f4e', true, USUAL, MATT),
-  m('wood', 'Wood', '#9c7a4a', true, USUAL, DULL),
-  m('plank', 'Plank', '#b49364', true, USUAL, 0.7),
-  m('thatch', 'Thatch', '#c2a35c', true, ROUGH, MATT),
-  m('dirt', 'Dirt', '#7a6248', true, ROUGH, 1),
-  m('grass', 'Grass', '#6f8f52', true, ROUGH, MATT),
-  m('sand', 'Sand', '#cbb887', true, ROUGH, MATT),
+  cut(m('stone', 'Stone', '#8d93a1', true, USUAL, DULL), DARK, PALE),
+  cut(m('brick', 'Brick', '#9c5f4e', true, USUAL, MATT), DARK, PALE),
+  cut(m('wood', 'Wood', '#9c7a4a', true, USUAL, DULL), DARK, PALE),
+  cut(m('thatch', 'Thatch', '#c2a35c', true, ROUGH, MATT), DARK, PALE),
+  // Earth is wet or it is dry; there is no pale dirt.
+  cut(m('dirt', 'Dirt', '#7a6248', true, ROUGH, 1), DARK),
+  cut(m('grass', 'Grass', '#6f8f52', true, ROUGH, MATT), DARK, PALE),
+  cut(m('sand', 'Sand', '#cbb887', true, ROUGH, MATT), DARK),
+  // Snow and lava are each one thing. A darker snow is a shadow, which the
+  // occlusion pass already draws, and lava does not come in cuts.
   m('snow', 'Snow', '#e4e9ef', true, SMOOTH, 0.7),
-  m('metal', 'Metal', '#7e8794', true, SMOOTH, SHEEN),
+  cut(m('metal', 'Metal', '#7e8794', true, SMOOTH, SHEEN), DARK, PALE),
   m('lava', 'Lava', '#c2542a', true, USUAL, DULL, 0.75),
   // Transparent: present as geometry, invisible to sight (R-75), and now
   // see-through to look at as well (R-174).
-  m('water', 'Water', '#4a7fb5', false, SMOOTH, 0.22, 0, WATERY),
+  cut(m('water', 'Water', '#4a7fb5', false, SMOOTH, 0.22, 0, WATERY), DARK, PALE),
   m('glass', 'Glass', '#a8c7dd', false, 0, POLISHED, 0, CLEAR),
   m('ice', 'Ice', '#b9d6e4', false, SMOOTH, POLISHED, 0, FROSTED),
 ];
@@ -159,47 +213,7 @@ export function requireMaterial(id: MaterialId): Material {
   return found;
 }
 
-// -- shades (R-176) ----------------------------------------------------------
-
-/**
- * One material, cut lighter or darker. Three stones, three woods.
- *
- * **Not three materials.** Material ids are permanent and referenced by every
- * saved map (R-11), so "dark stone" as its own entry would mean a registry
- * that grows by the product of every substance and every tint, forever, and
- * a GM scrolling past forty-two entries to find a wall. A shade is the other
- * axis, and it multiplies instead of adding (D-241).
- *
- * `lift` is added to the material's lightness in HSL, the same arithmetic
- * grain uses (R-172) and for the same reason: scaling RGB drags a colour
- * toward black or past white and changes how saturated it looks, where a
- * nudge in HSL keeps the hue the GM picked.
- */
-export interface Shade {
-  readonly id: string;
-  readonly name: string;
-  readonly lift: number;
-}
-
-/**
- * Append-only, like the materials above and for the same reason: a saved map
- * holds these ids.
- *
- * `plain` is the material exactly as the registry has it, and it is what every
- * map held before shades existed.
- */
-export const SHADES: readonly Shade[] = [
-  { id: 'dark', name: 'Dark', lift: -0.1 },
-  { id: 'plain', name: 'Plain', lift: 0 },
-  { id: 'pale', name: 'Pale', lift: 0.1 },
-];
-
-export const PLAIN = 'plain';
-
-/** The shade with this id, or plain. Falls back for the reason `brushById` does. */
-export function shadeById(id: string): Shade {
-  return SHADES.find((shade) => shade.id === id) ?? SHADES.find((s) => s.id === PLAIN)!;
-}
+// -- swatches (R-176) --------------------------------------------------------
 
 /**
  * Separates a material from its shade inside a swatch.
@@ -211,7 +225,7 @@ export function shadeById(id: string): Shade {
 const SHADE_MARK = '/';
 
 /**
- * A cube's value: the material, and the shade it was cut in.
+ * A cube's value: the material, and the cut it was made in.
  *
  * **Plain writes bare.** `material:stone` rather than `material:stone/plain`,
  * so a map saved before shades existed reads back as plain stone with no
@@ -224,40 +238,53 @@ export function swatchOf(material: MaterialId, shade: string = PLAIN): SwatchId 
 }
 
 export function materialIn(swatch: SwatchId): MaterialId {
-  const cut = swatch.indexOf(SHADE_MARK);
-  return (cut < 0 ? swatch : swatch.slice(0, cut)) as unknown as MaterialId;
+  const mark = swatch.indexOf(SHADE_MARK);
+  return (mark < 0 ? swatch : swatch.slice(0, mark)) as unknown as MaterialId;
 }
 
-export function shadeIn(swatch: SwatchId): Shade {
-  const cut = swatch.indexOf(SHADE_MARK);
-  return shadeById(cut < 0 ? PLAIN : swatch.slice(cut + 1));
+/** The shade's id, or `PLAIN`. The id alone, because only the material can say what it means. */
+export function shadeIdIn(swatch: SwatchId): string {
+  const mark = swatch.indexOf(SHADE_MARK);
+  return mark < 0 ? PLAIN : swatch.slice(mark + 1);
 }
 
-/**
- * Both halves have to be ones we know, and **plain has to be spelled bare**.
- *
- * `material:stone/plain` is refused even though it is obvious what it means,
- * because a swatch is compared by string: two spellings of one cut would make
- * a fill stop in the middle of a flat wall, and put two palette entries where
- * there is one colour. One value, one spelling.
- */
-export function isKnownSwatch(swatch: SwatchId): boolean {
-  const cut = swatch.indexOf(SHADE_MARK);
-  if (cut < 0) return isKnownMaterial(swatch as unknown as MaterialId);
-  const shade = swatch.slice(cut + 1);
-  return shade !== PLAIN
-    && SHADES.some((s) => s.id === shade)
-    && isKnownMaterial(swatch.slice(0, cut) as unknown as MaterialId);
+/** This material's cut by that id, or `null` for plain and for one it does not have. */
+export function shadeOf(material: Material, id: string): Shade | null {
+  return material.shades.find((shade) => shade.id === id) ?? null;
 }
 
 /**
- * What colour a material is in a given shade, as `#rrggbb`.
+ * What colour a material is in a given cut, as `#rrggbb`.
  *
  * Here rather than in the renderer because **two things ask it and they must
  * agree**: the cubes on the table and the swatch under the GM's pointer. A
  * panel that paints its chip one way while the map draws another is a panel
  * that lies about what the next click will do.
  */
+export function colourOf(material: Material, shadeId: string): string {
+  const shade = shadeOf(material, shadeId);
+  return shade ? shadeColour(material.colour, shade.lift) : material.colour;
+}
+
+/**
+ * Both halves have to be ones we know, **the shade has to be one this
+ * material has**, and **plain has to be spelled bare**.
+ *
+ * Per material, so `material:snow/dark` is refused for snow and allowed for
+ * stone — which is the point of hanging the cuts off the material (D-242).
+ *
+ * `material:stone/plain` is refused too, even though it is obvious what it
+ * means, because a swatch is compared by string: two spellings of one cut
+ * would make a fill stop in the middle of a flat wall, and put two palette
+ * entries where there is one colour. One value, one spelling.
+ */
+export function isKnownSwatch(swatch: SwatchId): boolean {
+  const material = DEFAULT_MATERIALS.find((m) => m.id === materialIn(swatch));
+  if (!material) return false;
+  const id = shadeIdIn(swatch);
+  return id === PLAIN ? !swatch.includes(SHADE_MARK) : !!shadeOf(material, id);
+}
+
 export function shadeColour(colour: string, lift: number): string {
   if (lift === 0) return colour;
   const { h, s, l } = toHSL(colour);

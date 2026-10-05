@@ -26,7 +26,7 @@ import {
 } from 'three';
 import type { Intersection } from 'three';
 import type { BlockCoord, EncounterMap, Material, SwatchId } from '@tt/domain';
-import { parseBlockKey, materialIn, shadeIn, shadeColour } from '@tt/domain';
+import { parseBlockKey, materialIn, shadeIdIn, colourOf } from '@tt/domain';
 import { grainAt } from '../grain/index.js';
 
 /** Where a click on a block face means a new block should go (R-147). */
@@ -67,6 +67,7 @@ export function buildBlockBody(map: EncounterMap, materials: readonly Material[]
     roughness: 1,
     glow: 0,
     opacity: 1,
+    shades: [],
   };
 
   /*
@@ -79,7 +80,7 @@ export function buildBlockBody(map: EncounterMap, materials: readonly Material[]
     let cut = cuts.get(swatch);
     if (!cut) {
       const material = known.get(materialIn(swatch) as string) ?? unknown;
-      cut = { material, tint: new Color(shadeColour(material.colour, shadeIn(swatch).lift)) };
+      cut = { material, tint: new Color(colourOf(material, shadeIdIn(swatch))) };
       cuts.set(swatch, cut);
     }
     return cut;

@@ -216,23 +216,45 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
 .ladder button.danger { padding: 1px 6px; font-size: 11px; }
 
 .palette { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
-.palette button {
-  width: 100%; display: flex; align-items: center; gap: 8px;
+/*
+  A row is the material and its cuts side by side (R-176): the name stretches,
+  the squares sit at the right where "see-through" already sits. The row is a
+  flex container rather than one button, because the squares are their own
+  actions and a keyboard has to reach them.
+*/
+.palette li { display: flex; align-items: stretch; gap: 3px; border-radius: 6px; }
+.palette li.on { background: var(--accent); }
+.palette .pick {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px;
   padding: 4px 7px; text-align: left; background: transparent; border-color: transparent;
 }
-.palette button:hover { background: #212733; }
-.palette button.on { background: var(--accent); color: #0f1216; font-weight: 600; }
-.palette .chip, .shades .chip {
+.palette li:hover { background: #212733; }
+.palette li.on:hover { background: var(--accent); }
+.palette li.on .pick { color: #0f1216; font-weight: 600; }
+.palette .chip {
   width: 14px; height: 14px; border-radius: 4px; flex: none;
   border: 1px solid #0006; box-shadow: inset 0 0 0 1px #ffffff22;
 }
-/* Three cuts of the material above, so the row matches the brush row below. */
-.shades { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.shades button { padding: 6px 2px; font-size: 12px; }
-.shades .chip { width: 11px; height: 11px; border-radius: 3px; }
-.palette .nm { flex: 1; }
-.palette .diff { font-variant-numeric: tabular-nums; font-size: 11px; opacity: .7; }
-.palette button.on .diff { opacity: .85; }
+/*
+  One square per cut the material has. Fixed width so the right edge lines up
+  down the list however many cuts each material carries — a ragged right edge
+  reads as a mistake rather than as "this one has fewer".
+*/
+.palette .cut {
+  width: 16px; flex: none; padding: 0; margin: 3px 0; border-radius: 4px;
+  border: 1px solid #0006; box-shadow: inset 0 0 0 1px #ffffff22;
+}
+.palette .cut:last-child { margin-right: 4px; }
+/* The chosen one, on a row that may already be accented: a ring reads on both. */
+.palette .lit { box-shadow: inset 0 0 0 1px #ffffff22, 0 0 0 2px #0f1216, 0 0 0 3px #ffffff; }
+.palette .pick.lit { box-shadow: none; }
+.palette .pick.lit .chip { box-shadow: inset 0 0 0 1px #ffffff22, 0 0 0 2px #0f1216, 0 0 0 3px #ffffff; }
+.palette .nm { flex: 1; min-width: 0; }
+.palette .diff {
+  font-variant-numeric: tabular-nums; font-size: 11px; opacity: .7;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.palette li.on .diff { opacity: .85; }
 .hint { color: var(--dim); font-size: 11.5px; margin: 8px 0 0; }
 /* The name of the control below it. `.lbl` had no base rule at all — only two
    scoped overrides — so "Expand the map to:" and "marker" rendered at the

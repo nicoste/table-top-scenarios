@@ -8,9 +8,8 @@ import {
   creatableSlots, sameWorldCell,
   DEFAULT_MATERIALS, DEFAULT_FLOOR, mapFromJSON, fillRegion, sliceOf, inRange, inMap, blockAt,
   bottomOfMap, DEFAULT_TERRAIN,
-  PLAIN, swatchOf, materialIn,
 } from '@tt/domain';
-import type { MaterialId } from '@tt/domain';
+import type { SwatchId } from '@tt/domain';
 import type { GmView, Intent } from '@tt/protocol';
 import { defaultTarget, worldCentre } from '@tt/render';
 import type { Tool, Travel } from '@tt/client-core';
@@ -105,15 +104,15 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    * re-picking at a position no pointer event is going to supply.
    */
   const lastPointer = useRef<{ x: number; y: number } | null>(null);
-  const [materialId, setMaterialId] = useState<string>(materialIn(DEFAULT_FLOOR));
   /**
-   * Which cut of that material (R-176). Separate state, because the two are
-   * separate choices: picking Pale and then walking down the material list
-   * keeps everything pale, which is how somebody builds a wall out of one
-   * shade of three different stones.
+   * What the next click lays down: a material **and** the cut of it (R-176).
+   *
+   * One piece of state rather than two, because the list makes it one choice —
+   * a row for the plain cut, a square beside it for one of that material's own.
+   * Shades belong to the material, so "keep the shade, change the material"
+   * is not a move the GM can make and not a state we have to hold (D-242).
    */
-  const [shadeId, setShadeId] = useState<string>(PLAIN);
-  const swatch = swatchOf(materialId as MaterialId, shadeId);
+  const [swatch, setSwatch] = useState<SwatchId>(DEFAULT_FLOOR);
   /**
    * The cell a place was just placed on, waiting for the snapshot that will carry
    * it. The host assigns the id, so the client cannot know it in advance — but
@@ -887,8 +886,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
             dug={openBody ? Math.min(0, bottomOfMap(openBody)) : 0}
             tool={mapTool}
             materials={DEFAULT_MATERIALS}
-            materialId={materialId}
-            shadeId={shadeId}
+            swatch={swatch}
             hoverLabel={hoverLabel}
             partyHere={partyHere}
             partyCanSee={
@@ -903,8 +901,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
             shifting={shifting}
             onTool={setMapTool}
             onBrush={setMapBrush}
-            onMaterial={setMaterialId}
-            onShade={setShadeId}
+            onSwatch={setSwatch}
             onLeave={() => setOpenMap(null)}
             dispatch={dispatch}
             placeId={openPlace.id}

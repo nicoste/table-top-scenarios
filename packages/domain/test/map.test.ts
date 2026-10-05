@@ -10,7 +10,7 @@ import {
   BRUSHES, DEFAULT_BRUSH, MAP_BRUSH_CELLS, brushById, brushPatch,
   setBlocks, paintBlocks, clearBlocks,
   DEFAULT_FLOOR, DEFAULT_MATERIALS, swatchOf, isKnownMaterial,
-  SHADES, PLAIN, materialIn, shadeIn, isKnownSwatch, shadeColour,
+  PLAIN, materialIn, shadeIdIn, shadeOf, colourOf, isKnownSwatch, shadeColour, materialById,
 } from '@tt/domain';
 
 const STONE = swatchOf(DEFAULT_MATERIALS.find((m) => m.name === 'Stone')!.id);
@@ -748,55 +748,73 @@ describe('the packed body (R-59, D-217)', () => {
 
 describe('shades: one material, cut lighter or darker (R-176)', () => {
   const STONE_ID = DEFAULT_MATERIALS.find((m) => m.name === 'Stone')!.id;
+  const STONE = materialById(DEFAULT_MATERIALS, STONE_ID)!;
 
-  it('writes the plain shade bare, so a map from before shades reads back the same', () => {
+  it('writes the plain cut bare, so a map from before shades reads back the same', () => {
     // The whole reason this needed no migration and no schema bump (D-241).
     expect(swatchOf(STONE_ID)).toBe(STONE_ID as string);
     expect(swatchOf(STONE_ID, PLAIN)).toBe(STONE_ID as string);
     expect(materialIn(STONE_ID as unknown as SwatchId)).toBe(STONE_ID);
-    expect(shadeIn(STONE_ID as unknown as SwatchId).id).toBe(PLAIN);
+    expect(shadeIdIn(STONE_ID as unknown as SwatchId)).toBe(PLAIN);
   });
 
-  it('round-trips every shade of every material', () => {
+  it('round-trips every cut of every material', () => {
     for (const material of DEFAULT_MATERIALS) {
-      for (const shade of SHADES) {
+      for (const shade of material.shades) {
         const swatch = swatchOf(material.id, shade.id);
         expect(materialIn(swatch)).toBe(material.id);
-        expect(shadeIn(swatch).id).toBe(shade.id);
+        expect(shadeIdIn(swatch)).toBe(shade.id);
         expect(isKnownSwatch(swatch)).toBe(true);
       }
     }
   });
 
-  it('refuses a swatch whose material or whose shade is not ours', () => {
+  it('refuses a cut this material does not have, even where another one does', () => {
+    // The point of hanging them off the material rather than a global ladder
+    // (D-242): snow is one thing, stone is three.
+    const snow = DEFAULT_MATERIALS.find((m) => m.name === 'Snow')!;
+    expect(snow.shades).toHaveLength(0);
+    expect(isKnownSwatch(swatchOf(snow.id, 'dark'))).toBe(false);
+    expect(isKnownSwatch(swatchOf(STONE_ID, 'dark'))).toBe(true);
+  });
+
+  it('refuses an unknown material, an invented cut, and plain spelled out', () => {
     expect(isKnownSwatch('material:unobtanium/dark' as SwatchId)).toBe(false);
     expect(isKnownSwatch(swatchOf(STONE_ID, 'chartreuse'))).toBe(false);
     // Spelled-out plain is not a swatch anyone writes, so it is not one we read.
     expect(isKnownSwatch(`${STONE_ID}/plain` as SwatchId)).toBe(false);
   });
 
-  it('survives the packing, which is what puts a shade on disk', () => {
+  it('refuses the material that was removed, and nothing else broke with it', () => {
+    // Plank is gone (D-242). An id that is not in the registry is not a swatch.
+    expect(isKnownSwatch('material:plank' as SwatchId)).toBe(false);
+    expect(DEFAULT_MATERIALS.some((m) => m.name === 'Plank')).toBe(false);
+  });
+
+  it('survives the packing, which is what puts a cut on disk', () => {
     let map = createMap();
-    SHADES.forEach((shade, i) => {
+    STONE.shades.forEach((shade, i) => {
       map = setBlock(map, at(i, 5, 0), swatchOf(STONE_ID, shade.id));
     });
     const back = mapFromJSON(mapToJSON(map))!;
-    SHADES.forEach((shade, i) => {
+    STONE.shades.forEach((shade, i) => {
       expect(blockAt(back, at(i, 5, 0))).toBe(swatchOf(STONE_ID, shade.id));
     });
   });
 
-  it('is a different colour per shade, and keeps the material its hue', () => {
-    const stone = DEFAULT_MATERIALS.find((m) => m.id === STONE_ID)!;
-    const [dark, plain, pale] = SHADES.map((s) => shadeColour(stone.colour, s.lift));
-    expect(plain).toBe(stone.colour);
-    expect(dark).not.toBe(plain);
-    expect(pale).not.toBe(plain);
-    // Darker is darker and paler is paler, by the sum of the channels.
-    const weight = (hex: string) => Number.parseInt(hex.slice(1), 16) === 0 ? 0
-      : [1, 3, 5].reduce((n, at) => n + Number.parseInt(hex.slice(at, at + 2), 16), 0);
-    expect(weight(dark!)).toBeLessThan(weight(plain!));
-    expect(weight(pale!)).toBeGreaterThan(weight(plain!));
+  it('is a different colour per cut, and keeps the material its hue', () => {
+    const weight = (hex: string) =>
+      [1, 3, 5].reduce((n, from) => n + Number.parseInt(hex.slice(from, from + 2), 16), 0);
+    const plain = colourOf(STONE, PLAIN);
+    expect(plain).toBe(STONE.colour);
+    expect(weight(colourOf(STONE, 'dark'))).toBeLessThan(weight(plain));
+    expect(weight(colourOf(STONE, 'pale'))).toBeGreaterThan(weight(plain));
+  });
+
+  it('answers plain for a cut the material has not got, rather than inventing one', () => {
+    const snow = DEFAULT_MATERIALS.find((m) => m.name === 'Snow')!;
+    expect(shadeOf(snow, 'dark')).toBeNull();
+    expect(colourOf(snow, 'dark')).toBe(snow.colour);
   });
 
   it('leaves a colour exactly alone when there is no lift', () => {
@@ -804,6 +822,7 @@ describe('shades: one material, cut lighter or darker (R-176)', () => {
     // hold two entries for one colour and the chips would drift from the map.
     for (const material of DEFAULT_MATERIALS) {
       expect(shadeColour(material.colour, 0)).toBe(material.colour);
+      expect(colourOf(material, PLAIN)).toBe(material.colour);
     }
   });
 });
