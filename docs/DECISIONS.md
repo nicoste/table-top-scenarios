@@ -5338,3 +5338,42 @@ wrong direction. Shader programs 22 → 25 with no compile stall; worst frame
 The test that every declared pattern has a shader (R-177) earned itself here:
 three families gained a `pattern` name in one edit and a shader in another, and
 it is the thing that would have caught them shipping apart.
+
+### D-247 — A reference scene you cannot lose · `agreed`
+Deleting the campaign (D-245) cost the scene every figure in MEASUREMENTS.md
+was a measurement *of*. The obvious repair was to build another one in the
+console. That would have been the same mistake with a later expiry date.
+
+**So the scene is a script.** `npm run seed`, about two hundred lines, and
+three consecutive runs produce a byte-identical body. It can be rebuilt after a
+registry change, on another machine, by somebody who has never seen the old
+one — which is the difference between a baseline and an anecdote.
+
+**The Tollkeep**: a sea, a shore, an island, a brick keep with a cellar and a
+lava pit, glass windows, a stand of trees. 11,398 cubes, 96 × 96, fourteen
+levels, **all nine families**. Built to exercise what gets measured rather than
+to look like anywhere — every family so the draw calls are the true count,
+transparent water and glass so that pass is in the frame, emission so that path
+is, and a figure on six of the nine.
+
+**The camera is the framing a map opens with.** That one choice retires a whole
+class of mistake: "12 wheel ticks in" depends on where you started, and D-240
+was five careful readings that agreed with each other and were all taken at one
+camera nobody had written down.
+
+**Writing it found a bug in the seed and not in the code.** The island came out
+as undifferentiated dirt, because a new map is floored across its whole
+footprint and so is every patch it grows into (R-149), and `setBlocks` never
+overwrites (R-159) — so every ground-level placement was silently refused. Both
+rules did exactly what they say. The seed was asking the wrong one, and the fix
+was `paintBlocks`. Worth recording because the failure was *silent*: the scene
+built, saved and opened, and only a count of families said anything was wrong.
+
+**And the new scene immediately paid for itself.** Occlusion on it costs 9.7 ms
+framed and 9.1 ms twelve ticks in — flat across the camera, which is R-175
+holding on a scene it was never tuned against. The same sweep before that change
+went 10.5 ms to 30.7. A fix verified only on the scene that motivated it is a
+fix you are taking on trust.
+
+The old figures are kept under a heading that says they are not comparable,
+rather than deleted. What they taught outlived the scene they were taken on.

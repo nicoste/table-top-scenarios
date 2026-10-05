@@ -2431,6 +2431,31 @@ apps/host/src/
 >
 > A family always has at least one cut, and the first is its default.
 
+> **R-179.** **The reference scene is a script.**
+>
+> `npm run seed` builds the scene MEASUREMENTS.md is anchored to, and building
+> it twice produces a byte-identical body. Nothing about a measurement depends
+> on a file somebody happens to still have.
+>
+> The one before it was hand-built in the console, lived only on one laptop,
+> and took every figure in that document with it when the campaign was deleted
+> — a measurement without its scene is a number without units (D-247).
+>
+> **Deterministic in the layout, not in the ids.** No clock and no randomness
+> decide where a cube goes; ids are minted fresh per run because no measurement
+> depends on them. A hash of the coordinate does the scattering, the same one
+> the renderer uses for grain.
+>
+> **It is built to exercise what is measured**, not to look like anywhere:
+> every family in the registry so the draw calls are the real count, something
+> transparent so the transparent pass is in frame, something glowing, enough
+> levels that slicing is real work.
+>
+> **The reference camera is the framing a map opens with.** It needs no
+> description, it cannot drift, and any reading taken elsewhere has to say how
+> far in — which is how five careful readings once agreed with each other and
+> were all wrong (D-240).
+
 > **R-177.** **A material's figure is arithmetic, not an image.**
 >
 > Wood runs in stripes along the grain, brick is laid in courses, grass is

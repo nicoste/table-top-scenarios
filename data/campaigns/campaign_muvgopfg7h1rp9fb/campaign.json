@@ -1,10 +1,10 @@
 {
- "id": "campaign_muvekfaqvu9al5hc",
+ "id": "campaign_muvgopfg7h1rp9fb",
  "schemaVersion": 4,
- "name": "Stonebrook",
+ "name": "The Reference",
  "party": [
   {
-   "id": "member_muvekfaqwvnc4ysf",
+   "id": "member_muvgopfgci47snjg",
    "name": "player",
    "colour": "#57d9a3",
    "visionRange": 12
@@ -12,8 +12,8 @@
  ],
  "places": [
   {
-   "id": "place_muvekp8jype9vjqu",
-   "name": "New place",
+   "id": "place_muvgopfgju34rytd",
+   "name": "Toll Crossing",
    "cell": {
     "cx": 15,
     "cz": 15,
@@ -23,9 +23,9 @@
    "markerId": "marker:village",
    "pois": [
     {
-     "id": "poi_muvekq34pqa2whs4",
-     "name": "The Forge",
-     "visibleToParty": false,
+     "id": "poi_muvgopfhqlb80f9c",
+     "name": "Tollkeep",
+     "visibleToParty": true,
      "map": null
     }
    ],

@@ -16,7 +16,8 @@
     "verify": "npm run typecheck && npm run arch && npm run lint && npm run test",
     "build": "npm run build -w @tt/gm && npm run build -w @tt/table",
     "host": "tsx apps/host/src/main.ts",
-    "start": "npm run build && npm run host"
+    "start": "npm run build && npm run host",
+    "seed": "tsx scripts/seed-reference.ts"
   },
   "devDependencies": {
     "@types/react": "^19.2.18",

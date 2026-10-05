@@ -64,28 +64,69 @@ itself.
 
 ## The reference scene
 
-> **Gone.** That campaign was deleted when the registry was reorganised by
-> family, because every map in it held material ids that no longer exist
-> (D-245). Every figure below is still true of the build that produced it, and
-> none of them is reproducible as written until a new reference scene is built
-> and described here. **A reading taken against a different scene is a
-> different number, not a comparison.**
+**The Tollkeep**, in the campaign `The Reference`.
 
-**The Eight's Church**, in the campaign `We Can Test Here`.
+**It is a script, not a file** — `npm run seed` builds it, deterministically, on
+any machine (R-179). The scene before it was hand-built in the console and
+existed only as data on one laptop; deleting that campaign took every figure in
+this document with it, because a measurement without its scene is a number
+without units (D-245). Three consecutive seeds produce a byte-identical body.
 
 | | |
 | --- | --- |
-| cubes | 9,714 |
+| cubes | 11,398 |
 | footprint | 96 × 96 |
-| levels used | 15 of 48 — these maps are flat storeys, not dense volumes |
-| materials | 9 |
-| faces, as whole cubes | 58,284 |
-| faces that can be seen | 19,770 |
-| world beside it | 9 chunks, 8,100 columns, 5 terrains |
+| levels used | 14, from −4 to 9 |
+| families | **9 of 9** — every one in the registry |
+| distinct swatches | 12 |
+| faces, as whole cubes | 68,388 |
+| what is in it | a sea, a shore, an island, a brick keep with a cellar, a lava pit, glass windows, a stand of trees |
+
+It is built to exercise what gets measured rather than to look like anywhere:
+every family so the draw calls are the real count, transparent water and glass
+so the transparent pass is in the frame, a lava pit so emission is, fourteen
+levels so slicing is, and a figure on six of the nine families.
+
+**The camera is the framing a map opens with**, which needs no description and
+cannot drift. Readings taken anywhere else say how far in.
 
 ---
 
-## Baselines
+## Baselines, on the Tollkeep
+
+Taken 5 October 2026 in the **Pane**, the browser inside the Claude app. Six
+samples a figure, median reported.
+
+| | gpu, occlusion on | occlusion off | occlusion costs |
+| --- | --- | --- | --- |
+| as the map frames | **11.6 ms** | 1.9 ms | 9.7 ms |
+| 12 wheel ticks in | **11.8 ms** | 2.7 ms | 9.1 ms |
+
+**Occlusion is flat across the camera now**, which is R-175 holding on a scene
+it was not tuned against — before that change the same sweep went from 10.5 ms
+to 30.7 (D-240). Everything that is not occlusion costs 2–3 ms, with the figures
+on (R-177) and a transparent sea in frame.
+
+| | |
+| --- | --- |
+| draw calls | 23 |
+| triangles | 273,557 — the scene rasterised twice, for occlusion's normals |
+| shader programs | 28 |
+| geometries / textures | 18 / 9 |
+| rebuild, the whole body | **7.9 ms** |
+| the GM's push | 10.7 KiB |
+| frame p50 / p95 | 33.3 / 34.9 ms, against the 33 ms cap (R-169) |
+| worst | 48.9 ms — the frame the map opens on, which builds the body in it |
+
+---
+
+## Older baselines, on a scene that no longer exists
+
+Everything below was measured on **The Eight's Church** — 9,714 cubes, 96 × 96,
+15 of 48 levels — in a campaign that was deleted when the registry was
+reorganised (D-245). The figures are true of the builds that produced them and
+**are not comparable with the table above**: a different scene is a different
+number, not a comparison. Kept because what they *taught* outlived them.
 
 Measured 2 October 2026 unless stated. **Two machines appear below and their
 numbers are not comparable with each other** — only each with itself.
