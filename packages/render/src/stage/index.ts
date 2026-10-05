@@ -586,6 +586,17 @@ export class Stage {
       this.scene.add(this.blocks.group);
       // A map is tens of cells across; the world is hundreds (R-148).
       this.fitShadows(Math.max(map.size.x, map.size.z), mapCentre(map));
+    } else if (this.campaign) {
+      /*
+       * Back out to the world, which needs its own fit.
+       *
+       * Without this the shadow camera stays parked over the map's footprint
+       * and centred on it, and the world — hundreds of cells across and
+       * somewhere else entirely — falls outside the frustum and loses every
+       * shadow it had. Entering a map was refitting and leaving one was not
+       * (D-251).
+       */
+      this.fitShadows(CHUNK_SIZE * 3, worldCentre(this.campaign.world));
     }
     this.applySurface();
 

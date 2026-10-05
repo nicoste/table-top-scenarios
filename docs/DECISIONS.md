@@ -5517,3 +5517,22 @@ band has cut the roof away. The table receives only its band, so a cellar it is
 shown has no roof above it and a sun floods it, while the console — which holds
 the whole body — shows it dark. Shipping shadows created that; making the hour
 shareable did not change it either way.
+
+### D-251 — Leaving a map lost the world's shadows · `closed`
+Found by the GM: *"if you get into a poi map and exit, the world map loses the
+shadows."*
+
+Entering a map refitted the shadow camera to its footprint and centred it on
+the map (R-180). Leaving one did not refit at all — so the camera stayed parked
+over a 96-cell box somewhere the world is not, and the world, hundreds of cells
+across, fell outside the frustum entirely. Nothing was wrong with the shadows;
+they were being drawn for a place nobody was looking at.
+
+One branch: `setMap(null)` now refits to the world, the same call
+`setCampaign` already made.
+
+Worth noting what made it findable. The fit is **conditional on which surface
+is open** (R-148), and every conditional path has a matching one that is easy
+to forget — `setCampaign` fits the world *only if no map is open*, which is
+the mirror of the line that was missing. Two halves of one rule written in two
+places, and only one of them was written.
