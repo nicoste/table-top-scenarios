@@ -41,10 +41,10 @@ export type { Marker, MarkerPart, PartShape } from './markers/index.js';
 export { DEFAULT_MARKERS, DEFAULT_MARKER, markerById, isKnownMarker } from './markers/index.js';
 
 export type { Place, PlaceNote, PlaceCell, Poi } from './place/index.js';
-export type { Material, Shade } from './materials/index.js';
+export type { Material, Cut } from './materials/index.js';
 export {
   DEFAULT_MATERIALS, DEFAULT_FLOOR, materialById, isKnownMaterial, requireMaterial,
-  PLAIN, swatchOf, materialIn, shadeIdIn, shadeOf, cutsOf, colourOf, isKnownSwatch, shadeColour,
+  swatchOf, swatchFor, materialIn, cutIdIn, cutOf, colourOf, isKnownSwatch,
 } from './materials/index.js';
 export type { EncounterMap, BlockCoord, Brush, Expand, MapJSON, MapJSONIn } from './map/index.js';
 

@@ -232,10 +232,17 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
   width: 14px; height: 14px; border-radius: 4px; flex: none;
   border: 1px solid #0006; box-shadow: inset 0 0 0 1px #ffffff22;
 }
-.palette .nm { flex: 1; min-width: 0; }
+/*
+  The name truncates and the badge beside it does not. Squeezed — four cuts and
+  a long family name in a narrow dock — the two used to run together and read
+  as one word: "Liquidssee-through". An ellipsis is honest about running out of
+  room; overlapping text is not.
+*/
+.palette .nm { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .palette .diff {
+  flex: none; margin-left: 6px;
   font-variant-numeric: tabular-nums; font-size: 11px; opacity: .7;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .palette button.on .diff, .palette li.on .diff { opacity: .85; }
 
@@ -269,6 +276,20 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
 .swatches .cut.lit { outline: 2px solid #fff; outline-offset: 1px; }
 .palette button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .swatches .cut.lit:focus-visible { outline-color: #fff; }
+/*
+  Which cut is in hand, named. The family is in the row above and the cut is
+  the word a GM actually says — "limestone", "oak", "shore" — so it cannot be
+  something you have to hover a square to find out (D-245).
+*/
+.chosen {
+  display: flex; align-items: center; gap: 7px;
+  margin: 8px 0 0; font-size: 12.5px; font-weight: 600; color: var(--ink);
+}
+.chosen .diff { font-weight: 400; }
+.chosen .chip {
+  width: 14px; height: 14px; border-radius: 4px; flex: none;
+  border: 1px solid #0006; box-shadow: inset 0 0 0 1px #ffffff22;
+}
 
 .hint { color: var(--dim); font-size: 11.5px; margin: 8px 0 0; }
 /* The name of the control below it. `.lbl` had no base rule at all — only two

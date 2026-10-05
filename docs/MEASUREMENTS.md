@@ -64,6 +64,13 @@ itself.
 
 ## The reference scene
 
+> **Gone.** That campaign was deleted when the registry was reorganised by
+> family, because every map in it held material ids that no longer exist
+> (D-245). Every figure below is still true of the build that produced it, and
+> none of them is reproducible as written until a new reference scene is built
+> and described here. **A reading taken against a different scene is a
+> different number, not a comparison.**
+
 **The Eight's Church**, in the campaign `We Can Test Here`.
 
 | | |

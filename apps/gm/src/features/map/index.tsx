@@ -9,7 +9,7 @@ import type { MapTool } from '@tt/client-core';
 import { CAMERA_HINT } from '@tt/client-core';
 import {
   MAP_MAX_HEIGHT, MAP_MIN_DEPTH, BRUSHES, isFullRange, stepLabel,
-  swatchOf, materialIn, shadeIdIn, cutsOf, colourOf,
+  swatchFor, materialIn, cutIdIn, cutOf, colourOf,
 } from '@tt/domain';
 import type { LevelRange, Material, SwatchId } from '@tt/domain';
 import { Tooltip } from '@tt/ui';
@@ -78,7 +78,8 @@ export function MapPanel({
 }: Props) {
   // One selection, split for the two things the list highlights.
   const chosenMaterial = materialIn(swatch);
-  const chosenCut = shadeIdIn(swatch);
+  const chosenCut = cutIdIn(swatch);
+  const chosen = materials.find((m) => m.id === chosenMaterial);
   return (
     <>
       <div className="card">
@@ -227,33 +228,30 @@ export function MapPanel({
             {materials.map((material) => (
               <li key={material.id} className={material.id === chosenMaterial ? 'on' : ''}>
                 {/*
-                  The name picks the material plain; the squares beside it are
-                  **all** of that material's looks, plain among them, darkest
-                  first (R-176). One strip rather than a chip on the left and
-                  variations on the right, which asked the eye to read one row
-                  as two different things.
+                  The row is the family — how a thing is built — and the squares
+                  beside it are the substances that share that structure
+                  (R-178). Tapping the row takes the default cut, which is the
+                  first square; tapping a square takes that one.
                 */}
-                <button className="pick" onClick={() => onSwatch(swatchOf(material.id))}>
+                <button
+                  className="pick"
+                  onClick={() => onSwatch(swatchFor(material, material.cuts[0]!.id))}
+                >
                   <span className="nm">{material.name}</span>
-                  {/* Said out loud at a table, and the reason it is a material
-                      property rather than a block one (R-75). */}
-                  {!material.blocksSight && <span className="diff">see-through</span>}
                 </button>
                 <span className="cuts">
-                  {cutsOf(material).map((shade) => (
-                    <Tooltip
-                      key={shade.id}
-                      label={`${shade.name} ${material.name.toLowerCase()}`}
-                      placement="left"
-                    >
+                  {material.cuts.map((cut) => (
+                    <Tooltip key={cut.id} label={cut.name} placement="left">
                       <button
                         className={`cut${
-                          material.id === chosenMaterial && shade.id === chosenCut ? ' lit' : ''
+                          material.id === chosenMaterial
+                          && cut.id === cutOf(material, chosenCut).id ? ' lit' : ''
                         }`}
-                        style={{ background: colourOf(material, shade.id) }}
-                        onClick={() => onSwatch(swatchOf(material.id, shade.id))}
-                        aria-label={`${shade.name} ${material.name.toLowerCase()}`}
-                        aria-pressed={material.id === chosenMaterial && shade.id === chosenCut}
+                        style={{ background: cut.colour }}
+                        onClick={() => onSwatch(swatchFor(material, cut.id))}
+                        aria-label={cut.name}
+                        aria-pressed={material.id === chosenMaterial
+                          && cut.id === cutOf(material, chosenCut).id}
                       />
                     </Tooltip>
                   ))}
@@ -261,11 +259,28 @@ export function MapPanel({
               </li>
             ))}
           </ul>
+          {/*
+            The cut's *name* is the vocabulary — "limestone", "oak", "shore" —
+            so it cannot live only in a tooltip you have to go looking for
+            (D-245). The row says the family; this says which one is in hand.
+          */}
+          {chosen && (
+            <p className="chosen">
+              <span className="chip" style={{ background: colourOf(chosen, chosenCut) }} />
+              <span className="nm">{cutOf(chosen, chosenCut).name}</span>
+              {/* Said out loud at a table, and the reason it is a material
+                  property rather than a block one (R-75). It lives here rather
+                  than on every row because a row has a name and four cuts in
+                  228px and no space left — and because the families that are
+                  see-through are the ones called Liquids and Glass (D-245). */}
+              {!chosen.blocksSight && <span className="diff">see-through</span>}
+            </p>
+          )}
           <p className="hint">
-            A material&apos;s cuts sit in its own row, darkest first. Still the
-            same stone either way, so it weighs the same in every rule — and
-            a <b>fill</b> stops where the cut changes, which is what lets you
-            repaint one course of a wall.
+            A row is how a thing is built; the squares are what it is made of.
+            They weigh the same in every rule — and a <b>fill</b> stops where
+            the cut changes, which is what lets you repaint one course of a
+            wall.
           </p>
         </div>
       )}

@@ -12,7 +12,7 @@ import {
 import type { Campaign } from '@tt/domain';
 import { encodeCampaign, mapWire } from '@tt/protocol';
 
-const STONE = swatchOf(DEFAULT_MATERIALS.find((m) => m.name === 'Stone')!.id);
+const STONE = swatchOf(DEFAULT_MATERIALS.find((m) => m.name === 'Mineral')!.id);
 
 /** A campaign with two places, each with a point of interest and a map. */
 function twoMaps(): Campaign {

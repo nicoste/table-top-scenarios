@@ -16,7 +16,7 @@ import type { CuttingPlane, SwatchId, PlaneId } from '@tt/domain';
 
 const CAP = MAP_MAX_HEIGHT;
 const FLOOR = MAP_MIN_DEPTH;
-const STONE = swatchOf(DEFAULT_MATERIALS.find((m) => m.name === 'Stone')!.id);
+const STONE = swatchOf(DEFAULT_MATERIALS.find((m) => m.name === 'Mineral')!.id);
 const at = (x: number, y: number, z: number) => ({ x, y, z });
 
 /** The GM's tavern: a cellar, a ground floor, an upstairs and a roof. */

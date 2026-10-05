@@ -28,13 +28,13 @@ describe('a material cannot ask for a figure that is not there (R-177)', () => {
     expect(isFigured(invented)).toBe(false);
   });
 
-  it('leaves a plain material plain', () => {
-    const snow = DEFAULT_MATERIALS.find((m) => m.name === 'Snow')!;
-    expect(snow.pattern).toBe('none');
-    expect(isFigured(snow)).toBe(false);
+  it('leaves a family with no figure alone', () => {
+    const mineral = DEFAULT_MATERIALS.find((m) => m.name === 'Mineral')!;
+    expect(mineral.pattern).toBe('none');
+    expect(isFigured(mineral)).toBe(false);
   });
 
-  it('figures the three the GM asked for, and only those', () => {
+  it('figures the three that have one, and only those', () => {
     const figured = DEFAULT_MATERIALS.filter((m) => m.pattern !== 'none');
     expect(figured.map((m) => `${m.name}:${m.pattern}`).sort())
       .toEqual(['Brick:courses', 'Grass:speckle', 'Wood:stripes']);

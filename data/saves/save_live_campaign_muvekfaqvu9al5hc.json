@@ -1,0 +1,19 @@
+{
+ "id": "save_live_campaign_muvekfaqvu9al5hc",
+ "campaignId": "campaign_muvekfaqvu9al5hc",
+ "campaignSchemaVersion": 4,
+ "schemaVersion": 3,
+ "label": "Live",
+ "savedAt": "2026-10-05T15:26:39.217Z",
+ "discovery": {
+  "chunks": [],
+  "places": []
+ },
+ "placement": {
+  "together": true,
+  "at": null,
+  "members": {}
+ },
+ "inside": null,
+ "ranges": {}
+}

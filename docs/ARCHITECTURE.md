@@ -2376,56 +2376,60 @@ apps/host/src/
 > when the camera does, and it will not show up in a measurement taken at one
 > camera (D-240).
 
-> **R-176.** **A shade is the other axis of a material, not another material.**
+> **R-176.** **A cube holds a swatch: a family, and which cut of it.**
 >
-> A cube holds a **swatch**: a material and the cut it was made in. Three
-> stones, three woods, one snow.
+> `material:brick` is clay brick; `material:brick/limestone` is limestone. One
+> string, because the body is a map of nine thousand of them compared by
+> identity — the palette dedupes on it, `fillRegion` matches on it, and the
+> packed encoding (D-217) works on it unchanged. An object per cube would have
+> cost nine thousand allocations to say the same thing.
 >
-> **Never new material ids.** R-11 makes them permanent and every saved map
-> references them, so "dark stone" as its own entry is a registry that grows
-> by the *product* of substance and tint, forever, and a GM scrolling past
-> forty rows to find a wall. Shades multiply; entries add.
+> **The default cut writes bare**, so the commonest block in a map costs the
+> shortest string and a body of them packs to what it always did. It is
+> enforced in the other direction too: `material:brick/clay` is *refused* even
+> though its meaning is obvious, because a swatch is compared as a string and
+> two spellings of one cut would stop a fill in the middle of a flat wall.
 >
-> **The cuts belong to the material**, not to a ladder every material climbs
-> (D-242). Snow is one thing and stone is three; a wood that wants an `oak`
-> and a `pine` gets them without stone growing the same two. So a shade id
-> only means something *through* a material — `material:snow/dark` is refused
-> where `material:stone/dark` is fine — and `isKnownSwatch` asks the material,
-> never a global list.
+> **A cut may differ only in colour** (R-178). Not `blocksSight`, not
+> roughness, not what any rule makes of it — frosted glass is still glass.
+> Which is also why cuts are free: colour is the one thing an instance can
+> carry (R-173), so a family draws all of its cuts in one mesh.
 >
-> **Plain is the absence of a shade**, not an entry in anybody's list: a
-> material *is* its plain cut. That is what lets it write bare, and what makes
-> "no variations" the ordinary case rather than a special one.
->
-> **Plain writes bare.** `material:stone`, not `material:stone/plain`, so a
-> map saved before shades existed reads back as plain stone with no migration
-> and no schema bump — the same reasoning as the three absences in `MapJSONIn`
-> (D-187, R-137a). And it is enforced in the other direction: a swatch
-> spelling plain out is *refused*, because a swatch is compared as a string
-> and two spellings of one cut would stop a fill in the middle of a flat wall.
->
-> **One choice, not two.** The GM picks a swatch, never a material and then a
-> shade: the list shows each material's own cuts in its row, and because cuts
-> belong to materials there is no such move as "keep the shade, change the
-> material". One piece of state, and the panel cannot show a combination that
-> does not exist.
->
-> **And one strip, not a chip and a strip.** A row is the material's name on
-> the left and *every* look it has on the right, plain among them, darkest
-> first. Plain is still absent from `shades` — the domain is unchanged — and
-> the panel asks `cutsOf` for the row it draws. Splitting plain onto a chip at
-> the left and the variations at the right made one row read as two different
-> controls, and gave one selection two places to light up (D-243).
->
-> **A shade changes the colour and nothing else.** Not `blocksSight`, not
-> roughness, not what any rule makes of it — dark glass is still glass. Which
-> is also why it is free: colour is the one thing an instance already carries
-> (R-173), so three shades of everything cost no extra mesh and no extra draw
-> call.
->
-> **A fill stops where the shade changes** (R-154), and that falls out of
-> matching the swatch rather than the material. It is not a side effect to be
+> **A fill stops where the cut changes** (R-154), and that falls out of
+> matching the swatch rather than the family. It is not a side effect to be
 > tolerated: it is what lets a GM repaint one course of a wall.
+>
+> **One choice, not two.** The GM picks a swatch, never a family and then a
+> cut: the list shows each family's own cuts in its row. One piece of state,
+> and the panel cannot show a combination that does not exist.
+
+> **R-178.** **The registry is organised by how a thing is built, not by what
+> it is.**
+>
+> A **family** owns a structure — courses, grain, granular, mottled — and its
+> **cuts** are the substances that share it. Clay, dressed stone and limestone
+> are all Brick, because brick is a way of laying units and not a colour. Gold
+> and copper are Mineral.
+>
+> **Colour is a bad identity axis and the old registry proved it.** Thirteen
+> materials whose only identity was a colour contained four near-duplicate
+> pairs describing obviously different substances — thatch and sand differed by
+> 8 in RGB while being a roof and a beach. What tells them apart at a table is
+> structure (D-245).
+>
+> **What decides family from cut is the renderer, not taste.** Roughness, glow
+> and transparency are uniforms, so a mesh can draw a thousand colours of one
+> family and cannot draw gold beside granite if the two scatter light
+> differently (R-173). So: *anything differing in how light behaves is its own
+> family; a cut differs only in colour.* That is why lava is not a cut of
+> water, why ice is one, and why metal folded into mineral rather than keeping
+> a sheen nothing could see.
+>
+> **The cut's name is the vocabulary.** "Limestone", "oak", "shore" are words
+> said at a table; "pale brick" and "dark wood" are not. It follows that the
+> name cannot live only in a tooltip — the panel shows which cut is in hand.
+>
+> A family always has at least one cut, and the first is its default.
 
 > **R-177.** **A material's figure is arithmetic, not an image.**
 >

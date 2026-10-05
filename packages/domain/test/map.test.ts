@@ -10,10 +10,10 @@ import {
   BRUSHES, DEFAULT_BRUSH, MAP_BRUSH_CELLS, brushById, brushPatch,
   setBlocks, paintBlocks, clearBlocks,
   DEFAULT_FLOOR, DEFAULT_MATERIALS, swatchOf, isKnownMaterial,
-  PLAIN, materialIn, shadeIdIn, shadeOf, colourOf, isKnownSwatch, shadeColour, materialById,
+  materialIn, cutIdIn, cutOf, colourOf, isKnownSwatch, swatchFor,
 } from '@tt/domain';
 
-const STONE = swatchOf(DEFAULT_MATERIALS.find((m) => m.name === 'Stone')!.id);
+const STONE = swatchOf(DEFAULT_MATERIALS.find((m) => m.name === 'Mineral')!.id);
 const at = (x: number, y: number, z: number) => ({ x, y, z });
 
 describe('a new map (R-149)', () => {
@@ -228,11 +228,15 @@ describe('the materials registry (R-75)', () => {
   it('carries blocksSight as a material property, transparent ones included', () => {
     // Specified now, unused until vision lands (D-183) — but glass being
     // see-through is a fact about glass, not about being a block.
+    // On the family, not the cut: ice and water see through the same amount
+    // because they are the same stuff frozen, and that is the rule that put
+    // them in one family (R-178).
     const byName = (n: string) => DEFAULT_MATERIALS.find((m) => m.name === n)!;
-    expect(byName('Stone').blocksSight).toBe(true);
+    expect(byName('Brick').blocksSight).toBe(true);
+    expect(byName('Mineral').blocksSight).toBe(true);
     expect(byName('Glass').blocksSight).toBe(false);
-    expect(byName('Water').blocksSight).toBe(false);
-    expect(byName('Ice').blocksSight).toBe(false);
+    expect(byName('Liquids').blocksSight).toBe(false);
+    expect(byName('Liquids').cuts.map((cut) => cut.name)).toContain('Ice');
   });
 });
 
@@ -746,98 +750,92 @@ describe('the packed body (R-59, D-217)', () => {
   });
 });
 
-describe('shades: one material, cut lighter or darker (R-176)', () => {
-  const STONE_ID = DEFAULT_MATERIALS.find((m) => m.name === 'Stone')!.id;
-  const STONE = materialById(DEFAULT_MATERIALS, STONE_ID)!;
+describe('families and their cuts (R-178)', () => {
+  const BRICK = DEFAULT_MATERIALS.find((m) => m.name === 'Brick')!;
+  const MINERAL = DEFAULT_MATERIALS.find((m) => m.name === 'Mineral')!;
 
-  it('writes the plain cut bare, so a map from before shades reads back the same', () => {
-    // The whole reason this needed no migration and no schema bump (D-241).
-    expect(swatchOf(STONE_ID)).toBe(STONE_ID as string);
-    expect(swatchOf(STONE_ID, PLAIN)).toBe(STONE_ID as string);
-    expect(materialIn(STONE_ID as unknown as SwatchId)).toBe(STONE_ID);
-    expect(shadeIdIn(STONE_ID as unknown as SwatchId)).toBe(PLAIN);
+  it('writes the default cut bare, so the commonest block costs the shortest string', () => {
+    expect(swatchFor(BRICK, 'clay')).toBe(BRICK.id as string);
+    expect(swatchFor(BRICK, 'limestone')).toBe(`${BRICK.id}/limestone`);
+    expect(cutIdIn(BRICK.id as unknown as SwatchId)).toBeNull();
+    expect(cutOf(BRICK, null).id).toBe('clay');
   });
 
-  it('round-trips every cut of every material', () => {
+  it('round-trips every cut of every family', () => {
     for (const material of DEFAULT_MATERIALS) {
-      for (const shade of material.shades) {
-        const swatch = swatchOf(material.id, shade.id);
+      for (const cut of material.cuts) {
+        const swatch = swatchFor(material, cut.id);
         expect(materialIn(swatch)).toBe(material.id);
-        expect(shadeIdIn(swatch)).toBe(shade.id);
+        expect(cutOf(material, cutIdIn(swatch)).id).toBe(cut.id);
+        expect(colourOf(material, cutIdIn(swatch))).toBe(cut.colour);
         expect(isKnownSwatch(swatch)).toBe(true);
       }
     }
   });
 
-  it('refuses a cut this material does not have, even where another one does', () => {
-    // The point of hanging them off the material rather than a global ladder
-    // (D-242): snow is one thing, stone is three.
-    const snow = DEFAULT_MATERIALS.find((m) => m.name === 'Snow')!;
-    expect(snow.shades).toHaveLength(0);
-    expect(isKnownSwatch(swatchOf(snow.id, 'dark'))).toBe(false);
-    expect(isKnownSwatch(swatchOf(STONE_ID, 'dark'))).toBe(true);
+  it('refuses a cut that belongs to another family', () => {
+    // Gold is a mineral; it is not a kind of glass.
+    const glass = DEFAULT_MATERIALS.find((m) => m.name === 'Glass')!;
+    expect(isKnownSwatch(swatchOf(MINERAL.id, 'gold'))).toBe(true);
+    expect(isKnownSwatch(swatchOf(glass.id, 'gold'))).toBe(false);
   });
 
-  it('refuses an unknown material, an invented cut, and plain spelled out', () => {
-    expect(isKnownSwatch('material:unobtanium/dark' as SwatchId)).toBe(false);
-    expect(isKnownSwatch(swatchOf(STONE_ID, 'chartreuse'))).toBe(false);
-    // Spelled-out plain is not a swatch anyone writes, so it is not one we read.
-    expect(isKnownSwatch(`${STONE_ID}/plain` as SwatchId)).toBe(false);
+  it('refuses an unknown family, an invented cut, and the default spelled out', () => {
+    expect(isKnownSwatch('material:unobtanium/gold' as SwatchId)).toBe(false);
+    expect(isKnownSwatch(swatchOf(BRICK.id, 'chartreuse'))).toBe(false);
+    // One value, one spelling: `material:brick` already means clay.
+    expect(isKnownSwatch(swatchOf(BRICK.id, 'clay'))).toBe(false);
   });
 
-  it('refuses the material that was removed, and nothing else broke with it', () => {
-    // Plank is gone (D-242). An id that is not in the registry is not a swatch.
-    expect(isKnownSwatch('material:plank' as SwatchId)).toBe(false);
-    expect(DEFAULT_MATERIALS.some((m) => m.name === 'Plank')).toBe(false);
+  it('every family has a default, and no family repeats a cut id', () => {
+    for (const material of DEFAULT_MATERIALS) {
+      expect(material.cuts.length, `${material.name} has no cuts`).toBeGreaterThan(0);
+      const ids = material.cuts.map((cut) => cut.id);
+      expect(new Set(ids).size, `${material.name} repeats a cut id`).toBe(ids.length);
+    }
+  });
+
+  it('keeps the families the registry is organised by, and drops what folded in', () => {
+    expect(DEFAULT_MATERIALS.map((m) => m.name)).toEqual([
+      'Brick', 'Mineral', 'Wood', 'Soil', 'Grass', 'Vegetation', 'Liquids', 'Glowing', 'Glass',
+    ]);
+    // Metal, thatch, stone, sand, dirt, snow and ice are cuts now, not families.
+    for (const gone of ['metal', 'thatch', 'stone', 'sand', 'dirt', 'snow', 'ice', 'water']) {
+      expect(isKnownSwatch(`material:${gone}` as SwatchId), `material:${gone} still resolves`)
+        .toBe(false);
+    }
   });
 
   it('survives the packing, which is what puts a cut on disk', () => {
     let map = createMap();
-    STONE.shades.forEach((shade, i) => {
-      map = setBlock(map, at(i, 5, 0), swatchOf(STONE_ID, shade.id));
+    MINERAL.cuts.forEach((cut, i) => {
+      map = setBlock(map, at(i, 5, 0), swatchFor(MINERAL, cut.id));
     });
     const back = mapFromJSON(mapToJSON(map))!;
-    STONE.shades.forEach((shade, i) => {
-      expect(blockAt(back, at(i, 5, 0))).toBe(swatchOf(STONE_ID, shade.id));
+    MINERAL.cuts.forEach((cut, i) => {
+      expect(blockAt(back, at(i, 5, 0))).toBe(swatchFor(MINERAL, cut.id));
     });
   });
 
-  it('is a different colour per cut, and keeps the material its hue', () => {
-    const weight = (hex: string) =>
-      [1, 3, 5].reduce((n, from) => n + Number.parseInt(hex.slice(from, from + 2), 16), 0);
-    const plain = colourOf(STONE, PLAIN);
-    expect(plain).toBe(STONE.colour);
-    expect(weight(colourOf(STONE, 'dark'))).toBeLessThan(weight(plain));
-    expect(weight(colourOf(STONE, 'pale'))).toBeGreaterThan(weight(plain));
-  });
-
-  it('answers plain for a cut the material has not got, rather than inventing one', () => {
-    const snow = DEFAULT_MATERIALS.find((m) => m.name === 'Snow')!;
-    expect(shadeOf(snow, 'dark')).toBeNull();
-    expect(colourOf(snow, 'dark')).toBe(snow.colour);
-  });
-
-  it('leaves a colour exactly alone when there is no lift', () => {
-    // Not "near enough": plain has to be byte-identical or the palette would
-    // hold two entries for one colour and the chips would drift from the map.
+  it('gives no two cuts of one family the same colour', () => {
     for (const material of DEFAULT_MATERIALS) {
-      expect(shadeColour(material.colour, 0)).toBe(material.colour);
-      expect(colourOf(material, PLAIN)).toBe(material.colour);
+      const colours = material.cuts.map((cut) => cut.colour);
+      expect(new Set(colours).size, `${material.name} repeats a colour`).toBe(colours.length);
     }
   });
 });
 
-describe('a fill stops where the shade changes (R-176)', () => {
-  const STONE_ID = DEFAULT_MATERIALS.find((m) => m.name === 'Stone')!.id;
-  const DARK = swatchOf(STONE_ID, 'dark');
-  const PALE = swatchOf(STONE_ID, 'pale');
+describe('a fill stops where the cut changes (R-176)', () => {
+  const MINERAL = DEFAULT_MATERIALS.find((m) => m.name === 'Mineral')!;
+  const DARK = swatchFor(MINERAL, 'dark-rock');
+  const GOLD = swatchFor(MINERAL, 'gold');
 
-  it('treats two cuts of one stone as different, which is what makes a course repaintable', () => {
-    // A wall of dark stone with one pale course through it.
+  it('treats two cuts of one mineral as different, which is what makes a seam repaintable', () => {
+    // A wall of dark rock with one course of gold running through it.
     let map = createMap();
     for (let y = 1; y <= 3; y += 1) {
       for (let x = 0; x < 4; x += 1) {
-        map = setBlock(map, at(x, y, 0), y === 2 ? PALE : DARK);
+        map = setBlock(map, at(x, y, 0), y === 2 ? GOLD : DARK);
       }
     }
     const course = fillRegion(map, at(0, 2, 0));

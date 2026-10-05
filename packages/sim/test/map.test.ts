@@ -19,7 +19,7 @@ import { IntentSchema } from '@tt/protocol';
 const NOW = '2026-01-01T00:00:00.000Z';
 const run = (s: HostState, i: Intent, role: 'gm' | 'table' = 'gm') => apply(s, role, i, NOW);
 const cell = (x: number, z: number) => ({ cx: ORIGIN.cx, cz: ORIGIN.cz, x, z });
-const STONE = swatchOf(DEFAULT_MATERIALS.find((m) => m.name === 'Stone')!.id) as string;
+const STONE = swatchOf(DEFAULT_MATERIALS.find((m) => m.name === 'Mineral')!.id) as string;
 
 /**
  * A revealed place with one revealed point of interest, in a Known chunk.

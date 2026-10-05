@@ -26,7 +26,7 @@ import {
 } from 'three';
 import type { Intersection } from 'three';
 import type { BlockCoord, EncounterMap, Material, SwatchId } from '@tt/domain';
-import { parseBlockKey, materialIn, shadeIdIn, colourOf } from '@tt/domain';
+import { parseBlockKey, materialIn, cutIdIn, colourOf } from '@tt/domain';
 import { grainAt } from '../grain/index.js';
 import { figure } from '../patterns/index.js';
 
@@ -64,13 +64,12 @@ export function buildBlockBody(map: EncounterMap, materials: readonly Material[]
   const unknown: Material = {
     id: 'material:unknown' as Material['id'],
     name: 'Unknown',
-    colour: '#ff00ff',
+    cuts: [{ id: 'unknown', name: 'Unknown', colour: '#ff00ff' }],
     blocksSight: true,
     grain: 0,
     roughness: 1,
     glow: 0,
     opacity: 1,
-    shades: [],
     pattern: 'none',
   };
 
@@ -84,7 +83,7 @@ export function buildBlockBody(map: EncounterMap, materials: readonly Material[]
     let cut = cuts.get(swatch);
     if (!cut) {
       const material = known.get(materialIn(swatch) as string) ?? unknown;
-      cut = { material, tint: new Color(colourOf(material, shadeIdIn(swatch))) };
+      cut = { material, tint: new Color(colourOf(material, cutIdIn(swatch))) };
       cuts.set(swatch, cut);
     }
     return cut;
@@ -123,7 +122,7 @@ export function buildBlockBody(map: EncounterMap, materials: readonly Material[]
   let count = 0;
 
   for (const { material, blocks, tints } of piles.values()) {
-    base.set(material.colour);
+    base.set(material.cuts[0]!.colour);
     const surface = new MeshStandardMaterial({
       roughness: material.roughness,
       /*

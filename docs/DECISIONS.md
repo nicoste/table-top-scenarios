@@ -5208,3 +5208,82 @@ this project has made twice:
   travels over the socket, because the GM is the only person with input and
   keeping the table readable is their job. Not built, because nobody has yet run
   the table display on the box that will drive the TV. **Measure that first.**
+
+### D-245 — The registry by how a thing is built · `agreed`
+A conversation, not a change request. The GM: *"I'm mentally separating by the
+texture, not the color or the actual thing IRL."*
+
+**Colour was the identity axis and it was the wrong one.** The old registry had
+thirteen materials distinguished by colour, and measuring the distances between
+them showed four pairs within a hair of each other while describing obviously
+different substances:
+
+| | RGB distance |
+| --- | --- |
+| Thatch pale vs Sand plain | **8** |
+| Thatch plain vs Sand dark | **9** |
+| Wood dark vs Dirt plain | 14 |
+| Stone plain vs Metal pale | 22 |
+| Thatch plain vs *pale grass* | 60 |
+
+The last row is the one that settled it. The GM proposed removing thatch
+because it duplicated grass; the numbers said its twin was **sand**, which
+nobody would confuse with a roof. Colour cannot tell a roof from a beach.
+Structure can.
+
+So: a **family** owns a structure and its **cuts** are the substances that
+share it. Nine families, twenty-eight cuts, every one with a name said out
+loud — limestone, oak, shore, mana.
+
+**What decides family from cut is the renderer, not taste.** Roughness, glow
+and transparency are uniforms; colour is per-instance (R-173). So a cut may
+differ only in colour, and anything differing in how light behaves is its own
+family. That rule answered three questions without an argument:
+
+- **Lava is not a cut of water.** Glow is a uniform. It is its own family,
+  *Glowing*, with acid and mana beside it — three substances that differ only
+  in colour, which is exactly what a cut is.
+- **Ice is a cut of Liquids.** It is frozen water, and 0.72 against 0.75 is the
+  same number at a table.
+- **Metal folds into Mineral**, which the GM suspected — *"Metal is 1 word away
+  from disappearing… Don't you think?"* — and the reason is better than the
+  word count: every other family names *how* something is built, and Metal
+  named *what it is*. It was the one entry that did not fit the model, which is
+  why it read as redundant next to Mineral. The cost is that gold is matte,
+  and that costs nothing today because metalness is pinned at 0 for want of an
+  environment map (D-238). If sheen ever matters, the way back is letting a cut
+  carry roughness — one mesh per cut instead of per family — and the measured
+  evidence says more meshes are nearly free (D-238's table). Rebuild time is
+  the figure to watch, not draw calls.
+
+**One family was added against the GM's grouping.** They put grey stone inside
+Brick. Dressed stone laid in courses *is* brick and stayed there, but a dungeon
+is mostly **cave wall** — irregular mass, no courses, no bond — and folding
+that into Brick would have made caverns unbuildable. Mineral is its own family
+for that reason.
+
+**Thatch dies and becomes `dried` grass**, at the GM's call. What is traded is
+the roof: a thatched roof is overlapping bundles laid in courses, and as a cut
+of Grass it gets blade mottle. On the ground it is right; on a roof it will
+read as a lawn. Named here so that if it ever grates, the fix is a family and
+not a mystery.
+
+**The UI consequence the GM's own requirement forced.** They asked for
+*"self-describing labels and colored squares"* — but the cut names were living
+in tooltips, and "limestone" is the word a GM says. A row has a family name and
+up to four squares inside 228px with nothing left over, which is also why the
+`see-through` badge moved off the rows and onto the line that names the chosen
+cut. That line is where you look to confirm what the next click lays down, and
+it has the width to say it.
+
+**And the campaign was deleted**, with permission — *"Be free to delete the
+whole campaign, it's ok right now."* Every map in it referenced `material:stone`,
+`material:sand`, `material:metal` and the rest. This is one migration rather
+than the three removals it looks like, and it is the **last cheap one**: after
+this, R-11 applies with no exception and folding a family means writing a
+migration that rewrites every map that holds it.
+
+**It cost the reference scene.** Every figure in MEASUREMENTS.md is anchored to
+The Eight's Church — 9,714 cubes, 96×96, fifteen levels — and that campaign no
+longer exists. The numbers remain true of the build that produced them and are
+no longer reproducible as written. Noted there rather than quietly left to rot.

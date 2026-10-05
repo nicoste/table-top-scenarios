@@ -1,0 +1,35 @@
+{
+ "id": "campaign_muvekfaqvu9al5hc",
+ "schemaVersion": 4,
+ "name": "Stonebrook",
+ "party": [
+  {
+   "id": "member_muvekfaqwvnc4ysf",
+   "name": "player",
+   "colour": "#57d9a3",
+   "visionRange": 12
+  }
+ ],
+ "places": [
+  {
+   "id": "place_muvekp8jype9vjqu",
+   "name": "New place",
+   "cell": {
+    "cx": 15,
+    "cz": 15,
+    "x": 15,
+    "z": 15
+   },
+   "markerId": "marker:village",
+   "pois": [
+    {
+     "id": "poi_muvekq34pqa2whs4",
+     "name": "The Forge",
+     "visibleToParty": false,
+     "map": null
+    }
+   ],
+   "notes": []
+  }
+ ]
+}
