@@ -4,26 +4,33 @@
  "campaignSchemaVersion": 4,
  "schemaVersion": 3,
  "label": "Live",
- "savedAt": "2026-10-05T20:20:49.170Z",
+ "savedAt": "2026-10-05T20:41:42.699Z",
  "discovery": {
-  "chunks": [],
-  "places": []
+  "chunks": [
+   "15,15"
+  ],
+  "places": [
+   "place_muvoxgokb43g1mdk"
+  ]
  },
  "placement": {
   "together": true,
   "at": null,
   "members": {}
  },
- "inside": null,
+ "inside": {
+  "placeId": "place_muvoxgokb43g1mdk",
+  "poiId": "poi_muvoxgol9meszs23"
+ },
  "ranges": {
   "poi_muvoxgol9meszs23": {
    "lower": -16,
-   "upper": 8
+   "upper": 4
   }
  },
  "lighting": {
-  "angle": 35,
-  "sun": "#fff6e8",
+  "angle": 170,
+  "sun": "#ffffff",
   "sunLevel": 1.9,
   "ambience": {
    "colour": "#cfe4ff",

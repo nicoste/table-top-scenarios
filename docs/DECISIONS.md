@@ -5623,3 +5623,45 @@ the thing to look at first if this ever feels wrong.
 **And a known false positive**: an outdoor place with nothing above it, whose
 band the GM trims to hide a tower, goes dark. Raising the band to the Sun fixes
 it, and that is discoverable from the notice.
+
+### D-254 — Tokens cast no shadow, and that is a decision not an omission · `agreed`
+Written before tokens exist, because two messages before it was written I
+suggested the opposite — "pawns neither cast nor receive, that's two lines to
+add when we get there" — and the next person to look will have the same
+instinct. A gap nobody argued for gets filled in by reflex.
+
+The GM's design for a token: a **round base with a card clipped to it**, gold
+for the party and silver for everything else, the card carrying the character
+and **always turned to face the camera**.
+
+**A billboard breaks the rule shadows are built on.** R-180 keeps the shadow
+map off the per-frame path by never redrawing it when the camera moves — a
+directional light's shadow camera is fixed to the scene, not the view, so
+turning the camera owes a frame and owes the shadows nothing. A card that
+rotates to face the camera makes that false: its geometry changes on every
+orbit, so its shadow is stale unless the map is restaged on camera movement.
+That converts the shadow map from on-change back to effectively every-frame,
+paid on the most frequent event there is.
+
+**And it would look wrong even if it were free.** A flat card's shadow is a
+rectangle face-on and a line edge-on, so orbiting the table would make every
+token's shadow swing and collapse. Geometrically correct, reads as a bug.
+
+**Carried lights, later, for the same reason.** A point light that casts needs
+a cube shadow map — six faces — redrawn whenever its bearer moves, and a
+confirmed move would have to restage. When that round comes, the cheap version
+is `castShadow = false`: the pool of light without the shadow, which is most
+of the effect for almost none of the cost.
+
+**Nothing is lost in grounding.** A token with no cast shadow usually reads as
+floating; occlusion already darkens the crease where a round base meets the
+floor, and that is the cue that makes a thing look *placed*. It is already
+paid for.
+
+**Receiving is a separate question and stays open.** `castShadow` and
+`receiveShadow` are independent: receiving costs a lookup against a shadow map
+that already exists and does not depend on the card's orientation, so none of
+the above applies to it. A token walking into a building's shadow would
+visibly darken. Whether that is wanted is legibility, not cost — on a shared
+screen a token you can always see may beat a token that is correctly lit — and
+it can be settled when there is a token to look at.
