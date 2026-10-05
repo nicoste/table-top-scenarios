@@ -39,6 +39,29 @@ where it came from. A row that cannot say is not worth keeping.
 
 ---
 
+## Does the panel disturb what it measures?
+
+Asked, and worth asking of any instrument that lives inside the thing it
+reads. Same camera, six samples each, hiding the overlay between runs:
+
+| | gpu, six samples | median |
+| --- | --- | --- |
+| panel painted | 11.3, 11.9, 12.4, 12.5, 11.5, 10.3 | **11.9 ms** |
+| panel `display: none` | 13, 10, 12.4, 10.7, 11.9, 11 | **11.9 ms** |
+| panel painted again | 11, 11.9, 10.8, 11.3, 11, 12.2 | 11.3 ms |
+
+No, not the GPU figure — and it could not, by construction: that number comes
+from a GL timer query bracketing `composer.render()` alone, and the panel is
+DOM the browser composites afterwards.
+
+**What it does cost** is main-thread time, four times a second, reading
+`renderer.info` and re-rendering a small React component. `frame p50` and
+`p95` cannot show you that because they are pinned to the 33 ms cap (R-169).
+And `js heap` plainly includes the panel — it is the one row that measures
+itself.
+
+---
+
 ## The reference scene
 
 **The Eight's Church**, in the campaign `We Can Test Here`.
