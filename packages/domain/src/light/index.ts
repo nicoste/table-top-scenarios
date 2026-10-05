@@ -6,6 +6,19 @@
 // property and not a lighting model (R-173). It is also what lets the figures
 // be settled in a test rather than by squinting at a screen (R-23b).
 
+/**
+ * The light that reaches a surface the sun cannot see (R-182).
+ *
+ * **It belongs to the place, not to the hour.** A sun is the world's: one sky,
+ * one time of day, the same for everybody. An emerald cave is green at noon
+ * and green at midnight, and nothing about the world's afternoon should reach
+ * inside it — which is exactly what one shared fill light did (D-252).
+ */
+export interface Ambience {
+  readonly colour: string;
+  readonly level: number;
+}
+
 export interface Lighting {
   /**
    * Where the sun is on its arc, in degrees: 10 at one horizon, 90 overhead,
@@ -19,9 +32,11 @@ export interface Lighting {
   readonly angle: number;
   readonly sun: string;
   readonly sunLevel: number;
-  /** The sky's own light: what reaches a surface the sun cannot see. */
-  readonly fill: string;
-  readonly fillLevel: number;
+  /**
+   * The **world's** ambience. A point of interest carries its own and does not
+   * inherit this one (R-182).
+   */
+  readonly ambience: Ambience;
 }
 
 /**
@@ -58,13 +73,15 @@ const SPAN = Math.hypot(BEARING.x, BEARING.z);
  */
 const EAST = { x: BEARING.x / SPAN, z: BEARING.z / SPAN };
 
+/** Open sky: what a surface gets when nobody has said otherwise. */
+export const OPEN_SKY: Ambience = { colour: '#cfe4ff', level: 0.4 };
+
 /** Settled at the table: an afternoon, where a building looks like a building. */
 export const DAYLIGHT: Lighting = {
   angle: 35,
   sun: '#fff6e8',
   sunLevel: 1.9,
-  fill: '#cfe4ff',
-  fillLevel: 0.4,
+  ambience: OPEN_SKY,
 };
 
 const clamp = (value: number, low: number, high: number): number =>
@@ -78,8 +95,15 @@ export function clampLighting(lighting: Lighting): Lighting {
     angle: Math.round(clamp(lighting.angle, MIN_ANGLE, MAX_ANGLE)),
     sun: COLOUR.test(lighting.sun) ? lighting.sun.toLowerCase() : DAYLIGHT.sun,
     sunLevel: clamp(lighting.sunLevel, MIN_SUN, MAX_SUN),
-    fill: COLOUR.test(lighting.fill) ? lighting.fill.toLowerCase() : DAYLIGHT.fill,
-    fillLevel: clamp(lighting.fillLevel, MIN_FILL, MAX_FILL),
+    ambience: clampAmbience(lighting.ambience),
+  };
+}
+
+export function clampAmbience(ambience: Ambience | undefined | null): Ambience {
+  if (!ambience) return OPEN_SKY;
+  return {
+    colour: COLOUR.test(ambience.colour) ? ambience.colour.toLowerCase() : OPEN_SKY.colour,
+    level: clamp(ambience.level, MIN_FILL, MAX_FILL),
   };
 }
 
@@ -133,7 +157,7 @@ export function hourLabel(angle: number): string {
  * to be is darker than the sky.
  */
 export function bounceOf(fill: string): string {
-  if (!COLOUR.test(fill)) return bounceOf(DAYLIGHT.fill);
+  if (!COLOUR.test(fill)) return bounceOf(OPEN_SKY.colour);
   const n = Number.parseInt(fill.slice(1), 16);
   const dim = (shift: number) => Math.round(((n >> shift) & 255) * 0.3)
     .toString(16).padStart(2, '0');

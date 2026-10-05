@@ -259,7 +259,9 @@ describe('what the table is told', () => {
 
   it('lights the table the way the GM set it', () => {
     let state = revealed();
-    const dusk = { angle: 165, sun: '#ff9a52', sunLevel: 2.2, fill: '#4a5f8f', fillLevel: 0.18 };
+    const dusk = {
+      angle: 165, sun: '#ff9a52', sunLevel: 2.2, ambience: { colour: '#4a5f8f', level: 0.18 },
+    };
     state = run(state, { kind: 'setLighting', lighting: dusk }).state;
 
     expect(tableView(state).lighting).toEqual(dusk);
@@ -272,16 +274,84 @@ describe('what the table is told', () => {
     let state = revealed();
     state = run(state, {
       kind: 'setLighting',
-      lighting: { angle: 900, sun: '#ffffff', sunLevel: 99, fill: '#000000', fillLevel: -3 },
+      lighting: {
+        angle: 900, sun: '#ffffff', sunLevel: 99, ambience: { colour: '#000000', level: -3 },
+      },
     }).state;
 
     const lit = tableView(state).lighting;
     expect(lit.angle).toBe(170);
     expect(lit.sunLevel).toBe(3);
-    expect(lit.fillLevel).toBe(0);
+    expect(lit.ambience.level).toBe(0);
   });
 
   it('sends no pawns when no campaign is on the table', () => {
     expect(tableView({ campaigns: [], active: null, activeSave: null, history: emptyHistory() }).placement).toBeNull();
+  });
+});
+
+describe('the ambience belongs to the place the party is in (R-182)', () => {
+  /** A revealed world with one place the party can walk into. */
+  function withCave(): HostState {
+    let state = run(revealed(), { kind: 'addPlace', cell: at(1, 1), name: 'The cave' }).state;
+    const placeId = state.active!.places[0]!.id;
+    // Revealed, or the party cannot be walked into it and `inside` stays null.
+    state = run(state, { kind: 'setPlaceRevealed', placeId, revealed: true }).state;
+    state = run(state, {
+      kind: 'addPoi', placeId, name: 'Emerald hollow', visibleToParty: true,
+    }).state;
+    return state;
+  }
+
+  it('lights the table by the cave when they are inside it, and by the world when out', () => {
+    let state = withCave();
+    const place = state.active!.places[0]!;
+    const poi = place.pois[0]!;
+    const emerald = { colour: '#2f7a4a', level: 0.55 };
+
+    state = run(state, {
+      kind: 'setPoiAmbience', placeId: place.id, poiId: poi.id, ambience: emerald,
+    }).state;
+
+    // Out on the world: the world's own, untouched by the cave.
+    expect(tableView(state).lighting.ambience).toEqual(state.activeSave!.lighting.ambience);
+
+    const entered = run(state, { kind: 'enterMap', placeId: place.id, poiId: poi.id });
+    expect(entered.rejected).toBeUndefined();
+    state = entered.state;
+    expect(tableView(state).lighting.ambience).toEqual(emerald);
+    // And the hour above it is still the world's, which is the whole split.
+    expect(tableView(state).lighting.angle).toBe(state.activeSave!.lighting.angle);
+  });
+
+  it('never tells the table what a place it is not in looks like', () => {
+    // Sending every point of interest's light would say "that cave glows
+    // green" to a party that has not found it (R-85, D-252).
+    let state = withCave();
+    const place = state.active!.places[0]!;
+    state = run(state, {
+      kind: 'setPoiAmbience',
+      placeId: place.id,
+      poiId: place.pois[0]!.id,
+      ambience: { colour: '#2f7a4a', level: 0.55 },
+    }).state;
+
+    expect(JSON.stringify(tableView(state))).not.toContain('2f7a4a');
+  });
+
+  it('is an authored edit, so it is undoable like the rest of them', () => {
+    let state = withCave();
+    const place = state.active!.places[0]!;
+    const before = place.pois[0]!.ambience;
+    state = run(state, {
+      kind: 'setPoiAmbience',
+      placeId: place.id,
+      poiId: place.pois[0]!.id,
+      ambience: { colour: '#2f7a4a', level: 0.55 },
+    }).state;
+    expect(state.active!.places[0]!.pois[0]!.ambience.colour).toBe('#2f7a4a');
+
+    state = run(state, { kind: 'undo' }).state;
+    expect(state.active!.places[0]!.pois[0]!.ambience).toEqual(before);
   });
 });

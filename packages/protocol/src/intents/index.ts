@@ -2,7 +2,7 @@
 // edge with Zod (R-17); trusted everywhere inside.
 
 import { z } from 'zod';
-import { LightingWireSchema } from '../wire/index.js';
+import { LightingWireSchema, AmbienceWireSchema } from '../wire/index.js';
 import { CellIndex, TerrainIdSchema, MarkerIdSchema, PlaceCellSchema, WorldCellSchema } from '../wire/index.js';
 import { MAX_HEIGHT, MAX_BRUSH, MAP_BRUSH_CELLS } from '@tt/domain';
 
@@ -88,8 +88,20 @@ export const IntentSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('setBlock'), placeId: z.string().min(1), poiId: z.string().min(1), cells, swatch: z.string().min(1), stroke }),
   z.object({ kind: z.literal('paintBlock'), placeId: z.string().min(1), poiId: z.string().min(1), cells, swatch: z.string().min(1), stroke }),
   z.object({ kind: z.literal('clearBlock'), placeId: z.string().min(1), poiId: z.string().min(1), cells, stroke }),
-  /** How the scene is lit (R-181). The whole description, every time. */
+  /** The world's hour and sun (R-181). The whole description, every time. */
   z.object({ kind: z.literal('setLighting'), lighting: LightingWireSchema }),
+  /**
+   * The light inside one point of interest (R-182).
+   *
+   * Authored, not play state — a cave is green every session — so it edits the
+   * campaign and goes under undo with the rest of them (D-252).
+   */
+  z.object({
+    kind: z.literal('setPoiAmbience'),
+    placeId: z.string().min(1),
+    poiId: z.string().min(1),
+    ambience: AmbienceWireSchema,
+  }),
   z.object({ kind: z.literal('fillMaterial'), placeId: z.string().min(1), poiId: z.string().min(1), x: z.number().int(), y: z.number().int(), z: z.number().int(), swatch: z.string().min(1) }),
   z.object({ kind: z.literal('addPlane'), placeId: z.string().min(1), poiId: z.string().min(1), name: z.string().max(40), y: z.number().int() }),
   z.object({ kind: z.literal('renamePlane'), placeId: z.string().min(1), poiId: z.string().min(1), planeId: z.string().min(1), name: z.string().max(40) }),

@@ -3,7 +3,7 @@
 
 import type { Campaign, Save } from '@tt/domain';
 import {
-  isPlaceOnTable, isChunkKnown, belongsTo, placementToJSON, rangeFor, DAYLIGHT,
+  isPlaceOnTable, isChunkKnown, belongsTo, placementToJSON, rangeFor, DAYLIGHT, OPEN_SKY,
 } from '@tt/domain';
 import type {
   CampaignWire, SaveWire, PlacementWire, MapWire, LightingWire,
@@ -125,9 +125,16 @@ export function viewFor(role: Role, state: HostState, connect: readonly string[]
     // No campaign on the table means no pawns either, rather than pawns floating
     // over an empty screen.
     placement: campaign && state.activeSave ? placementToJSON(state.activeSave.placement) : null,
-    // Daylight with no save, so a table waiting for a campaign is lit rather
-    // than black.
-    lighting: { ...(state.activeSave?.lighting ?? DAYLIGHT) },
+    /*
+     * **Resolved here**, not sent as a table of every place's light (R-182).
+     *
+     * The table is lit by where the party is: the point of interest's own
+     * ambience when they are inside one, the world's when they are not. Sending
+     * the lot would tell the players that a cave they have not entered glows
+     * green, which is the sort of thing R-85 exists to prevent — and would make
+     * the table decide something the filter is the only place for (D-252).
+     */
+    lighting: litFor(state),
   };
 }
 
@@ -207,7 +214,39 @@ function forTheTable(campaign: Campaign | null, save: Save | null): CampaignWire
         // the GM has cut to (R-158, and D-184 finally answered).
         pois: place.pois
           .filter((e) => e.visibleToParty)
-          .map((e) => ({ ...e, map: bodyForTheTable(campaign, save, place.id, e.id) })),
+          .map((e) => ({
+            ...e,
+            map: bodyForTheTable(campaign, save, place.id, e.id),
+            /*
+             * Its light is stripped with its body (R-182).
+             *
+             * The table is lit by the *resolved* hour — this place's ambience
+             * when the party is inside it, and the world's when they are not —
+             * so sending every point of interest's own would say "that cave
+             * glows green" to a party who has not found it. Caught by the test
+             * that asserts exactly that, after the colour rode along inside
+             * the campaign rather than the lighting field (D-252).
+             */
+            ambience: OPEN_SKY,
+          })),
       })),
+  };
+}
+
+/** The light the table should use: where the party is standing, not everywhere. */
+function litFor(state: HostState): LightingWire {
+  const save = state.activeSave;
+  if (!save) return { ...DAYLIGHT, ambience: { ...DAYLIGHT.ambience } };
+  const inside = save.inside;
+  const poi = inside && state.active
+    ? state.active.places
+      .find((place) => place.id === inside.placeId)?.pois
+      .find((it) => it.id === inside.poiId)
+    : null;
+  return {
+    angle: save.lighting.angle,
+    sun: save.lighting.sun,
+    sunLevel: save.lighting.sunLevel,
+    ambience: { ...(poi?.ambience ?? save.lighting.ambience) },
   };
 }

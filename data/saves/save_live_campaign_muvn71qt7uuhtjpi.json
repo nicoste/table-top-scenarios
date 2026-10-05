@@ -1,0 +1,28 @@
+{
+ "id": "save_live_campaign_muvn71qt7uuhtjpi",
+ "campaignId": "campaign_muvn71qt7uuhtjpi",
+ "campaignSchemaVersion": 4,
+ "schemaVersion": 3,
+ "label": "Live",
+ "savedAt": "2026-10-05T19:30:17.050Z",
+ "discovery": {
+  "chunks": [],
+  "places": []
+ },
+ "placement": {
+  "together": true,
+  "at": null,
+  "members": {}
+ },
+ "inside": null,
+ "ranges": {},
+ "lighting": {
+  "angle": 35,
+  "sun": "#fff6e8",
+  "sunLevel": 1.9,
+  "ambience": {
+   "colour": "#cfe4ff",
+   "level": 0.4
+  }
+ }
+}

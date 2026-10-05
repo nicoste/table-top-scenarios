@@ -4,7 +4,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   DAYLIGHT, MIN_ANGLE, MAX_ANGLE, MAX_SUN, MAX_FILL,
-  clampLighting, sunDirection, shadowReach, hourLabel, bounceOf,
+  OPEN_SKY, clampLighting, clampAmbience, sunDirection, shadowReach, hourLabel, bounceOf,
 } from '@tt/domain';
 
 const length = (v: { x: number; y: number; z: number }) => Math.hypot(v.x, v.y, v.z);
@@ -78,13 +78,16 @@ describe('an hour has a name as well as a number', () => {
 describe('what a GM sets is pulled back into range', () => {
   it('clamps the angle, the levels, and refuses a colour it cannot read', () => {
     const wild = clampLighting({
-      angle: 900, sun: 'tangerine', sunLevel: 99, fill: '#ABCDEF', fillLevel: -4,
+      angle: 900,
+      sun: 'tangerine',
+      sunLevel: 99,
+      ambience: { colour: '#ABCDEF', level: -4 },
     });
     expect(wild.angle).toBe(MAX_ANGLE);
     expect(wild.sun).toBe(DAYLIGHT.sun);
     expect(wild.sunLevel).toBe(MAX_SUN);
-    expect(wild.fill).toBe('#abcdef');
-    expect(wild.fillLevel).toBe(0);
+    expect(wild.ambience.colour).toBe('#abcdef');
+    expect(wild.ambience.level).toBe(0);
   });
 
   it('leaves the default alone, which is the test that it is in range itself', () => {
@@ -98,7 +101,8 @@ describe('what a GM sets is pulled back into range', () => {
   });
 
   it('holds the sun within range at full tilt', () => {
-    expect(clampLighting({ ...DAYLIGHT, fillLevel: 99 }).fillLevel).toBe(MAX_FILL);
+    expect(clampLighting({ ...DAYLIGHT, ambience: { colour: '#ffffff', level: 99 } })
+      .ambience.level).toBe(MAX_FILL);
   });
 });
 
@@ -114,6 +118,24 @@ describe('the ground bounces a dimmer version of the sky', () => {
   });
 
   it('falls back rather than throwing on a colour it cannot read', () => {
-    expect(bounceOf('not a colour')).toBe(bounceOf(DAYLIGHT.fill));
+    expect(bounceOf('not a colour')).toBe(bounceOf(OPEN_SKY.colour));
+  });
+});
+
+describe('the ambience belongs to a place, not to the hour (R-182)', () => {
+  it('clamps on its own, and falls back when it is missing entirely', () => {
+    expect(clampAmbience({ colour: '#ABCDEF', level: 99 }))
+      .toEqual({ colour: '#abcdef', level: MAX_FILL });
+    expect(clampAmbience(null)).toEqual(OPEN_SKY);
+    expect(clampAmbience({ colour: 'emerald', level: 0.3 }).colour).toBe(OPEN_SKY.colour);
+  });
+
+  it('is what a sun is not: the hour cannot change it', () => {
+    // The whole point of the split. Moving the sun across the sky leaves the
+    // light inside a cave exactly where the GM put it (D-252).
+    const cave = { colour: '#2f7a4a', level: 0.55 };
+    for (const angle of [MIN_ANGLE, 90, MAX_ANGLE]) {
+      expect(clampLighting({ ...DAYLIGHT, angle, ambience: cave }).ambience).toEqual(cave);
+    }
   });
 });

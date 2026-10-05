@@ -112,7 +112,9 @@ describe('an edit to one map costs nothing for the others (D-219)', () => {
 });
 
 describe('lighting travels, and a save written before it reads as daylight (R-181)', () => {
-  const dusk = { angle: 165, sun: '#ff9a52', sunLevel: 2.2, fill: '#4a5f8f', fillLevel: 0.18 };
+  const dusk = {
+    angle: 165, sun: '#ff9a52', sunLevel: 2.2, ambience: { colour: '#4a5f8f', level: 0.18 },
+  };
 
   it('round-trips an hour the GM set', () => {
     const save = { ...createLiveSave(createCampaign('Lit'), '2026-10-05T00:00:00.000Z'), lighting: dusk };

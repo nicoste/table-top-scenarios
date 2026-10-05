@@ -5,6 +5,8 @@ import type { MarkerId, NoteId, PlaceId, PoiId } from '../ids/index.js';
 import { freshId } from '../ids/index.js';
 import { DEFAULT_MARKER, isKnownMarker } from '../markers/index.js';
 import type { EncounterMap } from '../map/index.js';
+import type { Ambience } from '../light/index.js';
+import { OPEN_SKY, clampAmbience } from '../light/index.js';
 import {
   createMap, setBlock, clearBlock, setBlocks, paintBlocks, clearBlocks, growMap, fillMaterial,
 } from '../map/index.js';
@@ -43,6 +45,19 @@ export interface PlaceNote {
 export interface Poi {
   readonly id: PoiId;
   readonly name: string;
+  /**
+   * The light inside it (R-182). **Authored, and never inherited.**
+   *
+   * A cave is green at noon and green at midnight; nothing about the world's
+   * hour should reach into it. So this is a property of the place rather than
+   * of the session — it survives a reload, it comes along when a campaign is
+   * duplicated, and it is under undo like every other authored edit.
+   *
+   * There is no "follows the world" state and no toggle to reach it: every
+   * point of interest has an ambience, and a new one starts at open sky, which
+   * is what the world looks like anyway (D-252).
+   */
+  readonly ambience: Ambience;
   /** false = stripped by viewFor; never leaves the host (R-85). */
   readonly visibleToParty: boolean;
   /**
@@ -299,7 +314,14 @@ export function addPoi(
       // Born with its floor. A point of interest is a *place you can enter*;
       // one without a body is a label, and the GM would only ever answer the
       // same question again with a second click (D-187).
-      { id: freshId<'PoiId'>('poi'), name: clean, visibleToParty, map: createMap() },
+      {
+        id: freshId<'PoiId'>('poi'),
+        name: clean,
+        visibleToParty,
+        map: createMap(),
+        // Open sky, so a new place looks like the world until the GM says it does not.
+        ambience: OPEN_SKY,
+      },
     ],
   }));
 }
@@ -527,4 +549,24 @@ export function removePoiPlane(
 
 export function poiById(place: Place, poiId: PoiId): Poi | null {
   return place.pois.find((poi) => poi.id === poiId) ?? null;
+}
+
+/**
+ * The light inside one point of interest (R-182). Identity-preserving (R-165).
+ *
+ * Authored, so it is an edit to the campaign and goes under undo with the rest
+ * of them — unlike the world's hour, which is play state in the save (D-252).
+ */
+export function withPoiAmbience(
+  places: readonly Place[],
+  placeId: PlaceId,
+  poiId: PoiId,
+  ambience: Ambience,
+): readonly Place[] {
+  const next = clampAmbience(ambience);
+  return mapPlace(places, placeId, (place) => mapPoi(place, poiId, (poi) => (
+    poi.ambience.colour === next.colour && poi.ambience.level === next.level
+      ? poi
+      : { ...poi, ambience: next }
+  )));
 }

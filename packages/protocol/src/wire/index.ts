@@ -11,17 +11,40 @@ import {
   chunkKey, registryId, discoveryToJSON, discoveryFromJSON, mapToJSON, mapFromJSON, sliceOf,
   packRuns, unpackRuns,
   placementToJSON, placementFromJSON,
-  DAYLIGHT, clampLighting,
+  DAYLIGHT, OPEN_SKY, clampLighting, clampAmbience,
 } from '@tt/domain';
 
-/** The GM's description of the light (R-181), as it travels. */
+/** The light inside one place (R-182). */
+export const AmbienceWireSchema = z.object({
+  colour: z.string(),
+  level: z.number(),
+});
+export type AmbienceWire = z.infer<typeof AmbienceWireSchema>;
+
+/**
+ * The GM's description of the light (R-181), as it travels.
+ *
+ * `fill` and `fillLevel` are the shape this had for one afternoon, before the
+ * ambience was split off to belong to a place rather than to the hour (R-182).
+ * Read, never written — a save from that afternoon keeps the colour its GM
+ * chose rather than silently reverting to open sky (R-137a).
+ */
 export const LightingWireSchema = z.object({
   angle: z.number(),
   sun: z.string(),
   sunLevel: z.number(),
-  fill: z.string(),
-  fillLevel: z.number(),
-});
+  ambience: AmbienceWireSchema.optional(),
+  fill: z.string().optional(),
+  fillLevel: z.number().optional(),
+}).transform((wire) => ({
+  angle: wire.angle,
+  sun: wire.sun,
+  sunLevel: wire.sunLevel,
+  ambience: wire.ambience
+    ?? (wire.fill !== undefined && wire.fillLevel !== undefined
+      ? { colour: wire.fill, level: wire.fillLevel }
+      : OPEN_SKY),
+}));
 export type LightingWire = z.infer<typeof LightingWireSchema>;
 
 export const TerrainIdSchema = z.string().regex(/^terrain:[a-z0-9]+(-[a-z0-9]+)*$/);
@@ -145,6 +168,8 @@ export const PoiWireSchema = z.object({
   name: z.string(),
   visibleToParty: z.boolean(),
   map: MapWireSchema.nullable().default(null),
+  /** The light inside it (R-182). Absent means open sky, as a new one is. */
+  ambience: AmbienceWireSchema.default(OPEN_SKY),
 });
 
 /**
@@ -158,7 +183,7 @@ export const PoiWireSchema = z.object({
  */
 const PoiFromWire = z.union([PoiWireSchema, z.string()]).transform(
   (entry) => (typeof entry === 'string'
-    ? { id: entry, name: entry, visibleToParty: false, map: null }
+    ? { id: entry, name: entry, visibleToParty: false, map: null, ambience: OPEN_SKY }
     : entry),
 );
 
@@ -343,7 +368,7 @@ export function encodeSave(save: Save): SaveWire {
     ranges: Object.fromEntries(
       [...save.ranges].map(([poiId, range]) => [poiId, { lower: range.lower, upper: range.upper }]),
     ),
-    lighting: { ...save.lighting },
+    lighting: { ...save.lighting, ambience: { ...save.lighting.ambience } },
   };
 }
 
@@ -435,6 +460,7 @@ export function encodePoi(place: Place): PlaceWire {
       name: e.name,
       visibleToParty: e.visibleToParty,
       map: e.map ? mapWire(e.map) : null,
+      ambience: { ...e.ambience },
     })),
     notes: place.notes.map((n) => ({ id: n.id, text: n.text, visibleToParty: n.visibleToParty })),
   };
@@ -451,6 +477,7 @@ export function decodePoi(wire: PlaceWire): Place {
       name: e.name,
       visibleToParty: e.visibleToParty,
       map: mapFromJSON(e.map),
+      ambience: clampAmbience(e.ambience),
     })),
     notes: wire.notes.map((n): PlaceNote => ({
       id: n.id as PlaceNote['id'], text: n.text, visibleToParty: n.visibleToParty,

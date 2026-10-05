@@ -177,9 +177,9 @@ export class Stage {
     this.key.position.copy(this.sun);
     this.key.color.set(this.lighting.sun);
     this.key.intensity = this.lighting.sunLevel;
-    this.fill.color.set(this.lighting.fill);
-    this.fill.groundColor.set(bounceOf(this.lighting.fill));
-    this.fill.intensity = this.lighting.fillLevel;
+    this.fill.color.set(this.lighting.ambience.colour);
+    this.fill.groundColor.set(bounceOf(this.lighting.ambience.colour));
+    this.fill.intensity = this.lighting.ambience.level;
   }
 
   /** Whether materials draw the figure in their surface (R-177). */

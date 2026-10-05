@@ -10,7 +10,7 @@ import {
   bottomOfMap, DEFAULT_TERRAIN,
   DAYLIGHT, clampLighting,
 } from '@tt/domain';
-import type { SwatchId, Lighting } from '@tt/domain';
+import type { SwatchId, Lighting, Ambience } from '@tt/domain';
 import type { GmView, Intent } from '@tt/protocol';
 import { defaultTarget, worldCentre } from '@tt/render';
 import type { Tool, Travel } from '@tt/client-core';
@@ -142,8 +142,6 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   const pendingPlaceCell = useRef<string | null>(null);
   const { setCanvas, stage, frames, draws } = useStage();
   const cost = useCost(stage, frames, draws);
-  // The stage holds lights; this holds the description of them (R-181).
-  useEffect(() => { stage?.setLighting(lighting); }, [stage, lighting]);
   const openedId = useRef<string | null>(null);
   const drag = useRef<{ startY: number; base: number; cell: { cx: number; cz: number; x: number; z: number } } | null>(null);
   const panning = useRef<{ x: number; y: number } | null>(null);
@@ -184,6 +182,36 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   const openPoi = openMap && openPlace
     ? openPlace.pois.find((poi) => poi.id === openMap.poiId) ?? null
     : null;
+
+  /**
+   * Whose ambience the card is editing (R-182): the open place's, or the
+   * world's. The sun above it is the world's either way.
+   */
+  const litPoi = openPoi ?? null;
+  const ambience = litPoi?.ambience ?? lighting.ambience;
+  const litWhere = litPoi ? litPoi.name : 'the world';
+  /*
+   * The stage holds lights; this holds the description of them (R-181).
+   *
+   * Resolved the same way the table's is (R-182): the world's hour and sun,
+   * with the ambience of whatever surface is open. `viewFor` does this for the
+   * table and the console has to do it for itself, because it is not looking
+   * at a view of its own screen.
+   */
+  useEffect(() => {
+    stage?.setLighting({ ...lighting, ambience });
+  }, [stage, lighting, ambience]);
+
+  const reambience = (next: Ambience) => {
+    if (litPoi && openPlace) {
+      dispatch({
+        kind: 'setPoiAmbience', placeId: openPlace.id, poiId: litPoi.id, ambience: next,
+      });
+      return;
+    }
+    relight({ ...lighting, ambience: next });
+  };
+
   const openMapWire = openPoi?.map ?? null;
   /**
    * Where the party is, and the band the table is being shown (R-158).
@@ -934,7 +962,10 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
           />
           <LightPanel
             lighting={lighting}
+            ambience={ambience}
+            where={litWhere}
             onLighting={relight}
+            onAmbience={reambience}
           />
         </div>
       )}
@@ -989,7 +1020,10 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
             )}
             <LightPanel
               lighting={lighting}
+              ambience={lighting.ambience}
+              where="the world"
               onLighting={relight}
+              onAmbience={(next) => relight({ ...lighting, ambience: next })}
             />
           </div>
 

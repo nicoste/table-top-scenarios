@@ -70,6 +70,10 @@ export interface Save {
    * In the save rather than on the console because the GM sets it **for the
    * table** — "it is dusk" is scene-setting for the players, and a sun only
    * one screen can see is worse than no sun (D-250).
+   *
+   * Its `ambience` is the **world's**. A point of interest carries its own and
+   * does not inherit this one, because a cave is not lit by the afternoon
+   * (R-182).
    */
   readonly lighting: Lighting;
 }
@@ -273,6 +277,7 @@ export function withLighting(save: Save, lighting: Lighting): Save {
   const now = save.lighting;
   const same = now.angle === next.angle
     && now.sun === next.sun && now.sunLevel === next.sunLevel
-    && now.fill === next.fill && now.fillLevel === next.fillLevel;
+    && now.ambience.colour === next.ambience.colour
+    && now.ambience.level === next.ambience.level;
   return same ? save : { ...save, lighting: next };
 }

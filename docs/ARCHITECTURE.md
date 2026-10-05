@@ -2482,6 +2482,33 @@ apps/host/src/
 > inside one round trip both compose against a value that has not come back
 > yet, so the second overwrites the first.
 
+> **R-182.** **The sun is the world's; the ambience belongs to the place.**
+>
+> One sky, one hour, the same for everybody — and a light inside each point of
+> interest that the hour cannot touch. An emerald cave is green at noon and
+> green at midnight, and the afternoon outside has no business reaching in.
+>
+> **They are different kinds of thing, which is why they live apart.** The hour
+> is *when*: play state, in the save, changing through a session. A place's
+> ambience is *what that place is*: authored, on the `Poi`, in the campaign,
+> under undo, carried when a campaign is duplicated.
+>
+> **Every place has one; none inherits.** There is no "follows the world" state
+> and no toggle to reach it — a new point of interest starts at open sky, which
+> is what the world looks like anyway. A toggle would buy a second way to spell
+> the same thing (D-252).
+>
+> **The table is sent the *resolved* light**, never the table of every place's.
+> Its ambience is the one where the party is standing: the point of interest's
+> when they are inside, the world's when they are not. Sending them all would
+> tell the players that a cave they have not found glows green, which is what
+> R-85 exists to stop — so a place's ambience is stripped from the table's
+> campaign alongside its body (D-184).
+>
+> **Every screen resolves it the same way**, and `viewFor` only does it for the
+> table. The GM's console is not looking at a view of its own screen, so it
+> composes the hour and the open surface's ambience for itself.
+
 > **R-180.** **Shadows are redrawn on change, not on every frame.**
 >
 > `renderer.shadowMap.autoUpdate = false`, and `needsUpdate` is set by the

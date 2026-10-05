@@ -5536,3 +5536,44 @@ is open** (R-148), and every conditional path has a matching one that is easy
 to forget — `setCampaign` fits the world *only if no map is open*, which is
 the mirror of the line that was missing. Two halves of one rule written in two
 places, and only one of them was written.
+
+### D-252 — The sun is the world's, the ambience is the place's · `agreed`
+One lighting for everything was wrong, and the GM found the case that shows it
+before it bit: *"what if a POI is an emerald cave, and I want to have a green
+ambient light, so I create the scene add this greenish lightning and then when
+I go back to the world map, I see al greenish."*
+
+The first proposal here was a whole `Lighting` per point of interest with a
+"follows the world" null and a toggle to reach it. The GM cut it to the right
+shape: **the hour and the sun stay shared, because they are the world's; only
+the ambience is per place** — and no toggles, because every place simply has
+one. That is smaller, and it is also more honest: a cave does not have a
+different *sun*, it has no sun at all.
+
+**Two kinds of thing, two homes.** The hour is *when* — play state, in the
+save, changing through a session. A place's ambience is *what that place is* —
+authored, on the `Poi`, in the campaign, under undo, and carried when a
+campaign is duplicated. A cave is green every session; a save that remembered
+it would lose it on the next one.
+
+**The table gets the resolved light.** Its ambience is where the party is
+standing: the point of interest's inside, the world's outside. `viewFor` works
+it out, because it is the one place allowed to decide what a client learns.
+
+**And the test that was written to catch a leak caught one.** It asserts that
+no wire the table receives contains the cave's colour — and it failed, because
+a point of interest's ambience was riding along inside the *campaign* rather
+than the lighting field. The table receives visible points of interest with
+their bodies stripped (D-184); their light had to be stripped with them. Two
+fields, one rule, and only one of them had been written — the same shape as
+the shadow bug the GM found an hour earlier (D-251).
+
+**One more place needed the same resolution.** The console's own stage was
+still being handed the world's ambience, so a green cave stayed daylit on the
+GM's screen while the table would have had it right. `viewFor` resolves for
+the table; the console is not looking at a view of its own screen and has to
+compose it itself.
+
+Verified by hand afterwards: the cave green, the sun turned to zero to show it
+plainly, then the sun restored and the world stepped back out to — unchanged,
+blue and sand, with the card relabelling itself from "Tollkeep" to "the world".

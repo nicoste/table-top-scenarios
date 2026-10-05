@@ -21,7 +21,7 @@ import {
   poiById as poiOfPlace,
   createLiveSave, withDiscovery, withPlacement, touch, upgraded, upgradedCampaign, belongsTo,
   pruneDiscovery, pruneMembers, enteringMap, leavingMap, withRange, pruneInside, pruneRanges,
-  withLighting,
+  withLighting, withPoiAmbience,
   settleRanges,
   pawns, withGroupAt, withMemberAt, gathered, scattered,
   isValidWorldCell, chunkOf, isChunkKnown,
@@ -520,6 +520,15 @@ function applyToPois(
       // Clamped here and not trusted from the client (R-18a) — the console
       // clamps too, and the console is not the authority (R-3).
       return commitSave(state, save, withLighting(save, intent.lighting), now);
+    }
+
+    case 'setPoiAmbience': {
+      const place = placeById(campaign.places, intent.placeId as PlaceId);
+      if (!place) return reject_('no such place');
+      if (!poiOfPlace(place, intent.poiId as PoiId)) return reject_('no such point of interest');
+      // An authored edit, so it lands in the campaign and under undo — unlike
+      // the world's hour, which is play state in the save (D-252).
+      return withPlaces(withPoiAmbience(campaign.places, place.id, intent.poiId as PoiId, intent.ambience));
     }
 
     case 'setRange': {
