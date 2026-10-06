@@ -6,13 +6,15 @@ export {
   MapWireSchema, PoiWireSchema,
   encodePoi, decodePoi, parseMarkerId,
   DiscoveryWireSchema, PlacementWireSchema, SaveWireSchema, encodeSave, decodeSave,
-  encodePlacement, decodePlacement,
+  encodePlacement, decodePlacement, CubeWireSchema, TokensWireSchema,
   ChunkWireSchema, TerrainWireSchema, MemberWireSchema, WorldWireSchema, CampaignWireSchema,
   encodeChunk, encodeWorld, encodeCampaign, decodeChunk, decodeWorld, decodeCampaign,
   parseTerrainId,
   mapWire,
 } from './wire/index.js';
-export type { ChunkWire, CampaignWire, PlaceWire, SaveWire, PlacementWire, MapWire } from './wire/index.js';
+export type {
+  ChunkWire, CampaignWire, PlaceWire, SaveWire, PlacementWire, MapWire, TokensWire,
+} from './wire/index.js';
 
 export { IntentSchema, parseIntent } from './intents/index.js';
 export type { Intent, IntentKind } from './intents/index.js';

@@ -105,7 +105,10 @@ describe('taking the party in (R-158)', () => {
       .toBe('no such point of interest');
   });
 
-  it('brings them back out, and remembers nothing about where they were', () => {
+  // Renamed with D-256: this used to add "and remembers nothing about where they
+  // were", which stopped being true once positions were remembered per map.
+  // What it asserts is unchanged — they are back on the world.
+  it('brings them back out to the world', () => {
     const { state, placeId, poiId } = tavern();
     const inside = run(state, { kind: 'enterMap', placeId, poiId }).state;
     const out = run(inside, { kind: 'leaveMap' }).state;

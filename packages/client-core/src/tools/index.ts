@@ -217,7 +217,8 @@ export function mapAction(
   face: FacePick | null,
   reach: MapReach,
 ): MapAction {
-  if (!face) return { kind: 'nothing' };
+  // Move edits no block: it picks tokens, and its sequence is its own (R-188).
+  if (!face || tool === 'move') return { kind: 'nothing' };
   /** The brush's cells, with the band's say applied (R-164). */
   const patch = (at: BlockCoord, grow: 'up' | 'down' = 'up'): readonly BlockCoord[] => {
     const cells = brushPatch(at, reach.brush, grow);
@@ -285,6 +286,14 @@ export interface MapAim {
    * spares the GM a toast for a gesture that was never going to work.
    */
   readonly inBounds: boolean;
+  /**
+   * Is somebody standing in that cell (R-186)?
+   *
+   * A brush builds around the party — the host clips their cubes out of a
+   * patch — so a click aimed straight at one is a click with nothing to do,
+   * and says so before it is made.
+   */
+  readonly standing: boolean;
 }
 
 /** Whether a click may proceed, and if not, what to tell the GM (R-18). */
@@ -328,6 +337,7 @@ export function mapAllowed(action: MapAction, aim: MapAim): MapVerdict {
 
   if (action.kind === 'place') {
     if (aim.occupied) return { kind: 'stop', why: 'a block is already there' };
+    if (aim.standing) return { kind: 'stop', why: 'somebody is standing there' };
     return { kind: 'go' };
   }
 

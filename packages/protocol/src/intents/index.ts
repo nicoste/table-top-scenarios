@@ -3,7 +3,9 @@
 
 import { z } from 'zod';
 import { LightingWireSchema, AmbienceWireSchema } from '../wire/index.js';
-import { CellIndex, TerrainIdSchema, MarkerIdSchema, PlaceCellSchema, WorldCellSchema } from '../wire/index.js';
+import {
+  CellIndex, TerrainIdSchema, MarkerIdSchema, PlaceCellSchema, WorldCellSchema, CubeWireSchema,
+} from '../wire/index.js';
 import { MAX_HEIGHT, MAX_BRUSH, MAP_BRUSH_CELLS } from '@tt/domain';
 
 const cell = { cx: z.number().int(), cz: z.number().int(), x: CellIndex, z: CellIndex };
@@ -82,6 +84,21 @@ export const IntentSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('moveParty'), cell: WorldCellSchema }),
   z.object({ kind: z.literal('movePartyMember'), memberId: z.string().min(1), cell: WorldCellSchema }),
   z.object({ kind: z.literal('setPartyTogether'), together: z.boolean() }),
+  /**
+   * Where a member stands inside the map the party is in (R-184) — the first
+   * placement and every move after it, one intent (D-150).
+   *
+   * The party's own, so open to both seats (R-136). It names the map rather
+   * than reading it off where the party is, so a move aimed at a room the
+   * party has since left is refused instead of landing in a different one.
+   */
+  z.object({
+    kind: z.literal('moveToken'),
+    placeId: z.string().min(1),
+    poiId: z.string().min(1),
+    memberId: z.string().min(1),
+    at: CubeWireSchema,
+  }),
 
   // A point of interest's map (D-183). Authored content, so GM only. `stroke`
   // ties one drag into a single undo, exactly as it does for terrain (R-140b).

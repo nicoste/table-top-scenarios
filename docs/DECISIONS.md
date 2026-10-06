@@ -5666,6 +5666,198 @@ visibly darken. Whether that is wanted is legibility, not cost — on a shared
 screen a token you can always see may beat a token that is correctly lit — and
 it can be settled when there is a token to look at.
 
+### D-255 — Tokens come before vision, and this round they are the party's · `agreed`
+R-43 measures eye height from the floor of a token's cube, and the party had no
+cube. `inside` said which map they were in and nothing about where in it — so
+vision (R-40 to R-48) waits for a round that gives every member a place to
+stand.
+
+Asked whether the silver tokens come with them — everything that is not the
+party (D-254) — the GM's answer: *"Later."*
+
+The reasons it can wait are also the reasons it should:
+
+- **Vision needs only the party's.** Fog is the union of what party tokens see
+  (R-15); whether an enemy can see the party is off-tool (R-76).
+- **An enemy's honest gate to the table is fog**, and fog does not exist yet. A
+  per-token "shown" flag now would be the permissive version D-184 refused to
+  ship and tighten later.
+- **Where one lives is its own question.** A goblin placed while prepping a
+  dungeon is arguably authored — campaign, under undo, there again for the next
+  group — and the same goblin mid-fight is play state. R-9's Build/Play split
+  was written for exactly that, and was never built.
+
+So a token, in the code, is a party member standing in a map. Nothing in this
+round assumes it stays the only kind.
+
+### D-256 — Where the party stood is remembered per map · `agreed`
+*"Remembered per map."* The same shape as the band (D-201), and for a reason
+that is particular to tokens: opening a map the party can see walks them into
+it (D-200). A GM who peeks at "the tavern underground" while the party stands
+in the tavern moves them there, and with positions dropped on leaving, that
+peek would have cost everyone their place in the room they came from.
+
+Coming back puts them where they were. A cube that was built over while they
+were away cannot be stood in, so that one position is dropped on the way back
+in and the member is placed again — repaired at the boundary from what the
+blocks say, which is R-157's instinct.
+
+### D-257 — The card is the member's colour · `agreed`
+*"The color of the player, no label, when we get to the point of having the
+image, that will be enough. For now, the square of the card should match the
+player's color."*
+
+I had proposed the colour with an initial on it and a name label above. Neither:
+the square is the colour, exactly, and that is the whole of the card until it
+has a picture. Exactly is the operative word — a card lit by the scene would be
+a different colour at dusk from the one in the party panel, so the card is not
+lit (R-187).
+
+### D-258 — Move is the map's third tool · `agreed`
+Moving a figure is something the GM does all session, so it gets a tool rather
+than a button in a panel: **Move**, key 3, beside Build and Paint. It amends
+R-162's two.
+
+The alternative — tokens clickable under Build — is the precedence R-87c
+removed: a tool names what it picks, and Build picks faces. Move picks a token,
+then a floor while aiming, which is Travel's sequence one surface down (R-132);
+and like Travel it arms itself when there is someone to place and nothing to
+pick up (D-167).
+
+### D-259 — How a token stands, and what the table is told · `agreed`
+The defaults that came with the round — *"The rest is all good"* — recorded one
+by one, because each is a choice:
+
+- **One empty cube, on a block, one token to a cube.** Placing needs footing;
+  one per cube for R-119's reason, since a click on two tokens in one cube is
+  ambiguous. The aim is a block's **top face** and the token goes in the cube
+  above it. A side face aims at nothing, so pointing at a wall never puts
+  somebody on top of it.
+- **In the band means standing inside the storey shown** — the cube and the
+  floor under it both inside. That is what a storey is (a plane belongs to what
+  is above it, R-146), and it is the reading under which the table can check
+  its own aims without being sent anything outside the band. `viewFor` sends
+  only those, and a table move outside is refused with a reason that names the
+  band, never a block: a refusal must not report what is behind a cut.
+- **Edits never move a token.** Build clips around the party's cubes the way it
+  clips around blocks already standing (R-162). Erasing under a token is
+  allowed — that is a trapdoor, and a trapdoor is the GM's move — and leaves it
+  floating, which is R-34's case: the base marks the cell, and a token with
+  nothing under it draws a stalk to the first block below. Undo is snapshots
+  (R-140a) and can still wall somebody in; the GM moves them (R-39).
+- **One intent**, `moveToken`, for the first placement and every move after it
+  (D-150). Open to the table seat (R-136), refused unless the party is in that
+  map, and only the console arms a placement (D-167).
+- **The table's third field.** `tokens` joins the party's position and the hour
+  as save data the table is sent, named in `viewFor` (D-250).
+- **No save schema bump.** A save without tokens is a party nobody has placed,
+  which is what every save before this one meant (D-187).
+
+### D-260 — The card faces the camera, and the base takes the shade · `superseded by D-266`
+D-254 left two things to be settled by looking, once there was a token to look
+at. Both were put side by side on the Tollkeep, with the alternative patched in
+through the stage's debug handle so the comparison was the same frame.
+
+**The card turns fully to the camera**, not only around the vertical. Upright,
+a card is foreshortened by the cosine of the pitch: at 75°, the steepest step
+(R-31), it is a quarter of its height — a coloured sliver on a gold coin. Fully
+facing, it is a square at every pitch; it leans back over its base as the view
+climbs, which reads as a card propped on a stand, and in an orthographic view
+it projects at its true size. On a shared screen the square is the point.
+
+**The base receives shadows; the card is unlit.** With receiving off, a token
+standing in the keep's shadow keeps a bright gold base, and it looks pasted
+over the shade rather than standing in it. With receiving on, the base darkens
+with the floor around it — which is the grounding D-254 said occlusion would
+give, and the shadow gives it too. The card stays legible either way, because
+it is unlit for D-257's reason: the square must be the member's colour, at dusk
+as at noon.
+
+Proposed rather than agreed, because the call was mine by looking and D-254
+said it was the GM's to make. Either half is a one-line change.
+
+### D-261 — What six tokens cost, and what could not be measured · `agreed`
+On the reference scene at the reference camera — the framing the Tollkeep opens
+with (R-179) — six tokens against none, per drawn frame, shadow map not being
+redrawn:
+
+| | draw calls | triangles |
+| --- | --- | --- |
+| occlusion on, no tokens | 23 | 273,557 |
+| occlusion on, six tokens | **47** | 274,925 |
+| occlusion off, no tokens | 9 | 136,776 |
+| occlusion off, six tokens | **21** | 137,460 |
+
+Two meshes a token — the base and the card — and occlusion rasterises the
+scene twice, so four draw calls each with it on. The token-free row matches
+MEASUREMENTS.md to the triangle, which is the reseed proving itself (D-262).
+
+Rebuilding the six on a move: **0.35 ms** median, 1.6 ms worst, over twenty.
+And across those twenty moves the shadow map was never marked stale, where one
+body change marks it at once — R-180's economy intact (D-254).
+
+**The GPU figure was not taken.** The Browser pane was not on screen, so the
+page was hidden and drawing two to four frames a second; a timer query under
+those conditions measures a card clocked down between frames (D-230), not the
+cost of six cards. A number taken that way would have looked like a result and
+been noise, so there is none. Draw calls doubled on paper and GPU time is the
+only figure that says whether that matters; R-173 measured twelve extra calls
+as nothing on this card, and instancing the tokens is the lever if a reading
+says otherwise (O-029).
+
+### D-262 — The reference scene's save is part of the scene · `agreed`
+R-179 made the scene a script so that nothing about a measurement depends on a
+file somebody happens to still have. It was true of the body and not of the
+save, which the seed wrote empty — and the copy on disk had drifted in both:
+
+- **28 hand-placed cubes** of soil and rock on the grass south of the keep, on
+  top of the documented 11,398;
+- the band cut to **Bedrock–4**, so the table had no sun (R-183);
+- the hour moved to **170°**, dusk;
+- the party **inside the Tollkeep with no world pawn** anywhere.
+
+Every one of those changes a reading — fewer cubes drawn, shadows gone — and
+nothing on screen says the scene is not the scene. The seed now writes a save
+too: chunk Known, place Revealed, the party's pawn on Toll Crossing, the party
+inside the Tollkeep with six members standing on four levels — two in the
+hall, one upstairs, one in the cellar, two on the grass — in daylight, uncut.
+Each cube goes through the same `whyNotStand` the host uses, so a cube that
+cannot be stood in fails the seed loudly instead of leaving somebody unplaced.
+
+Two consecutive seeds: **byte-identical body**, identical token cubes. Ids are
+fresh per run as before, so reseeding rewrites the tracked files under
+`data/`; D-134 already accepts that churn.
+
+### D-263 — The table works out its ceiling rather than being told its band · `agreed`
+R-138 says a client must not offer a move the host will refuse, and the host
+refuses a table move outside the band (R-185). The table cannot see the band:
+it is sent a slice, never the cut, and D-250's test says `ranges` never reaches
+it.
+
+**Sending it the band was the obvious fix and the wrong one.** It would widen
+the trust boundary for a convenience, and the second test of D-250 exists to
+make exactly that an argument rather than a diff.
+
+**It does not need it.** A band always rests on a stop (R-161), and the table
+holds the plane list. So its ceiling is the first stop above the highest level
+it was shown: any cube below that is certainly inside the band. That is enough
+for the common cases — the whole map uncut has the Sun as its only stop above
+anything, so a party can be stood on a roof; a storey cut to its planes has its
+next slab as the ceiling, so nobody is stood inside it.
+
+**Conservative, and the edge is named.** A band whose top levels hold nothing
+reads as ending lower than it does, so the table refuses a cube the host would
+have allowed — standing on the highest thing in an otherwise empty-topped
+band. That refusal leaks nothing and asks the host nothing; it is the safe
+direction to be wrong in, and the GM can make the move from the console.
+
+### O-029 — The GPU cost of tokens · `resolved by D-267`
+D-261 took everything that does not depend on frames being drawn at speed.
+The GPU A/B — six tokens against none, occlusion on and off, the camera turning
+so the cards work, six samples each — needs the Browser pane on screen or the
+GM's Chrome. Draw calls doubled; this is the reading that says whether that
+matters, and whether instancing the tokens is worth doing.
+
 ### D-264 — The seed is typechecked, and `scripts/` stays outside the graph · `agreed`
 R-73 says one `tsc -p tsconfig.json` typechecks the whole repo, but its
 `include` names the workspaces folder by folder, and `scripts/` arrived later
@@ -5731,3 +5923,109 @@ three out return to where it opened.
 Kept as it was, and worth a decision of its own: an event with no vertical
 movement — `deltaY` of 0, a sideways scroll — counts as scrolling up, so it
 zooms in.
+
+### D-266 — The token is a card on a stand, and the whole of it turns · `agreed`
+**Supersedes D-260's card half.** The GM, on the token D-260 described: *"the
+token looks weird, I want a real 3d object for the card"* — and then, on the
+options I came back with: *"I don't know why you invent so much, I wanted a
+coin as base, with a card (plane) on top"*, with a photograph of a playing card
+standing in a small brass clip on a flat brass plate.
+
+What was asked for, as asked:
+
+- **One object: a base, a clip, and a card standing in the clip.** The card is
+  a plane, upright, in the member's colour; the base and the clip are gold. The
+  base follows the picture — a flat square plate — because the picture was the
+  answer to the question about the base, though the GM's words call it a
+  coin. A round coin is one line if that was the meaning.
+- **The whole token turns, and only about the vertical.** *"the full object,
+  base + card, rotate together, so there is no camera facing that sets the card
+  perpendicular to the camera… the coin should rotate clockwise or
+  counter-clockwise to make the full token point to the camera, but the
+  rotation is just in 1 axis."* It turns by the camera's own yaw, on drawn
+  frames, so during a turn it keeps pointing at the view.
+- **No effects.** Ordinary lit materials, like every cube around it: no
+  self-glow, and the card no longer unlit. So a card is the member's colour in
+  the scene's light — plainly brighter from the side the sun is on — rather
+  than the panel swatch exactly. It still casts no shadow (D-254: it turns
+  whenever the camera does) and it receives, as cubes do.
+- **Colour only.** The image waits for its own round (D-257 stands on that).
+
+What I got wrong is worth a line. The first card turned fully to the camera
+and was unlit, which in an orthographic view looks the same from every angle —
+a sticker on the glass, which is the "weird". And then, asked for a 3D card, I
+answered with a lean angle, a self-glow, a choice of rotations and a texture
+pipeline — four questions the GM had not asked, about a world that is cubes. A
+design the GM describes is built as described before it is improved on.
+
+From overhead an upright card is a strip, which is what a card on a table looks
+like from above; the plate still says where they stand, and the strip still
+says who. Triangles fell from 114 a token to 26; draw calls rose from two
+meshes a token to three. Neither shows on the GPU (D-267).
+
+### D-267 — Tokens cost nothing on the GPU, measured · `agreed`
+Resolves O-029. Taken in the Pane with it on screen — 120 frames a second, the
+document visible — on the Tollkeep at the framing it opens with, the camera
+turning so every frame is drawn, six samples each, alternating:
+
+| | six tokens | none |
+| --- | --- | --- |
+| **coin and card** (D-260), occlusion on | 6.5 / 6.3 ms | 6.1 / 7.0 ms |
+| coin and card, occlusion off | 2.8 / 2.7 ms | 2.7 / 2.7 ms |
+| **card on a stand** (D-266), occlusion on | 13.1 / 13.0 ms | 13.1 / 12.9 ms |
+| card on a stand, occlusion off | 2.3 / 3.0 ms | 3.1 / 2.5 ms |
+
+Inside the noise both times. The two pairs of rows are not comparable with
+each other — the first was a 903 × 635 canvas with the party moved off the
+seeded cubes, the second 1728 × 1015 on a fresh seed — only each row with its
+neighbour. Occlusion's share grows with the canvas, as R-175 says it does.
+
+Which answers the question the GM asked about the base — would a rectangle
+help with triangles? The rectangle did cut them, from 1,368 to 312 for six
+tokens with occlusion on, and the stand added draw calls, 24 to 36. The GPU
+saw neither. At this scale a token's shape is a question of looks; the cost
+is the post-processing, as MEASUREMENTS.md has said since the church.
+
+### D-268 — The base is square to the grid; the clip and the card turn · `agreed`
+**Amends D-266's "the whole of it turns".** The GM, having seen it: *"can we
+edit that so there is an offset of 45 degrees between the base and the
+grabber, in that way, the base matches the grid, but the thing that grabs the
+card and the card should be like they are now… The base should not cover the
+full grid."*
+
+So the plate never turns. It sits square to the cubes around it, like the
+cubes do, and from the diagonal camera (R-31) it reads as a diamond. The clip
+and the card turn together about the vertical by the camera's yaw, exactly as
+before — which at every one of the four resting views puts them 45° to the
+plate, and through a turn leaves the plate where it is while the card follows
+the view.
+
+The plate stays at 0.7 of a cube, so it never covers the cell, and the card
+turned across it stays inside its edges: a card 0.5 wide at 45° reaches 0.18
+from the centre against the plate's 0.35. The pick volume already took in the
+plate's corners (R-187), so picking is unchanged; so are the meshes, the
+draw calls and the triangles in D-267.
+
+### D-269 — A poker card, and a token exactly one cube tall · `agreed`
+**Supersedes D-268's sizes.** The GM: *"reduce the base a little bit more, like
+a 10%, then do the card to have a poker card proportion (i think it's 4:3,
+confirm), but the full token should be 1unit of height, so increase the card
+size."*
+
+A poker card is **2.5 by 3.5 inches — 5:7**, not 4:3, which is nearer a
+photograph's; a bridge card is narrower still, 2.25 by 3.5. The card was 5:7
+already, so only its size changes.
+
+| | was | now |
+| --- | --- | --- |
+| plate | 0.7 square | **0.63** square — ten percent less |
+| card | 0.5 × 0.7 | **0.664 × 0.93**, 5:7 |
+| top of the token | 0.77 | **1.0** exactly |
+
+The card's foot sits where the clip grips it — plate 0.05, clip 0.12, gripped
+0.1 deep, so 0.07 up — and its height is the rest of the cube. Written as that
+sum in the code, so changing the clip cannot quietly push the card through the
+ceiling: a token in a passage one cube high still fits, its top edge touching
+the roof. The pick volume was already a cube tall and wide enough for the new
+card at any turn. At rest, turned 45° across the plate, the card's corners
+reach 0.235 from the centre along the grid against the plate's 0.315.

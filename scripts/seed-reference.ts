@@ -17,20 +17,32 @@
 //
 // It refuses to overwrite a campaign of the same name unless told to, because
 // the one thing worse than no reference scene is two of them.
+//
+// **The save is part of the scene** (R-184). It used to be an empty one, which
+// was right while nothing measured play state. Tokens are drawn now, and vision
+// will be computed from them, so the party is in the Tollkeep, standing on four
+// levels — and in daylight with nothing cut, so that a reading is of the whole
+// scene rather than of whatever band somebody left it at.
 
 import { join } from 'node:path';
 import {
-  createCampaign, createLiveSave, addPlace, addPoi, createMap,
+  createCampaign, createLiveSave, addPlace, addPoi, createMap, createMember,
   setBlocks, paintBlocks, growMap, MAP_PATCH, DEFAULT_MATERIALS, swatchFor, materialById,
   paintTerrain, chunkAt, chunkKey, ORIGIN, DEFAULT_TERRAIN,
+  withDiscovery, setChunkKnown, setPlaceRevealed, enteringMap, withTokens,
+  NO_TOKENS, placeToken, whyNotStand, withPlacement, withGroupAt, emptyPlacement,
 } from '@tt/domain';
 import type {
-  BlockCoord, Campaign, EncounterMap, MaterialId, PlaceCell, SwatchId, TerrainId,
+  BlockCoord, Campaign, EncounterMap, MaterialId, PartyMember, PlaceCell, PlaceId, PoiId, Save,
+  SwatchId, TerrainId, Tokens,
 } from '@tt/domain';
 import { fileCampaignStore, fileSaveStore } from '@tt/persistence';
 
 const NAME = 'The Reference';
 const POI = 'Tollkeep';
+
+/** Six, so every pawn colour is in the scene — the families' reason, for tokens. */
+const PARTY = ['Aldra', 'Brann', 'Cass', 'Dov', 'Esk', 'Fen'] as const;
 
 /** 96 × 96, the footprint the old reference scene had, so magnitudes compare. */
 const PATCHES = 6;
@@ -198,6 +210,58 @@ function buildWorld(campaign: Campaign): Campaign {
   return { ...campaign, world: { ...campaign.world, chunks } };
 }
 
+/**
+ * Where the party stands (R-184): two in the hall, one upstairs on the boards,
+ * one in the cellar, two out on the grass. Four levels, inside and out — the
+ * spread vision will want to be measured on.
+ */
+const STANDING: Record<(typeof PARTY)[number], BlockCoord> = {
+  Aldra: at(MID - 4, 1, MID - 4),
+  Brann: at(MID + 3, 1, MID + 2),
+  Cass: at(MID, 5, MID + 5),
+  Dov: at(MID - 6, CELLAR + 1, MID + 6),
+  Esk: at(MID, 1, MID + HALL + 8),
+  Fen: at(MID + HALL + 9, 1, MID - 3),
+};
+
+/**
+ * Stands each member where `STANDING` says, through the same rule the host
+ * uses — so a cube that cannot be stood in fails the seed loudly instead of
+ * leaving somebody silently unplaced (D-247's lesson).
+ */
+function standParty(body: EncounterMap, party: readonly PartyMember[]): Tokens {
+  let tokens = NO_TOKENS;
+  for (const member of party) {
+    const cube = STANDING[member.name as (typeof PARTY)[number]];
+    const why = whyNotStand(body, tokens, member.id, cube);
+    if (why) throw new Error(`${member.name} cannot stand at ${cube.x},${cube.y},${cube.z}: ${why}`);
+    tokens = placeToken(body, tokens, member.id, cube);
+  }
+  return tokens;
+}
+
+/**
+ * The party as if they had played their way in: the chunk Known, the place
+ * Revealed, their pawn on it out on the world, and inside the Tollkeep
+ * standing — in daylight, uncut.
+ */
+function playedSave(
+  campaign: Campaign,
+  placeId: PlaceId,
+  poiId: PoiId,
+  cell: PlaceCell,
+  body: EncounterMap,
+): Save {
+  let save = createLiveSave(campaign, new Date(0).toISOString());
+  save = withDiscovery(
+    save,
+    setPlaceRevealed(setChunkKnown(save.discovery, ORIGIN, true), placeId, true),
+  );
+  save = withPlacement(save, withGroupAt(emptyPlacement(), cell));
+  save = enteringMap(save, placeId, poiId);
+  return withTokens(save, poiId, standParty(body, campaign.party));
+}
+
 function describe(map: EncounterMap): string {
   const byLevel = new Set<number>();
   const families = new Set<string>();
@@ -235,7 +299,10 @@ function main(): void {
     saves.removeForCampaign(existing.id);
   }
 
-  const base = createCampaign(NAME);
+  const created = createCampaign(NAME);
+  let party: readonly PartyMember[] = [];
+  for (const name of PARTY) party = [...party, createMember(party, name)];
+  const base = { ...created, party };
   const cell: PlaceCell = { cx: ORIGIN.cx, cz: ORIGIN.cz, x: 15, z: 15 };
   const withPlace = { ...base, places: addPlace(base.places, cell, 'Toll Crossing') };
   const placeId = withPlace.places[0]!.id;
@@ -251,13 +318,19 @@ function main(): void {
     })),
   });
 
+  const save = playedSave(campaign, placeId, poiId, cell, body);
   campaigns.save(campaign);
-  saves.save(createLiveSave(campaign, new Date(0).toISOString()));
+  saves.save(save);
 
   console.log(`Seeded "${NAME}" — ${campaign.id}`);
   console.log(`  place            ${placeId}`);
   console.log(`  point of interest ${poiId} (${POI})`);
   console.log(`  ${describe(body)}`);
+  console.log(`  party            ${campaign.party.length}, inside, standing at:`);
+  for (const member of campaign.party) {
+    const cube = save.tokens.get(poiId)?.get(member.id);
+    console.log(`    ${member.name.padEnd(6)} ${cube ? `${cube.x},${cube.y},${cube.z}` : '—'}`);
+  }
 }
 
 main();

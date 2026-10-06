@@ -81,6 +81,11 @@ without units (D-245). Three consecutive seeds produce a byte-identical body.
 | distinct swatches | 12 |
 | faces, as whole cubes | 68,388 |
 | what is in it | a sea, a shore, an island, a brick keep with a cellar, a lava pit, glass windows, a stand of trees |
+| the party | **six, inside the Tollkeep**, standing on four levels — two in the hall, one upstairs, one in the cellar, two on the grass — in daylight, nothing cut (D-262) |
+
+**The save is part of the scene** since tokens (D-262). The copy on disk had
+drifted before the reseed that added them — 28 extra cubes, a cut band, dusk —
+and every one of those moves a reading. Reseed before measuring, not after.
 
 It is built to exercise what gets measured rather than to look like anywhere:
 every family so the draw calls are the real count, transparent water and glass
@@ -117,6 +122,63 @@ Same scene, same camera, before and after switching them on (R-180, D-248):
 and nothing measurable once occlusion is on. Redrawing the shadow map is not in
 that figure: it happens only when the geometry or the sun moves (R-180), on the
 frame that rebuilds the body anyway — and that frame did not get slower.
+
+### What tokens cost (added 5 October 2026)
+
+Six tokens against none (R-184, R-187), at the reference camera, in the
+**Pane** — canvas 1024 × 768 at a device pixel ratio of 2. Counted per drawn
+frame with the shadow map not being redrawn, so the opening frame's extra pass
+is not in it.
+
+| | draw calls | triangles |
+| --- | --- | --- |
+| occlusion on, no tokens | 23 | 273,557 |
+| occlusion on, six tokens | **47** | 274,925 |
+| occlusion off, no tokens | 9 | 136,776 |
+| occlusion off, six tokens | **21** | 137,460 |
+
+Four draw calls a token with occlusion on, two without: a base and a card, and
+occlusion draws the scene twice. The token-free row is this table's baseline to
+the triangle.
+
+| | |
+| --- | --- |
+| rebuilding six tokens on a move | **0.35 ms** median, 1.6 ms worst, over twenty |
+| shadow map redrawn by a move | **never**, over twenty — one body change marks it at once (R-180) |
+| gpu | not taken that day — the pane was off screen, drawing 2–4 frames a second; **taken the next, below** (D-267) |
+
+The GPU column was left empty on purpose. A hidden page clocks the card down
+between frames, which is D-230's trap: it measures the gaps, not the work.
+
+GPU, the next day with the pane on screen (120 frames a second, document
+visible), canvas **903 × 635** at a ratio of 2, the party moved off the seeded
+cubes. Camera turning, six samples each, alternating:
+
+| | six tokens | none |
+| --- | --- | --- |
+| occlusion on | 6.5 / 6.3 ms | 6.1 / 7.0 ms |
+| occlusion off | 2.8 / 2.7 ms | 2.7 / 2.7 ms |
+
+Inside the noise: six tokens cost nothing measurable (D-267).
+
+### The card on a stand (added 6 October 2026)
+
+The token as the GM drew it (D-266): a plate, a clip and an upright card, the
+whole of it turning about the vertical. Fresh seed, reference camera, Pane on
+screen, canvas **1728 × 1015** at a ratio of 2 — a larger canvas than the rows
+above, so compare each row with its neighbour and not with those.
+
+| | draw calls | triangles | gpu, six samples each |
+| --- | --- | --- | --- |
+| occlusion on, no tokens | 23 | 273,557 | 13.1 / 12.9 ms |
+| occlusion on, six tokens | **59** | 273,869 | 13.1 / 13.0 ms |
+| occlusion off, no tokens | 9 | 136,776 | 3.1 / 2.5 ms |
+| occlusion off, six tokens | **27** | 136,932 | 2.3 / 3.0 ms |
+
+Three meshes a token, so six draw calls each with occlusion on; 26 triangles a
+token where the coin and card had 114. Neither shows on the GPU. The question
+that prompted it — would a rectangular base help with triangles — has its
+answer here: it cut them by three quarters and nothing noticed.
 
 **Occlusion is flat across the camera now**, which is R-175 holding on a scene
 it was not tuned against — before that change the same sweep went from 10.5 ms

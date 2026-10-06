@@ -6,8 +6,9 @@ import { fileSaveStore, memorySaveStore } from '@tt/persistence';
 import type { Save } from '@tt/domain';
 import {
   createCampaign, createLiveSave, liveSaveId, withDiscovery,
-  emptyDiscovery, setChunkKnown, isChunkKnown,
+  emptyDiscovery, setChunkKnown, isChunkKnown, withTokens, tokensFor,
 } from '@tt/domain';
+import type { MemberId } from '@tt/domain';
 
 const NOW = '2026-01-01T00:00:00.000Z';
 let root: string;
@@ -45,6 +46,34 @@ describe('saves are separate files beside the campaign (R-60)', () => {
     const back = store.load(live.id);
     expect(isChunkKnown(back!.discovery, { cx: 4, cz: 7 })).toBe(true);
     expect(isChunkKnown(back!.discovery, { cx: 7, cz: 4 })).toBe(false);
+  });
+
+  it('keeps where the party stood in each map (R-184, D-256)', () => {
+    const store = fileSaveStore(root);
+    const { live } = seeded();
+    const aldra = 'member_aldra' as MemberId;
+    const placed = withTokens(
+      withTokens(live, 'poi_tavern', new Map([[aldra, { x: 3, y: 1, z: 3 }]])),
+      'poi_cellar',
+      new Map([[aldra, { x: 9, y: -3, z: 9 }]]),
+    );
+    store.save(placed);
+    const back = store.load(live.id)!;
+    expect(tokensFor(back, 'poi_tavern').get(aldra)).toEqual({ x: 3, y: 1, z: 3 });
+    expect(tokensFor(back, 'poi_cellar').get(aldra)).toEqual({ x: 9, y: -3, z: 9 });
+  });
+
+  it('reads a save written before tokens as a party nobody has placed — no bump (D-259)', () => {
+    const store = fileSaveStore(root);
+    const { live } = seeded();
+    store.save(live);
+    const path = join(root, `${live.id}.json`);
+    const json = JSON.parse(readFileSync(path, 'utf8')) as Record<string, unknown>;
+    delete json.tokens;
+    writeFileSync(path, JSON.stringify(json));
+    const back = store.load(live.id)!;
+    expect(back.tokens.size).toBe(0);
+    expect(back.schemaVersion).toBe(live.schemaVersion);
   });
 
   it('leaves no .tmp files behind', () => {

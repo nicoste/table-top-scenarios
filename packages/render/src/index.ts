@@ -20,7 +20,10 @@ export { grainAt } from './grain/index.js';
 
 export { Stage, FRAME_BUDGET_MS, FRAME_SLOP_MS, IDLE_HEARTBEAT_MS } from './stage/index.js';
 export type { StageCost } from './stage/index.js';
-export type { Picked, SlotAddress } from './stage/index.js';
+export type { Picked, SlotAddress, Standing } from './stage/index.js';
+
+export { buildPartyTokens } from './tokens/index.js';
+export type { PartyTokens, TokenRef, TokenSpec } from './tokens/index.js';
 
 export { intendedCell } from './picking/index.js';
 export type { PickedThings } from './picking/index.js';

@@ -284,7 +284,9 @@ describe('permissions fail closed (R-18a)', () => {
   it('lets the table seat past the gate for the party, and nothing else', () => {
     // The whole list, written out rather than derived, because this is the thing
     // a reviewer checks against R-136: the party is the players', the world is
-    // the GM's. Adding a fourth entry here should require an argument.
+    // the GM's. Every entry here needs an argument. The fourth, `moveToken`,
+    // has one: it is where each member stands inside the map the party is in,
+    // which is the party's own pawn one surface down (D-259).
     const state = withCampaign();
     const past: string[] = [];
     for (const kind of everyIntentKind()) {
@@ -293,7 +295,8 @@ describe('permissions fail closed (R-18a)', () => {
       const result = apply(state, 'table', { kind } as unknown as Intent, NOW);
       if (result.rejected !== 'only the GM can do that') past.push(kind);
     }
-    expect(past.sort()).toEqual(['movePartyMember', 'moveParty', 'setPartyTogether'].sort());
+    expect(past.sort())
+      .toEqual(['movePartyMember', 'moveParty', 'setPartyTogether', 'moveToken'].sort());
   });
 
   it('rejects every intent from a spectator, including the party ones', () => {

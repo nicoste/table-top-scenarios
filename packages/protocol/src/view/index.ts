@@ -1,13 +1,14 @@
 // The single path from state to a screen (R-19). Every field a client receives
 // passes through viewFor, and there is no second route.
 
-import type { Campaign, Save } from '@tt/domain';
+import type { Campaign, Place, Poi, Save } from '@tt/domain';
 import {
-  isPlaceOnTable, isChunkKnown, belongsTo, placementToJSON, rangeFor, DAYLIGHT, OPEN_SKY,
-  sunReaches, litBy, MAP_MAX_HEIGHT,
+  isPlaceOnTable, isPoiOnTable, isChunkKnown, belongsTo, placementToJSON, rangeFor, DAYLIGHT,
+  OPEN_SKY, sunReaches, litBy, MAP_MAX_HEIGHT,
+  tokensFor, onRoster, tokensInBand, tokensToJSON,
 } from '@tt/domain';
 import type {
-  CampaignWire, SaveWire, PlacementWire, MapWire, LightingWire,
+  CampaignWire, SaveWire, PlacementWire, MapWire, LightingWire, TokensWire,
 } from '../wire/index.js';
 import { encodeCampaign, encodeSave, mapWire } from '../wire/index.js';
 
@@ -89,6 +90,20 @@ export interface TableView {
    * player nothing they are not looking straight at (D-250).
    */
   readonly lighting: LightingWire;
+  /**
+   * Where the party stands in the map the table is shown (R-184), or `null`
+   * when it is shown no map.
+   *
+   * The **third** piece of save data the table is sent, and named here for
+   * the hour's reason: adding it is one auditable line in this filter rather
+   * than a quiet widening of what `save` means (D-250, D-259). It is the
+   * players' own pawns, as `placement` is (R-136).
+   *
+   * **Only the ones standing inside the band** (R-185), so the table is not
+   * handed a token on a level it has not been shown — it would have to decide
+   * not to draw it, and deciding is this filter's job (D-252).
+   */
+  readonly tokens: TokensWire | null;
 }
 
 export type View = GmView | TableView;
@@ -103,9 +118,10 @@ export type OutboundMessage =
  *
  * Everything a client is not entitled to is removed here and nowhere else. The
  * table display never receives the *save* — knowing which chunks are Known is
- * itself the answer to what is hidden — so the two pieces of play state it does
- * get, the party's position and the hour of the day, are named one at a time
- * and justified where they are declared (R-85, D-250).
+ * itself the answer to what is hidden — so the three pieces of play state it
+ * does get, the party's position, the hour of the day and where the party
+ * stands in the map it is in, are named one at a time and justified where they
+ * are declared (R-85, D-250, D-259).
  */
 export function viewFor(role: Role, state: HostState, connect: readonly string[] = []): View {
   if (role === 'gm') {
@@ -136,7 +152,42 @@ export function viewFor(role: Role, state: HostState, connect: readonly string[]
      * the table decide something the filter is the only place for (D-252).
      */
     lighting: litFor(state),
+    tokens: campaign && state.active && state.activeSave
+      ? tokensForTheTable(state.active, state.activeSave)
+      : null,
   };
+}
+
+/**
+ * The map the table is shown, if any (R-158).
+ *
+ * One answer for the body and for the people standing in it, so "the table
+ * gets this map" and "the table gets the tokens in it" cannot come apart —
+ * the shape of D-252's bug, two fields under one rule with only one written.
+ *
+ * The party has to be in it, and the party has to be able to see it: Revealed,
+ * chunk Known, point of interest shown. The GM can hide a place while the
+ * party stands inside, and then neither the room nor anybody in it is sent.
+ */
+function shownMap(campaign: Campaign, save: Save): { place: Place; poi: Poi } | null {
+  const inside = save.inside;
+  if (!inside) return null;
+  const place = campaign.places.find((candidate) => candidate.id === inside.placeId);
+  const poi = place?.pois.find((candidate) => candidate.id === inside.poiId);
+  if (!place || !poi?.map) return null;
+  if (!isPoiOnTable(save.discovery, place, poi)) return null;
+  return { place, poi };
+}
+
+/**
+ * Where the party stands, for the table: the map it is shown, the members still
+ * on the roster, and only the ones inside the band (R-185).
+ */
+function tokensForTheTable(campaign: Campaign, save: Save): TokensWire | null {
+  const shown = shownMap(campaign, save);
+  if (!shown) return null;
+  const standing = onRoster(tokensFor(save, shown.poi.id), campaign.party);
+  return tokensToJSON(tokensInBand(standing, rangeFor(save, shown.poi.id)));
 }
 
 /**
@@ -175,15 +226,12 @@ function bodyForTheTable(
   placeId: string,
   poiId: string,
 ): MapWire | null {
-  const inside = save.inside;
-  if (!inside || inside.placeId !== placeId || inside.poiId !== poiId) return null;
-  const place = campaign.places.find((candidate) => candidate.id === placeId);
-  const poi = place?.pois.find((candidate) => candidate.id === poiId);
-  if (!poi?.map) return null;
+  const shown = shownMap(campaign, save);
+  if (!shown || shown.place.id !== placeId || shown.poi.id !== poiId || !shown.poi.map) return null;
   // Through the same cache as the GM's copy, keyed on the map *and* the band:
   // an edit to another map must not cost the table a re-slice of this one
   // (D-219).
-  return mapWire(poi.map, rangeFor(save, poiId));
+  return mapWire(shown.poi.map, rangeFor(save, poiId));
 }
 
 function forTheTable(campaign: Campaign | null, save: Save | null): CampaignWire | null {

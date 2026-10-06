@@ -10,6 +10,12 @@ export { idle, GROUP, pick, armed, aim, ghostCell, canConfirm, travelIntent, tra
 export type { Travel } from './travel/index.js';
 
 export {
+  still, grab, armedStride, tokenAim, aimStride, strideGhost, canStride, strideIntent,
+  tableCeiling, standVerdict, tokenAction, stridePrompt,
+} from './tokens/index.js';
+export type { Stride, Headroom, TokenAction } from './tokens/index.js';
+
+export {
   clickAction, holdsSelection, tableAction, mapAction, mapHover, mapDrags, mapAllowed,
 } from './tools/index.js';
 

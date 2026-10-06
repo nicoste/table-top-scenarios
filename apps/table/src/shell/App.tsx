@@ -6,18 +6,22 @@
 // Still no tool palette and no roster — a click means whatever `tableAction`
 // says it means, and a travel in progress outranks everything.
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { decodeCampaign, decodePlacement } from '@tt/protocol';
 import {
-  CHUNK_SIZE, DEFAULT_MARKERS, DEFAULT_MATERIALS, mapFromJSON, clampLighting,
+  CHUNK_SIZE, DEFAULT_MARKERS, DEFAULT_MATERIALS, mapFromJSON, clampLighting, tokensFromJSON,
 } from '@tt/domain';
+import type { BlockCoord } from '@tt/domain';
 import type { Intent, TableView } from '@tt/protocol';
-import type { Travel } from '@tt/client-core';
+import type { Stride, Travel } from '@tt/client-core';
 import {
   idle, pick, aim, ghostCell, canConfirm, travelIntent, travelPrompt, tableAction,
   cameraAction, wheelZoom, CAMERA_HINT,
+  still, grab, tokenAim, aimStride, strideGhost, strideIntent, standVerdict, tableCeiling,
+  tokenAction, stridePrompt,
 } from '@tt/client-core';
 import { defaultTarget, worldCentre } from '@tt/render';
+import type { Standing } from '@tt/render';
 import { useStage } from '../scene/use-stage.js';
 import { useCost, COST_HINT } from '../scene/use-cost.js';
 import { PlaceCard } from '../features/place/index.js';
@@ -39,6 +43,8 @@ export function App({ view, status, rejection, dispatch }: Props) {
   const openedId = useRef<string | null>(null);
   const drag = useRef<{ x: number; y: number; moved: boolean } | null>(null);
   const [travel, setTravel] = useState<Travel>(idle);
+  /** A party token being moved inside the map (R-188). Never armed here (D-167). */
+  const [stride, setStride] = useState<Stride>(still);
   const [selectedPlace, setSelectedPlace] = useState<string | null>(null);
   const campaign = view?.campaign ?? null;
 
@@ -70,6 +76,24 @@ export function App({ view, status, rejection, dispatch }: Props) {
   const insideWire = campaign?.places
     .flatMap((p) => p.pois.map((poi) => ({ place: p, poi })))
     .find(({ poi }) => poi.map !== null) ?? null;
+
+  /**
+   * The slice this screen was sent, decoded once: the stage draws it, and the
+   * Move sequence judges cubes against it (R-185). It is all the table ever
+   * holds of the map, and that is enough — a cube it can aim at is one it was
+   * sent.
+   */
+  const body = useMemo(
+    () => (insideWire?.poi.map ? mapFromJSON(insideWire.poi.map) : null),
+    [insideWire?.poi.map],
+  );
+  /**
+   * Where the party stands in that map: only those inside the band, because
+   * that is all `viewFor` sends (R-185, D-259).
+   */
+  const tokensWire = view?.tokens ?? null;
+  const standing = useMemo(() => tokensFromJSON(tokensWire), [tokensWire]);
+  const colourOf = (id: string) => campaign?.party.find((m) => m.id === id)?.colour ?? '#ffffff';
 
   const nameOf = useCallback(
     (id: string) => campaign?.party.find((m) => m.id === id)?.name ?? null,
@@ -130,13 +154,41 @@ export function App({ view, status, rejection, dispatch }: Props) {
    */
   useEffect(() => {
     if (!stage) return;
-    const body = insideWire?.poi.map ? mapFromJSON(insideWire.poi.map) : null;
     stage.setMap(
       body,
       DEFAULT_MATERIALS,
       insideWire ? `${insideWire.place.id}/${insideWire.poi.id}` : null,
     );
-  }, [stage, insideWire?.place.id, insideWire?.poi.id, insideWire?.poi.map]);
+  }, [stage, insideWire?.place.id, insideWire?.poi.id, body]);
+
+  // The party in the map, as they were sent (R-184). Their own effect, for the
+  // pawns' reason: they move far more often than the map changes (R-19a).
+  useEffect(() => {
+    if (!stage) return;
+    const tokens: Standing[] = [...standing].map(([memberId, at]) => ({
+      memberId, at, colour: colourOf(memberId),
+    }));
+    stage.setTokens(tokens);
+  }, [stage, standing, campaign?.party]);
+
+  // Leaving the map, or the GM taking the party somewhere else, ends a move.
+  useEffect(() => { setStride(still); }, [insideWire?.place.id, insideWire?.poi.id]);
+
+  useEffect(() => {
+    stage?.aimToken(
+      strideGhost(stride),
+      stride.step === 'aiming' ? colourOf(stride.memberId) : undefined,
+    );
+  }, [stride, stage]);
+
+  /**
+   * Whether the member being moved may stand in a cube, judged from what this
+   * screen holds (R-138): the slice, the tokens it was sent, and a ceiling
+   * worked out from the plane list, since the table is never told its band.
+   */
+  const strideVerdict = (memberId: string, at: BlockCoord) => (body
+    ? standVerdict(body, standing, memberId, at, { ceiling: tableCeiling(body) })
+    : 'outside the map');
 
   // Escape cancels a move or closes an open place (R-132, R-139), and the
   // camera keys are the console's, unchanged — one table decides both (R-156).
@@ -150,12 +202,13 @@ export function App({ view, status, rejection, dispatch }: Props) {
         return;
       }
       if (event.code !== 'Escape') return;
-      if (travel.step === 'aiming') setTravel(idle);
+      if (stride.step === 'aiming') setStride(still);
+      else if (travel.step === 'aiming') setTravel(idle);
       else setSelectedPlace(null);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [travel.step, stage]);
+  }, [travel.step, stride.step, stage]);
 
   /*
    * The wheel zooms, by the same step as on the console (R-156). Attached here
@@ -185,6 +238,16 @@ export function App({ view, status, rejection, dispatch }: Props) {
       }
       return;
     }
+    // Inside a map the only thing that follows the pointer is a token being
+    // moved, and only onto a floor its member may stand on (R-138).
+    if (insideWire) {
+      if (stride.step !== 'aiming' || !stage) return;
+      const at = tokenAim(stage.pick(event.clientX, event.clientY).face);
+      setStride((current) => (current.step === 'aiming'
+        ? aimStride(current, at, at ? strideVerdict(current.memberId, at) : null)
+        : current));
+      return;
+    }
     if (travel.step !== 'aiming' || !stage) return;
     const hit = stage.pick(event.clientX, event.clientY);
     // The table only ever receives Known chunks (D-140), so any cell it can
@@ -196,6 +259,25 @@ export function App({ view, status, rejection, dispatch }: Props) {
   const onClick = (event: React.PointerEvent) => {
     if (!stage) return;
     const hit = stage.pick(event.clientX, event.clientY);
+
+    // Inside a map, a click picks up a party token or puts one down — the
+    // players' own, so this screen may (R-136). A move in progress owns the
+    // click: it confirms on a floor the member may stand on, judged where the
+    // click landed, and cancels anywhere else (R-188).
+    if (insideWire) {
+      const act = tokenAction(hit.token, stride.step === 'aiming');
+      if (act.kind === 'confirm' && stride.step === 'aiming') {
+        const at = tokenAim(hit.face);
+        if (at && strideVerdict(stride.memberId, at) === null) {
+          dispatch(strideIntent(stride, at, insideWire.place.id, insideWire.poi.id));
+        }
+        setStride(still);
+        return;
+      }
+      if (act.kind === 'pickToken') setStride(grab(act.memberId));
+      return;
+    }
+
     const action = tableAction(
       { pawn: hit.pawn, placeId: hit.placeId, cell: hit.column, slot: hit.slot },
       travel.step === 'aiming',
@@ -232,7 +314,8 @@ export function App({ view, status, rejection, dispatch }: Props) {
       ? { title: 'Waiting for the GM', body: 'No campaign is open yet.' }
       : null;
 
-  const prompt = travelPrompt(travel, nameOf);
+  // The table only ever moves somebody already standing, so it is never placing.
+  const prompt = insideWire ? stridePrompt(stride, nameOf, false) : travelPrompt(travel, nameOf);
 
   /**
    * Which way the camera is facing, for the compass (R-155).
@@ -258,6 +341,7 @@ export function App({ view, status, rejection, dispatch }: Props) {
           onPointerDown={(e) => {
             if (e.button === 2 || e.button === 1) {
               if (travel.step === 'aiming') setTravel(idle);
+              if (stride.step === 'aiming') setStride(still);
               return;
             }
             drag.current = { x: e.clientX, y: e.clientY, moved: false };

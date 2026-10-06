@@ -18,6 +18,7 @@ import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import {
   CHUNK_SIZE, brushCentreOffset, mapCentre, DAYLIGHT, sunDirection, shadowReach, bounceOf,
+  dropBelow,
 } from '@tt/domain';
 import type { CameraTarget } from '../camera/index.js';
 import {
@@ -33,7 +34,16 @@ import type { PartyPawns, PawnRef } from '../pawns/index.js';
 import { buildPartyPawns } from '../pawns/index.js';
 import type { BlockBody, FacePick } from '../blocks/index.js';
 import { buildBlockBody } from '../blocks/index.js';
+import type { PartyTokens, TokenRef } from '../tokens/index.js';
+import { buildPartyTokens } from '../tokens/index.js';
 import { intendedCell } from '../picking/index.js';
+
+/** One member standing in a cube, as an app hands it over (R-184). */
+export interface Standing {
+  readonly memberId: string;
+  readonly colour: string;
+  readonly at: BlockCoord;
+}
 
 export interface SlotAddress { readonly cx: number; readonly cz: number }
 
@@ -52,6 +62,12 @@ export interface Picked {
    * read from one pick.
    */
   readonly face: FacePick | null;
+  /**
+   * The party token under the pointer, when a map is open (R-184). Resolved
+   * apart from `face`, as everything here is (R-87c): Build wants the block
+   * behind a token, Move wants the token.
+   */
+  readonly token: TokenRef | null;
   readonly pawn: PawnRef | null;
   readonly placeId: string | null;
   /** The cell, whatever is standing on it. */
@@ -232,6 +248,18 @@ export class Stage {
    * hides the other's groups rather than layering them.
    */
   private blocks: BlockBody | null = null;
+  /**
+   * The body the stage was last handed, kept for one question: what is under
+   * a token's feet, which is how long its stalk is (R-34). Whatever was handed
+   * over — the whole body, or the slice a levelling console or the table is
+   * drawing — because the stalk lands on what is on screen.
+   */
+  private shownMap: EncounterMap | null = null;
+  /** The party inside the open map (R-184), and who is standing where. */
+  private tokens: PartyTokens | null = null;
+  private standing: readonly Standing[] = [];
+  /** Where the move ghost is, so a rebuild under it can put it back. */
+  private aimed: { at: BlockCoord; colour: string | undefined } | null = null;
   /**
    * Which surface is on screen: `null` for the world, otherwise a map's key.
    * Compared against the key `setMap` is handed, so the camera reacts to a
@@ -507,6 +535,8 @@ export class Stage {
     this.slots.visible = worldVisible;
     this.fog.visible = worldVisible;
     if (this.grid) this.grid.visible = worldVisible;
+    // The other way round: tokens stand in a map and nowhere else (R-148).
+    if (this.tokens) this.tokens.group.visible = !worldVisible;
     // Always off: the next pointer move puts it back where it belongs, and an
     // outline left over from the surface before is worse than none.
     this.blockGhost.visible = false;
@@ -538,6 +568,60 @@ export class Stage {
     this.invalidate();
     this.placement = placement;
     this.rebuildPawns();
+  }
+
+  /**
+   * Who is standing where in the open map (R-184), or nobody.
+   *
+   * Its own method for `setPlacement`'s reason: the party moves far more often
+   * than the map changes, and rebuilding a body to move a token would be
+   * absurd (R-19a). And it **invalidates without restaging**: tokens cast no
+   * shadow (D-254), so moving one owes the screen a frame and owes the shadow
+   * map nothing (R-180).
+   *
+   * Filtering is the caller's, as cutting a body is: the table was sent only
+   * the tokens inside its band, and a levelling console hands over the same
+   * subset (R-185).
+   */
+  setTokens(standing: readonly Standing[] | null): void {
+    this.invalidate();
+    this.standing = standing ?? [];
+    this.rebuildTokens();
+  }
+
+  /** Puts the move ghost on a cube, in the mover's colour, or takes it off. */
+  aimToken(at: BlockCoord | null, colour?: string): void {
+    this.invalidate();
+    this.aimed = at ? { at, colour } : null;
+    this.tokens?.aimAt(at, colour);
+  }
+
+  private dropTokens(): void {
+    if (!this.tokens) return;
+    this.scene.remove(this.tokens.group);
+    this.tokens.dispose();
+    this.tokens = null;
+  }
+
+  /**
+   * Rebuilt whenever the tokens change **or the body does** — a trapdoor
+   * opened under somebody changes how long their stalk is, with nobody having
+   * moved (R-34). Building six bases and six cards costs nothing next to the
+   * body it rides along with.
+   */
+  private rebuildTokens(): void {
+    this.dropTokens();
+    const map = this.shownMap;
+    if (!map) return;
+    this.tokens = buildPartyTokens(this.standing.map((token) => ({
+      ...token,
+      drop: dropBelow(map, token.at),
+    })));
+    this.scene.add(this.tokens.group);
+    // A rebuild under a ghost that is mid-aim must not drop it: the pointer has
+    // not moved, and the next pointer event may be a while coming.
+    if (this.aimed) this.tokens.aimAt(this.aimed.at, this.aimed.colour);
+    this.applySurface();
   }
 
   /**
@@ -598,6 +682,10 @@ export class Stage {
        */
       this.fitShadows(CHUNK_SIZE * 3, worldCentre(this.campaign.world));
     }
+    // The tokens ride on the body: a new body can have opened a trapdoor under
+    // somebody, and no map at all means nobody to draw (R-34, R-148).
+    this.shownMap = map;
+    this.rebuildTokens();
     this.applySurface();
 
     if (move === 'frame' && map) {
@@ -846,14 +934,29 @@ export class Stage {
     this.raycaster.setFromCamera(ndc, this.camera);
 
     // A map is a different surface, not an overlay on the world (R-148), so it
-    // answers with a face and nothing else — there is no terrain column, no
-    // place marker and no chunk slot inside one.
+    // answers with a face and a token and nothing else — there is no terrain
+    // column, no place marker and no chunk slot inside one.
     if (this.blocks) {
+      let face: FacePick | null = null;
       for (const hit of this.raycaster.intersectObject(this.blocks.group, true)) {
-        const face = this.blocks.faceOf(hit);
-        if (face) return { face, pawn: null, placeId: null, column: null, slot: null };
+        face = this.blocks.faceOf(hit);
+        if (face) break;
       }
-      return { face: null, pawn: null, placeId: null, column: null, slot: null };
+      /*
+       * Tested against the tokens' pick volumes alone, not against the scene,
+       * so a wall in front of somebody does not stand in the way of picking
+       * them — R-36's "clicking a token through a wall", with no fade needed.
+       * And against volumes that do not turn, so the answer is the same
+       * whether or not a frame has been drawn since the camera moved (R-36a).
+       */
+      let token: TokenRef | null = null;
+      if (this.tokens) {
+        for (const hit of this.raycaster.intersectObjects([...this.tokens.proxies], false)) {
+          token = this.tokens.tokenAt(hit.object);
+          if (token) break;
+        }
+      }
+      return { face, token, pawn: null, placeId: null, column: null, slot: null };
     }
 
     let pawn: PawnRef | null = null;
@@ -888,7 +991,7 @@ export class Stage {
       }
     }
 
-    return { face: null, pawn, placeId, column, slot };
+    return { face: null, token: null, pawn, placeId, column, slot };
   }
 
   /**
@@ -1064,6 +1167,10 @@ export class Stage {
     this.dirty = false;
     this.lastDrawn = now;
     this.syncCamera();
+    // Tokens turn with the live camera, about their own vertical axis, on frames
+    // that are drawn and no others (R-187). Mid-turn that is every frame, so a
+    // token keeps pointing at the view while it eases (R-156).
+    this.tokens?.turnTo(MathUtils.degToRad(this.live.yawDeg));
     // Markers and their names share one threshold and toggle together (R-83),
     // and neither belongs to a map's surface at all (R-148). This line used to
     // check only the zoom, which quietly undid `setMap`'s hiding on the very
@@ -1118,6 +1225,7 @@ export class Stage {
     (this.blockGhost.material as LineBasicMaterial).dispose();
     this.setFogChunks([]);
     this.blocks?.dispose();
+    this.tokens?.dispose();
     this.pawns?.dispose();
     this.places?.dispose();
     this.world?.dispose();

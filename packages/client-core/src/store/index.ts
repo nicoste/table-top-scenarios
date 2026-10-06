@@ -33,8 +33,11 @@ export type Tool = 'select' | 'paint' | 'height' | 'places' | 'travel';
  * A separate type, not more members on `Tool`: world tools have no meaning in a
  * map and map tools none outside it, so a single union would let the compiler
  * accept "paint terrain" while standing in a tavern.
+ *
+ * `move` is the third (D-258): the party's tokens, picked and stood somewhere
+ * else (R-188). Travel's job, one surface down.
  */
-export type MapTool = 'build' | 'paint';
+export type MapTool = 'build' | 'paint' | 'move';
 
 export interface ViewState {
   readonly camera: CameraTarget;

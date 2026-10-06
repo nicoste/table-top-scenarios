@@ -4,7 +4,7 @@
 
 import type { Campaign, ChunkCoord, WorldCell } from '@tt/domain';
 import type {
-  PartyMember, PlaceId, NoteId, PoiId, PlaneId, MemberId, SwatchId, Save, Place,
+  PartyMember, PlaceId, NoteId, PoiId, PlaneId, MemberId, SwatchId, Save, Place, Footing, Tokens,
 } from '@tt/domain';
 import {
   createCampaign, duplicateCampaign, uniqueCampaignName, createMember, editMember, removeMember,
@@ -26,6 +26,8 @@ import {
   pawns, withGroupAt, withMemberAt, gathered, scattered,
   isValidWorldCell, chunkOf, isChunkKnown,
   setChunkKnown, setPlaceRevealed, setPlacesRevealed, isAuthored, placesInChunk,
+  NO_TOKENS, tokensFor, withTokens, settleTokens, pruneTokens, onRoster, whyNotStand, placeToken,
+  standsInBand, clearOfTokens,
 } from '@tt/domain';
 import type { HostState, Intent, Role } from '@tt/protocol';
 import { parseTerrainId, parseMarkerId } from '@tt/protocol';
@@ -88,11 +90,12 @@ function permitted(role: Role, kind: Intent['kind']): boolean {
  * This way a new intent is GM-only until someone decides otherwise (R-18a), and
  * a test enumerates `IntentSchema` to force the decision.
  *
- * These three are everything about the party's own pawns, and nothing else
- * (R-136).
+ * These four are everything about the party's own pawns, and nothing else
+ * (R-136): where they stand on the world, whether they stand together, and
+ * where each stands inside the map they are in (R-184).
  */
 const OPEN_TO_THE_TABLE = new Set<Intent['kind']>([
-  'moveParty', 'movePartyMember', 'setPartyTogether',
+  'moveParty', 'movePartyMember', 'setPartyTogether', 'moveToken',
 ]);
 
 /**
@@ -121,25 +124,31 @@ export function openedWith(
   // the data it holds (R-137).
   const campaign = upgradedCampaign(stored);
   const usable = storedSave && belongsTo(storedSave, campaign) ? storedSave : null;
+  const memberIds = new Set(campaign.party.map((m) => m.id));
+  // Every point of interest still in the campaign; a band or a position
+  // belonging to one the GM deleted is dropped here rather than kept forever
+  // (R-9's tolerance, `pruneDiscovery`'s reason).
+  const poiIds = new Set(campaign.places.flatMap((place) => place.pois.map((poi) => poi.id as string)));
   const save = usable
-    ? upgraded(settleRanges(pruneRanges(
+    ? upgraded(pruneTokens(settleRanges(pruneRanges(
       pruneInside(
-        pruneMembers(pruneDiscovery(usable, placeIds), new Set(campaign.party.map((m) => m.id))),
+        pruneMembers(pruneDiscovery(usable, placeIds), memberIds),
         (placeId, poiId) => {
           const place = placeById(campaign.places, placeId);
           return !!place && !!poiOfPlace(place, poiId);
         },
       ),
-      // Every point of interest still in the campaign; a band belonging to one
-      // the GM deleted is dropped here rather than kept forever (R-9's
-      // tolerance, `pruneDiscovery`'s reason).
-      new Set(campaign.places.flatMap((place) => place.pois.map((poi) => poi.id as string))),
+      poiIds,
     ),
     // A band stored when one could sit between levels comes to rest on a
     // level here, once, on the way in (R-161).
     (poiId) => campaign.places
       .flatMap((place) => place.pois)
-      .find((poi) => (poi.id as string) === poiId)?.map?.planes ?? null))
+      .find((poi) => (poi.id as string) === poiId)?.map?.planes ?? null),
+    // Where removed members stood, and positions in maps that are gone
+    // (R-184). Read through the roster until now, so this is tidying, not
+    // a correction (`onRoster`).
+    poiIds, memberIds))
     : createLiveSave(campaign, savedAt);
   return {
     state: { ...state, active: campaign, activeSave: save },
@@ -283,13 +292,13 @@ function applyIntent(state: HostState, role: Role, intent: Intent, now: string):
     }
 
     default:
-      return applyToCampaign(state, intent, now);
+      return applyToCampaign(state, role, intent, now);
   }
 }
 
 // -- everything below needs an open campaign ---------------------------------
 
-function applyToCampaign(state: HostState, intent: Intent, now: string): Applied {
+function applyToCampaign(state: HostState, role: Role, intent: Intent, now: string): Applied {
   const campaign = state.active;
   if (!campaign) return reject(state, 'no campaign is open');
 
@@ -359,9 +368,88 @@ function applyToCampaign(state: HostState, intent: Intent, now: string): Applied
       return commit({ ...campaign, party });
     }
 
+    case 'moveToken':
+      return applyToTokens(state, campaign, role, intent, now);
+
     default:
       return applyToPois(state, campaign, intent, commit, now);
   }
+}
+
+// -- where the party stands inside a map ------------------------------------
+
+/** Why a member cannot stand there, in the words a refusal uses (R-18). */
+const FOOTING: Record<Footing, string> = {
+  outside: 'that is outside the map',
+  solid: 'there is a block there',
+  unsupported: 'there is nothing there to stand on',
+  taken: 'somebody is already standing there',
+};
+
+/**
+ * Where a member stands inside the map the party is in (R-184).
+ *
+ * The party's own, so the table seat may send it (R-136) — into the map the
+ * party is actually in, and from the table only inside the band it is shown
+ * (R-185), since a token it put outside would stand where its own screen
+ * cannot draw it.
+ *
+ * **The band is checked before the footing, for the table.** Every footing
+ * reason describes a cube, and a cube outside the band is one the table was
+ * never sent: "there is a block there" about a cube behind the cut would
+ * report the very thing the cut is withholding (R-85). Inside the band, the
+ * table already holds everything a refusal could mention.
+ */
+function applyToTokens(
+  state: HostState,
+  campaign: Campaign,
+  role: Role,
+  intent: Extract<Intent, { kind: 'moveToken' }>,
+  now: string,
+): Applied {
+  const save = state.activeSave;
+  if (!save) return reject(state, 'no save is open');
+  const place = placeById(campaign.places, intent.placeId as PlaceId);
+  if (!place) return reject(state, 'no such place');
+  const poi = poiOfPlace(place, intent.poiId as PoiId);
+  if (!poi) return reject(state, 'no such point of interest');
+  if (!poi.map) return reject(state, 'that point of interest has no map');
+  // Named by the intent and checked against where the party is, so a move
+  // aimed at a room they have since left is refused rather than replayed into
+  // the one they are in now.
+  if (save.inside?.placeId !== place.id || save.inside?.poiId !== poi.id) {
+    return reject(state, 'the party is not in that map');
+  }
+  const memberId = intent.memberId as MemberId;
+  if (!campaign.party.some((member) => member.id === memberId)) {
+    return reject(state, 'no such party member');
+  }
+
+  if (role === 'table' && !standsInBand(rangeFor(save, poi.id), intent.at)) {
+    return reject(state, 'that is outside the levels being shown');
+  }
+  // Through the roster: a member who has left it stands nowhere, and must not
+  // stand in anybody's way either (`onRoster`).
+  const standing = onRoster(tokensFor(save, poi.id), campaign.party);
+  const why = whyNotStand(poi.map, standing, memberId, intent.at);
+  if (why) return reject(state, FOOTING[why]);
+  return commitSave(
+    state, save, withTokens(save, poi.id, placeToken(poi.map, standing, memberId, intent.at)), now,
+  );
+}
+
+/**
+ * The party's tokens in this map, if they are standing in it — the only ones
+ * a brush has to keep out of (R-186).
+ *
+ * Positions in a map the party has left are a memory, not a presence: nothing
+ * draws them and nothing should be refused on their account. If one is built
+ * over meanwhile, the way back in repairs it (D-256).
+ */
+function presentIn(state: HostState, campaign: Campaign, placeId: string, poiId: string): Tokens {
+  const save = state.activeSave;
+  if (!save || save.inside?.placeId !== placeId || save.inside?.poiId !== poiId) return NO_TOKENS;
+  return onRoster(tokensFor(save, poiId), campaign.party);
 }
 
 // -- points of interest ------------------------------------------------------
@@ -484,7 +572,10 @@ function applyToPois(
     case 'clearBlock':
     case 'fillMaterial':
     case 'growMap':
-      return applyToMap(campaign, intent, withPlaces, reject_);
+      return applyToMap(
+        campaign, intent, withPlaces, reject_,
+        presentIn(state, campaign, intent.placeId, intent.poiId),
+      );
 
     case 'addPlane':
     case 'renamePlane':
@@ -506,7 +597,12 @@ function applyToPois(
       if (!isPoiOnTable(state.activeSave.discovery, place, poi)) {
         return reject_('the party cannot see that point of interest yet');
       }
-      return commitSave(state, state.activeSave, enteringMap(state.activeSave, placeId, poi.id), now);
+      const entered = enteringMap(state.activeSave, placeId, poi.id);
+      // The way back in repairs where they stood: a cube built over while they
+      // were elsewhere cannot hold a token, so that member is placed again
+      // (D-256). Everyone else is where they left off.
+      const settled = poi.map ? settleTokens(entered, poi.id, poi.map) : entered;
+      return commitSave(state, state.activeSave, settled, now);
     }
 
     case 'leaveMap': {
@@ -677,6 +773,8 @@ function applyToMap(
   }>,
   withPlaces: (places: readonly Place[]) => Applied,
   reject_: (reason: string) => Applied,
+  /** The party, if they are standing in this map — a brush keeps out of their cubes (R-186). */
+  present: Tokens,
 ): Applied {
   const placeId = intent.placeId as PlaceId;
   const place = placeById(campaign.places, placeId);
@@ -744,9 +842,16 @@ function applyToMap(
    * its business.
    */
   if (intent.kind === 'setBlock') {
-    const empty = cells.some((at) => inMap(map, at) && !blockAt(map, at));
-    if (!empty) return reject_('there is already a block there');
-    return withPlaces(setMapBlocks(campaign.places, placeId, poiId, cells, swatch));
+    const empty = (at: (typeof cells)[number]) => inMap(map, at) && !blockAt(map, at);
+    if (!cells.some(empty)) return reject_('there is already a block there');
+    /*
+     * Never into somebody's cube (R-186). A brush clips around the party the
+     * way it clips around blocks already standing (R-162) — it lands where it
+     * can — and refuses only when a standing token's cube was all it had left.
+     */
+    const clear = clearOfTokens(cells, present);
+    if (!clear.some(empty)) return reject_('somebody is standing there');
+    return withPlaces(setMapBlocks(campaign.places, placeId, poiId, clear, swatch));
   }
   if (!standing) return reject_('there is nothing there to paint');
   return withPlaces(paintMapBlocks(campaign.places, placeId, poiId, cells, swatch));

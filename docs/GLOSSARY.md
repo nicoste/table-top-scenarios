@@ -16,7 +16,7 @@ New concepts get an entry here *before* they get an identifier.
 | **Place marker** | The model drawn for a place — village, town, castle, cave. Cosmetic only (R-82); the tool attaches no meaning to the choice. |
 | **Point of interest** (POI) | Something *inside* a place: a church, a market, an arena. Named, ordered by the GM, individually visible to the party. Owns **exactly one encounter map**, created with it — a point of interest without a body would be a label (R-49, R-145). |
 | **Encounter map** | The playable surface. A free-form sparse voxel grid where tokens move. Minecraft-shaped, not columnar. |
-| **Token** | A figure on an encounter map. Belongs to the **party** or to the **GM**. On the world map the party is drawn as a **pawn** instead (R-90). |
+| **Token** | A figure on an encounter map: a party member standing in one cube of the map the party is in, drawn as a gold base and a card in the member's colour (R-184, R-187). The GM's own figures — silver — are a later round (D-255). On the world map the party is drawn as a **pawn** instead (R-90). |
 | **Party** | The player-controlled side. One side, not N players — everyone shares the table display. |
 | **Party fog** | Encounter-map visibility: the union of what every party token can see. There is deliberately no per-token vision. |
 | **Discovery** | World-scale knowledge. A GM-granted flag on a chunk or a place. Not geometric, not computed. |

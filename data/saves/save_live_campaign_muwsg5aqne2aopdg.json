@@ -1,0 +1,74 @@
+{
+ "id": "save_live_campaign_muwsg5aqne2aopdg",
+ "campaignId": "campaign_muwsg5aqne2aopdg",
+ "campaignSchemaVersion": 4,
+ "schemaVersion": 3,
+ "label": "Live",
+ "savedAt": "1970-01-01T00:00:00.000Z",
+ "discovery": {
+  "chunks": [
+   "15,15"
+  ],
+  "places": [
+   "place_muwsg5aqe6loghbu"
+  ]
+ },
+ "placement": {
+  "together": true,
+  "at": {
+   "cx": 15,
+   "cz": 15,
+   "x": 15,
+   "z": 15
+  },
+  "members": {}
+ },
+ "inside": {
+  "placeId": "place_muwsg5aqe6loghbu",
+  "poiId": "poi_muwsg5aqnh5p9wal"
+ },
+ "ranges": {},
+ "tokens": {
+  "poi_muwsg5aqnh5p9wal": {
+   "member_muwsg5aqalkq2yjb": {
+    "x": 48,
+    "y": 5,
+    "z": 53
+   },
+   "member_muwsg5aqcelkdnfu": {
+    "x": 44,
+    "y": 1,
+    "z": 44
+   },
+   "member_muwsg5aqk3yh7xp7": {
+    "x": 51,
+    "y": 1,
+    "z": 50
+   },
+   "member_muwsg5aqmyfvb9dk": {
+    "x": 42,
+    "y": -3,
+    "z": 54
+   },
+   "member_muwsg5aqnngykf5h": {
+    "x": 67,
+    "y": 1,
+    "z": 45
+   },
+   "member_muwsg5aqpls3o00p": {
+    "x": 48,
+    "y": 1,
+    "z": 66
+   }
+  }
+ },
+ "lighting": {
+  "angle": 35,
+  "sun": "#fff6e8",
+  "sunLevel": 1.9,
+  "ambience": {
+   "colour": "#cfe4ff",
+   "level": 0.4
+  }
+ }
+}

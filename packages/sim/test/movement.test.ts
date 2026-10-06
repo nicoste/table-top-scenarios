@@ -221,7 +221,8 @@ describe('the permission line (R-136)', () => {
   it('opens exactly the party intents and nothing else', () => {
     // Driven off the schema so a new intent has to be classified (R-18a). If this
     // fails, something was added without deciding which side of R-136 it is on.
-    const open = new Set(['moveParty', 'movePartyMember', 'setPartyTogether']);
+    // `moveToken` was decided: the party's own pawns, inside a map (D-259).
+    const open = new Set(['moveParty', 'movePartyMember', 'setPartyTogether', 'moveToken']);
     const state = revealed();
     for (const option of IntentSchema.options) {
       const kind = option.shape.kind.value as Intent['kind'];
@@ -233,17 +234,20 @@ describe('the permission line (R-136)', () => {
 });
 
 describe('what the table is told', () => {
-  it('receives the party position and the hour out of the save, and nothing else', () => {
+  it('receives the party position, the hour and where the party stands in a map, and nothing else', () => {
     // The guard on the trust boundary (R-85). It is meant to fail whenever the
     // table is sent something new, so that adding a field is a decision rather
-    // than a diff — which is how `lighting` came to be argued for in D-250.
+    // than a diff — which is how `lighting` came to be argued for in D-250, and
+    // `tokens` in D-259.
     let state = revealed();
     state = run(state, { kind: 'moveParty', cell: at(4, 4) }).state;
     const view = tableView(state);
 
     expect(view.role).toBe('table');
-    expect(Object.keys(view).sort()).toEqual(['campaign', 'lighting', 'placement', 'role']);
+    expect(Object.keys(view).sort()).toEqual(['campaign', 'lighting', 'placement', 'role', 'tokens']);
     expect(view.placement).toMatchObject({ together: true, at: at(4, 4) });
+    // Out on the world there is no map to stand in, so there is nothing to send.
+    expect(view.tokens).toBeNull();
   });
 
   it('never sends discovery or the bands, whatever else it sends', () => {

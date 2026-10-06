@@ -297,6 +297,24 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
    browser's default 16px and read as body text in someone else's font. */
 .lbl { color: var(--dim); font-size: 11px; letter-spacing: .02em; }
 
+/*
+  Who stands where inside a map (R-184). The chip is the card — the member's
+  colour and nothing else (D-257) — so it is square, where the world's member
+  dot is round like the pawn it stands for.
+*/
+.tokens { list-style: none; margin: 0 0 4px; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.tokens button {
+  width: 100%; display: flex; align-items: center; gap: 8px;
+  padding: 3px 7px; text-align: left; background: transparent; border-color: transparent;
+}
+.tokens button:hover { background: #212733; }
+.tokens .chip {
+  width: 12px; height: 12px; border-radius: 2px; flex: none;
+  border: 1px solid #0006; box-shadow: inset 0 0 0 1px #ffffff22;
+}
+.tokens .nm { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tokens .where { flex: none; font-size: 11px; color: var(--dim); white-space: nowrap; }
+
 .member { border-top: 1px solid var(--edge); padding: 8px 0; }
 .member .top { display: flex; align-items: center; gap: 6px; }
 .member .dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }

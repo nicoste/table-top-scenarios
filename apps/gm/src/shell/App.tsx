@@ -9,15 +9,19 @@ import {
   DEFAULT_MATERIALS, DEFAULT_FLOOR, mapFromJSON, fillRegion, sliceOf, inRange, inMap, blockAt,
   bottomOfMap, DEFAULT_TERRAIN, sunReaches, litBy, MAP_MAX_HEIGHT,
   DAYLIGHT, clampLighting,
+  NO_TOKENS, tokensIn, onRoster, unplaced, tokensInBand, standsInBand, standingAt,
 } from '@tt/domain';
-import type { SwatchId, Lighting, Ambience } from '@tt/domain';
+import type { SwatchId, Lighting, Ambience, MemberId, Tokens, BlockCoord } from '@tt/domain';
 import type { GmView, Intent } from '@tt/protocol';
 import { defaultTarget, worldCentre } from '@tt/render';
-import type { Tool, Travel } from '@tt/client-core';
+import type { Standing } from '@tt/render';
+import type { Stride, Tool, Travel } from '@tt/client-core';
 import {
   idle, pick, armed, aim, ghostCell, canConfirm, travelIntent, travelPrompt,
   clickAction, holdsSelection, mapAction, mapHover, mapDrags, mapAllowed,
   cameraAction, wheelZoom, CAMERA_HINT,
+  still, grab, armedStride, tokenAim, aimStride, strideGhost, strideIntent, standVerdict,
+  tokenAction, stridePrompt,
 } from '@tt/client-core';
 import type { MapAction, MapReach, MapTool } from '@tt/client-core';
 import { useStage } from '../scene/use-stage.js';
@@ -62,6 +66,11 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    */
   const [openMap, setOpenMap] = useState<{ placeId: string; poiId: string } | null>(null);
   const [mapTool, setMapTool] = useState<MapTool>('build');
+  /**
+   * A token being moved inside the open map (R-188). View state, like the
+   * world's travel sequence: nothing reaches the host until the confirm.
+   */
+  const [stride, setStride] = useState<Stride>(still);
   /**
    * Is the console showing only the band, like the table (R-159)?
    *
@@ -239,6 +248,37 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   useEffect(() => {
     stage?.setLighting(litBy(lighting, ambience, sunlit));
   }, [stage, lighting, ambience, sunlit]);
+
+  /**
+   * Where the party stands in the open map (R-184) — present only when they
+   * are in it. Positions in a map they have left are remembered (D-256), but
+   * they are a memory: not drawn, and in nobody's way (R-186).
+   *
+   * Read through the roster, so a member removed mid-scene stands nowhere.
+   * Memoised on the wire's own record, because the hover readout re-renders
+   * the console on every pointer move and a fresh Map each time would rebuild
+   * the tokens with it.
+   */
+  const roster = campaign?.party ?? null;
+  const tokensWire = openMap ? view?.save?.tokens?.[openMap.poiId] : undefined;
+  const present: Tokens = useMemo(
+    () => (partyHere && openMap && roster
+      ? onRoster(
+        tokensIn({ [openMap.poiId]: tokensWire ?? {} }, openMap.poiId),
+        roster.map((member) => ({ id: member.id as MemberId })),
+      )
+      : NO_TOKENS),
+    [partyHere, openMap?.poiId, tokensWire, roster],
+  );
+  /** Who is still waiting to be placed, in roster order (R-188). */
+  const waiting = useMemo(
+    () => (partyHere && roster
+      ? unplaced(roster.map((member) => ({ id: member.id as MemberId })), present)
+      : []),
+    [partyHere, roster, present],
+  );
+  const nextToPlace = waiting[0] ?? null;
+  const memberColour = (id: string) => roster?.find((member) => member.id === id)?.colour ?? '#ffffff';
 
   const cellKey = (c: { cx: number; cz: number; x: number; z: number }) => `${c.cx}:${c.cz}:${c.x}:${c.z}`;
   const memberName = (id: string) => campaign?.party.find((m) => m.id === id)?.name ?? null;
@@ -418,6 +458,47 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     if (openMap && !openMapWire) setOpenMap(null);
   }, [openMap, openMapWire]);
 
+  /*
+   * The party in the open map (R-184). While levelling, only the ones standing
+   * inside the band — the console then shows exactly what the table does
+   * (R-159, R-185), and a token standing on a level that is not drawn would be
+   * hanging over nothing.
+   */
+  useEffect(() => {
+    if (!stage) return;
+    const shown = levelling && openRange ? tokensInBand(present, openRange) : present;
+    const standing: Standing[] = [...shown].map(([memberId, at]) => ({
+      memberId, at, colour: memberColour(memberId),
+    }));
+    stage.setTokens(standing);
+  }, [stage, present, levelling, openRange?.lower, openRange?.upper, roster]);
+
+  // Somebody waiting to be placed and Move in hand: the sequence holds them
+  // ready, first in roster order, and the next after each confirm (D-167,
+  // R-188). Keyed on the tool and on who is next, so Escape stays escaped.
+  useEffect(() => {
+    setStride((current) => armedStride(current, mapTool === 'move' && partyHere, nextToPlace));
+  }, [mapTool, partyHere, nextToPlace]);
+
+  // A different surface, or none, is a different sequence.
+  useEffect(() => { setStride(still); }, [openMap?.placeId, openMap?.poiId]);
+
+  useEffect(() => {
+    stage?.aimToken(
+      strideGhost(stride),
+      stride.step === 'aiming' ? memberColour(stride.memberId) : undefined,
+    );
+  }, [stride, stage]);
+
+  /**
+   * Whether the member being moved may stand in a cube, judged from the whole
+   * body — the console holds all of it — and, while levelling, from the band
+   * the GM is looking at, which is R-159's rule for building too (R-185).
+   */
+  const strideVerdict = (memberId: string, at: BlockCoord) => (openBody
+    ? standVerdict(openBody, present, memberId, at, levelling && openRange ? { band: openRange } : null)
+    : 'outside the map');
+
   // With nothing on the board there is no pawn to pick up, so the sequence
   // starts itself (D-167).
   useEffect(() => {
@@ -522,7 +603,10 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     const occupied = action.kind !== 'nothing' && !!openBody
       && !!blockAt(openBody, action.at);
     const inBounds = action.kind === 'nothing' || (!!openBody && inMap(openBody, action.at));
-    return mapAllowed(action, { occupied, inBounds });
+    // Somebody's cube is clipped out of a build by the host (R-186); a click
+    // aimed straight at one says so instead of earning a toast.
+    const standing = action.kind !== 'nothing' && standingAt(present, action.at) !== null;
+    return mapAllowed(action, { occupied, inBounds, standing });
   };
 
   const mapEdit = (action: MapAction, stroke: string | null) => {
@@ -562,12 +646,32 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
         stage.showHighlight(null, 0);
         return;
       }
+      if (openMap && stride.step === 'aiming') {
+        setStride(still);
+        return;
+      }
       panning.current = { x: e.clientX, y: e.clientY };
       return;
     }
     const picked = stage.pick(e.clientX, e.clientY);
 
     // Inside a map, the world's tool table does not apply at all (R-148).
+    if (openMap && mapTool === 'move') {
+      // Move picks tokens, then a floor (R-188). A move in progress owns the
+      // click: it confirms on a cube the member may stand in, judged where the
+      // click landed, and cancels anywhere else.
+      const act = tokenAction(picked.token, stride.step === 'aiming');
+      if (act.kind === 'confirm' && stride.step === 'aiming') {
+        const at = tokenAim(picked.face);
+        if (at && strideVerdict(stride.memberId, at) === null) {
+          dispatch(strideIntent(stride, at, openMap.placeId, openMap.poiId));
+        }
+        setStride(still);
+        return;
+      }
+      if (act.kind === 'pickToken') setStride(grab(act.memberId));
+      return;
+    }
     if (openMap) {
       const action = mapAction(mapTool, picked.face, reach);
       // Refused here as well as by the host, so a click the readout already
@@ -658,6 +762,25 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     if (panning.current) {
       stage.pan(e.clientX - panning.current.x, e.clientY - panning.current.y);
       panning.current = { x: e.clientX, y: e.clientY };
+      return;
+    }
+
+    if (openMap && mapTool === 'move') {
+      lastPointer.current = { x: e.clientX, y: e.clientY };
+      stage.showBlockGhost([]);
+      const picked = stage.pick(e.clientX, e.clientY);
+      if (stride.step === 'aiming') {
+        // The ghost follows the pointer only onto a floor the member may stand
+        // on; anywhere else the prompt says why (R-138).
+        const at = tokenAim(picked.face);
+        setStride((current) => (current.step === 'aiming'
+          ? aimStride(current, at, at ? strideVerdict(current.memberId, at) : null)
+          : current));
+        setHoverLabel(null);
+        return;
+      }
+      const name = picked.token ? memberName(picked.token.memberId) : null;
+      setHoverLabel(name ? `Pick up ${name}` : null);
       return;
     }
 
@@ -826,6 +949,8 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       if (openMap) {
         if (digit === '1') { setMapTool('build'); return; }
         if (digit === '2') { setMapTool('paint'); return; }
+        // Tools along the digits, left to right, as in the world (D-160).
+        if (digit === '3') { setMapTool('move'); return; }
         // The brushes run along the digits from 6, which is where the world's
         // terrain brushes start — the habit transfers even though the two are
         // different things (R-164). Five shapes reach 0, which is where the
@@ -846,7 +971,12 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
           });
           return;
         }
-        if (e.code === 'Escape') { setOpenMap(null); return; }
+        if (e.code === 'Escape') {
+          // A move in progress is the nearer thing to back out of (R-139).
+          if (stride.step === 'aiming') { setStride(still); return; }
+          setOpenMap(null);
+          return;
+        }
       } else {
         switch (digit) {
           case '1': setTool('select'); return;
@@ -892,8 +1022,9 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     // `openMap` belongs here. Without it the listener kept the value it was
     // mounted with, so inside a map the digits and Escape ran the *world*
     // branch: 1/2 never switched Build/Erase, Escape never left, and both
-    // quietly changed the world tool behind the map instead.
-  }, [stage, openMap]);
+    // quietly changed the world tool behind the map instead. `stride.step`
+    // for the same reason: Escape has to know whether a move is in progress.
+  }, [stage, openMap, stride.step]);
 
   return (
     <>
@@ -959,8 +1090,30 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
             tool={mapTool}
             materials={DEFAULT_MATERIALS}
             swatch={swatch}
-            hoverLabel={hoverLabel}
+            // Mid-move the readout says what the click will do, like the
+            // world's travel prompt (R-132).
+            hoverLabel={mapTool === 'move'
+              ? stridePrompt(
+                stride,
+                memberName,
+                stride.step === 'aiming' && !present.has(stride.memberId as MemberId),
+              ) ?? hoverLabel
+              : hoverLabel}
             partyHere={partyHere}
+            party={(roster ?? []).map((member) => {
+              const at = present.get(member.id as MemberId) ?? null;
+              return {
+                id: member.id,
+                name: member.name,
+                colour: member.colour,
+                standing: at !== null,
+                onTable: at !== null && (!openRange || standsInBand(openRange, at)),
+              };
+            })}
+            onPickMember={(memberId) => {
+              setMapTool('move');
+              setStride(grab(memberId));
+            }}
             partyCanSee={
               revealedPois.has(openPlace.id)
               && knownChunks.has(`${openPlace.cell.cx},${openPlace.cell.cz}`)

@@ -1,0 +1,69 @@
+{
+ "id": "campaign_muwsg5aqne2aopdg",
+ "schemaVersion": 4,
+ "name": "The Reference",
+ "party": [
+  {
+   "id": "member_muwsg5aqcelkdnfu",
+   "name": "Aldra",
+   "colour": "#57d9a3",
+   "visionRange": 12
+  },
+  {
+   "id": "member_muwsg5aqk3yh7xp7",
+   "name": "Brann",
+   "colour": "#4db8ff",
+   "visionRange": 12
+  },
+  {
+   "id": "member_muwsg5aqalkq2yjb",
+   "name": "Cass",
+   "colour": "#ffc857",
+   "visionRange": 12
+  },
+  {
+   "id": "member_muwsg5aqmyfvb9dk",
+   "name": "Dov",
+   "colour": "#ff6b6b",
+   "visionRange": 12
+  },
+  {
+   "id": "member_muwsg5aqpls3o00p",
+   "name": "Esk",
+   "colour": "#b58cff",
+   "visionRange": 12
+  },
+  {
+   "id": "member_muwsg5aqnngykf5h",
+   "name": "Fen",
+   "colour": "#ff9f43",
+   "visionRange": 12
+  }
+ ],
+ "places": [
+  {
+   "id": "place_muwsg5aqe6loghbu",
+   "name": "Toll Crossing",
+   "cell": {
+    "cx": 15,
+    "cz": 15,
+    "x": 15,
+    "z": 15
+   },
+   "markerId": "marker:village",
+   "pois": [
+    {
+     "id": "poi_muwsg5aqnh5p9wal",
+     "name": "Tollkeep",
+     "visibleToParty": true,
+     "map": null,
+     "ambience": {
+      "colour": "#cfe4ff",
+      "level": 0.4
+     }
+    }
+   ],
+   "notes": []
+  }
+ ]
+}

@@ -241,26 +241,21 @@ Save {
   campaignSchemaVersion: number
   label: string
   savedAt: string
-  party:     { at: MapRef }
+  placement: Placement                               // the world's pawns (D-155)
+  inside:    { placeId; poiId } | null               // the map the party is in (R-158)
+  ranges:    Map<PoiId, LevelRange>                  // each map's band (D-201)
+  tokens:    Map<PoiId, Map<MemberId, BlockCoord>>   // where they stand, per map (R-184)
+  lighting:  Lighting                                // the hour (R-181)
   discovery: { chunks: Set<ChunkCoord>; places: Set<PlaceId> }
-  points of interest: Map<EncounterId, EncounterState>
 }
 
-EncounterState {
-  tokens: Token[]
-  revealed: Set<CellKey>         // R-15: auto ∪ manual, minus manual hides
-  overlay: SparseVoxelGrid<MaterialId | 'removed'>   // R-9: play-mode edits
-}
-
-Token {
-  id: TokenId
-  side: 'party' | 'gm'
-  name: string
-  labelVisible: boolean          // GM toggles; false = table display gets no name
-  cell: Vec3
-  notes: string                  // GM ONLY. never serialised into a table snapshot
-  miniatureId: MiniatureId
-}
+// A token, as built: a party member standing in one cube of a map (R-184).
+// Not a record of its own — the member is the campaign's (R-91) and the cube
+// is the save's. Silver tokens, everything that is not the party, are a later
+// round (D-255), and the sketch they were drawn in once — a side, a name, a
+// label switch, GM notes (O-015), a miniature — waits for it. Per-map fog
+// (R-45's Explored set) joins `tokens` and `ranges` when vision is built.
+//
 // No posture (D-035), no facing (D-039), no speed or movement budget — nobody
 // asked for one and moving a figure is off-tool (R-1).
 ```
@@ -418,6 +413,12 @@ cube and a short far cube can land on the same pixels. These are not polish.
 > token to the cell it occupies. In an isometric view a floating figure is
 > genuinely ambiguous about which cell it stands on, and this removes the
 > ambiguity for free.
+>
+> **Amended by D-259.** A token as built stands on a base that sits on
+> the floor of its cube (R-187), and the base *is* the answer this rule asked
+> for. The stalk is drawn for the one case the base cannot answer: a token
+> with nothing under it, left floating by a trapdoor (R-186). It drops to the
+> first block below, or to bedrock.
 
 > **R-35.** Encounter maps support a **view-height clamp**: render only up to
 > level *N*. Without it a roofed or multi-level map cannot be seen into at all.
@@ -2211,6 +2212,10 @@ apps/host/src/
 
 > **R-162.** **Two tools, two modifiers, and a brush.**
 >
+> **Amended by D-258:** a third tool, **Move**, stands the party somewhere
+> (R-188). It is not about matter, so nothing below changes — the two tools for
+> matter are still these two.
+>
 > A map's toolset is **Build** and **Paint** — add or remove matter, and change
 > the colour of matter already there. Erase and Fill were tools of their own and
 > are **modes** of those two:
@@ -2868,3 +2873,135 @@ apps/host/src/
 > which no human drag is quiet for mid-gesture. Blur still commits at once,
 > since tabbing away is unambiguous. The decision it makes is `DraftInput`'s,
 > the same function: a drag that ends where it began is not an edit.
+
+---
+
+## 6k. The party's tokens
+
+> **R-184.** **A token is a party member standing in one cube of the map the
+> party is in.**
+>
+> Not a record of its own. The member is the campaign's definition (R-91) and
+> where they stand is play state (R-8): the world's pawns one surface down
+> (D-155). Silver tokens — everything that is not the party — are a later
+> round, deliberately (D-255).
+>
+> **The cube is empty and the token stands on the block beneath it.** That is
+> what makes the thing vision is waiting for well defined: R-43 measures eye
+> height from *the floor of the token's cube*, which is the top of that block.
+> Placing needs that footing; one token to a cube, for R-119's reason — a click
+> on two tokens in one cube could mean either.
+>
+> **Aimed by a block's top face**: the token goes in the cube above it. A side
+> face aims at nothing, so pointing at a wall never stands somebody on top of
+> it; a floor a wall is hiding is reached by turning the camera or cutting the
+> band.
+>
+> **Positions are remembered per map** (D-256), the way the band is (D-201).
+> Opening a map the party can see walks them into it (D-200), so a GM peeking
+> at another room would otherwise cost everyone their place in this one. Only
+> the map the party is `inside` is *present* — drawn, sent, in a brush's way;
+> the others are where they stood when they left, and the way back in drops any
+> position built over meanwhile, placing that member again.
+>
+> One intent, `moveToken`, places and moves (D-150). It names its map and is
+> refused unless the party is in it, so a move aimed at a room the party has
+> since left cannot land in another one. It is the party's own, so the table
+> seat may send it (R-136). A member who has left the roster is read out of
+> every answer rather than pruned on the spot, so undoing the removal brings
+> them back standing where they were.
+
+> **R-185.** **A token is in the band when it stands inside the storey shown —
+> its cube and the floor under it both inside.**
+>
+> A plane is a floor and belongs to what is above it (R-146), so a storey is
+> its floor's level up to the next plane. Each half of the rule shuts out a
+> different wrong answer: floor alone admits somebody on top of the storey's
+> walls, their cube level with the slab of the storey above; cube alone admits
+> somebody whose floor was cut away, drawn hanging over nothing.
+>
+> **The table is sent only those** — the third piece of save data it receives,
+> named in `viewFor` beside the party's world position and the hour (D-250,
+> D-259), and only for the map it is being shown, by the same predicate that
+> decides whether it is shown the room at all.
+>
+> **A refusal must not report what is behind a cut.** The host judges a table
+> move by the band *before* its footing, because every footing reason describes
+> a cube, and a cube outside the band is one the table was never sent.
+>
+> **The table checks its own aims from what it holds** (R-138). It is never told
+> its band, so it works out a **ceiling**: the first stop above the highest
+> level it was shown. A band always rests on a stop (R-161), so a cube below
+> that is certainly inside. Conservative on purpose — a band whose top levels
+> are empty reads as ending lower than it does, and the table then refuses a
+> cube the host would allow, which is the safe direction to be wrong in.
+>
+> The GM may stand somebody anywhere in the map; the console says out loud when
+> that puts them off the table, R-122's habit. While levelling, the console
+> holds itself to the band, as it does for building (R-159).
+
+> **R-186.** **Edits never move a token.**
+>
+> **Build clips around the party** the way it clips around blocks already
+> standing (R-162): a brush lands where it can, and refuses only when a standing
+> token's cube was all it had left. Only the tokens of the map the party is in
+> are in the way; a position remembered in a map they have left is a memory,
+> not a presence.
+>
+> **Erasing under a token is allowed** and leaves it floating. That is a
+> trapdoor, and a trapdoor is the GM's move to make; the tool does not decide
+> where the fall ends (R-1). A floating token draws the stalk R-34 now reserves
+> for exactly this case.
+>
+> **Undo is not policed.** It restores whole campaigns (R-140a), so it can put a
+> block back into a cube somebody has since stepped into. The GM moves them
+> (R-39). Positions are play state and undo never touches them (R-140).
+
+> **R-187.** **A card on a stand: a gold plate square to the grid, and on it a
+> gold clip holding a card in the member's colour — the clip and the card turn,
+> about the vertical only, to point at the camera** (D-254, D-266, D-268).
+>
+> **Exactly one cube tall** (D-269): a plate 0.63 across, and a poker card's
+> proportions, 5:7, as tall as the rest of the cube allows.
+>
+> **Amended by D-266.** It was a coin with a card that turned *fully* to the
+> camera and was unlit — which in an orthographic view looks the same from
+> every angle, a sticker on the glass. The GM's picture is a playing card in a
+> brass clip on a brass plate, and that is what is built.
+>
+> **One axis, one angle.** The clip and the card turn together by the
+> camera's own yaw, on drawn frames, so through a turn the card keeps pointing
+> at the view. **The plate does not turn** (D-268): it sits square to the cubes
+> around it and narrower than one, so at every resting view the card stands at
+> 45° across it. The card stays upright the way a real one does: from overhead
+> it is a strip, and the plate still says where they stand.
+>
+> **No effects.** Ordinary lit materials, like the cubes around it. The card is
+> the member's colour in the scene's light; the picture that will one day be
+> on it waits for its own round (D-257).
+>
+> **No token casts a shadow** (D-254): it turns whenever the camera does, so its
+> shadow would turn with the view. Moving one owes the screen a frame and owes
+> the shadow map nothing (R-180), measured: twenty moves, the map never marked
+> stale. It **receives**, as every cube does.
+>
+> **Picked by a volume that does not turn.** Each token has an invisible upright
+> cylinder for rays, so a pick never depends on which way the last drawn frame
+> left it (R-36a). Tested against the tokens alone, a wall in front of somebody
+> does not stand in the way of picking them — R-36's "through a wall", with no
+> fade needed.
+
+> **R-188.** **Move: pick a token, aim at a floor, confirm** — the world's
+> travel sequence one surface down (R-132), on both screens.
+>
+> On the console it is the map's third tool (D-258). **It arms itself** when
+> somebody is waiting to be placed: with Move in hand and the party in this
+> map, the first unplaced member in roster order is held ready, and after each
+> confirm the next (D-167). Only the console arms — the first placement is the
+> GM's. The table picks up the party's tokens directly, with no tool, as it does
+> the world's pawns (R-134).
+>
+> A move in progress **owns the click** (D-174): it confirms on a cube the
+> member may stand in, judged where the click landed, and cancels anywhere
+> else. Escape and right-click cancel (R-139). The ghost is the mover's colour
+> and appears only where the move would be made (R-138).

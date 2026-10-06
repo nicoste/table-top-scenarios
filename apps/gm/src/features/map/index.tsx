@@ -36,6 +36,21 @@ function bandName(y: number, planes: MapWire['planes']): string {
     ?? `level ${y}`;
 }
 
+/** One member of the party, as the party card lists them inside a map (R-184). */
+export interface PartyRow {
+  readonly id: string;
+  readonly name: string;
+  readonly colour: string;
+  /** Standing somewhere in this map. */
+  readonly standing: boolean;
+  /**
+   * Standing inside the band, so the table is shown them (R-185). The GM may
+   * put somebody outside it, and the card says so rather than leave the GM
+   * wondering why the table does not show them — R-122's habit.
+   */
+  readonly onTable: boolean;
+}
+
 interface Props {
   /** Which point of interest's map this is — for the heading. */
   readonly placeName: string;
@@ -55,6 +70,10 @@ interface Props {
   readonly hoverLabel: string | null;
   /** Is the party standing in *this* map (R-158)? */
   readonly partyHere: boolean;
+  /** The roster, and where each of them stands in this map (R-184). */
+  readonly party: readonly PartyRow[];
+  /** Picks a member up with the Move tool — the way in for one hard to click. */
+  onPickMember: (memberId: string) => void;
   /** Can they see it at all — Revealed, chunk Known, point of interest shown? */
   readonly partyCanSee: boolean;
   /** The band this map is cut to. Always present — an uncut map is its whole body. */
@@ -73,9 +92,10 @@ interface Props {
 
 export function MapPanel({
   placeName, poiName, map, blocks, dug, tool, brush, shifting, materials, swatch, hoverLabel,
-  partyHere, partyCanSee, range, levelling, onLevelling,
+  partyHere, party, onPickMember, partyCanSee, range, levelling, onLevelling,
   onTool, onBrush, onSwatch, onLeave, dispatch, placeId, poiId,
 }: Props) {
+  const waiting = party.filter((member) => !member.standing).length;
   // One selection, split for the two things the list highlights.
   const chosenMaterial = materialIn(swatch);
   const chosenCut = cutIdIn(swatch);
@@ -101,6 +121,33 @@ export function MapPanel({
               {isFullRange(range, MAP_MAX_HEIGHT, MAP_MIN_DEPTH)
                 ? 'the whole place'
                 : `${bandName(range.lower, map.planes)} to ${bandName(range.upper, map.planes)}`}.
+            </p>
+            {/*
+              Who is standing where (R-184). A row picks that member up with
+              Move, which is the way in for somebody hard to click — behind a
+              wall, or not placed yet.
+            */}
+            <ul className="tokens">
+              {party.map((member) => (
+                <li key={member.id}>
+                  <button onClick={() => onPickMember(member.id)}>
+                    <span className="chip" style={{ background: member.colour }} />
+                    <span className="nm">{member.name}</span>
+                    <span className="where">
+                      {!member.standing
+                        ? 'to place'
+                        : member.onTable ? 'standing' : 'not on the table'}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <p className="hint" style={{ margin: '0 0 8px' }}>
+              {waiting > 0
+                ? <>{waiting} to place — pick <b>Move</b> (key 3) and point at a floor; the next one is already in hand.</>
+                : party.some((member) => !member.onTable)
+                  ? 'Somebody is outside the levels the table is shown, so the table does not show them.'
+                  : 'Everybody is placed. Pick Move (key 3) to move them.'}
             </p>
             <div className="btn-grid campaign-actions">
               <Tooltip label="Send the party back out to the world map" placement="bottom" stretch>
@@ -144,11 +191,12 @@ export function MapPanel({
       <div className="card">
         <h2>Tool</h2>
         {/*
-          Two tools, because there are two ideas: add or remove matter, and
-          change the colour of matter that is already there (R-162). Erase and
+          Two tools for matter, because there are two ideas: add or remove it,
+          and change the colour of what is already there (R-162). Erase and
           fill were tools of their own and are modes of these two now — you
           alternate between build and erase constantly, and reaching for a
-          different button each time was the tax.
+          different button each time was the tax. The third is not about
+          matter at all: Move stands the party somewhere (D-258).
         */}
         <div className="btn-grid tools">
           <Tooltip
@@ -169,32 +217,46 @@ export function MapPanel({
               {tool === 'paint' && shifting ? '◍ Fill' : '✏ Paint'}
             </button>
           </Tooltip>
+          {/* The third tool (D-258): the party, picked and stood somewhere else. */}
+          <Tooltip
+            label="Pick a party token up and stand it on another floor — key 3"
+            placement="bottom"
+            stretch
+          >
+            <button className={`wide${tool === 'move' ? ' on' : ''}`} onClick={() => onTool('move')}>
+              ♟ Move
+            </button>
+          </Tooltip>
         </div>
 
         {/*
           Five named shapes, three flat and two upright (R-164). The flats come
           first and fill the row, so the two groups read as two groups — and
           the outline is the real label, since it takes the shape before the
-          click.
+          click. Not under Move, which lays nothing down (D-110's reason).
         */}
-        <p className="lbl" style={{ margin: '8px 0 4px' }}>Brush</p>
-        <div className="btn-grid brush">
-          {BRUSHES.map((shape, i) => (
-            <Tooltip
-              key={shape.id}
-              label={`${shape.rise > 1
-                ? `A column ${shape.rise} blocks tall, growing up — or down while ⌥ alt is held`
-                : shape.span > 1 ? `A flat ${shape.span}×${shape.span} square` : 'One cube'
-              } — key ${['6', '7', '8', '9', '0'][i]}`}
-              placement="bottom"
-              stretch
-            >
-              <button className={brush === shape.id ? 'on' : ''} onClick={() => onBrush(shape.id)}>
-                {shape.name}
-              </button>
-            </Tooltip>
-          ))}
-        </div>
+        {tool !== 'move' && (
+          <>
+            <p className="lbl" style={{ margin: '8px 0 4px' }}>Brush</p>
+            <div className="btn-grid brush">
+              {BRUSHES.map((shape, i) => (
+                <Tooltip
+                  key={shape.id}
+                  label={`${shape.rise > 1
+                    ? `A column ${shape.rise} blocks tall, growing up — or down while ⌥ alt is held`
+                    : shape.span > 1 ? `A flat ${shape.span}×${shape.span} square` : 'One cube'
+                  } — key ${['6', '7', '8', '9', '0'][i]}`}
+                  placement="bottom"
+                  stretch
+                >
+                  <button className={brush === shape.id ? 'on' : ''} onClick={() => onBrush(shape.id)}>
+                    {shape.name}
+                  </button>
+                </Tooltip>
+              ))}
+            </div>
+          </>
+        )}
 
         <p className="hint">
           {tool === 'build' && (
@@ -216,12 +278,21 @@ export function MapPanel({
               of the same cut of the same material, is repainted. The readout says how many.
             </>
           )}
+          {tool === 'move' && (
+            partyHere ? (
+              <>
+                Click a token to pick it up, then the top of a block to stand it there.
+                One to a cube, and always on something. Escape or right-click puts it
+                back down where it was.
+              </>
+            ) : 'The party is not in here, so there is nobody to move.'
+          )}
         </p>
         <p className="readout">{hoverLabel ?? '—'}</p>
-        <p className="hint">1–2 tool · 6–0 or [ ] brush · {CAMERA_HINT} · Esc leaves</p>
+        <p className="hint">1–3 tool · 6–0 or [ ] brush · {CAMERA_HINT} · Esc leaves</p>
       </div>
 
-      {(
+      {tool !== 'move' && (
         <div className="card">
           <h2>Material</h2>
           <ul className="palette swatches">

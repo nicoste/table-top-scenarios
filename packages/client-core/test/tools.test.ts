@@ -471,7 +471,7 @@ describe('the wheel zooms the same on both screens (R-156)', () => {
 describe('what a click may do while levels are hidden (R-159)', () => {
   const face = { block: { x: 4, y: 1, z: 7 }, adjacent: { x: 4, y: 2, z: 7 } };
   const aim = (over: Partial<MapAim> = {}): MapAim =>
-    ({ occupied: false, inBounds: true, ...over });
+    ({ occupied: false, inBounds: true, standing: false, ...over });
 
   it('refuses to build into a cell that already holds a block', () => {
     // Impossible while everything is drawn — a face you can see has air in
@@ -535,7 +535,7 @@ describe('a cell the map does not own (R-159)', () => {
   // same principle as the rest of R-159 — no toast for a gesture that could
   // never work.
   const edge = { block: { x: 47, y: 0, z: 0 }, adjacent: { x: 48, y: 0, z: 0 } };
-  const outside: MapAim = { occupied: false, inBounds: false };
+  const outside: MapAim = { occupied: false, inBounds: false, standing: false };
 
   it('refuses every mode, whatever else is true', () => {
     const modes: [ 'build' | 'paint', MapReach ][] = [
@@ -613,7 +613,7 @@ describe('the dig modifier (R-160)', () => {
 
   it('is refused for the same reasons an ordinary placement is', () => {
     const aim = (over: Partial<MapAim> = {}): MapAim =>
-      ({ occupied: false, inBounds: true, ...over });
+      ({ occupied: false, inBounds: true, standing: false, ...over });
     expect(mapAllowed(mapAction('build', face, dig), aim({ occupied: true })))
       .toEqual({ kind: 'stop', why: 'a block is already there' });
     expect(mapAllowed(mapAction('build', face, dig), aim({ inBounds: false })))

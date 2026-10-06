@@ -14,7 +14,10 @@ import { emptyPlacement, prunePlacement } from '../placement/index.js';
 import type { Campaign } from '../campaign/index.js';
 import type { CuttingPlane, LevelRange } from '../planes/index.js';
 import { sameRange, settleRange } from '../planes/index.js';
+import type { EncounterMap } from '../map/index.js';
 import { MAP_MAX_HEIGHT, MAP_MIN_DEPTH, WHOLE_MAP } from '../map/index.js';
+import type { Tokens, TokensJSON } from '../tokens/index.js';
+import { NO_TOKENS, settled, tokensFromJSON } from '../tokens/index.js';
 
 // 3 renames discovery's `pois` to `places`, following the campaign (D-176).
 // Like the campaign, there is no migration: the same field name meant a
@@ -59,6 +62,23 @@ export interface Save {
    * Absent means the whole body, so a map nobody has cut needs no entry.
    */
   readonly ranges: ReadonlyMap<string, LevelRange>;
+  /**
+   * Where the party stands in each map, by point of interest (R-184).
+   *
+   * **Remembered per map** (D-256), the same shape as `ranges` and for a
+   * reason of its own: opening a map the party can see walks them into it
+   * (D-200), so a GM peeking at the cellar while the party stands in the
+   * tavern moves them — and would have cost everyone their place in the room
+   * they came from if leaving forgot it.
+   *
+   * Only the entry for the map the party is `inside` is *present*: drawn,
+   * sent to the table, and in the way of a brush (R-186). The others are
+   * where they stood when they left, repaired on the way back in.
+   *
+   * A map nobody has stood in carries no entry, so the record does not fill
+   * with empty ones.
+   */
+  readonly tokens: ReadonlyMap<string, Tokens>;
   /**
    * How the scene is lit (R-181).
    *
@@ -107,6 +127,7 @@ export function createLiveSave(campaign: Campaign, savedAt: string): Save {
     placement: emptyPlacement(),
     inside: null,
     ranges: new Map(),
+    tokens: new Map(),
     lighting: DAYLIGHT,
   };
 }
@@ -196,6 +217,71 @@ export function withRange(save: Save, poiId: PoiId | string, range: LevelRange):
   if (sameRange(range, WHOLE_MAP)) ranges.delete(poiId as string);
   else ranges.set(poiId as string, range);
   return { ...save, ranges };
+}
+
+/** Where the party stands in one map — nobody, unless they have stood there (R-184). */
+export function tokensFor(save: Save, poiId: PoiId | string): Tokens {
+  return save.tokens.get(poiId as string) ?? NO_TOKENS;
+}
+
+/**
+ * One map's tokens, read straight from the record the wire carries.
+ *
+ * `tokensFor` for a caller holding no `Save`, which is every console — the
+ * same reason `rangeIn` exists beside `rangeFor`: a map nobody has stood in
+ * carries no entry, and a reader supplying that default for itself is a
+ * reader that can supply it wrong (D-208).
+ */
+export function tokensIn(
+  records: Readonly<Record<string, Readonly<TokensJSON>>>,
+  poiId: PoiId | string,
+): Tokens {
+  return tokensFromJSON(records[poiId as string]);
+}
+
+/**
+ * Replaces one map's tokens. Identity-preserving (R-165), and a map left with
+ * nobody in it loses its entry rather than keeping an empty one.
+ */
+export function withTokens(save: Save, poiId: PoiId | string, tokens: Tokens): Save {
+  if (tokensFor(save, poiId) === tokens) return save;
+  const next = new Map(save.tokens);
+  if (tokens.size === 0) next.delete(poiId as string);
+  else next.set(poiId as string, tokens);
+  return { ...save, tokens: next };
+}
+
+/**
+ * Drops the positions in one map that can no longer be stood in (D-256).
+ *
+ * Run on the way into a map. A cube built over while the party was elsewhere
+ * cannot hold a token, so that member is placed again — repaired at the
+ * boundary from what the blocks say, R-157's instinct.
+ */
+export function settleTokens(save: Save, poiId: PoiId | string, map: EncounterMap): Save {
+  return withTokens(save, poiId, settled(map, tokensFor(save, poiId)));
+}
+
+/**
+ * Forgets the positions of members who have left the roster and of maps that
+ * are gone. `pruneDiscovery`'s tolerance and its moment: a stale entry is not
+ * an error, and opening the campaign is when to stop carrying it.
+ */
+export function pruneTokens(
+  save: Save,
+  livePoiIds: ReadonlySet<string>,
+  liveMemberIds: ReadonlySet<MemberId>,
+): Save {
+  let touched = false;
+  const next = new Map<string, Tokens>();
+  for (const [poiId, tokens] of save.tokens) {
+    if (!livePoiIds.has(poiId)) { touched = true; continue; }
+    const keep = [...tokens].filter(([id]) => liveMemberIds.has(id));
+    if (keep.length !== tokens.size) touched = true;
+    if (keep.length === 0) continue;
+    next.set(poiId, keep.length === tokens.size ? tokens : new Map(keep));
+  }
+  return touched ? { ...save, tokens: next } : save;
 }
 
 /**

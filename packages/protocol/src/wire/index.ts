@@ -10,7 +10,7 @@ import {
   CHUNK_SIZE, DEFAULT_METRES_PER_LEVEL,
   chunkKey, registryId, discoveryToJSON, discoveryFromJSON, mapToJSON, mapFromJSON, sliceOf,
   packRuns, unpackRuns,
-  placementToJSON, placementFromJSON,
+  placementToJSON, placementFromJSON, tokensToJSON, tokensFromJSON,
   DAYLIGHT, OPEN_SKY, clampLighting, clampAmbience,
 } from '@tt/domain';
 
@@ -210,6 +210,15 @@ export const PlacementWireSchema = z.object({
 
 export type PlacementWire = z.infer<typeof PlacementWireSchema>;
 
+/** One cube of a map: where a token stands (R-184). */
+export const CubeWireSchema = z.object({
+  x: z.number().int(), y: z.number().int(), z: z.number().int(),
+});
+
+/** Where each placed member stands in one map, by member id (R-184). */
+export const TokensWireSchema = z.record(z.string(), CubeWireSchema);
+export type TokensWire = z.infer<typeof TokensWireSchema>;
+
 export const SaveWireSchema = z.object({
   id: z.string(),
   campaignId: z.string(),
@@ -237,6 +246,12 @@ export const SaveWireSchema = z.object({
     z.string(),
     z.object({ lower: z.number().int(), upper: z.number().int() }),
   ).default({}),
+  /**
+   * Where the party stands in each map, keyed by point of interest (R-184,
+   * D-256). Absent in every save written before tokens existed, which is a
+   * party nobody has placed — what those saves meant, so no bump (D-187).
+   */
+  tokens: z.record(z.string(), TokensWireSchema).default({}),
   /**
    * How the scene is lit (R-181). Absent means daylight, which is what every
    * save written before there was a sun to set already meant — no bump, for
@@ -368,6 +383,9 @@ export function encodeSave(save: Save): SaveWire {
     ranges: Object.fromEntries(
       [...save.ranges].map(([poiId, range]) => [poiId, { lower: range.lower, upper: range.upper }]),
     ),
+    tokens: Object.fromEntries(
+      [...save.tokens.keys()].sort().map((poiId) => [poiId, tokensToJSON(save.tokens.get(poiId)!)]),
+    ),
     lighting: { ...save.lighting, ambience: { ...save.lighting.ambience } },
   };
 }
@@ -389,6 +407,13 @@ export function decodeSave(wire: SaveWire): Save {
       }
       : null,
     ranges: new Map(Object.entries(wire.ranges)),
+    // A map whose record arrived empty is a map nobody stands in, and keeps no
+    // entry — the same as one that never had any (`withTokens`).
+    tokens: new Map(
+      Object.entries(wire.tokens)
+        .filter(([, tokens]) => Object.keys(tokens).length > 0)
+        .map(([poiId, tokens]) => [poiId, tokensFromJSON(tokens)]),
+    ),
     // Clamped on the way in: a save file is as much an input as a socket is.
     lighting: clampLighting(wire.lighting),
   };
