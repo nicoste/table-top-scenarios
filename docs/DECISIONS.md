@@ -5697,3 +5697,37 @@ Section 3's enforcement list still named TypeScript project references, which
 D-059 removed: an import of an undeclared package typechecks, and only
 `npm run arch` fails it. The list now says so. No new choice, only D-059
 written where it was missed.
+
+### D-265 — The wheel's `preventDefault` never ran · `closed`
+Found in the Browser pane, on both screens: every wheel tick over the canvas
+logged `Unable to preventDefault inside passive event listener invocation.`
+
+React attaches its `wheel`, `touchstart` and `touchmove` listeners as
+**passive**, so the `preventDefault` in each shell's `onWheel` was ignored —
+with that error, once per tick — and whatever the browser does with a wheel
+went ahead regardless. The zoom itself worked, so nothing on screen said
+anything was wrong.
+
+**Both shells now add their own listener** to the canvas with
+`passive: false`, in an effect keyed on the canvas and the stage. The canvas
+comes from `useStage`, which already held it in state for the playbook's
+callback-ref gotcha; an effect reading a ref would find no canvas on the first
+run and never look again.
+
+**And the step moved to `client-core`.** Each shell spelled out
+`deltaY > 0 ? 1.12 : 1 / 1.12` for itself — the wheel was the one camera
+control still kept in parity by two files remembering it, which is what D-197
+ended for the keys. `wheelZoom` now sits beside `cameraAction`, with its tests
+under R-156.
+
+**Behaviour unchanged, and measured.** Before and after, each build on an
+isolated host with its own copy of the data: the old one logged an error per
+tick and left `defaultPrevented` false on both screens; the new one logs
+nothing and cancels the event. On the console three ticks out take the zoom
+from 34 to 47.77, which is 34 × 1.12³, and three back return it to 34 exactly.
+On the table three ticks in frame the scene identically on both builds, and
+three out return to where it opened.
+
+Kept as it was, and worth a decision of its own: an event with no vertical
+movement — `deltaY` of 0, a sideways scroll — counts as scrolling up, so it
+zooms in.

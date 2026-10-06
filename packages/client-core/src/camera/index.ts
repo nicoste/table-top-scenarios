@@ -30,6 +30,21 @@ export function cameraAction(code: string): CameraAction | null {
   }
 }
 
+/** How far one wheel tick zooms, as a factor on the zoom. */
+const WHEEL_STEP = 1.12;
+
+/**
+ * What one wheel tick does to the zoom: the factor both screens hand to
+ * `nudgeZoom`, for the keys' reason — one rule, one place (R-156).
+ *
+ * The zoom is how much of the world is in view, so scrolling down (a positive
+ * `deltaY`) zooms out and scrolling up zooms in by exactly as much. A tick is a
+ * tick: how far the wheel says it moved is not read.
+ */
+export function wheelZoom(deltaY: number): number {
+  return deltaY > 0 ? WHEEL_STEP : 1 / WHEEL_STEP;
+}
+
 /**
  * The one line of help both screens show, so they cannot describe different
  * controls from the ones `cameraAction` implements.

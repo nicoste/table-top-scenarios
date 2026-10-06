@@ -12,6 +12,12 @@ import { keepRecent } from '@tt/client-core';
 
 export function useStage(): {
   setCanvas: (canvas: HTMLCanvasElement | null) => void;
+  /**
+   * The canvas once it is mounted — from state, for the reason above — for the
+   * listeners a shell has to attach itself rather than through React: the
+   * wheel's, which must not be passive.
+   */
+  canvas: HTMLCanvasElement | null;
   stage: Stage | null;
   /**
    * Recent frame intervals in ms (R-166).
@@ -92,5 +98,5 @@ export function useStage(): {
     };
   }, [canvas]);
 
-  return { setCanvas, stage, frames, draws };
+  return { setCanvas, canvas, stage, frames, draws };
 }

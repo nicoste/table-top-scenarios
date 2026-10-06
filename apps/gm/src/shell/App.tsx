@@ -17,7 +17,7 @@ import type { Tool, Travel } from '@tt/client-core';
 import {
   idle, pick, armed, aim, ghostCell, canConfirm, travelIntent, travelPrompt,
   clickAction, holdsSelection, mapAction, mapHover, mapDrags, mapAllowed,
-  cameraAction, CAMERA_HINT,
+  cameraAction, wheelZoom, CAMERA_HINT,
 } from '@tt/client-core';
 import type { MapAction, MapReach, MapTool } from '@tt/client-core';
 import { useStage } from '../scene/use-stage.js';
@@ -140,7 +140,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    * one place per cell (R-119) makes the cell an unambiguous handle until then.
    */
   const pendingPlaceCell = useRef<string | null>(null);
-  const { setCanvas, stage, frames, draws } = useStage();
+  const { setCanvas, canvas, stage, frames, draws } = useStage();
   const cost = useCost(stage, frames, draws);
   const openedId = useRef<string | null>(null);
   const drag = useRef<{ startY: number; base: number; cell: { cx: number; cz: number; x: number; z: number } } | null>(null);
@@ -780,10 +780,22 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     stage?.showBlockGhost([]);
   };
 
-  const onWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
-    stage?.nudgeZoom(e.deltaY > 0 ? 1.12 : 1 / 1.12);
-  };
+  /*
+   * The wheel zooms, by the same step as on the table (R-156). Attached here
+   * with `passive: false` rather than as `onWheel`, because React attaches
+   * wheel handlers as passive: the `preventDefault` in one is ignored, with an
+   * error in the console on every tick. Keyed on the canvas in state, not a
+   * ref, for the reason `useStage` gives.
+   */
+  useEffect(() => {
+    if (!canvas || !stage) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      stage.nudgeZoom(wheelZoom(e.deltaY));
+    };
+    canvas.addEventListener('wheel', onWheel, { passive: false });
+    return () => canvas.removeEventListener('wheel', onWheel);
+  }, [canvas, stage]);
 
   useEffect(() => {
     /**
@@ -892,7 +904,6 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
           onPointerMove={onPointerMove}
           onPointerUp={endGesture}
           onPointerLeave={onPointerLeave}
-          onWheel={onWheel}
           onContextMenu={(e) => e.preventDefault()}
         />
       </div>

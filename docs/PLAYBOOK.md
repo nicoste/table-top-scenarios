@@ -169,3 +169,14 @@ again**. The symptom is silent: no error, no console output, a canvas stuck at i
 default 300×150 backing store, and a black screen.
 
 The same applies to anything that must attach to a conditionally rendered element.
+
+---
+
+## Gotcha: `preventDefault` inside React's `onWheel` does nothing
+
+React attaches `wheel`, `touchstart` and `touchmove` listeners as **passive**, so
+`e.preventDefault()` in `onWheel` is ignored, and Chrome logs `Unable to
+preventDefault inside passive event listener invocation.` on every tick. A handler
+that has to cancel the browser's own handling adds its listener itself, with
+`{ passive: false }`, in an effect keyed on the element in state as above. The
+wheel zoom in both shells is the example (D-265).

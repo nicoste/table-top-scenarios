@@ -18,7 +18,7 @@ export { grabEnd } from './levels/index.js';
 export { FRAME_WINDOW, keepRecent, summarise, rate } from './metrics/index.js';
 export type { Frames } from './metrics/index.js';
 
-export { cameraAction, CAMERA_HINT } from './camera/index.js';
+export { cameraAction, wheelZoom, CAMERA_HINT } from './camera/index.js';
 export type { CameraAction } from './camera/index.js';
 export type {
   ClickAction, TableAction, MapAction, MapHover, MapAim, MapReach, MapVerdict, FillReach,

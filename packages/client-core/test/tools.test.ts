@@ -5,7 +5,7 @@ import { describe, it, expect } from 'vitest';
 import type { Cell, Pointed } from '@tt/client-core';
 import {
   clickAction, holdsSelection, tableAction, mapAction, mapHover, mapDrags, mapAllowed,
-  cameraAction, CAMERA_HINT,
+  cameraAction, wheelZoom, CAMERA_HINT,
 } from '@tt/client-core';
 import type { MapAction, MapAim, MapReach } from '@tt/client-core';
 import { brushById } from '@tt/domain';
@@ -453,6 +453,18 @@ describe('the camera keys are the same on both screens (R-156)', () => {
     for (const key of ['Q/E', 'R/F']) expect(CAMERA_HINT).toContain(key);
     expect(CAMERA_HINT).toContain('pan');
     expect(CAMERA_HINT).toContain('zoom');
+  });
+});
+
+describe('the wheel zooms the same on both screens (R-156)', () => {
+  it('zooms out scrolling down and in scrolling up', () => {
+    // The zoom is how much of the world is in view, so out is a factor above one.
+    expect(wheelZoom(100)).toBeGreaterThan(1);
+    expect(wheelZoom(-100)).toBeLessThan(1);
+  });
+
+  it('comes back to where it started after a tick each way', () => {
+    expect(wheelZoom(100) * wheelZoom(-100)).toBeCloseTo(1, 12);
   });
 });
 

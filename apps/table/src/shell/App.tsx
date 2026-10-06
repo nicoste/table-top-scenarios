@@ -15,7 +15,7 @@ import type { Intent, TableView } from '@tt/protocol';
 import type { Travel } from '@tt/client-core';
 import {
   idle, pick, aim, ghostCell, canConfirm, travelIntent, travelPrompt, tableAction,
-  cameraAction, CAMERA_HINT,
+  cameraAction, wheelZoom, CAMERA_HINT,
 } from '@tt/client-core';
 import { defaultTarget, worldCentre } from '@tt/render';
 import { useStage } from '../scene/use-stage.js';
@@ -34,7 +34,7 @@ interface Props {
 const CLICK_SLOP = 4;
 
 export function App({ view, status, rejection, dispatch }: Props) {
-  const { setCanvas, stage, frames, draws } = useStage();
+  const { setCanvas, canvas, stage, frames, draws } = useStage();
   const cost = useCost(stage, frames, draws);
   const openedId = useRef<string | null>(null);
   const drag = useRef<{ x: number; y: number; moved: boolean } | null>(null);
@@ -157,6 +157,23 @@ export function App({ view, status, rejection, dispatch }: Props) {
     return () => window.removeEventListener('keydown', onKey);
   }, [travel.step, stage]);
 
+  /*
+   * The wheel zooms, by the same step as on the console (R-156). Attached here
+   * with `passive: false` rather than as `onWheel`, because React attaches
+   * wheel handlers as passive: the `preventDefault` in one is ignored, with an
+   * error in the console on every tick. Keyed on the canvas in state, not a
+   * ref, for the reason `useStage` gives.
+   */
+  useEffect(() => {
+    if (!canvas || !stage) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      stage.nudgeZoom(wheelZoom(e.deltaY));
+    };
+    canvas.addEventListener('wheel', onWheel, { passive: false });
+    return () => canvas.removeEventListener('wheel', onWheel);
+  }, [canvas, stage]);
+
   const onPointerMove = (event: React.PointerEvent) => {
     if (drag.current) {
       const dx = event.clientX - drag.current.x;
@@ -252,7 +269,6 @@ export function App({ view, status, rejection, dispatch }: Props) {
             if (!dragged) onClick(e);
           }}
           onPointerLeave={() => { drag.current = null; }}
-          onWheel={(e) => { e.preventDefault(); stage?.nudgeZoom(e.deltaY > 0 ? 1.12 : 1 / 1.12); }}
           onContextMenu={(e) => e.preventDefault()}
         />
       </div>
