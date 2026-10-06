@@ -5665,3 +5665,35 @@ the above applies to it. A token walking into a building's shadow would
 visibly darken. Whether that is wanted is legibility, not cost — on a shared
 screen a token you can always see may beat a token that is correctly lit — and
 it can be settled when there is a token to look at.
+
+### D-264 — The seed is typechecked, and `scripts/` stays outside the graph · `agreed`
+R-73 says one `tsc -p tsconfig.json` typechecks the whole repo, but its
+`include` names the workspaces folder by folder, and `scripts/` arrived later
+(D-247) without joining it. Nothing checked the seed's types — not even
+`npm run seed`, because `tsx` strips types without checking them. A domain
+signature changing under it would show only if it broke at run time;
+otherwise it could quietly build a different scene, and every figure in
+MEASUREMENTS.md is anchored to that scene (R-179).
+
+**One program, one more folder.** `scripts/**/*` joins the `include` rather
+than getting a tsconfig of its own, which R-73 rules out. Node types need
+nothing: no `types` list is set, so `@types/node` loads for the whole program,
+as it already does for the host.
+
+**It stays outside the dependency graph.** R-5's graph is of workspaces, and
+`scripts/` is not one — that would be an R-7 decision of its own. ESLint
+already lints it, R-6's package-specifier check included. Adding it to
+`npm run arch` was tried and adds nothing: the layer and barrel rules all start
+from `packages/` or `apps/`. **The edge left open:** a relative import from
+`scripts/` past a package's barrel passes `npm run verify`. The seed imports
+barrels only, and closing that would be a rule of its own.
+
+**The rest of what sat outside joins too:** `test/**/*`, so the guard that keeps
+the docs honest (R-102) has its own types checked, and `vitest.config.ts` and
+`apps/*/vite.config.ts`. All of it already typechecked. `eslint.config.js` is
+JavaScript and stays out.
+
+Section 3's enforcement list still named TypeScript project references, which
+D-059 removed: an import of an undeclared package typechecks, and only
+`npm run arch` fails it. The list now says so. No new choice, only D-059
+written where it was missed.

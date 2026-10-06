@@ -127,7 +127,7 @@ Consequences worth stating out loud, because they are the point:
 
 ### Enforcement — the teeth
 
-Rules that aren't checked are decoration. All four run in CI and on pre-commit:
+Rules that aren't checked are decoration. All three run in CI and on pre-commit:
 
 1. **`dependency-cruiser`** — *the authority on the graph.* `npm run arch`. The
    rules are generated from the same graph object above, are repo-root aware, and
@@ -136,16 +136,21 @@ Rules that aren't checked are decoration. All four run in CI and on pre-commit:
    `error layer:table: apps/table/src/leak.ts → apps/gm/src/index.ts`.
 2. **npm workspaces + `exports`.** Each `package.json` exposes only `"."`, so a
    deep path is not resolvable at runtime.
-3. **TypeScript project references.** A package that isn't a declared dependency
-   fails `npm run typecheck`.
-4. **ESLint `no-restricted-imports`.** Narrow but exact: it catches deep imports
+3. **ESLint `no-restricted-imports`.** Narrow but exact: it catches deep imports
    written as package specifiers (`@tt/domain/src/index.js`). It deliberately
    does *not* police relative-path escapes — a depth heuristic cannot distinguish
    `../../index.js` inside one package from `../../other/src/index.js` across two.
    Rule 1 owns that case.
 
-`npm run verify` runs all four plus tests. Verified at scaffold time: deliberately
-importing `apps/gm` from `apps/table`, and `domain` from `geometry`, both fail.
+**TypeScript does not enforce the graph.** The root `tsconfig.json` maps every
+package for every file, so an import of a package that isn't a declared
+dependency typechecks, and only rule 1 fails it. Project references once made
+the typecheck a second enforcement and were dropped for that reason (D-059,
+R-73).
+
+`npm run verify` runs the typecheck, rules 1 and 3, and the tests. Verified at
+scaffold time: deliberately importing `apps/gm` from `apps/table`, and `domain`
+from `geometry`, both fail.
 
 > **R-6.** A package's public surface is its `index.ts` and nothing else.
 > Everything else is `internal/` and invisible. Widening the surface is a

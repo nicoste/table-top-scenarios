@@ -60,6 +60,10 @@
     "packages/protocol/test/**/*",
     "packages/render/test/**/*",
     "packages/sim/test/**/*",
-    "packages/ui/test/**/*"
+    "packages/ui/test/**/*",
+    "scripts/**/*",
+    "test/**/*",
+    "vitest.config.ts",
+    "apps/*/vite.config.ts"
   ]
 }
