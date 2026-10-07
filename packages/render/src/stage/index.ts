@@ -135,6 +135,8 @@ export interface StageCost {
   readonly programs: number;
   /** Milliseconds the last map body took to build. */
   readonly rebuildMs: number;
+  /** How many times geometry was built — a map body or the world (R-19a). */
+  readonly rebuilds: number;
   /** How many cubes are drawn, or zero outside a map. */
   readonly blocks: number;
   /** Milliseconds the GPU spent on a recent frame, or null where unavailable. */
@@ -209,6 +211,14 @@ export class Stage {
   private readonly blockGhost: LineSegments;
   /** How long the last map body took to build — the usual cause of a hitch. */
   private rebuildMs = 0;
+  /**
+   * How many times geometry has been built since this stage was made: a map
+   * body or the world. Play state must never add to it (R-19a), and before
+   * D-270 every message from the host did, on both screens.
+   */
+  private rebuilds = 0;
+  /** The materials the body on screen was built with, so a repeat is known. */
+  private shownMaterials: readonly Material[] | null = null;
   /*
    * Nothing in this scene moves on its own (R-170). A map on a table is still
    * for minutes at a time while the GM looks at it and talks, and redrawing an
@@ -477,8 +487,25 @@ export class Stage {
   }
 
   setCampaign(campaign: Campaign | null, recentre = false): void {
+    /*
+     * The campaign on screen, handed over again, is not rebuilt (R-19a). The
+     * world is the most expensive thing on the stage to build, and both
+     * screens call this from effects that rerun for reasons of their own —
+     * which, before D-270, meant on every message the host sent.
+     */
+    if (campaign === this.campaign) {
+      if (recentre && campaign) this.setTarget({ ...this.target, focus: worldCentre(campaign.world) });
+      return;
+    }
     this.invalidate();
-    if (this.world) { this.scene.remove(this.world.mesh); this.world.dispose(); this.world = null; }
+    /*
+     * The terrain is the world's alone, so a campaign that changed somewhere
+     * else — a cube placed in a cellar, a place renamed — keeps the terrain it
+     * has (D-270). The decoder hands back the same `World` for an unchanged
+     * world, which is what makes this an identity check.
+     */
+    const sameWorld = campaign !== null && this.world !== null && campaign.world === this.campaign?.world;
+    if (this.world && !sameWorld) { this.scene.remove(this.world.mesh); this.world.dispose(); this.world = null; }
     if (this.places) { this.scene.remove(this.places.group); this.places.dispose(); this.places = null; }
     this.dropPawns();
     this.campaign = campaign;
@@ -489,14 +516,18 @@ export class Stage {
       (mesh.material as MeshBasicMaterial).dispose();
     }
     this.slotMeshes = [];
-    if (this.grid) { this.scene.remove(this.grid); this.grid.dispose(); this.grid = null; }
+    if (this.grid && !sameWorld) { this.scene.remove(this.grid); this.grid.dispose(); this.grid = null; }
     if (!campaign) return;
 
-    this.world = buildWorldMeshes(campaign);
-    this.world.mesh.castShadow = true;
-    this.world.mesh.receiveShadow = true;
-    this.scene.add(this.world.mesh);
-    if (!this.showingMap) this.fitShadows(CHUNK_SIZE * 3, worldCentre(campaign.world));
+    if (!sameWorld) {
+      const world = buildWorldMeshes(campaign);
+      this.world = world;
+      this.rebuilds++;
+      world.mesh.castShadow = true;
+      world.mesh.receiveShadow = true;
+      this.scene.add(world.mesh);
+      if (!this.showingMap) this.fitShadows(CHUNK_SIZE * 3, worldCentre(campaign.world));
+    }
 
     this.places = buildPlaceMarkers(campaign);
     this.scene.add(this.places.group);
@@ -505,9 +536,11 @@ export class Stage {
     this.rebuildPawns();
 
     const centre = worldCentre(campaign.world);
-    this.grid = new GridHelper(CHUNK_SIZE * 24, 24, 0x2a3140, 0x1b2028);
-    this.grid.position.set(centre.x, 0.01, centre.z);
-    this.scene.add(this.grid);
+    if (!this.grid) {
+      this.grid = new GridHelper(CHUNK_SIZE * 24, 24, 0x2a3140, 0x1b2028);
+      this.grid.position.set(centre.x, 0.01, centre.z);
+      this.scene.add(this.grid);
+    }
 
     if (recentre) this.setTarget({ ...this.target, focus: centre });
 
@@ -645,6 +678,13 @@ export class Stage {
     materials: readonly Material[],
     key: string | null = null,
   ): void {
+    const next = map ? key : null;
+    /*
+     * The body on screen, handed over again, is not rebuilt (R-19a, D-270):
+     * what changes it is an edit or a different slice, and both arrive as a
+     * new object. Fog, tokens and the hour never do, which is the point.
+     */
+    if (map === this.shownMap && materials === this.shownMaterials && next === this.surface) return;
     this.invalidate();
     if (this.blocks) {
       this.scene.remove(this.blocks.group);
@@ -652,7 +692,6 @@ export class Stage {
       this.blocks = null;
     }
 
-    const next = map ? key : null;
     const move = surfaceMove(this.surface, next);
     this.surface = next;
 
@@ -660,6 +699,7 @@ export class Stage {
       const begun = performance.now();
       this.blocks = buildBlockBody(map, materials);
       this.rebuildMs = performance.now() - begun;
+      this.rebuilds++;
       // A body is rebuilt on every edit, so the switch has to be re-applied to
       // the new materials or placing one cube would turn the figures back on.
       this.blocks.setFigures(this.figuring);
@@ -685,6 +725,7 @@ export class Stage {
     // The tokens ride on the body: a new body can have opened a trapdoor under
     // somebody, and no map at all means nobody to draw (R-34, R-148).
     this.shownMap = map;
+    this.shownMaterials = materials;
     this.rebuildTokens();
     this.applySurface();
 
@@ -1100,6 +1141,7 @@ export class Stage {
       textures: info.memory.textures,
       programs: info.programs?.length ?? 0,
       rebuildMs: this.rebuildMs,
+      rebuilds: this.rebuilds,
       blocks: this.blocks?.count ?? 0,
       gpuMs: this.gpuMs,
     };

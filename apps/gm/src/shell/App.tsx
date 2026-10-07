@@ -330,12 +330,14 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     // R-79 lives in domain; the console draws from it and never restates it.
     stage.setSlots(creatableSlots(decoded.world));
     stage.setFogChunks(unknownChunks);
-  }, [campaign, stage, view?.save]);
+    // Discovery, not the whole save: a token stepping or the hour turning
+    // changes the save and has nothing to do with the world (R-19a, D-270).
+  }, [campaign, stage, view?.save?.discovery]);
 
   // The party moves far more often than the world changes (R-19a).
   useEffect(() => {
     stage?.setPlacement(view?.save ? decodePlacement(view.save.placement) : null);
-  }, [view?.save, stage]);
+  }, [view?.save?.placement, stage]);
 
   useEffect(() => {
     stage?.aimAt(ghostCell(travel));

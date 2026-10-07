@@ -22,6 +22,11 @@ export interface Reading {
   readonly programs: number;
   /** Milliseconds the last map body took to build. */
   readonly rebuildMs: number;
+  /**
+   * How many times geometry was built since the screen opened. Moving a token
+   * or turning the hour must not add to it (R-19a).
+   */
+  readonly rebuilds: number;
   readonly blocks: number;
   /** Bytes in the last view that arrived, and how many arrived this second. */
   readonly payload: number;
@@ -104,6 +109,8 @@ export function Metrics({ reading, hint }: MetricsProps) {
 
         <dt>last rebuild</dt>
         <dd className={reading.rebuildMs > 20 ? 'hot' : ''}>{ms(reading.rebuildMs)}</dd>
+        <dt>rebuilds</dt>
+        <dd>{count(reading.rebuilds)}</dd>
         <dt>last push</dt>
         <dd>{kib(reading.payload)}</dd>
         <dt>pushes/s</dt>

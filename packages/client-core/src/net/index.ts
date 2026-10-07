@@ -2,6 +2,7 @@
 // never touch the network.
 
 import type { Intent, OutboundMessage, Role, View } from '@tt/protocol';
+import { keepUnchanged } from '../store/index.js';
 
 export interface Connection {
   dispatch(intent: Intent): void;
@@ -32,6 +33,12 @@ export function connect(role: 'gm' | 'table', handlers: Handlers): Connection {
   let socket: WebSocket | null = null;
   let closed = false;
   let retry: ReturnType<typeof setTimeout> | null = null;
+  /**
+   * The last view handed on, so the next one can keep whatever did not change
+   * (R-19a). Kept across reconnects: a map that comes back the same after a
+   * dropped socket is still the map on screen.
+   */
+  let last: View | null = null;
 
   const url = () => {
     const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
@@ -59,7 +66,10 @@ export function connect(role: 'gm' | 'table', handlers: Handlers): Connection {
       let message: OutboundMessage;
       try { message = JSON.parse(raw) as OutboundMessage; } catch { return; }
       if (message.type === 'hello') handlers.onRole(message.role);
-      else if (message.type === 'view') handlers.onView(message.view);
+      else if (message.type === 'view') {
+        last = keepUnchanged(last, message.view);
+        handlers.onView(last);
+      }
       else if (message.type === 'rejected') handlers.onRejected(message.reason);
     };
     ws.onclose = () => {

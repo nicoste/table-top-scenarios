@@ -3,7 +3,7 @@
 export { connect } from './net/index.js';
 export type { Connection, Handlers } from './net/index.js';
 
-export { initialServerState, initialViewState } from './store/index.js';
+export { initialServerState, initialViewState, keepUnchanged } from './store/index.js';
 export type { ServerState, ViewState, Tool, MapTool } from './store/index.js';
 
 export { idle, GROUP, pick, armed, aim, ghostCell, canConfirm, travelIntent, travelPrompt } from './travel/index.js';

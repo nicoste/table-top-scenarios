@@ -548,18 +548,36 @@ export function decodeChunk(wire: ChunkWire): Chunk {
   return { coord: { cx: wire.cx, cz: wire.cz }, columns };
 }
 
+/**
+ * A world decoded once per wire object (D-270), so a screen handed the same
+ * world again gets the same `World` back and the stage can see that nothing
+ * about the terrain changed.
+ *
+ * The decode side of D-219's cache, and resting on the same thing from the
+ * other end: a screen keeps the parts of a view that did not change as the
+ * objects it already holds (R-19a), and nothing ever edits a wire value in
+ * place. A map edit makes a new campaign, but the world inside it is the world
+ * the screen already had, and rebuilding its terrain for a cube placed in a
+ * cellar is what this avoids.
+ */
+const decodedWorlds = new WeakMap<object, World>();
+
 export function decodeWorld(wire: z.infer<typeof WorldWireSchema>): World {
+  const already = decodedWorlds.get(wire);
+  if (already) return already;
   const chunks = new Map<string, Chunk>();
   for (const c of wire.chunks) {
     const chunk = decodeChunk(c);
     chunks.set(chunkKey(chunk.coord), chunk);
   }
-  return {
+  const world: World = {
     bounds: wire.bounds,
     metresPerCell: wire.metresPerCell,
     metresPerLevel: wire.metresPerLevel,
     chunks,
   };
+  decodedWorlds.set(wire, world);
+  return world;
 }
 
 export function decodeCampaign(wire: CampaignWire): Campaign {

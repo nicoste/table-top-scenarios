@@ -180,3 +180,13 @@ preventDefault inside passive event listener invocation.` on every tick. A handl
 that has to cancel the browser's own handling adds its listener itself, with
 `{ passive: false }`, in an effect keyed on the element in state as above. The
 wheel zoom in both shells is the example (D-265).
+
+---
+
+## Gotcha: an effect keyed on the whole view reruns on every message
+
+A screen keeps the parts of a view that did not change as the objects it already
+holds (D-270), so a memo or an effect keyed on `view.save.discovery` reruns only
+when discovery changes. Key it on `view.save` and it reruns whenever anything in
+the save does — a token stepping, the hour turning — and whatever it builds is
+built again. Key an effect on the part of the view it actually reads.

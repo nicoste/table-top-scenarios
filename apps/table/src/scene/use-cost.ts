@@ -113,6 +113,7 @@ export function useCost(
         textures: cost?.textures ?? 0,
         programs: cost?.programs ?? 0,
         rebuildMs: cost?.rebuildMs ?? 0,
+        rebuilds: cost?.rebuilds ?? 0,
         blocks: cost?.blocks ?? 0,
         payload,
         pushes: rate(arrivals, performance.now()),

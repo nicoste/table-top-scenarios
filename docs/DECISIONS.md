@@ -6029,3 +6029,47 @@ ceiling: a token in a passage one cube high still fits, its top edge touching
 the roof. The pick volume was already a cube tall and wide enough for the new
 card at any turn. At rest, turned 45° across the plate, the card's corners
 reach 0.235 from the centre along the grid against the plate's 0.315.
+
+### D-270 — Every message rebuilt the map, and the world with it · `closed`
+Found while reading for the vision round, which made it urgent: fog changes on
+every step a token takes, and R-69 keeps fog an attribute precisely so a step
+never rebuilds a mesh. Both screens were rebuilding the map and the world on
+**every message from the host** — measured with a counter added to the cost
+readout for the purpose: one notch of the hour slider, play state and nothing
+else, built the world and the map again on the console and on the table.
+
+**Why.** Every message is parsed from text, so every part of it arrives as a
+new object, and both screens decide what to rebuild by identity — a decode
+memoised on the map's wire, an effect keyed on the campaign. A map that came
+back equal was never the same map. R-19a's two channels were written down and
+never held on the screen side.
+
+**Three changes, each small:**
+
+- **The screen keeps what did not change** (`keepUnchanged`, in client-core's
+  net client). The view that arrives has every part that is equal by value
+  replaced by the object the screen already holds; anything that changed is new
+  all the way up. Still replaced wholesale (R-64) — nothing is mutated. 0.05 ms
+  a message on the reference scene.
+- **The stage skips what it already has.** `setMap` with the body, materials
+  and surface on screen, and `setCampaign` with the campaign on screen, return
+  without building. And the terrain is rebuilt only when the *world* changed:
+  a map edit makes a new campaign, but decoding hands back the same `World`
+  for an unchanged world wire (a cache like D-219's, on the decode side), so a
+  cube placed in a cellar no longer rebuilds the terrain outside.
+- **The console's effects read what they use.** Its campaign effect was keyed
+  on the whole save, so a token stepping re-ran it; it reads discovery, so it
+  is keyed on discovery. The same for the pawns and the placement.
+
+**Measured** on the reference scene, both screens, the counter in the readout:
+
+| | before | after |
+| --- | --- | --- |
+| the hour changed | world and map rebuilt | **nothing** |
+| one block placed | world and map | **the map** |
+| undo | — | **the map** |
+
+**And a correction.** D-261 measured that a move never marks the shadow map
+stale — through the stage's debug handle, calling `setTokens` directly. True of
+the stage. False of the screens until now: the message every move produced
+rebuilt the map, and a rebuilt map restages the shadows.

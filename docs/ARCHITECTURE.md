@@ -974,6 +974,13 @@ D-035. Numbers are not reused; decisions cite them.
 > The reason is not bandwidth; on a LAN that is free. It is that resending
 > geometry forces the client to **re-mesh**, which stutters visibly on every
 > token step. Applying play state only changes materials, which is cheap.
+>
+> **Held on the screen side since D-270**, which found both screens rebuilding
+> the map and the world on every message. A message arrives as new objects, so
+> the screen keeps each part that is equal to what it already holds, and the
+> stage builds nothing it already has — terrain included, which is rebuilt only
+> when the world changed. The cost readout counts rebuilds so this stays
+> measured: a token step or a turn of the hour adds none.
 
 ---
 

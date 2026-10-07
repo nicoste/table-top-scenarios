@@ -196,6 +196,23 @@ on (R-177) and a transparent sea in frame.
 | frame p50 / p95 | 33.3 / 34.9 ms, against the 33 ms cap (R-169) |
 | worst | 48.9 ms — the frame the map opens on, which builds the body in it |
 
+### What a message rebuilds (added 6 October 2026)
+
+Counted with the readout's `rebuilds` row — every map body or world built since
+the screen opened — on both screens at once, in the **Pane**, the reference
+scene open on the console and the table (D-270):
+
+| | before | after |
+| --- | --- | --- |
+| one notch of the hour | world and map, on both screens | **nothing** |
+| one block placed | world and map | **the map** |
+| undo | — | **the map** |
+| keeping what did not change, per message | — | **0.05 ms** median, 0.26 ms worst (GM's view, 11.6 KiB, node) |
+
+The hour is play state and nothing else, so before this every message —
+every token step among them — rebuilt the whole scene on both screens and
+restaged the shadows with it.
+
 ---
 
 ## Older baselines, on a scene that no longer exists
