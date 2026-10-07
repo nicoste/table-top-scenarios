@@ -45,6 +45,20 @@ export interface Standing {
   readonly at: BlockCoord;
 }
 
+/**
+ * The party's fog over the map on screen (R-45, D-273).
+ *
+ * `shown` is the blocks the party has been shown at all, or `null` when every
+ * block handed over is one — the table's case, since it was only ever sent
+ * those (R-85). The console's preview passes the set, and what is outside it
+ * is drawn as nothing (R-76).
+ */
+export interface StageFog {
+  /** The blocks the party sees now. */
+  readonly lit: ReadonlySet<string>;
+  readonly shown: ReadonlySet<string> | null;
+}
+
 export interface SlotAddress { readonly cx: number; readonly cz: number }
 
 /**
@@ -270,6 +284,8 @@ export class Stage {
   private standing: readonly Standing[] = [];
   /** Where the move ghost is, so a rebuild under it can put it back. */
   private aimed: { at: BlockCoord; colour: string | undefined } | null = null;
+  /** The party's fog, kept so a rebuilt body is drawn under it too (R-69). */
+  private partyFog: StageFog | null = null;
   /**
    * Which surface is on screen: `null` for the world, otherwise a map's key.
    * Compared against the key `setMap` is handed, so the camera reacts to a
@@ -703,6 +719,8 @@ export class Stage {
       // A body is rebuilt on every edit, so the switch has to be re-applied to
       // the new materials or placing one cube would turn the figures back on.
       this.blocks.setFigures(this.figuring);
+      // And under the fog, for the same reason: a new body is built lit.
+      this.applyFog();
       for (const mesh of this.blocks.group.children) {
         mesh.castShadow = true;
         mesh.receiveShadow = true;
@@ -742,6 +760,30 @@ export class Stage {
       if (this.parked) this.setTarget(this.parked);
       this.parked = null;
     }
+  }
+
+  /**
+   * Draws the open map under the party's fog, or with none (R-45).
+   *
+   * Colours and, for the console's preview, which blocks are drawn at all —
+   * never a rebuild (R-69), so a token's step costs an attribute write. Only
+   * blocks hidden or shown again move a shadow, so only that restages them
+   * (R-180).
+   */
+  setFog(fog: StageFog | null): void {
+    if (fog === this.partyFog) return;
+    this.partyFog = fog;
+    this.applyFog();
+  }
+
+  private applyFog(): void {
+    if (!this.blocks) return;
+    const fog = this.partyFog;
+    const reshaped = this.blocks.setFog(fog
+      ? (key) => (fog.lit.has(key) ? 'inSight' : !fog.shown || fog.shown.has(key) ? 'explored' : 'hidden')
+      : null);
+    this.invalidate();
+    if (reshaped) this.restage();
   }
 
   /** Whether a map is currently the surface, rather than the world. */

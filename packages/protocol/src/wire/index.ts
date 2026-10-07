@@ -4,14 +4,14 @@
 import { z } from 'zod';
 import type {
   Campaign, Chunk, Column, World, PartyMember, TerrainId, Place, PlaceNote, MarkerId, Save,
-  Placement, Inside, EncounterMap, LevelRange,
+  Placement, Inside, EncounterMap, LevelRange, Cells,
 } from '@tt/domain';
 import {
   CHUNK_SIZE, DEFAULT_METRES_PER_LEVEL,
   chunkKey, registryId, discoveryToJSON, discoveryFromJSON, mapToJSON, mapFromJSON, sliceOf,
   packRuns, unpackRuns,
   placementToJSON, placementFromJSON, tokensToJSON, tokensFromJSON,
-  DAYLIGHT, OPEN_SKY, clampLighting, clampAmbience,
+  DAYLIGHT, OPEN_SKY, clampLighting, clampAmbience, cellsToJSON, cellsFromJSON,
 } from '@tt/domain';
 
 /** The light inside one place (R-182). */
@@ -219,6 +219,20 @@ export const CubeWireSchema = z.object({
 export const TokensWireSchema = z.record(z.string(), CubeWireSchema);
 export type TokensWire = z.infer<typeof TokensWireSchema>;
 
+/**
+ * A set of cubes, packed (R-59): the box it fits in, and runs over it of
+ * unseen then seen, y then z then x. What the party has seen of a map, or
+ * sees now (R-45).
+ */
+export const CellsWireSchema = z.object({
+  origin: z.object({ x: z.number().int(), y: z.number().int(), z: z.number().int() }),
+  size: z.object({
+    x: z.number().int().nonnegative(), y: z.number().int().nonnegative(), z: z.number().int().nonnegative(),
+  }),
+  runs: z.array(z.number().int().nonnegative()),
+});
+export type CellsWire = z.infer<typeof CellsWireSchema>;
+
 export const SaveWireSchema = z.object({
   id: z.string(),
   campaignId: z.string(),
@@ -252,6 +266,13 @@ export const SaveWireSchema = z.object({
    * party nobody has placed — what those saves meant, so no bump (D-187).
    */
   tokens: z.record(z.string(), TokensWireSchema).default({}),
+  /**
+   * What the party has seen of each map, keyed by point of interest (R-45).
+   * Absent in every save written before vision, which is a party that has
+   * seen nothing yet — and the host looks around for them the moment the
+   * campaign opens, so no bump (D-187).
+   */
+  explored: z.record(z.string(), CellsWireSchema).default({}),
   /**
    * How the scene is lit (R-181). Absent means daylight, which is what every
    * save written before there was a sun to set already meant — no bump, for
@@ -386,8 +407,44 @@ export function encodeSave(save: Save): SaveWire {
     tokens: Object.fromEntries(
       [...save.tokens.keys()].sort().map((poiId) => [poiId, tokensToJSON(save.tokens.get(poiId)!)]),
     ),
+    explored: Object.fromEntries(
+      [...save.explored.keys()].sort().map((poiId) => [poiId, cellsWire(save.explored.get(poiId)!)]),
+    ),
     lighting: { ...save.lighting, ambience: { ...save.lighting.ambience } },
   };
+}
+
+/**
+ * A set of cubes on the wire, packed once per set (D-219's reasoning).
+ *
+ * The console is sent the whole save on every message, and what the party has
+ * seen of a map can run to thousands of cubes; packing it walks and sorts all
+ * of them. A set is immutable and replaced when it grows (R-165), so an
+ * unchanged one is the one packed last time.
+ */
+const packedCells = new WeakMap<Cells, CellsWire>();
+
+export function cellsWire(cells: Cells): CellsWire {
+  const already = packedCells.get(cells);
+  if (already) return already;
+  const made = cellsToJSON(cells);
+  packedCells.set(cells, made);
+  return made;
+}
+
+/**
+ * The other way, once per wire object (D-270): a screen keeps an unchanged
+ * part of a view as the object it already holds, so the same wire decodes to
+ * the same set and what is built from it is not built again.
+ */
+const unpackedCells = new WeakMap<object, Cells>();
+
+export function cellsFromWire(wire: CellsWire): Cells {
+  const already = unpackedCells.get(wire);
+  if (already) return already;
+  const made = cellsFromJSON(wire);
+  unpackedCells.set(wire, made);
+  return made;
 }
 
 export function decodeSave(wire: SaveWire): Save {
@@ -413,6 +470,12 @@ export function decodeSave(wire: SaveWire): Save {
       Object.entries(wire.tokens)
         .filter(([, tokens]) => Object.keys(tokens).length > 0)
         .map(([poiId, tokens]) => [poiId, tokensFromJSON(tokens)]),
+    ),
+    // The same for a map seen not at all (`withExplored`).
+    explored: new Map(
+      Object.entries(wire.explored)
+        .map(([poiId, cells]) => [poiId, cellsFromWire(cells)] as const)
+        .filter(([, cells]) => cells.size > 0),
     ),
     // Clamped on the way in: a save file is as much an input as a socket is.
     lighting: clampLighting(wire.lighting),

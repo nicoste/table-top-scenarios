@@ -1,16 +1,17 @@
 // The single path from state to a screen (R-19). Every field a client receives
 // passes through viewFor, and there is no second route.
 
-import type { Campaign, Place, Poi, Save } from '@tt/domain';
+import type { Campaign, Cells, LevelRange, Place, Poi, Save } from '@tt/domain';
 import {
   isPlaceOnTable, isPoiOnTable, isChunkKnown, belongsTo, placementToJSON, rangeFor, DAYLIGHT,
   OPEN_SKY, sunReaches, litBy, MAP_MAX_HEIGHT,
   tokensFor, onRoster, tokensInBand, tokensToJSON,
+  exploredIn, partySight, shownBy, seenPart, inRange, placeById, poiById,
 } from '@tt/domain';
 import type {
-  CampaignWire, SaveWire, PlacementWire, MapWire, LightingWire, TokensWire,
+  CampaignWire, SaveWire, PlacementWire, MapWire, LightingWire, TokensWire, CellsWire,
 } from '../wire/index.js';
-import { encodeCampaign, encodeSave, mapWire } from '../wire/index.js';
+import { encodeCampaign, encodeSave, mapWire, cellsWire } from '../wire/index.js';
 
 export type Role = 'gm' | 'table' | 'spectator';
 
@@ -64,6 +65,32 @@ export interface GmView {
   readonly canRedo: boolean;
   /** Addresses players connect to (R-93). */
   readonly connect: readonly string[];
+  /**
+   * What the party sees right now in the map they are in, or `null` when they
+   * are out on the world (R-15).
+   *
+   * Not save data — the save carries what they *have* seen (`explored`) — but
+   * the host works it out after every intent anyway, and the console needs it
+   * to show the GM the table's picture (R-76) without working it out again.
+   */
+  readonly sight: CellsWire | null;
+}
+
+/**
+ * The fog over the map the table is shown (R-45, D-273).
+ *
+ * The table holds no block the party has not seen — its body is cut to them
+ * before it is sent (R-85) — so of the three states only two need saying, and
+ * the third is absence.
+ */
+export interface TableFog {
+  /**
+   * The space the party has seen, inside the band: where the players may stand
+   * somebody (D-275). Sent so the table can tell before it asks (R-138).
+   */
+  readonly seen: CellsWire;
+  /** The blocks it was sent that the party sees now. Every other is explored. */
+  readonly lit: CellsWire;
 }
 
 export interface TableView {
@@ -104,6 +131,16 @@ export interface TableView {
    * not to draw it, and deciding is this filter's job (D-252).
    */
   readonly tokens: TokensWire | null;
+  /**
+   * What the party has seen of the map the table is shown, and which of the
+   * blocks it was sent are in sight now (R-45, D-273), or `null` when it is
+   * shown no map.
+   *
+   * The **fourth** piece of save data the table is sent, named here for the
+   * hour's reason (D-250). Not a secret: it is what the party is looking at.
+   * And only inside the band, like everything else about that map (R-185).
+   */
+  readonly fog: TableFog | null;
 }
 
 export type View = GmView | TableView;
@@ -133,6 +170,7 @@ export function viewFor(role: Role, state: HostState, connect: readonly string[]
       canUndo: state.history.past.length > 0,
       canRedo: state.history.future.length > 0,
       connect,
+      sight: state.active && state.activeSave ? sightOf(state.active, state.activeSave) : null,
     };
   }
   const campaign = forTheTable(state.active, state.activeSave);
@@ -155,7 +193,65 @@ export function viewFor(role: Role, state: HostState, connect: readonly string[]
     tokens: campaign && state.active && state.activeSave
       ? tokensForTheTable(state.active, state.activeSave)
       : null,
+    fog: campaign && state.active && state.activeSave
+      ? fogForTheTable(state.active, state.activeSave)
+      : null,
   };
+}
+
+/**
+ * What the party sees now, in the map they are in (R-15) — for the console.
+ *
+ * The same call the host made after the last intent, with the same body,
+ * tokens and roster, so it is the answer it already worked out rather than
+ * the work again.
+ */
+function sightOf(campaign: Campaign, save: Save): CellsWire | null {
+  const inside = save.inside;
+  if (!inside) return null;
+  const place = placeById(campaign.places, inside.placeId);
+  const map = place ? poiById(place, inside.poiId)?.map : null;
+  if (!map) return null;
+  return cellsWire(partySight(map, tokensFor(save, inside.poiId), campaign.party));
+}
+
+/**
+ * The fog for the map the table is shown (D-273): where the party has looked,
+ * and which of the blocks the table holds they see now — both inside the band,
+ * because nothing about a level the GM has cut away reaches the table (R-185).
+ */
+function fogForTheTable(campaign: Campaign, save: Save): TableFog | null {
+  const shown = shownMap(campaign, save);
+  if (!shown?.poi.map) return null;
+  const map = shown.poi.map;
+  const range = rangeFor(save, shown.poi.id);
+  const sight = partySight(map, tokensFor(save, shown.poi.id), campaign.party);
+  return {
+    seen: inBand(exploredIn(save, shown.poi.id), range),
+    lit: inBand(shownBy(map, sight), range),
+  };
+}
+
+/**
+ * A set of cubes cut to the band, packed — once per set and band, because the
+ * table is sent its fog on every message and both change far less often than
+ * messages arrive (D-219's reasoning).
+ */
+const banded = new WeakMap<Cells, Map<string, CellsWire>>();
+
+function inBand(cells: Cells, range: LevelRange): CellsWire {
+  const key = `${range.lower}:${range.upper}`;
+  let byRange = banded.get(cells);
+  if (!byRange) {
+    byRange = new Map();
+    banded.set(cells, byRange);
+  }
+  const already = byRange.get(key);
+  if (already) return already;
+  const kept = new Set([...cells].filter((cube) => inRange(range, Number(cube.split(',')[1]))));
+  const made = cellsWire(kept);
+  byRange.set(key, made);
+  return made;
 }
 
 /**
@@ -216,6 +312,10 @@ function tokensForTheTable(campaign: Campaign, save: Save): TokensWire | null {
  * 2. **Only the blocks inside the range.** A filter, not a flag: the levels the
  *    GM cut away are absent from the payload, because R-85's standard is that a
  *    secret is never sent rather than merely undrawn.
+ * 2b. **Only the blocks the party has seen** (D-273), for the same standard
+ *    one step finer: what lies beyond the last wall they looked over is not on
+ *    the table, and the fog is its absence. Vision narrows the band and never
+ *    widens it (D-200).
  * 3. **Everything else gets nothing.** A tavern the party has not entered is a
  *    name on the table and no geometry at all, which is the same answer this
  *    function has always given and the reason there was nothing to leak before.
@@ -231,7 +331,7 @@ function bodyForTheTable(
   // Through the same cache as the GM's copy, keyed on the map *and* the band:
   // an edit to another map must not cost the table a re-slice of this one
   // (D-219).
-  return mapWire(shown.poi.map, rangeFor(save, poiId));
+  return mapWire(seenPart(shown.poi.map, exploredIn(save, poiId)), rangeFor(save, poiId));
 }
 
 function forTheTable(campaign: Campaign | null, save: Save | null): CampaignWire | null {

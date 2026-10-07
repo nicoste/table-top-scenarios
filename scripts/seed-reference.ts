@@ -19,10 +19,11 @@
 // the one thing worse than no reference scene is two of them.
 //
 // **The save is part of the scene** (R-184). It used to be an empty one, which
-// was right while nothing measured play state. Tokens are drawn now, and vision
-// will be computed from them, so the party is in the Tollkeep, standing on four
-// levels — and in daylight with nothing cut, so that a reading is of the whole
-// scene rather than of whatever band somebody left it at.
+// was right while nothing measured play state. Tokens are drawn and vision is
+// computed from them, so the party is in the Tollkeep, standing on four levels,
+// having looked around from where they stand and nowhere else (D-273) — and in
+// daylight with nothing cut, so that a reading is of the whole scene rather than
+// of whatever band somebody left it at.
 
 import { join } from 'node:path';
 import {
@@ -30,7 +31,8 @@ import {
   setBlocks, paintBlocks, growMap, MAP_PATCH, DEFAULT_MATERIALS, swatchFor, materialById,
   paintTerrain, chunkAt, chunkKey, ORIGIN, DEFAULT_TERRAIN,
   withDiscovery, setChunkKnown, setPlaceRevealed, enteringMap, withTokens,
-  NO_TOKENS, placeToken, whyNotStand, withPlacement, withGroupAt, emptyPlacement,
+  NO_TOKENS, placeToken, whyNotStand, withPlacement, withGroupAt, emptyPlacement, lookAround,
+  exploredIn,
 } from '@tt/domain';
 import type {
   BlockCoord, Campaign, EncounterMap, MaterialId, PartyMember, PlaceCell, PlaceId, PoiId, Save,
@@ -259,7 +261,10 @@ function playedSave(
   );
   save = withPlacement(save, withGroupAt(emptyPlacement(), cell));
   save = enteringMap(save, placeId, poiId);
-  return withTokens(save, poiId, standParty(body, campaign.party));
+  save = withTokens(save, poiId, standParty(body, campaign.party));
+  // What they see from there, by the host's own rule — so opening the scene
+  // finds nothing new to see and writes nothing (D-273).
+  return lookAround(save, campaign);
 }
 
 function describe(map: EncounterMap): string {
@@ -331,6 +336,7 @@ function main(): void {
     const cube = save.tokens.get(poiId)?.get(member.id);
     console.log(`    ${member.name.padEnd(6)} ${cube ? `${cube.x},${cube.y},${cube.z}` : '—'}`);
   }
+  console.log(`  seen             ${exploredIn(save, poiId).size.toLocaleString()} cubes of space`);
 }
 
 main();

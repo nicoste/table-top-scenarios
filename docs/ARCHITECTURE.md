@@ -245,6 +245,7 @@ Save {
   inside:    { placeId; poiId } | null               // the map the party is in (R-158)
   ranges:    Map<PoiId, LevelRange>                  // each map's band (D-201)
   tokens:    Map<PoiId, Map<MemberId, BlockCoord>>   // where they stand, per map (R-184)
+  explored:  Map<PoiId, Set<cube>>                   // the space they have seen, per map (R-45)
   lighting:  Lighting                                // the hour (R-181)
   discovery: { chunks: Set<ChunkCoord>; places: Set<PlaceId> }
 }
@@ -253,8 +254,9 @@ Save {
 // Not a record of its own — the member is the campaign's (R-91) and the cube
 // is the save's. Silver tokens, everything that is not the party, are a later
 // round (D-255), and the sketch they were drawn in once — a side, a name, a
-// label switch, GM notes (O-015), a miniature — waits for it. Per-map fog
-// (R-45's Explored set) joins `tokens` and `ranges` when vision is built.
+// label switch, GM notes (O-015), a miniature — waits for it. What the party
+// has seen of each map sits beside `tokens` and `ranges`, as R-45's Explored
+// set (D-273).
 //
 // No posture (D-035), no facing (D-039), no speed or movement budget — nobody
 // asked for one and moving a figure is off-tool (R-1).
@@ -454,7 +456,9 @@ cube and a short far cube can land on the same pixels. These are not polish.
 >
 > Start with **`InstancedMesh` per material** and a per-instance fog attribute:
 > one draw call per material, fog updates are an attribute write, and it is a few
-> dozen lines. A couple of hundred thousand instances is well within three.js.
+> dozen lines. **As built (D-273):** the attribute is the instance colour, and
+> for a block the console's preview hides, the instance matrix scaled to nothing
+> — 1.6 ms for 11,398 blocks, against 7.9 ms to rebuild them. A couple of hundred thousand instances is well within three.js.
 > Greedy meshing with a fog lookup texture is the optimisation to reach for **if
 > measurement demands it** — and R-70 is what makes that swap a non-event.
 
@@ -847,10 +851,21 @@ was a regression.
 > grading did and is far more predictable than a single centre-to-centre ray,
 > which flickers on corners and makes the diagonal seam painfully visible. What
 > we removed is the fraction-to-cover mapping, not the sampling.
+>
+> **Built by D-271: the cubes sampled are cubes of space.** A line from the eye
+> to each of nine points inside an empty cube — its middle, its top corners, its
+> bottom corners, inset from the faces — walked cube by cube and stopped by the
+> first block that stops sight. The first that gets through settles it. Only
+> space that could show something is asked about: an empty cube touching a
+> block, or a block sight passes through.
 
 > **R-42.** Granularity is **whole cubes**, never cube faces. Face-level
 > visibility is more truthful and produces visually noisy half-lit geometry. R-39
 > settles it: coarse and legible beats precise and confusing.
+>
+> **Built by D-271.** A block is shown, whole, when a cube of space beside it or
+> around it is seen — the floor under the space, the walls beside it, the
+> ceiling over it. Space, not surfaces: *could you see someone standing there?*
 
 ### One eye height, and the rule of thumb it buys
 
@@ -860,6 +875,10 @@ decision, not an anatomical one.
 > **R-43.** Eye height is **1.2 × cell size** above the floor of the token's
 > cell — 1.8 m at the 1.5 m cell of D-024. It is stored as a **ratio**, not as
 > metres, because the rule it protects is about whole cubes.
+>
+> **Under a ceiling one cube up**, the eye sits just below it, at 0.9, inside
+> the token's own cube (D-272): an eye inside the block over its head would see
+> nothing at all, and a token may stand in a passage one cube high (R-184).
 
 > **R-43a.** The eye height ratio must stay strictly within **(1.0, 2.0)**. Below
 > 1.0 a single cube blocks; at or above 2.0 a two-cube wall stops blocking. Both
@@ -884,6 +903,10 @@ debug eye view (R-48) from looking absurd.
 > width. Sight does **not** pass through it. This was a configurable policy while
 > cover grading existed; with binary fog, a knob whose effect nobody can predict
 > is worse than a firm answer. Walls are airtight.
+>
+> **One step firmer, as built (D-271):** a line exactly along an edge or through
+> a corner is stopped by any solid cube that edge or corner belongs to — a
+> single cube's edge as well as the seam between two.
 
 ### Only blocks occlude
 
@@ -916,6 +939,12 @@ debug eye view (R-48) from looking absurd.
 > Explored is rendered desaturated; Visible is lit. Explored is **cumulative** —
 > once seen, a cube stays known, which is what stops fog strobing as tokens move.
 > Confirmed in D-064.
+>
+> **As built (D-273):** Visible is *in sight* in code, for R-84's reason. The
+> state is a colour per instance — explored is greyed and dimmed — and Hidden
+> is absence: the table is never sent a block the party has not seen (R-189),
+> and the console's preview scales one to nothing (R-76). What has been seen is
+> the save's, per map, and undo never takes it back.
 
 > **R-46.** Vision is **omnidirectional with a range limit**. The range is a
 > property of **each token** and the GM can edit it per token. No facing, no view
@@ -933,6 +962,45 @@ debug eye view (R-48) from looking absurd.
 > This is a feature, not a diagnostic. It is distinct from the eye view in R-48,
 > which renders from one token's position; this renders from the GM's own camera
 > using the party's revealed set.
+>
+> **Built as the Party's view (D-274):** a switch in the map's party card, off by
+> default, drawing exactly the table's picture — the band, the unseen absent,
+> the explored greyed — while the party is in the open map.
+
+### What the table is sent of a map
+
+> **R-189.** **The table is sent only the blocks the party has been shown**, of
+> the map it is in and inside the band (D-273).
+>
+> R-85's standard, one step finer than the band: a secret is not sent rather
+> than merely undrawn, and what lies beyond the last wall the party looked over
+> is a secret. Vision narrows the band and never widens it (D-200). With it, as
+> its own named field in `viewFor`, the fog: the space seen inside the band and
+> which of the blocks it holds the party sees now. Nobody standing in the map
+> sees nothing, so the table is shown nothing of a map until the GM stands
+> somebody in it.
+>
+> **And the GM can start a map fresh** (D-277): what the party has seen of it
+> is forgotten and nobody stands in it — both, or the next look would see it
+> all again. Asked first, like a delete (R-151), because undo cannot bring it
+> back.
+
+> **R-190.** **The host keeps sight current, after every intent and when a
+> campaign opens** (R-15, D-273).
+>
+> A hook in `apply`, not a call in each handler: where the party stands, the
+> blocks, their ranges and the map they are in can each be changed by nearly
+> any intent, undo included. Sight is kept per body, tokens and roster, so
+> asking when nothing changed is a lookup. What the look adds to the save is
+> written with the intent's own write, never as a second one.
+
+> **R-191.** **The players may only stand somebody where the party has seen**
+> (D-275, D-278) — lit ground or greyed, anywhere on their screen.
+>
+> Checked by the host after the band and before the footing, with a refusal
+> that names nothing — past it, any block a refusal could mention is one the
+> table was sent. The table holds the space seen and checks first (R-138). The
+> GM stands anybody anywhere (R-39).
 
 ### Debugging
 
@@ -941,6 +1009,9 @@ debug eye view (R-48) from looking absurd.
 > **eye view** rendered from a chosen token. The eye view is a debug tool, not a
 > feature — it answers "why does the engine think this is visible?" and is the
 > fastest way to see a fog bug. It is never presented to players (D-036).
+>
+> **The eye view is rejected** (D-276): *"not now nor never."* The ray overlay
+> is not built yet — the GM's call is open (O-030).
 
 ### Retired
 
@@ -1229,7 +1300,6 @@ apps/gm/
       build-point of interest/  voxel stamping, material palette
       place/              place inspector, its point of interest-map list
       travel/           route, pace picker, distance & time
-      fog/              the manual reveal/hide brush (R-47)
       tokens/           placement, movement, names, notes
       session/          campaign picker, save/load, build vs play mode
       debug/            ray overlay and eye view (R-48). GM-only by construction.
@@ -2100,7 +2170,8 @@ apps/host/src/
 >
 > The console shows the whole body or **the band alone** — the GM's own choice,
 > view state (R-64), off by default because the whole body is the safe view to
-> build in. While it is on, the GM sees exactly what the table sees.
+> build in. While it is on, the GM sees exactly the levels the table sees — and
+> since vision, the Party's view adds the fog over them (R-76, D-274).
 >
 > The band is a **slice**, not a dimming, and that is the load-bearing part: the
 > hidden levels are **absent from the scene**, so they cannot be picked. A dimmed

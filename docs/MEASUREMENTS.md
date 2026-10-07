@@ -213,6 +213,37 @@ The hour is play state and nothing else, so before this every message —
 every token step among them — rebuilt the whole scene on both screens and
 restaged the shadows with it.
 
+### What vision costs (added 6 October 2026)
+
+The reference scene as seeded: six members on four levels of the Tollkeep,
+each with the default twelve cubes (D-271, D-273). The host's figures are
+node on the development machine, nothing else running; the screens' are the
+**Pane**, both screens open.
+
+| on the host | |
+| --- | --- |
+| six members' sight, nothing cached | **10.1 ms** median, 26.9 ms worst (the first, cold) |
+| the same after a move, the body's grid already built | **8.0 ms** median, 9.4 ms worst |
+| looking around when nothing changed | **0.26 ms** — a cache hit |
+| space seen | 3,168 cubes, which show **2,706 of 11,398** blocks |
+
+| on the wire | console | table |
+| --- | --- | --- |
+| the whole view | 16.5 KiB | 14.1 KiB |
+| of it: what has been seen, packed | 2.7 KiB in the save | 2.6 KiB, inside the band |
+| of it: what is in sight | 2.2 KiB | 2.3 KiB, as the blocks lit |
+| of it: the map's body | every block | 5.3 KiB — the blocks seen, nothing else |
+| the save on disk | 7.9 KiB, up from 1.1 | — |
+
+| on the screens | |
+| --- | --- |
+| a fog change, all 11,398 blocks recoloured (console) | **1.6 ms** median, 3.8 ms worst — no rebuild |
+| a step that reveals new blocks (table) | one rebuild of its body, **1.9 ms** at 3,144 blocks |
+| a step back over ground already seen (table) | **no rebuild**: the picture changed, the count did not |
+
+Explored grows only, so the first walk through a map rebuilds the table's body
+a little at a time and every step after that is a colour write (R-69).
+
 ---
 
 ## Older baselines, on a scene that no longer exists

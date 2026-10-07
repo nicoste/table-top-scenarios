@@ -1,6 +1,6 @@
 # @tt/geometry
 
-**Owns.** Pure spatial math: the voxel grid, ray traversal, visibility, cover, movement graphs, pathfinding.
+**Owns.** Pure spatial math: the voxel grid, ray traversal, visibility, cover, movement graphs, pathfinding. Built so far: sight lines through a grid of cubes, and a dense grid to walk them through (`sight/`).
 
 **Must never know about.** Anything about three.js, the network, the file system, or the domain nouns. Numbers in, numbers out.
 

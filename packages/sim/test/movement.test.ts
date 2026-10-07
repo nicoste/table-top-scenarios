@@ -234,20 +234,22 @@ describe('the permission line (R-136)', () => {
 });
 
 describe('what the table is told', () => {
-  it('receives the party position, the hour and where the party stands in a map, and nothing else', () => {
+  it('receives the party position, the hour, where the party stands in a map and what it has seen there, and nothing else', () => {
     // The guard on the trust boundary (R-85). It is meant to fail whenever the
     // table is sent something new, so that adding a field is a decision rather
-    // than a diff — which is how `lighting` came to be argued for in D-250, and
-    // `tokens` in D-259.
+    // than a diff — which is how `lighting` came to be argued for in D-250,
+    // `tokens` in D-259, and `fog` in D-273.
     let state = revealed();
     state = run(state, { kind: 'moveParty', cell: at(4, 4) }).state;
     const view = tableView(state);
 
     expect(view.role).toBe('table');
-    expect(Object.keys(view).sort()).toEqual(['campaign', 'lighting', 'placement', 'role', 'tokens']);
+    expect(Object.keys(view).sort()).toEqual(['campaign', 'fog', 'lighting', 'placement', 'role', 'tokens']);
     expect(view.placement).toMatchObject({ together: true, at: at(4, 4) });
-    // Out on the world there is no map to stand in, so there is nothing to send.
+    // Out on the world there is no map to stand in or to see, so there is
+    // nothing to send.
     expect(view.tokens).toBeNull();
+    expect(view.fog).toBeNull();
   });
 
   it('never sends discovery or the bands, whatever else it sends', () => {
@@ -259,6 +261,8 @@ describe('what the table is told', () => {
 
     expect(wire).not.toContain('discovery');
     expect(wire).not.toContain('ranges');
+    // Nor what the party has seen of every map, which is the save's (D-273).
+    expect(wire).not.toContain('explored');
   });
 
   it('lights the table the way the GM set it', () => {

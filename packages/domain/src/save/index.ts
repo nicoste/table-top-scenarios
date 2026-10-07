@@ -18,6 +18,9 @@ import type { EncounterMap } from '../map/index.js';
 import { MAP_MAX_HEIGHT, MAP_MIN_DEPTH, WHOLE_MAP } from '../map/index.js';
 import type { Tokens, TokensJSON } from '../tokens/index.js';
 import { NO_TOKENS, settled, tokensFromJSON } from '../tokens/index.js';
+import type { Cells } from '../vision/index.js';
+import { NO_CELLS, explore, partySight } from '../vision/index.js';
+import { placeById, poiById } from '../place/index.js';
 
 // 3 renames discovery's `pois` to `places`, following the campaign (D-176).
 // Like the campaign, there is no migration: the same field name meant a
@@ -80,6 +83,20 @@ export interface Save {
    */
   readonly tokens: ReadonlyMap<string, Tokens>;
   /**
+   * The space the party has seen in each map, by point of interest (R-45).
+   *
+   * **Cumulative**: once seen, a cube stays known, which is what stops fog
+   * strobing as tokens move. Play state, beside `tokens` and `ranges` and in
+   * the same shape, as R-4's sketch always said it would be — and, like them,
+   * remembered per map, so walking back into the tavern finds it as the party
+   * left it.
+   *
+   * Grown by the host whenever what the party sees changes; never shrunk by
+   * anything but a map's deletion. Undo is about the campaign and leaves it
+   * alone (R-140). A map nobody has seen carries no entry.
+   */
+  readonly explored: ReadonlyMap<string, Cells>;
+  /**
    * How the scene is lit (R-181).
    *
    * **Play state, not authored.** A keep is a keep at every hour; what time it
@@ -128,6 +145,7 @@ export function createLiveSave(campaign: Campaign, savedAt: string): Save {
     inside: null,
     ranges: new Map(),
     tokens: new Map(),
+    explored: new Map(),
     lighting: DAYLIGHT,
   };
 }
@@ -282,6 +300,65 @@ export function pruneTokens(
     next.set(poiId, keep.length === tokens.size ? tokens : new Map(keep));
   }
   return touched ? { ...save, tokens: next } : save;
+}
+
+/** What the party has seen of one map: nothing, unless they have looked (R-45). */
+export function exploredIn(save: Save, poiId: PoiId | string): Cells {
+  return save.explored.get(poiId as string) ?? NO_CELLS;
+}
+
+/**
+ * Replaces what the party has seen of one map. Identity-preserving (R-165),
+ * and a map seen not at all carries no entry.
+ */
+export function withExplored(save: Save, poiId: PoiId | string, cells: Cells): Save {
+  if (exploredIn(save, poiId) === cells) return save;
+  const next = new Map(save.explored);
+  if (cells.size === 0) next.delete(poiId as string);
+  else next.set(poiId as string, cells);
+  return { ...save, explored: next };
+}
+
+/**
+ * What the party sees now, added to what they have seen of the map they are
+ * in (R-15, R-45). The same save when that adds nothing (R-165), which is
+ * almost always: most intents change nothing anybody can see.
+ *
+ * Sight is the host's to work out (R-15), and this is how: whenever something
+ * it depends on may have changed — a step, a block, a range, the way in — the
+ * party looks around. Nobody standing in the map sees nothing, so a party that
+ * has just walked in has seen nothing until the GM stands them somewhere
+ * (D-200's brief).
+ */
+export function lookAround(save: Save, campaign: Campaign): Save {
+  const inside = save.inside;
+  if (!inside) return save;
+  const place = placeById(campaign.places, inside.placeId);
+  const map = place ? poiById(place, inside.poiId)?.map : null;
+  if (!map) return save;
+  const seen = partySight(map, tokensFor(save, inside.poiId), campaign.party);
+  return withExplored(save, inside.poiId, explore(exploredIn(save, inside.poiId), seen));
+}
+
+/**
+ * A fresh start in one map (D-277): what the party has seen of it is
+ * forgotten, and nobody is standing in it.
+ *
+ * Both, because forgetting alone would undo itself: the party looks around
+ * after every intent (R-190), and anybody still standing there would see it
+ * all again at once. The GM's case is the prepared scene — a token walked
+ * round to check the walls and the levels, then everything wiped for play —
+ * and the members are placed again where play begins.
+ */
+export function forgetMap(save: Save, poiId: PoiId | string): Save {
+  return withTokens(withExplored(save, poiId, NO_CELLS), poiId, NO_TOKENS);
+}
+
+/** Forgets what was seen of a map that is gone, for `pruneDiscovery`'s reason. */
+export function pruneExplored(save: Save, livePoiIds: ReadonlySet<string>): Save {
+  const keep = [...save.explored].filter(([poiId]) => livePoiIds.has(poiId));
+  if (keep.length === save.explored.size) return save;
+  return { ...save, explored: new Map(keep) };
 }
 
 /**

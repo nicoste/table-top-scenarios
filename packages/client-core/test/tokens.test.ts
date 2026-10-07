@@ -123,6 +123,18 @@ describe('a screen judges a cube from what it holds (R-185, R-138)', () => {
     expect(standVerdict(slice, NO_TOKENS, 'aldra', cube(2, 5, 2), { ceiling: 8 })).toBeNull();
   });
 
+  it('lets the table stand somebody only where the party has seen, as the host does (D-275)', () => {
+    const seen = new Set(['3,1,3']);
+    expect(standVerdict(map(), NO_TOKENS, 'aldra', cube(5, 1, 5), { ceiling: 8 }, seen))
+      .toBe('the party has not seen it');
+    expect(standVerdict(map(), NO_TOKENS, 'aldra', cube(3, 1, 3), { ceiling: 8 }, seen)).toBeNull();
+    // Still the levels first: a cube above them is that, whatever was seen.
+    expect(standVerdict(map(), NO_TOKENS, 'aldra', cube(3, 9, 3), { ceiling: 8 }, new Set(['3,9,3'])))
+      .toBe('above the levels being shown');
+    // And the console, which passes no sight, stands anybody anywhere (R-39).
+    expect(standVerdict(map(), NO_TOKENS, 'aldra', cube(5, 1, 5), null)).toBeNull();
+  });
+
   it('lets the table stand somebody on a roof when nothing is cut', () => {
     // Uncut, the only stop above anything is the Sun.
     const roofed = setBlock(map(), cube(2, 9, 2), STONE);

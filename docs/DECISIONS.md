@@ -114,7 +114,7 @@ comfortably. **Cost:** no queries, whole-file writes.
 Zod at the WebSocket edge and at file reads; trusted types everywhere inside.
 **Why:** validating in the middle is how you get three sources of truth.
 
-### D-018 — Party fog is the union across party tokens · `proposed`
+### D-018 — Party fog is the union across party tokens · `agreed in D-278`
 Follows from D-002, but stated explicitly because it is load-bearing: there is no
 per-token vision and no per-player view. This deletes an entire axis of
 complexity and matches how the prototype and the Unity build both already worked.
@@ -6073,3 +6073,201 @@ never held on the screen side.
 stale — through the stage's debug handle, calling `setTokens` directly. True of
 the stage. False of the screens until now: the message every move produced
 rebuilt the map, and a rebuilt map restages the shadows.
+
+### D-271 — Sight is of space, not of surfaces · `agreed`
+The rules fixed nearly everything about vision — one eye 1.2 cubes up (R-43),
+lines tested against a handful of points and any clear one wins (R-41), whole
+cubes (R-42), sealed seams (R-44), only blocks occlude (R-74, R-75) — and left
+one thing open: **which points a line is aimed at.** That is the whole
+difference between two answers, and they part company at a chest-high wall.
+
+- **Surfaces.** Aim at points on a block's faces: a block is seen when the eye
+  can see it, the way a camera would render it — the prototype's answer. A
+  member standing against a one-cube wall cannot see the floor behind it for
+  about seven cubes: the wall throws a long shadow over the ground, though
+  anything standing up there is seen.
+- **Space.** Aim at points *inside the empty cubes*: a cube of space is seen
+  when the eye can see into it — could you see someone standing there? — and
+  the blocks around the space seen are what is shown: the floor under it, the
+  walls beside it, the ceiling over it.
+
+The GM, having asked how either would actually be calculated: *"It's option 2,
+then."* Space.
+
+**The technique, as built.** A line from the eye to a point is walked cube by
+cube with Amanatides and Woo's traversal — exactly the cubes the segment
+passes through, in order — and stops at the first block whose material stops
+sight (`lineIsClear`, in `geometry`). For each member, every cube within their
+range that could show something — empty and touching a block, or a block sight
+passes through — is tried at nine points: its middle, then its four top
+corners, then its four bottom ones, inset from the faces so no line runs along
+a grid plane. The first line that gets through settles it. Open air touching
+nothing is not asked about at all: it has nothing to show and nobody can stand
+in it, and leaving it out is most of what makes sight cheap.
+
+**What it buys.** R-43's rule of thumb becomes exactly true: the eye sees
+into the space beyond a one-cube wall and so the floor there, two cubes block,
+and standing one cube higher buys one more. It is how grid games and virtual
+tabletops think about sight — squares where someone could stand — and when
+silver tokens arrive (D-255), whether one is seen is the same question asked
+of the cube it stands in.
+
+**What it costs.** The floor behind a low wall is shown though the eye could
+not literally see that floor. It answers *what is there*, not *what a camera
+sees*, which is R-39's licence: predictable over precise.
+
+**Seams, one step firmer than R-44 said.** A line that runs exactly along an
+edge or through a corner is stopped by any solid cube that edge or corner
+belongs to — two cubes touching corner to corner, which is R-44's case, and a
+single cube's edge too. A line exactly on an edge is a coincidence the next
+point will not repeat.
+
+**Measured** on the reference scene: six members' sight, nothing cached,
+**10 ms** median; 3,168 cubes of space seen, which show 2,706 of the 11,398
+blocks.
+
+### D-272 — The eye under a ceiling one cube up · `agreed in D-278`
+A token may stand in a passage one cube high (R-184) — D-269 made the token
+exactly one cube tall so that it would fit. An eye 1.2 up would then be inside
+the block over its head, and an eye inside a block sees nothing at all.
+
+So **when the cube above stops sight, the eye sits just under it**, at 0.9 —
+inside the member's own cube — and they see along the passage. Anywhere else it
+is R-43's 1.2. Proposed in the plan for this round as a default and not
+objected to; a call of mine all the same.
+
+### D-273 — The host keeps sight, and the table is sent only what the party has seen · `agreed`
+**When the party looks.** After every intent that goes through, and when a
+campaign opens. What the party sees depends on where its members stand, on the
+blocks, on their ranges and on which map they are in, and nearly every kind of
+intent can change one of those — undo included — so the look is a hook in
+`apply` rather than a call each handler has to remember (D-169's reasoning).
+Sight is kept per body, tokens and roster, so asking again when nothing changed
+costs **0.26 ms**; a move costs **8 ms** for six members.
+
+**What is kept.** What the party has seen of each map is in the save
+(`explored`), beside where they stand and the band, as R-4's sketch always said
+it would be: **cumulative** (R-45), remembered per map, never shrunk but by the
+map's deletion, and untouched by undo, which is about the campaign (R-140).
+Packed like a body (R-59): runs over its own box, so a map growing afterwards
+cannot shift it. A save written before vision has seen nothing, and the look on
+opening fills it in — no bump (D-187). One intent is one write: a save the look
+grows replaces the write the intent already asked for.
+
+**What the table is sent.** The map the party is in, cut to the band and then
+to **only the blocks the party has been shown** — R-85's standard one step
+finer than the band: what lies beyond the last wall they looked over is not on
+the table, and the fog is its absence. Vision narrows the band and never widens
+it (D-200). And a fourth piece of play state, `fog`, named in `viewFor` for the
+hour's reason (D-250): the space seen inside the band, and which of the blocks
+it was sent the party sees now. Of R-45's three states only two need saying;
+the third is absence.
+
+**Until somebody stands in the map, the party has seen nothing in it**, and the
+table is shown none of it. That is the GM's brief from D-200 — *"they will see
+what the tokens can see, so the GM will need to add the tokens … when the scene
+is ready"* — which until now could only be the band.
+
+**Drawn as an attribute.** In sight is lit as before; explored is greyed and
+dimmed; never seen is not drawn — on the table because it was never sent. A
+step that shows nothing new is a colour write and no rebuild (R-69): measured
+on the table, a member walking back over ground already seen changed the
+picture with the rebuild count still. A step that reveals blocks rebuilds the
+table's body once, 1.9 ms.
+
+### D-274 — The console's Party's view, and each member's sight · `agreed`
+R-76 required the console to show the table's picture. Asked how, the GM chose
+**a switch, off by default** — the console builds on the whole map as before,
+and *Party's view* draws exactly what the table has: the band, unseen blocks
+gone, explored ones greyed. Only while the party is in the open map, because
+the fog is theirs. While it is on, everything R-159 says about levelling holds
+— a placement outside the band is refused, a fill counts what it cannot show —
+and hidden blocks are scaled to nothing, so they cannot be picked.
+
+**Sight ranges are edited in the party card inside a map** (R-46): a field per
+member, in cubes, committed when the GM is done typing (R-163). Inside a map
+because a range of cubes means nothing on the world map (D-154).
+
+### D-275 — The smaller calls that came with vision · `agreed in D-278`
+Listed in the round's plan as defaults and not objected to, but each a choice:
+
+- **Range is a sphere from the eye**: twelve cubes as the crow flies, to the
+  point that is seen.
+- **Explored is the map as it is now**, not a picture of it as it was. A room
+  the party saw and the GM changed afterwards shows the change. R-39: the GM is
+  in the room, and a remembered picture would cost a copy of every room seen.
+- **The players may only stand somebody where the party has seen** — a cube of
+  space in `explored`. Any block in a cube seen, and the floor under it, is one
+  the table was sent, so past that check a refusal can name what is there; the
+  check itself says only *"the party has not seen that"*. The table is sent the
+  space seen so it can tell before asking (R-138). The GM stands anybody
+  anywhere (R-39).
+- **The table lights only what it has.** A building the party has not seen
+  casts no shadow on their screen, because it is not there. The same family as
+  D-250's open question about a sun over a cut roof.
+- **D-018 — the party's fog is the union across the party — is built as
+  stated**, and has been `proposed` since round 1. R-15 already said it; this
+  asks for the word.
+
+### O-030 — The diagnostics (R-48) · `open for the ray overlay; the eye view rejected by D-276`
+R-48 specifies two GM-only diagnostics: a **ray overlay** — the sight lines
+from a chosen member to the block pointed at, green through and red stopped,
+the stopping block marked — and an **eye view** from a member's position. The
+GM asked what they were; explained, and not yet decided. The ray overlay is the
+quick way to check D-271 is doing what it says, and is the suggestion.
+
+### D-276 — No eye view · `agreed`
+**Supersedes D-036's eye-view half.** Asked whether the two diagnostics of
+R-48 should be built, the GM: *"The eye view: don't want it at all, not now nor
+never."* There is one way to look at this tool, the god view of R-29, and now
+not even a debugging exception to it. R-48 keeps only the ray overlay, which
+is still undecided (O-030).
+
+### D-277 — A fresh start in a map · `agreed`
+The GM: *"We need a button to forget everything in the map, with confirmation
+like the delete buttons we have. Because this is a normal behavior, the GM adds
+a token while preparing the scene, moves it around to check walls are ok,
+levels work ok, reset the memory, all fresh for the real play."*
+
+**Forgetting takes the party off the map as well.** The party looks around
+after every intent (R-190), so anybody left standing there would see it all
+again the moment the memory was wiped, and the walk-through's last position
+would leak into play. So `forgetMap` clears what was seen of that map and who
+stands in it, and nothing else — other maps keep both. The members wait to be
+placed, which is where play begins (D-167 arms the first of them).
+
+**It asks first, like a delete** (R-151): a `×` at the foot of the party card,
+then *Forget* and *Keep* in its place. Play state, so undo cannot bring it
+back (R-140) — which is the reason the question is worth asking. The GM's
+alone, like everything that rewrites what the table knows.
+
+### D-278 — The GM's answers on vision's open calls · `agreed`
+Each one asked plainly, after the first round of answers showed the questions
+had not been — the GM asked what "fog over what you see" could mean, how a
+cube that is not drawn could be lit, and what a "room" was. Answered:
+
+- **D-272 — the eye under a ceiling one cube up: "option 1".** The eye drops to
+  just under the ceiling, inside the member's own cube, and they see along the
+  passage. Only a block directly on the member's head does it; a ceiling two
+  cubes up or higher changes nothing. The alternative was to forbid standing
+  under one — no crawlspaces for tokens.
+- **D-275 — the sphere: "correct."**
+- **D-275 — explored is the map as it is now.** *"Why a room? every block
+  should be like this, how do you define a room?"* There is no room: "room"
+  was the wrong word for what is built, which is **per block** — every block
+  touching space the party has seen is shown as it is now. Removed, it is gone
+  from their screen; added, it appears. That is what the GM described.
+- **D-275 — where the players may stand somebody: "both, currently visible
+  blocks and discovered but not visible right now."** Lit ground and greyed
+  ground alike — anywhere on their screen. As built.
+- **D-275 — shadows only from what the table holds: "it's ok, no change
+  needed."** The question as first put said *lights*, which was the wrong word:
+  it was about shadows. A block the party has not seen is not on their screen,
+  so it casts no shadow there either, and sending it to them only for its
+  shadow would give it away.
+- **D-018 — "it's shared, correct."** One view for the whole table: whatever
+  any member sees is shown to everyone, never a view per player. In the round 1
+  vocabulary, the party's fog is the union of what every token sees.
+
+The ray overlay (O-030) is the one call still open.
+

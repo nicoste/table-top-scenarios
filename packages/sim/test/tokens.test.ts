@@ -126,9 +126,38 @@ describe('placing the party in a map (R-184)', () => {
 });
 
 describe('the table seat moves the party too (R-136, R-185)', () => {
-  it('may stand a member wherever the GM may, inside the band', () => {
+  it('may stand a member wherever the party has seen, inside the band (D-275)', () => {
+    // The GM stands the first of them, and what they see is open to the table.
     const t = inTavern();
-    expect(run(t.state, move(t, t.aldra, cube(3, 1, 3)), 'table').rejected).toBeUndefined();
+    const state = run(t.state, move(t, t.brann, cube(6, 1, 6))).state;
+    expect(run(state, move(t, t.aldra, cube(3, 1, 3)), 'table').rejected).toBeUndefined();
+  });
+
+  it('is refused a cube the party has not seen, with nothing said about it (D-275)', () => {
+    // A two-cube wall across the tavern at x 8, Brann on the near side, and a
+    // crate on the far side the party has never laid eyes on.
+    const t = inTavern();
+    const wall = Array.from({ length: 16 }, (_, z) => [cube(8, 1, z), cube(8, 2, z)]).flat();
+    let state = run(t.state, {
+      kind: 'setBlock', placeId: t.placeId, poiId: t.poiId, cells: wall, swatch: STONE,
+    }).state;
+    state = run(state, {
+      kind: 'setBlock', placeId: t.placeId, poiId: t.poiId, cells: [cube(12, 1, 5)], swatch: STONE,
+    }).state;
+    state = run(state, move(t, t.brann, cube(3, 1, 5))).state;
+
+    // Open floor beyond the wall, and the crate: the same answer for both, so
+    // the refusal cannot be read for what is there.
+    expect(run(state, move(t, t.aldra, cube(11, 1, 5)), 'table').rejected).toBe('the party has not seen that');
+    expect(run(state, move(t, t.aldra, cube(12, 1, 5)), 'table').rejected).toBe('the party has not seen that');
+    // The GM is told the truth, and may stand them anywhere (R-39).
+    expect(run(state, move(t, t.aldra, cube(12, 1, 5))).rejected).toBe('there is a block there');
+    expect(run(state, move(t, t.aldra, cube(11, 1, 5))).rejected).toBeUndefined();
+  });
+
+  it('cannot stand anybody before anybody stands there — the GM places them first (D-167)', () => {
+    const t = inTavern();
+    expect(run(t.state, move(t, t.aldra, cube(3, 1, 3)), 'table').rejected).toBe('the party has not seen that');
   });
 
   it('is refused a cube outside the band before anything about the cube is said (R-85)', () => {

@@ -12,7 +12,7 @@ import {
   swatchFor, materialIn, cutIdIn, cutOf, colourOf,
 } from '@tt/domain';
 import type { LevelRange, Material, SwatchId } from '@tt/domain';
-import { Tooltip } from '@tt/ui';
+import { ConfirmDelete, DraftInput, Tooltip } from '@tt/ui';
 import { LevelLadder } from '../levels/index.js';
 
 /**
@@ -49,7 +49,12 @@ export interface PartyRow {
    * wondering why the table does not show them — R-122's habit.
    */
   readonly onTable: boolean;
+  /** How far they see, in cubes (R-46). The GM's to set, member by member. */
+  readonly sight: number;
 }
+
+/** A range the field will take: whole cubes, none to two hundred (the intent's own bounds). */
+const isRange = (draft: string) => /^\d{1,3}$/.test(draft.trim()) && Number(draft) <= 200;
 
 interface Props {
   /** Which point of interest's map this is — for the heading. */
@@ -81,6 +86,14 @@ interface Props {
   /** Is the console showing only the band, like the table (R-159)? */
   readonly levelling: boolean;
   onLevelling: (on: boolean) => void;
+  /**
+   * Is the console drawing the table's picture — the band, and the party's
+   * fog over it (R-76, D-274)? Off by default: the GM builds on everything.
+   */
+  readonly partyView: boolean;
+  onPartyView: (on: boolean) => void;
+  /** How much of this map the party has seen, in cubes of space (R-45). */
+  readonly seen: number;
   onTool: (tool: MapTool) => void;
   onBrush: (brushId: string) => void;
   onSwatch: (swatch: SwatchId) => void;
@@ -92,7 +105,7 @@ interface Props {
 
 export function MapPanel({
   placeName, poiName, map, blocks, dug, tool, brush, shifting, materials, swatch, hoverLabel,
-  partyHere, party, onPickMember, partyCanSee, range, levelling, onLevelling,
+  partyHere, party, onPickMember, partyCanSee, range, levelling, onLevelling, partyView, onPartyView, seen,
   onTool, onBrush, onSwatch, onLeave, dispatch, placeId, poiId,
 }: Props) {
   const waiting = party.filter((member) => !member.standing).length;
@@ -139,6 +152,20 @@ export function MapPanel({
                         : member.onTable ? 'standing' : 'not on the table'}
                     </span>
                   </button>
+                  {/* How far they see (R-46): here, inside a map, because a
+                      range of cubes means nothing on the world map (D-154). */}
+                  <Tooltip label={`How far ${member.name} sees, in cubes — 12 is 60 ft`} placement="right">
+                    <DraftInput
+                      className="sight"
+                      aria-label={`${member.name}'s sight, in cubes`}
+                      inputMode="numeric"
+                      value={String(member.sight)}
+                      valid={isRange}
+                      onCommit={(draft) => dispatch({
+                        kind: 'editMember', id: member.id, visionRange: Number(draft.trim()),
+                      })}
+                    />
+                  </Tooltip>
                 </li>
               ))}
             </ul>
@@ -150,6 +177,21 @@ export function MapPanel({
                   : 'Everybody is placed. Pick Move (key 3) to move them.'}
             </p>
             <div className="btn-grid campaign-actions">
+              <Tooltip
+                label={partyView
+                  ? 'Back to the whole map, to build'
+                  : 'See the map as the table does: the band, and only what the party has seen'}
+                placement="bottom"
+                stretch
+              >
+                <button
+                  className={`wide${partyView ? ' on' : ''}`}
+                  aria-pressed={partyView}
+                  onClick={() => onPartyView(!partyView)}
+                >
+                  {partyView ? '◐ Party\'s view' : '○ Party\'s view'}
+                </button>
+              </Tooltip>
               <Tooltip label="Send the party back out to the world map" placement="bottom" stretch>
                 <button className="wide" onClick={() => dispatch({ kind: 'leaveMap' })}>
                   Bring them out
@@ -185,6 +227,26 @@ export function MapPanel({
               </Tooltip>
             </div>
           </>
+        )}
+        {/*
+          A fresh start for play (D-277): the GM walks a token round a
+          prepared scene to check the walls and the levels, then wipes what it
+          saw. Play state cannot be undone, so it asks first, the way every
+          delete does (R-151).
+        */}
+        {(seen > 0 || party.some((member) => member.standing)) && (
+          <div className="row forget">
+            <ConfirmDelete
+              label="Forget everything the party has seen here, and take them off the map — a fresh start"
+              confirmLabel="Forget"
+              placement="right"
+              onConfirm={() => dispatch({ kind: 'forgetMap', placeId, poiId })}
+            >
+              <span className="hint grow">
+                {seen > 0 ? 'They remember what they have seen here.' : 'They have seen nothing here yet.'}
+              </span>
+            </ConfirmDelete>
+          </div>
         )}
       </div>
 

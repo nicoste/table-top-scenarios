@@ -51,6 +51,16 @@ function tavern() {
   return { state, placeId, poiId };
 }
 
+/**
+ * Stands the roster's first member on the floor in the middle of the tavern,
+ * where twelve cubes take in all three floating blocks and most of the floor:
+ * the table is shown what the party sees (D-273), so a test about what the
+ * table is sent has somebody looking first.
+ */
+const looking = (state: HostState, placeId: string, poiId: string) => run(state, {
+  kind: 'moveToken', placeId, poiId, memberId: state.active!.party[0]!.id, at: { x: 5, y: 1, z: 5 },
+}).state;
+
 const tableMap = (state: HostState) =>
   (viewFor('table', state) as TableView).campaign!.places[0]!.pois[0]!.map;
 
@@ -153,18 +163,49 @@ describe('what the table is sent (R-158, D-184 answered)', () => {
     expect(tableMap(state)).toBeNull();
   });
 
-  it('the whole body once they are in and nothing is cut', () => {
+  it('a map with nothing in it until somebody stands there to see (D-200, D-273)', () => {
     const { state, placeId, poiId } = tavern();
     const inside = run(state, { kind: 'enterMap', placeId, poiId }).state;
     expect(tableMap(inside)).not.toBeNull();
+    expect(mapFromJSON(tableMap(inside)!)!.blocks.size).toBe(0);
+  });
+
+  it('everything the party sees once they are in and nothing is cut', () => {
+    const { state, placeId, poiId } = tavern();
+    const inside = looking(run(state, { kind: 'enterMap', placeId, poiId }).state, placeId, poiId);
     expect(tableBlock(inside, 2, 1, 2)).toBe(STONE);
     expect(tableBlock(inside, 2, 5, 2)).toBe(STONE);
     expect(tableBlock(inside, 2, 9, 2)).toBe(STONE);
+    // And the floor out past the member's twelve cubes is not theirs to see.
+    expect(tableBlock(inside, 5, 0, 5)).not.toBeNull();
+    expect(tableBlock(inside, 15, 0, 15)).toBeNull();
+  });
+
+  it('never a block the party has not seen (R-85, D-273)', () => {
+    // A box of stone two cubes high round a crate at 12,1,12; the member
+    // stands outside it.
+    const { state, placeId, poiId } = tavern();
+    const box: { x: number; y: number; z: number }[] = [];
+    for (let x = 10; x <= 14; x += 1) {
+      for (let z = 10; z <= 14; z += 1) {
+        if (x === 10 || x === 14 || z === 10 || z === 14) box.push({ x, y: 1, z }, { x, y: 2, z });
+      }
+    }
+    let next = run(state, { kind: 'setBlock', placeId, poiId, cells: box, swatch: STONE }).state;
+    next = run(next, { kind: 'setBlock', placeId, poiId, cells: [{ x: 12, y: 1, z: 12 }], swatch: STONE }).state;
+    next = looking(run(next, { kind: 'enterMap', placeId, poiId }).state, placeId, poiId);
+
+    expect(tableBlock(next, 10, 1, 12)).toBe(STONE);
+    expect(tableBlock(next, 12, 1, 12)).toBeNull();
+    // Not cut from the map — the GM still has it.
+    const gm = viewFor('gm', next) as GmView;
+    const theirs = mapFromJSON(gm.campaign!.places[0]!.pois[0]!.map!)!;
+    expect(theirs.blocks.has('12,1,12')).toBe(true);
   });
 
   it('only the band, once the GM cuts to one', () => {
     const { state, placeId, poiId } = tavern();
-    let inside = run(state, { kind: 'enterMap', placeId, poiId }).state;
+    let inside = looking(run(state, { kind: 'enterMap', placeId, poiId }).state, placeId, poiId);
     inside = run(inside, { kind: 'setRange', placeId, poiId, lower: 4, upper: 8 }).state;
 
     expect(tableBlock(inside, 2, 5, 2)).toBe(STONE);
@@ -175,7 +216,7 @@ describe('what the table is sent (R-158, D-184 answered)', () => {
 
   it('a cut level is absent from the payload, not merely undrawn (R-85)', () => {
     const { state, placeId, poiId } = tavern();
-    let inside = run(state, { kind: 'enterMap', placeId, poiId }).state;
+    let inside = looking(run(state, { kind: 'enterMap', placeId, poiId }).state, placeId, poiId);
     inside = run(inside, { kind: 'setRange', placeId, poiId, lower: 4, upper: 8 }).state;
 
     /*
@@ -280,7 +321,7 @@ describe('the range (R-146)', () => {
   it('is what the party walks into, later', () => {
     const { state, placeId, poiId } = tavern();
     let next = run(state, { kind: 'setRange', placeId, poiId, lower: 4, upper: 8 }).state;
-    next = run(next, { kind: 'enterMap', placeId, poiId }).state;
+    next = looking(run(next, { kind: 'enterMap', placeId, poiId }).state, placeId, poiId);
     const levels = new Set(
       [...mapFromJSON(tableMap(next)!)!.blocks.keys()].map((k) => Number(k.split(',')[1])),
     );

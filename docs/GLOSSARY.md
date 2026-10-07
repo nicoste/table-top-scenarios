@@ -7,7 +7,7 @@ New concepts get an entry here *before* they get an identifier.
 |---|---|
 | **Off-tool** | Anything the people at the table resolve themselves: dice, damage, initiative, negotiation, scouting outcomes. The tool never models these. Nicolás's term, and the sharpest constraint we have. |
 | **Campaign** | A named body of *authored* content: the world, its chunks, places, their points of interest, encounter maps, and asset registries. Reusable across groups and sessions. Changes only when the GM builds. |
-| **Save** | A snapshot of *play state* layered over a campaign: token positions, discovery flags, fog, GM notes. Many saves per campaign. |
+| **Save** | The *play state* layered over a campaign: token positions, discovery flags, what the party has explored, the hour. One per campaign, autosaved (D-147). |
 | **Session** | One live run: a host process with a campaign loaded, a save active, and up to two clients attached. |
 | **World** | The top scale. A sparse grid of chunks. |
 | **Chunk** | One world square: a 30×30 grid of terrain columns plus any places sitting on it (D-103). The unit of authoring and of world-view LOD. |
@@ -19,6 +19,10 @@ New concepts get an entry here *before* they get an identifier.
 | **Token** | A figure on an encounter map: a party member standing in one cube of the map the party is in, drawn as a gold base and a card in the member's colour (R-184, R-187). The GM's own figures — silver — are a later round (D-255). On the world map the party is drawn as a **pawn** instead (R-90). |
 | **Party** | The player-controlled side. One side, not N players — everyone shares the table display. |
 | **Party fog** | Encounter-map visibility: the union of what every party token can see. There is deliberately no per-token vision. |
+| **Sight** | What the party sees *now* in the map it is in: the **cubes of space** a line from some member's eye reaches (R-41, D-271). Derived by the host after every intent, never stored (R-190). |
+| **Explored** | The space the party *has* seen of a map, cumulative and kept in the save per map (R-45, D-273). The blocks touching it are what the table is sent; undo never takes it back. |
+| **In sight** | R-45's *Visible* state, named so in code because "visible" already means three other things (R-84): a block touching space seen now. Drawn as lit. Explored but not in sight is greyed; never seen is not drawn. |
+| **Party's view** | The console drawing the table's picture — the band and the party's fog over it — while the party is in the open map (R-76, D-274). A switch, off by default. |
 | **Discovery** | World-scale knowledge. A GM-granted flag on a chunk or a place. Not geometric, not computed. |
 | **GM console** | The GM's screen. Dense, authoritative, holds every secret. |
 | **Table display** | The screen everyone at the table looks at. Interactive but minimal, and never receives a secret. |

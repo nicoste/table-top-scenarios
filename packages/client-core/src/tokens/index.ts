@@ -6,7 +6,7 @@
 // the ghost follows the pointer.
 
 import type { Intent } from '@tt/protocol';
-import type { BlockCoord, EncounterMap, LevelRange, MemberId, Tokens } from '@tt/domain';
+import type { BlockCoord, Cells, EncounterMap, LevelRange, MemberId, Tokens } from '@tt/domain';
 import {
   whyNotStand, standsInBand, topOfMap, planeSteps, MAP_MAX_HEIGHT, MAP_MIN_DEPTH,
 } from '@tt/domain';
@@ -138,6 +138,11 @@ export function tableCeiling(slice: EncounterMap): number {
  * click would be refused. **The levels are judged first**, the order the host
  * uses for the table: every other reason describes a cube, and a cube outside
  * the band is one the table was never sent.
+ *
+ * **Then sight, when `seen` is given** — the table's case (D-275). The players
+ * may only stand somebody where the party has looked, and the table is sent
+ * exactly that, so it can tell before it asks. The console passes nothing:
+ * the GM stands anybody anywhere (R-39).
  */
 export function standVerdict(
   map: EncounterMap,
@@ -145,6 +150,7 @@ export function standVerdict(
   memberId: string,
   at: BlockCoord,
   headroom: Headroom,
+  seen: Cells | null = null,
 ): string | null {
   if (headroom && 'band' in headroom && !standsInBand(headroom.band, at)) {
     return 'outside the levels being shown';
@@ -152,6 +158,7 @@ export function standVerdict(
   if (headroom && 'ceiling' in headroom && at.y >= headroom.ceiling) {
     return 'above the levels being shown';
   }
+  if (seen && !seen.has(`${at.x},${at.y},${at.z}`)) return 'the party has not seen it';
   switch (whyNotStand(map, tokens, memberId as MemberId, at)) {
     case 'outside': return 'outside the map';
     case 'solid': return 'a block is there';

@@ -28,6 +28,7 @@ import {
   setChunkKnown, setPlaceRevealed, setPlacesRevealed, isAuthored, placesInChunk,
   NO_TOKENS, tokensFor, withTokens, settleTokens, pruneTokens, onRoster, whyNotStand, placeToken,
   standsInBand, clearOfTokens,
+  exploredIn, pruneExplored, lookAround, blockKey, forgetMap,
 } from '@tt/domain';
 import type { HostState, Intent, Role } from '@tt/protocol';
 import { parseTerrainId, parseMarkerId } from '@tt/protocol';
@@ -150,9 +151,13 @@ export function openedWith(
     // a correction (`onRoster`).
     poiIds, memberIds))
     : createLiveSave(campaign, savedAt);
+  // What was seen of maps that are gone, and then a look around: a save from
+  // before vision has seen nothing, and the party standing in a map should
+  // see it the moment the campaign opens (D-273).
+  const seen = lookAround(pruneExplored(save, poiIds), campaign);
   return {
-    state: { ...state, active: campaign, activeSave: save },
-    toPersist: save !== usable ? save : null,
+    state: { ...state, active: campaign, activeSave: seen },
+    toPersist: seen !== usable ? seen : null,
   };
 }
 
@@ -166,6 +171,37 @@ export function openedWith(
  * arrives (D-169, R-23b's lesson).
  */
 export function apply(state: HostState, role: Role, intent: Intent, now: string): Applied {
+  const result = recorded(state, role, intent, now);
+  return result.rejected ? result : lookingAround(result, now);
+}
+
+/**
+ * The party looks around after anything that went through (R-15, D-273).
+ *
+ * Here rather than in the handlers, for the reason the undo hook below is: a
+ * hook nobody has to remember cannot be forgotten. What the party sees depends
+ * on where they stand, the blocks, the roster's ranges and which map they are
+ * in, and nearly every kind of intent can change one of those — undo included.
+ * Asking costs a lookup when none of them changed, because sight is kept per
+ * body, tokens and roster.
+ *
+ * A save it grows replaces any write the intent already asked for, so one
+ * intent is one write.
+ */
+function lookingAround(result: Applied, now: string): Applied {
+  const { active, activeSave } = result.state;
+  if (!active || !activeSave) return result;
+  const seen = lookAround(activeSave, active);
+  if (seen === activeSave) return result;
+  const stamped = touch(seen, now);
+  return {
+    ...result,
+    state: { ...result.state, activeSave: stamped },
+    effects: [...result.effects.filter((effect) => effect.kind !== 'saveSave'), { kind: 'saveSave', save: stamped }],
+  };
+}
+
+function recorded(state: HostState, role: Role, intent: Intent, now: string): Applied {
   const result = applyIntent(state, role, intent, now);
   if (result.rejected) return result;
 
@@ -371,6 +407,18 @@ function applyToCampaign(state: HostState, role: Role, intent: Intent, now: stri
     case 'moveToken':
       return applyToTokens(state, campaign, role, intent, now);
 
+    case 'forgetMap': {
+      // A fresh start (D-277). Not undoable, like everything else about play
+      // state (R-140): the console asks first instead (R-151).
+      const save = state.activeSave;
+      if (!save) return reject(state, 'no save is open');
+      const place = placeById(campaign.places, intent.placeId as PlaceId);
+      if (!place) return reject(state, 'no such place');
+      const poi = poiOfPlace(place, intent.poiId as PoiId);
+      if (!poi) return reject(state, 'no such point of interest');
+      return commitSave(state, save, forgetMap(save, poi.id), now);
+    }
+
     default:
       return applyToPois(state, campaign, intent, commit, now);
   }
@@ -399,6 +447,12 @@ const FOOTING: Record<Footing, string> = {
  * never sent: "there is a block there" about a cube behind the cut would
  * report the very thing the cut is withholding (R-85). Inside the band, the
  * table already holds everything a refusal could mention.
+ *
+ * **And so is sight** (D-275): the table may only stand somebody in a cube
+ * the party has seen. Any block in a cube seen, and the floor under it, is
+ * one the table was sent — so past this check, a footing reason is about
+ * something on the players' screen, and before it the only answer is one that
+ * says nothing about what is there. The GM stands anybody anywhere (R-39).
  */
 function applyToTokens(
   state: HostState,
@@ -427,6 +481,9 @@ function applyToTokens(
 
   if (role === 'table' && !standsInBand(rangeFor(save, poi.id), intent.at)) {
     return reject(state, 'that is outside the levels being shown');
+  }
+  if (role === 'table' && !exploredIn(save, poi.id).has(blockKey(intent.at))) {
+    return reject(state, 'the party has not seen that');
   }
   // Through the roster: a member who has left it stands nowhere, and must not
   // stand in anybody's way either (`onRoster`).

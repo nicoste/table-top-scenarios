@@ -7,13 +7,14 @@ export {
   encodePoi, decodePoi, parseMarkerId,
   DiscoveryWireSchema, PlacementWireSchema, SaveWireSchema, encodeSave, decodeSave,
   encodePlacement, decodePlacement, CubeWireSchema, TokensWireSchema,
+  CellsWireSchema, cellsWire, cellsFromWire,
   ChunkWireSchema, TerrainWireSchema, MemberWireSchema, WorldWireSchema, CampaignWireSchema,
   encodeChunk, encodeWorld, encodeCampaign, decodeChunk, decodeWorld, decodeCampaign,
   parseTerrainId,
   mapWire,
 } from './wire/index.js';
 export type {
-  ChunkWire, CampaignWire, PlaceWire, SaveWire, PlacementWire, MapWire, TokensWire,
+  ChunkWire, CampaignWire, PlaceWire, SaveWire, PlacementWire, MapWire, TokensWire, CellsWire,
 } from './wire/index.js';
 
 export { IntentSchema, parseIntent } from './intents/index.js';
@@ -27,5 +28,5 @@ export { viewFor } from './view/index.js';
  */
 export { liveSaveId } from '@tt/domain';
 export type {
-  Role, CampaignSummary, HostState, History, GmView, TableView, View, OutboundMessage,
+  Role, CampaignSummary, HostState, History, GmView, TableView, TableFog, View, OutboundMessage,
 } from './view/index.js';

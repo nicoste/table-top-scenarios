@@ -7,7 +7,7 @@
 // says it means, and a travel in progress outranks everything.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { decodeCampaign, decodePlacement } from '@tt/protocol';
+import { decodeCampaign, decodePlacement, cellsFromWire } from '@tt/protocol';
 import {
   CHUNK_SIZE, DEFAULT_MARKERS, DEFAULT_MATERIALS, mapFromJSON, clampLighting, tokensFromJSON,
 } from '@tt/domain';
@@ -21,7 +21,7 @@ import {
   tokenAction, stridePrompt,
 } from '@tt/client-core';
 import { defaultTarget, worldCentre } from '@tt/render';
-import type { Standing } from '@tt/render';
+import type { Standing, StageFog } from '@tt/render';
 import { useStage } from '../scene/use-stage.js';
 import { useCost, COST_HINT } from '../scene/use-cost.js';
 import { PlaceCard } from '../features/place/index.js';
@@ -93,6 +93,15 @@ export function App({ view, status, rejection, dispatch }: Props) {
    */
   const tokensWire = view?.tokens ?? null;
   const standing = useMemo(() => tokensFromJSON(tokensWire), [tokensWire]);
+  /**
+   * The party's fog over that map (R-45, D-273): where they have looked, and
+   * which of the blocks this screen holds they see now. Everything else it
+   * holds is explored, and what they have never seen it was never sent (R-85).
+   */
+  const fogWire = view?.fog ?? null;
+  const seen = useMemo(() => (fogWire ? cellsFromWire(fogWire.seen) : null), [fogWire?.seen]);
+  const lit = useMemo(() => (fogWire ? cellsFromWire(fogWire.lit) : null), [fogWire?.lit]);
+  const fog: StageFog | null = useMemo(() => (lit ? { lit, shown: null } : null), [lit]);
   const colourOf = (id: string) => campaign?.party.find((m) => m.id === id)?.colour ?? '#ffffff';
 
   const nameOf = useCallback(
@@ -161,6 +170,10 @@ export function App({ view, status, rejection, dispatch }: Props) {
     );
   }, [stage, insideWire?.place.id, insideWire?.poi.id, body]);
 
+  // The fog, as an attribute on the body this screen already holds: a step
+  // that shows nothing new costs a colour write, not a rebuild (R-69).
+  useEffect(() => { stage?.setFog(fog); }, [stage, fog]);
+
   // The party in the map, as they were sent (R-184). Their own effect, for the
   // pawns' reason: they move far more often than the map changes (R-19a).
   useEffect(() => {
@@ -187,7 +200,7 @@ export function App({ view, status, rejection, dispatch }: Props) {
    * worked out from the plane list, since the table is never told its band.
    */
   const strideVerdict = (memberId: string, at: BlockCoord) => (body
-    ? standVerdict(body, standing, memberId, at, { ceiling: tableCeiling(body) })
+    ? standVerdict(body, standing, memberId, at, { ceiling: tableCeiling(body) }, seen)
     : 'outside the map');
 
   // Escape cancels a move or closes an open place (R-132, R-139), and the

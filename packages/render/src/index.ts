@@ -20,7 +20,7 @@ export { grainAt } from './grain/index.js';
 
 export { Stage, FRAME_BUDGET_MS, FRAME_SLOP_MS, IDLE_HEARTBEAT_MS } from './stage/index.js';
 export type { StageCost } from './stage/index.js';
-export type { Picked, SlotAddress, Standing } from './stage/index.js';
+export type { Picked, SlotAddress, Standing, StageFog } from './stage/index.js';
 
 export { buildPartyTokens } from './tokens/index.js';
 export type { PartyTokens, TokenRef, TokenSpec } from './tokens/index.js';
@@ -32,7 +32,7 @@ export { surfaceMove, showWorldMarkers } from './surface/index.js';
 export type { SurfaceMove } from './surface/index.js';
 
 export { buildBlockBody } from './blocks/index.js';
-export type { BlockBody, FacePick } from './blocks/index.js';
+export type { BlockBody, FacePick, FogState } from './blocks/index.js';
 
 // The figure in a material's surface (R-177).
 export { isFigured } from './patterns/index.js';

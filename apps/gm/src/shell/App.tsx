@@ -1,7 +1,7 @@
 // The GM console shell: launcher until a campaign is open, then the world.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { decodeCampaign, decodePlacement } from '@tt/protocol';
+import { decodeCampaign, decodePlacement, cellsFromWire } from '@tt/protocol';
 import {
   MAX_HEIGHT, WHOLE_MAP, rangeIn, clampBrush, BRUSHES, DEFAULT_BRUSH, brushById,
   chunkAt, columnAt,
@@ -10,11 +10,12 @@ import {
   bottomOfMap, DEFAULT_TERRAIN, sunReaches, litBy, MAP_MAX_HEIGHT,
   DAYLIGHT, clampLighting,
   NO_TOKENS, tokensIn, onRoster, unplaced, tokensInBand, standsInBand, standingAt,
+  NO_CELLS, shownBy,
 } from '@tt/domain';
 import type { SwatchId, Lighting, Ambience, MemberId, Tokens, BlockCoord } from '@tt/domain';
 import type { GmView, Intent } from '@tt/protocol';
 import { defaultTarget, worldCentre } from '@tt/render';
-import type { Standing } from '@tt/render';
+import type { Standing, StageFog } from '@tt/render';
 import type { Stride, Tool, Travel } from '@tt/client-core';
 import {
   idle, pick, armed, aim, ghostCell, canConfirm, travelIntent, travelPrompt,
@@ -81,6 +82,13 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    * every session to answer a question the GM asks occasionally.
    */
   const [levelling, setLevelling] = useState(false);
+  /**
+   * The console drawing the table's picture (R-76, D-274): the band, and the
+   * party's fog over it. View state (R-64), off by default — the GM builds on
+   * the whole map — and only while the party is in the open map, because the
+   * fog is theirs.
+   */
+  const [partyView, setPartyView] = useState(false);
   /**
    * Is Alt/Option down — the dig modifier (R-160)?
    *
@@ -229,6 +237,15 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   const inside = view?.save?.inside ?? null;
   const partyHere = !!inside && !!openMap
     && inside.placeId === openMap.placeId && inside.poiId === openMap.poiId;
+  /** The Party's view, while there is a party in the open map to see it. */
+  const previewing = partyView && partyHere;
+  /**
+   * Showing the band alone, for either reason: levelling, or the Party's view,
+   * which is the band with the fog over it. Everything R-159 says about the
+   * first holds for the second — what is cut away is absent, so it is refused
+   * rather than built into and lost.
+   */
+  const banded = levelling || previewing;
   /**
    * The band the open map is cut to (R-146).
    *
@@ -365,9 +382,27 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    * clickable, which is how a GM ends up editing something they cannot see.
    */
   const shownBody = useMemo(
-    () => (openBody && levelling && openRange ? sliceOf(openBody, openRange) : openBody),
-    [openBody, levelling, openRange?.lower, openRange?.upper],
+    () => (openBody && banded && openRange ? sliceOf(openBody, openRange) : openBody),
+    [openBody, banded, openRange?.lower, openRange?.upper],
   );
+
+  /**
+   * The party's fog, for the console's preview of the table (R-76, D-274):
+   * the blocks the party sees now are lit, the ones they have only seen are
+   * greyed, and the rest are drawn as nothing. Worked out from the whole body
+   * and the save's own record by the same rule the filter cuts the table's
+   * payload with (D-271), so the preview cannot disagree with the table.
+   */
+  const exploredWire = openMap ? view?.save?.explored?.[openMap.poiId] : undefined;
+  const sightWire = view?.sight ?? null;
+  const partyFog: StageFog | null = useMemo(() => {
+    if (!previewing || !openBody) return null;
+    return {
+      lit: shownBy(openBody, sightWire ? cellsFromWire(sightWire) : NO_CELLS),
+      shown: shownBy(openBody, exploredWire ? cellsFromWire(exploredWire) : NO_CELLS),
+    };
+  }, [previewing, openBody, sightWire, exploredWire]);
+  useEffect(() => { stage?.setFog(partyFog); }, [stage, partyFog]);
 
   /**
    * Opening a map takes the party in — *"when a GM open a map, the party goes
@@ -468,12 +503,12 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    */
   useEffect(() => {
     if (!stage) return;
-    const shown = levelling && openRange ? tokensInBand(present, openRange) : present;
+    const shown = banded && openRange ? tokensInBand(present, openRange) : present;
     const standing: Standing[] = [...shown].map(([memberId, at]) => ({
       memberId, at, colour: memberColour(memberId),
     }));
     stage.setTokens(standing);
-  }, [stage, present, levelling, openRange?.lower, openRange?.upper, roster]);
+  }, [stage, present, banded, openRange?.lower, openRange?.upper, roster]);
 
   // Somebody waiting to be placed and Move in hand: the sequence holds them
   // ready, first in roster order, and the next after each confirm (D-167,
@@ -498,7 +533,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    * the GM is looking at, which is R-159's rule for building too (R-185).
    */
   const strideVerdict = (memberId: string, at: BlockCoord) => (openBody
-    ? standVerdict(openBody, present, memberId, at, levelling && openRange ? { band: openRange } : null)
+    ? standVerdict(openBody, present, memberId, at, banded && openRange ? { band: openRange } : null)
     : 'outside the map');
 
   // With nothing on the board there is no pawn to pick up, so the sequence
@@ -581,7 +616,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     brush: brushById(mapBrush),
     alt: digging,
     shift: shifting,
-    within: levelling ? openRange ?? WHOLE_MAP : null,
+    within: banded ? openRange ?? WHOLE_MAP : null,
   };
 
   /**
@@ -799,7 +834,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
           const range = openRange ?? WHOLE_MAP;
           return {
             total: cells.length,
-            unseen: levelling ? cells.filter((c) => !inRange(range, c.y)).length : 0,
+            unseen: banded ? cells.filter((c) => !inRange(range, c.y)).length : 0,
           };
         })()
         : undefined;
@@ -1110,6 +1145,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
                 colour: member.colour,
                 standing: at !== null,
                 onTable: at !== null && (!openRange || standsInBand(openRange, at)),
+                sight: member.visionRange,
               };
             })}
             onPickMember={(memberId) => {
@@ -1124,6 +1160,9 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
             range={openRange ?? WHOLE_MAP}
             levelling={levelling}
             onLevelling={setLevelling}
+            partyView={previewing}
+            onPartyView={setPartyView}
+            seen={exploredWire ? cellsFromWire(exploredWire).size : 0}
             brush={mapBrush}
             shifting={shifting}
             onTool={setMapTool}

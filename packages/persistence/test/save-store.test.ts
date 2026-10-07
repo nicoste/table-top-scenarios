@@ -6,7 +6,7 @@ import { fileSaveStore, memorySaveStore } from '@tt/persistence';
 import type { Save } from '@tt/domain';
 import {
   createCampaign, createLiveSave, liveSaveId, withDiscovery,
-  emptyDiscovery, setChunkKnown, isChunkKnown, withTokens, tokensFor,
+  emptyDiscovery, setChunkKnown, isChunkKnown, withTokens, tokensFor, withExplored, exploredIn,
 } from '@tt/domain';
 import type { MemberId } from '@tt/domain';
 
@@ -73,6 +73,33 @@ describe('saves are separate files beside the campaign (R-60)', () => {
     writeFileSync(path, JSON.stringify(json));
     const back = store.load(live.id)!;
     expect(back.tokens.size).toBe(0);
+    expect(back.schemaVersion).toBe(live.schemaVersion);
+  });
+
+  it('keeps what the party has seen of each map (R-45, D-273)', () => {
+    const store = fileSaveStore(root);
+    const { live } = seeded();
+    const hall = new Set(['3,1,3', '4,1,3', '5,1,3', '3,2,3', '-7,-3,40']);
+    const cellar = new Set(['9,-3,9']);
+    store.save(withExplored(withExplored(live, 'poi_tavern', hall), 'poi_cellar', cellar));
+    const back = store.load(live.id)!;
+    expect(exploredIn(back, 'poi_tavern')).toEqual(hall);
+    expect(exploredIn(back, 'poi_cellar')).toEqual(cellar);
+    // Packed, not a list of cubes (R-59).
+    const json = readFileSync(join(root, `${live.id}.json`), 'utf8');
+    expect(json).not.toContain('3,1,3');
+  });
+
+  it('reads a save written before vision as a party that has seen nothing — no bump (D-273)', () => {
+    const store = fileSaveStore(root);
+    const { live } = seeded();
+    store.save(withExplored(live, 'poi_tavern', new Set(['3,1,3'])));
+    const path = join(root, `${live.id}.json`);
+    const json = JSON.parse(readFileSync(path, 'utf8')) as Record<string, unknown>;
+    delete json.explored;
+    writeFileSync(path, JSON.stringify(json));
+    const back = store.load(live.id)!;
+    expect(back.explored.size).toBe(0);
     expect(back.schemaVersion).toBe(live.schemaVersion);
   });
 

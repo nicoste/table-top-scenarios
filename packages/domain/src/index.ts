@@ -94,6 +94,7 @@ export {
   touch, upgraded, withDiscovery, withPlacement, pruneDiscovery, pruneMembers,
   enteringMap, leavingMap, rangeFor, rangeIn, withRange, withLighting, pruneInside, pruneRanges, settleRanges,
   tokensFor, tokensIn, withTokens, settleTokens, pruneTokens,
+  exploredIn, withExplored, pruneExplored, lookAround, forgetMap,
 } from './save/index.js';
 
 export type { Tokens, TokensJSON, Footing } from './tokens/index.js';
@@ -101,6 +102,12 @@ export {
   NO_TOKENS, sameCube, standingAt, whyNotStand, placeToken, standsInBand, tokensInBand,
   onRoster, unplaced, clearOfTokens, settled, dropBelow, tokensToJSON, tokensFromJSON,
 } from './tokens/index.js';
+
+export type { Cells, CellsJSON } from './vision/index.js';
+export {
+  EYE_HEIGHT, EYE_UNDER_CEILING, NO_CELLS, eyeOf, memberSight, partySight, explore, shownBy,
+  seenPart, cellsToJSON, cellsFromJSON,
+} from './vision/index.js';
 
 export type { Placement, PlacementJSON } from './placement/index.js';
 export {

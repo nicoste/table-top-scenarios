@@ -99,6 +99,11 @@ export const IntentSchema = z.discriminatedUnion('kind', [
     memberId: z.string().min(1),
     at: CubeWireSchema,
   }),
+  /**
+   * A fresh start in one map (D-277): forget what the party has seen of it,
+   * and take them off it. The GM's alone — it rewrites what the table knows.
+   */
+  z.object({ kind: z.literal('forgetMap'), placeId: z.string().min(1), poiId: z.string().min(1) }),
 
   // A point of interest's map (D-183). Authored content, so GM only. `stroke`
   // ties one drag into a single undo, exactly as it does for terrain (R-140b).
