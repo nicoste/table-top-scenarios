@@ -1010,8 +1010,9 @@ debug eye view (R-48) from looking absurd.
 > feature — it answers "why does the engine think this is visible?" and is the
 > fastest way to see a fog bug. It is never presented to players (D-036).
 >
-> **The eye view is rejected** (D-276): *"not now nor never."* The ray overlay
-> is not built yet — the GM's call is open (O-030).
+> **The eye view is rejected** (D-276): *"not now nor never."* **The ray
+> overlay is not built either** (D-279): it comes when testing turns up fog that
+> cannot be explained without seeing the rays.
 
 ### Retired
 

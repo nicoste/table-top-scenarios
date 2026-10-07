@@ -6209,7 +6209,7 @@ Listed in the round's plan as defaults and not objected to, but each a choice:
   stated**, and has been `proposed` since round 1. R-15 already said it; this
   asks for the word.
 
-### O-030 — The diagnostics (R-48) · `open for the ray overlay; the eye view rejected by D-276`
+### O-030 — The diagnostics (R-48) · `closed by D-276 and D-279`
 R-48 specifies two GM-only diagnostics: a **ray overlay** — the sight lines
 from a chosen member to the block pointed at, green through and red stopped,
 the stopping block marked — and an **eye view** from a member's position. The
@@ -6270,4 +6270,14 @@ cube that is not drawn could be lit, and what a "room" was. Answered:
   vocabulary, the party's fog is the union of what every token sees.
 
 The ray overlay (O-030) is the one call still open.
+
+### D-279 — No ray overlay, until testing asks for one · `agreed`
+Closes O-030. The GM: *"No ray overlay, close it, we will add it if by testing
+this we find weird issues."*
+
+So neither of R-48's diagnostics is built: the eye view never (D-276), and the
+ray overlay not until the fog does something that cannot be explained without
+seeing the rays. It would be a GM-only drawing of the lines `lineIsClear` walks
+— from one member's eye to the points of one cube, green through and red
+stopped (D-271) — and nothing in vision as built is in its way.
 
