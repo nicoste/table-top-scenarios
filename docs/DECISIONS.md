@@ -6281,3 +6281,91 @@ seeing the rays. It would be a GM-only drawing of the lines `lineIsClear` walks
 — from one member's eye to the points of one cube, green through and red
 stopped (D-271) — and nothing in vision as built is in its way.
 
+### D-280 — The world is painted in two axes: ground and cover · `agreed, unbuilt`
+The design for the world round, settled in conversation and written before any
+of it is built, because it took several wrong turns to reach and none of them
+are worth taking twice.
+
+**What prompted it.** The world map looks plain beside a map's cubes: no grain,
+no figures, and still `MeshLambertMaterial` while maps moved to Standard in
+D-238. It drifted because nothing tied the two together — maps use the
+**materials** registry and the world used a separate **terrain** one, so every
+appearance feature since D-237 landed on one side only.
+
+**The first answer was wrong.** I proposed terrain borrowing a material for its
+appearance while keeping `defaultDifficulty` for its rule. The GM saw through
+it: *"terrain is not about materials, it's about a group of them — it's not
+just grass, it's not just wood, it's forest or jungle, the combination."*
+Forest is not a substance. It is grass with trees standing on it.
+
+**So the world is painted in two axes**, and a biome is what you get rather
+than what you pick:
+
+```
+Column { height, ground: SwatchId, cover?: CoverId, difficulty?: Difficulty }
+```
+
+- **Ground** is a swatch from the materials registry — the same one maps use,
+  so lava edited once looks like lava everywhere, which was the GM's ask.
+  `Terrain` and `TerrainId` stop existing.
+- **Cover** is what stands on it: trees, pines, scrub, boulders. Absent on most
+  cells, and **one per cell** to begin with. A density, light scrub through to
+  dense jungle, is a later question.
+- `difficulty?` is the per-cell override that already exists (R-77), untouched.
+
+**Why two axes and not a list of biomes.** Enumerating Forest, Jungle, Taiga,
+Oasis, Scrub repeats the mistake D-245 undid: thirteen materials whose identity
+was a colour held four near-duplicate pairs, and families × cuts gave more
+expression from fewer permanent ids. A biome list has the same shape, and every
+entry is forever under R-11. Ground × cover gives sixty-odd combinations from
+about eighteen entries, and snow + trees is taiga without anybody inventing
+taiga.
+
+**Presets give the one click back, and cost nothing.** "Forest" sets ground to
+Grass and cover to Trees in one go. The load-bearing part is that a cell stores
+*ground and cover, never "Forest"* — so a preset is a shortcut, not an entity.
+It can be renamed or deleted freely and R-11 never touches it.
+
+**A cover is made of swatches too.** A tree is a Wood·oak trunk under a
+Vegetation·leaves canopy; a pine is Wood·dark-oak and Vegetation·dark. Retune
+the Vegetation family and every forest on every map follows. No substance is
+described twice anywhere.
+
+**Difficulty multiplies.** The existing numbers are already reciprocal speed
+multipliers from the 3.5 overland table, so grass 1 × trees 1.5 = 1.5, sand
+1.5 × trees 1.5 = 2.25, and impassable stays impassable whatever stands on it.
+Sixty-five combinations and no hand-authored table.
+
+**Settled along the way**
+
+- **Derived, not stored.** A cell's colour variation and its cover's placement
+  come from a hash of the coordinate, so retuning a material restyles every
+  world that uses it, and two forest cells differ without storing anything.
+- **Hard edges are fine.** Forest meeting grassland is a line and the GM shapes
+  the transition by hand. Not worth a blending model.
+- **Covers are representations.** A world cell is 1.5 km across, so a tree is a
+  map symbol — the same idiom as the place markers already on the world. I
+  spent four paragraphs deriving this and the GM's reply was the correct one:
+  *"is the house you added as a POI in the world map at real scale? It's a
+  representation."* The map was already symbolic. Nothing needed deriving.
+- **The POI map does not change.** Its paint tool opens the material panel and
+  paints swatches, and that is already right.
+
+**What the round has to carry**
+
+- `Terrain`, `TerrainId` and `DEFAULT_TERRAIN` removed; `Column.terrainId`
+  becomes `ground`.
+- **A world migration.** Saved worlds hold `terrain:grass` and friends, so a
+  tolerant read maps the twelve old ids onto swatches — the same move as the
+  pre-D-175 POI shape, read-only, written as swatches from then on (R-137a,
+  R-144).
+- The chunk wire, the travel cost lookup, the paint intents and
+  `parseTerrainId` in `sim`.
+- The world mesh: per-material split (R-173), `MeshStandardMaterial`, grain and
+  figures — which is what finally makes it match the maps.
+- Cover geometry, instanced, and the second paint tool.
+
+**One correction worth keeping.** I claimed figures would be barely visible on
+the world. The opposite: the world opens at zoom 34 against a framed map's
+153.6, so a world cell is about four and a half times larger on screen than a
+map cell. Figures will read *better* there than where they were tuned.
