@@ -96,6 +96,7 @@ export function buildBlockBody(map: EncounterMap, materials: readonly Material[]
     glow: 0,
     opacity: 1,
     pattern: 'none',
+    difficulty: 'impassable',
   };
 
   /*

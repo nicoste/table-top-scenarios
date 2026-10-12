@@ -6369,3 +6369,42 @@ Sixty-five combinations and no hand-authored table.
 the world. The opposite: the world opens at zoom 34 against a framed map's
 153.6, so a world cell is about four and a half times larger on screen than a
 map cell. Figures will read *better* there than where they were tuned.
+
+### D-281 — Difficulty moves onto the materials registry · `agreed`
+The first piece of the world round (D-280). Before a world cell can hold a
+swatch instead of a terrain id, the thing a swatch names has to be able to say
+how hard it is to walk on — otherwise the move would delete a rule rather than
+relocate it.
+
+**A family carries a difficulty; a cut may override it.** `Difficulty` —
+`number | 'impassable'` — moves out of `terrain` and into `materials`, where it
+is now the only property a cut may vary besides colour (R-192, amending R-176
+and R-178).
+
+**The override is not a convenience.** Liquids are one family because water,
+green water and a shore scatter light identically, and a shore is the one a
+party can wade: 3 against impassable. Light says one mesh, movement says two
+costs, and both are right. Dark leaves at 2.5 against leaves at 1.5 is the same
+shape. Without the override the registry would have had to split families the
+renderer wants kept together.
+
+**Absent means inherited.** A cut states a difficulty only when it differs, so
+the common case is one number on the family and retuning it reaches every cut
+that did not opt out. `difficultyOf(material, cut)` is the single reader.
+
+**First-pass numbers**, carried over from the terrain table's reasoning rather
+than reinvented: Brick 0.75 (a road is dressed stone), Mineral 1.5, Soil 1 with
+sand and snow at 1.5, Grass 1, Vegetation 1.5 with dark leaves 2.5, Wood 1,
+Liquids impassable with shore 3, Glowing impassable, Glassy 1.5. Tuning values,
+not ids — revisable (R-11 protects ids only).
+
+**Left standing for now.** `terrain` still exists and still compiles; it just
+imports `Difficulty` from its new home. It dies in the next increment, with the
+tolerant read that maps the twelve old ids onto swatches.
+
+**One thing D-280 did not notice.** `TravelMode.overrides` is keyed on terrain
+ids — a boat overrides `terrain:water`. Once ground is a swatch, a boat does
+not care whether it is on water or green water: it cares that the family is
+Liquids. So the override table has to key on the **family**, not the swatch,
+which D-280's list of work did not say. It belongs to the increment that
+deletes `terrain`.

@@ -30,10 +30,29 @@ import { registryId } from '../ids/index.js';
  * The name is the point. "Limestone" and "oak" are words said out loud at a
  * table; "pale brick" and "dark wood" are not.
  */
+/**
+ * How hard a substance is to cross, as the reciprocal of a speed multiplier
+ * (R-192). `1` is open grassland, `3` is a third of that pace.
+ *
+ * Declared here rather than with travel because it is a fact about the stuff:
+ * water is impassable wherever it is, and the world is painted in these.
+ */
+export type Difficulty = number | 'impassable';
+
 export interface Cut {
   readonly id: string;
   readonly name: string;
   readonly colour: string;
+  /**
+   * How hard *this* cut is to cross, when it differs from its family (R-192).
+   *
+   * Water is impassable and its shore is wadeable; both are Liquids. That is
+   * the evidence that navigation varies by cut where appearance does not, and
+   * the reason R-182 says "colour **and** difficulty" rather than "colour".
+   *
+   * Absent means the family's, which is the ordinary case.
+   */
+  readonly difficulty?: Difficulty;
 }
 
 export interface Material {
@@ -102,6 +121,14 @@ export interface Material {
    */
   readonly pattern: 'none' | 'stripes' | 'speckle' | 'courses' | 'plates' | 'grit' | 'leaves';
   /**
+   * How hard this family is to cross (R-192), before any cut overrides it.
+   *
+   * Only the world asks — a map's blocks are stood on, not walked over — but
+   * it belongs to the substance rather than to the world, which is the whole
+   * reason the world can stop keeping a registry of its own (D-280).
+   */
+  readonly difficulty: Difficulty;
+  /**
    * The substances in this family, **the first of them being the default**.
    *
    * Never empty. The default is what a bare `material:brick` means and what a
@@ -145,6 +172,7 @@ const family = (
     roughness?: number;
     glow?: number;
     opacity?: number;
+    difficulty?: Difficulty;
   } = {},
 ): Material => ({
   id: registryId<'MaterialId'>('material', value),
@@ -155,6 +183,8 @@ const family = (
   glow: opts.glow ?? 0,
   opacity: opts.opacity ?? SOLID,
   pattern: opts.pattern ?? 'none',
+  // Open country, which is what the travel table is normalised against.
+  difficulty: opts.difficulty ?? 1,
   cuts,
 });
 
@@ -171,7 +201,8 @@ export const DEFAULT_MATERIALS: readonly Material[] = [
     c('clay', 'Clay', '#9c5f4e'),
     c('dressed', 'Dressed stone', '#8d93a1'),
     c('limestone', 'Limestone', '#c3b79c'),
-  ], { pattern: 'courses', roughness: MATT }),
+    // Paving: the one ground that is easier than open country.
+  ], { pattern: 'courses', roughness: MATT, difficulty: 0.75 }),
 
   // Not brick: a cave wall has no courses and no bond, and a dungeon is mostly
   // cave wall. Gold and copper live here because metal is not a *structure* —
@@ -182,7 +213,7 @@ export const DEFAULT_MATERIALS: readonly Material[] = [
     c('dark-rock', 'Dark rock', '#5f6672'),
     c('gold', 'Gold', '#b89a4e'),
     c('copper', 'Copper', '#a8714c'),
-  ], { pattern: 'plates' }),
+  ], { pattern: 'plates', difficulty: 1.5 }),
 
   family('wood', 'Wood', [
     c('oak', 'Oak', '#9c7a4a'),
@@ -192,8 +223,9 @@ export const DEFAULT_MATERIALS: readonly Material[] = [
 
   family('soil', 'Soil', [
     c('dirt', 'Dirt', '#7a6248'),
-    c('sand', 'Sand', '#cbb887'),
-    c('snow', 'Snow', '#e4e9ef'),
+    // Loose underfoot, both of them, where packed dirt is not.
+    { ...c('sand', 'Sand', '#cbb887'), difficulty: 1.5 },
+    { ...c('snow', 'Snow', '#e4e9ef'), difficulty: 1.5 },
   ], { pattern: 'grit', grain: ROUGH, roughness: 1 }),
 
   // `dried` is the old thatch. A roof of it reads as a lawn rather than as laid
@@ -205,24 +237,31 @@ export const DEFAULT_MATERIALS: readonly Material[] = [
     c('dried', 'Dried grass', '#b09a5e'),
   ], { pattern: 'speckle', grain: ROUGH, roughness: MATT }),
 
+  // Undergrowth as *ground*: a forest is grass with trees standing on it
+  // (D-280), and this is what you wade through where there are no trees.
   family('vegetation', 'Vegetation', [
     c('leaves', 'Leaves', '#4f7a3f'),
     c('light', 'Light leaves', '#6b9a52'),
-    c('dark', 'Dark leaves', '#3a5c30'),
-  ], { pattern: 'leaves', grain: ROUGH, roughness: MATT }),
+    { ...c('dark', 'Dark leaves', '#3a5c30'), difficulty: 2.5 },
+  ], { pattern: 'leaves', grain: ROUGH, roughness: MATT, difficulty: 1.5 }),
 
   // Transparent: present as geometry, invisible to sight (R-75), and
   // see-through to look at as well (R-174).
   family('liquid', 'Liquids', [
     c('water', 'Water', '#4a7fb5'),
     c('green', 'Green water', '#4a8f7a'),
-    c('shore', 'Shore', '#8fb8d4'),
-  ], { blocksSight: false, grain: SMOOTH, roughness: 0.22, opacity: WATERY }),
+    // Wadeable, where open water is not. The pair that proves a cut carries
+    // its own difficulty (R-192).
+    { ...c('shore', 'Shore', '#8fb8d4'), difficulty: 3 },
+  ], {
+    blocksSight: false, grain: SMOOTH, roughness: 0.22, opacity: WATERY,
+    difficulty: 'impassable',
+  }),
 
   family('glowing', 'Glowing', [
     c('lava', 'Lava', '#c2542a'),
     c('acid', 'Acid', '#7ab52a'),
-  ], { glow: 0.75 }),
+  ], { glow: 0.75, difficulty: 'impassable' }),
 
   // Ice sits here rather than with the liquids: what it has in common with
   // glass is that you look *through* it at something hard, and the family is
@@ -231,7 +270,10 @@ export const DEFAULT_MATERIALS: readonly Material[] = [
   family('glass', 'Glassy', [
     c('glass', 'Glass', '#a8c7dd'),
     c('ice', 'Ice', '#b9d6e4'),
-  ], { blocksSight: false, grain: 0, roughness: POLISHED, opacity: CLEAR }),
+  ], {
+    blocksSight: false, grain: 0, roughness: POLISHED, opacity: CLEAR,
+    difficulty: 1.5,
+  }),
 ];
 
 export function materialById(
@@ -330,3 +372,8 @@ export function isKnownSwatch(swatch: SwatchId): boolean {
 export const DEFAULT_FLOOR: SwatchId = swatchOf(
   registryId<'MaterialId'>('material', 'soil'),
 );
+
+/** How hard one swatch is to cross: the cut's own, or its family's (R-192). */
+export function difficultyOf(material: Material, cutId: string | null): Difficulty {
+  return cutOf(material, cutId).difficulty ?? material.difficulty;
+}

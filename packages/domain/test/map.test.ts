@@ -10,7 +10,7 @@ import {
   BRUSHES, DEFAULT_BRUSH, MAP_BRUSH_CELLS, brushById, brushPatch,
   setBlocks, paintBlocks, clearBlocks,
   DEFAULT_FLOOR, DEFAULT_MATERIALS, swatchOf, isKnownMaterial,
-  materialIn, cutIdIn, cutOf, colourOf, isKnownSwatch, swatchFor,
+  materialIn, cutIdIn, cutOf, colourOf, isKnownSwatch, swatchFor, difficultyOf, materialById,
 } from '@tt/domain';
 
 const STONE = swatchOf(DEFAULT_MATERIALS.find((m) => m.name === 'Mineral')!.id);
@@ -823,6 +823,65 @@ describe('families and their cuts (R-178)', () => {
     for (const material of DEFAULT_MATERIALS) {
       const colours = material.cuts.map((cut) => cut.colour);
       expect(new Set(colours).size, `${material.name} repeats a colour`).toBe(colours.length);
+    }
+  });
+});
+
+describe('how hard a surface is to cross (R-192)', () => {
+  const byName = (name: string) => DEFAULT_MATERIALS.find((m) => m.name === name)!;
+
+  it('reads the family when the cut says nothing', () => {
+    const grass = byName('Grass');
+    expect(difficultyOf(grass, null)).toBe(1);
+    expect(difficultyOf(grass, 'dried')).toBe(1);
+  });
+
+  it('lets a cut cost something else, which is the whole reason it is per cut', () => {
+    // The pair the rule exists for: one family because the three scatter
+    // light identically, two costs because a shore is the one you can wade.
+    const liquids = byName('Liquids');
+    expect(difficultyOf(liquids, null)).toBe('impassable');
+    expect(difficultyOf(liquids, 'green')).toBe('impassable');
+    expect(difficultyOf(liquids, 'shore')).toBe(3);
+  });
+
+  it('is read through the swatch a cube actually holds', () => {
+    // Not through a cut id out of thin air: this is the path the world takes.
+    const liquids = byName('Liquids');
+    const shore = swatchFor(liquids, 'shore');
+    expect(difficultyOf(materialById(DEFAULT_MATERIALS, materialIn(shore))!, cutIdIn(shore)))
+      .toBe(3);
+  });
+
+  it('falls back to the family for a cut nobody registered', () => {
+    // `cutOf` already resolves an unknown cut to the default; difficulty
+    // follows it rather than becoming undefined and costing nothing.
+    expect(difficultyOf(byName('Soil'), 'gravel')).toBe(1);
+  });
+
+  it('gives every family a difficulty, and every override a different one', () => {
+    for (const material of DEFAULT_MATERIALS) {
+      const family = material.difficulty;
+      expect(family === 'impassable' || family > 0, `${material.name}`).toBe(true);
+      for (const cut of material.cuts) {
+        // An override that agrees with its family is noise: absent means
+        // inherited, so retuning the family has to reach it.
+        if (cut.difficulty !== undefined) {
+          expect(cut.difficulty, `${material.name}/${cut.id} repeats its family`)
+            .not.toBe(family);
+        }
+      }
+    }
+  });
+
+  it('keeps impassable a value rather than a very large number', () => {
+    // A route plans around it; it is never paid. A number here would let a
+    // party wade the ocean slowly (R-83a).
+    const costs = DEFAULT_MATERIALS.flatMap((m) =>
+      m.cuts.map((cut) => difficultyOf(m, cut.id)));
+    expect(costs).toContain('impassable');
+    for (const cost of costs) {
+      if (cost !== 'impassable') expect(Number.isFinite(cost)).toBe(true);
     }
   });
 });

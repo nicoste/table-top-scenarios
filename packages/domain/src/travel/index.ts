@@ -7,7 +7,8 @@
 
 import type { TerrainId } from '../ids/index.js';
 import { registryId } from '../ids/index.js';
-import type { Difficulty, Terrain } from '../terrain/index.js';
+import type { Difficulty } from '../materials/index.js';
+import type { Terrain } from '../terrain/index.js';
 import { terrainById } from '../terrain/index.js';
 
 export type TravelModeId = string & { readonly __travelMode: true };

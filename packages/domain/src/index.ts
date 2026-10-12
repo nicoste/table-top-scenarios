@@ -10,7 +10,7 @@ export type {
   SwatchId,
 } from './ids/index.js';
 
-export type { Terrain, Difficulty } from './terrain/index.js';
+export type { Terrain } from './terrain/index.js';
 export { DEFAULT_TERRAIN, WATER, terrainById, requireTerrain } from './terrain/index.js';
 
 export type { Column, Chunk, ChunkCoord, World, GlobalCell, WorldCell } from './world/index.js';
@@ -46,10 +46,10 @@ export {
   DAYLIGHT, OPEN_SKY, MIN_ANGLE, MAX_ANGLE, MIN_SUN, MAX_SUN, MIN_FILL, MAX_FILL,
   clampLighting, clampAmbience, sunDirection, shadowReach, hourLabel, bounceOf, litBy,
 } from './light/index.js';
-export type { Material, Cut } from './materials/index.js';
+export type { Material, Cut, Difficulty } from './materials/index.js';
 export {
   DEFAULT_MATERIALS, DEFAULT_FLOOR, materialById, isKnownMaterial, requireMaterial,
-  swatchOf, swatchFor, materialIn, cutIdIn, cutOf, colourOf, isKnownSwatch,
+  swatchOf, swatchFor, materialIn, cutIdIn, cutOf, colourOf, isKnownSwatch, difficultyOf,
 } from './materials/index.js';
 export type { EncounterMap, BlockCoord, Brush, Expand, MapJSON, MapJSONIn } from './map/index.js';
 

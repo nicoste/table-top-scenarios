@@ -3,9 +3,9 @@
 
 import type { TerrainId } from '../ids/index.js';
 import { registryId } from '../ids/index.js';
-
-/** A difficulty of `impassable` routes around rather than costing a lot. */
-export type Difficulty = number | 'impassable';
+// Difficulty lives with the materials now: a surface is what costs you, and the
+// terrain palette is on its way out (D-280).
+import type { Difficulty } from '../materials/index.js';
 
 export interface Terrain {
   readonly id: TerrainId;

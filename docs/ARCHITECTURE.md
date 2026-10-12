@@ -2479,10 +2479,11 @@ apps/host/src/
 > though its meaning is obvious, because a swatch is compared as a string and
 > two spellings of one cut would stop a fill in the middle of a flat wall.
 >
-> **A cut may differ only in colour** (R-178). Not `blocksSight`, not
-> roughness, not what any rule makes of it — frosted glass is still glass.
-> Which is also why cuts are free: colour is the one thing an instance can
-> carry (R-173), so a family draws all of its cuts in one mesh.
+> **A cut may differ only in colour and in difficulty** (R-178, R-192). Not
+> `blocksSight`, not roughness, not how light behaves — frosted glass is still
+> glass. Which is also why cuts are free: colour is the one thing an instance
+> can carry (R-173), so a family draws all of its cuts in one mesh, and
+> difficulty is never drawn at all.
 >
 > **A fill stops where the cut changes** (R-154), and that falls out of
 > matching the swatch rather than the family. It is not a side effect to be
@@ -2510,15 +2511,45 @@ apps/host/src/
 > and transparency are uniforms, so a mesh can draw a thousand colours of one
 > family and cannot draw gold beside granite if the two scatter light
 > differently (R-173). So: *anything differing in how light behaves is its own
-> family; a cut differs only in colour.* That is why lava is not a cut of
-> water, why ice is one, and why metal folded into mineral rather than keeping
-> a sheen nothing could see.
+> family; a cut differs only in what is not drawn.* That is why lava is not a
+> cut of water, why ice is one, and why metal folded into mineral rather than
+> keeping a sheen nothing could see.
+>
+> **"Not drawn" is colour and difficulty, and the two are not the same
+> licence.** Colour is free because an instance carries it; difficulty is free
+> because nothing in the renderer ever reads it (R-192). Everything else is a
+> uniform, and a uniform is a family.
 >
 > **The cut's name is the vocabulary.** "Limestone", "oak", "shore" are words
 > said at a table; "pale brick" and "dark wood" are not. It follows that the
 > name cannot live only in a tooltip — the panel shows which cut is in hand.
 >
 > A family always has at least one cut, and the first is its default.
+
+> **R-192.** **How hard a surface is to cross belongs to the surface.**
+>
+> A family carries a difficulty and a cut may override it. There is no second
+> registry naming the same substances again: the thing you walk on is the thing
+> that costs you, and editing lava edits it everywhere (D-281).
+>
+> **The override is why it is per cut and not per family.** Liquids are one
+> family because water, green water and a shore all scatter light the same way,
+> and a shore is the one you can wade. Light says they are one mesh; movement
+> says they are not one cost. Both are true, and only a per-cut override lets
+> them both be said. Dark leaves against light leaves is the same shape.
+>
+> **Absent means inherited, not zero** (R-137a's habit, applied to a registry):
+> a cut states a difficulty only when it differs, so retuning a family reaches
+> every cut that did not opt out, and the common case stays one number.
+>
+> **`impassable` is a value, not a large number.** A route plans around it
+> rather than paying for it, which is what makes an island need a boat (R-83a),
+> and what stops a party wading the ocean slowly.
+>
+> This is the rule the old terrain palette was standing in for. It held a
+> colour and a `defaultDifficulty` for twelve names that the material registry
+> already describes better; what it really contributed was this line, and the
+> line belongs here.
 
 > **R-183.** **A band that stops below the Sun is indoors, and indoors has no
 > sun.**

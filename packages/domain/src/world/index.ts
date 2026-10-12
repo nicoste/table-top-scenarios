@@ -4,7 +4,7 @@
 // and dense inside a chunk because creating one fills all 400 cells with water.
 
 import type { TerrainId } from '../ids/index.js';
-import type { Difficulty } from '../terrain/index.js';
+import type { Difficulty } from '../materials/index.js';
 import { WATER } from '../terrain/index.js';
 
 /** Cells along one edge of a chunk: 30 x 1.5 km = a 45 km chunk (D-103). */
