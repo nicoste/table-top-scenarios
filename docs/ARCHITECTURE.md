@@ -2629,8 +2629,16 @@ apps/host/src/
 > R-170's trade does not apply to it.
 >
 > **It is less than it replaced**: no canvas per place, no texture, no aspect
-> ratio, no per-frame rescale, and nothing to dispose — three.js removes a
-> `CSS2DObject`'s node itself.
+> ratio and no per-frame rescale.
+>
+> **But a caption's node is taken out by hand.** `CSS2DObject` listens for its
+> own `removed` event and pulls its node then, and that is *not* enough: the
+> event fires on the object removed from a parent, and a caption is a
+> grandchild of the group the stage removes. Markers are rebuilt on every
+> accepted intent, so leaving this to three.js leaked one orphaned `<div>` per
+> stroke — four hundred of them, frozen where the camera last was (D-289).
+> Moving work out of the GPU pipeline moved it into the document; it did not
+> make it disappear.
 
 > **R-195.** **A cover earns its id by costing something; what it looks like
 > is free.**

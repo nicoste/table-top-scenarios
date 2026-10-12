@@ -15,8 +15,9 @@
 // depth buffer, so no pass can touch it — not this one and not the next one.
 //
 // It is also **less** than it replaces: no canvas per place, no texture, no
-// aspect ratio, no per-frame rescale, nothing to dispose but a DOM node that
-// three.js removes itself.
+// aspect ratio and no per-frame rescale. It is *not* nothing to dispose, which
+// is the thing this got wrong first (D-289): a caption's node has to be taken
+// out of the page by hand.
 
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
@@ -81,4 +82,24 @@ export function caption(text: string): CSS2DObject {
   const object = new CSS2DObject(element);
   object.center.set(0.5, 1);
   return object;
+}
+
+/**
+ * Takes a caption off the map **and out of the page** (D-289).
+ *
+ * `CSS2DObject` listens for its own `removed` event and pulls its node then —
+ * but three.js fires that on the object actually removed from a parent, and a
+ * caption is a grandchild: the stage removes the marker *group* from the
+ * scene, which says nothing to the captions hanging under it. The markers are
+ * rebuilt on every accepted intent, so a GM painting a coastline left one
+ * orphaned `<div>` per stroke, frozen where the camera last was. Four hundred
+ * of them, all reading "Toll Crossing".
+ *
+ * Both lines on purpose: `removeFromParent` is the event the class is waiting
+ * for, and `remove` covers a caption that was built and disposed without ever
+ * being rendered, which never parented its node to the layer at all.
+ */
+export function dropCaption(object: CSS2DObject): void {
+  object.removeFromParent();
+  (object.element as HTMLElement).remove();
 }

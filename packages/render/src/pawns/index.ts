@@ -11,7 +11,8 @@ import type { BufferGeometry, Material } from 'three';
 import type { Campaign, PartyMember, Placement, WorldCell } from '@tt/domain';
 import { CHUNK_SIZE, pawns as pawnsOf } from '@tt/domain';
 import { surfaceAt } from '../world/index.js';
-import { caption } from '../captions/index.js';
+import type { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import { caption, dropCaption } from '../captions/index.js';
 
 /** Which pawn was picked: a member, or the whole party travelling together. */
 export interface PawnRef {
@@ -54,6 +55,7 @@ export function buildPartyPawns(campaign: Campaign, placement: Placement): Party
   const owners = new Map<object, PawnRef>();
   const geometries: BufferGeometry[] = [];
   const materials: Material[] = [];
+  const captions: CSS2DObject[] = [];
   const colour = new Color();
 
   const byId = new Map<string, PartyMember>(campaign.party.map((m) => [m.id, m]));
@@ -82,6 +84,7 @@ export function buildPartyPawns(campaign: Campaign, placement: Placement): Party
       const label = caption(name);
       label.position.set(0, PAWN_TOP, 0);
       pawn.add(label);
+      captions.push(label);
     }
 
     group.add(pawn);
@@ -132,6 +135,9 @@ export function buildPartyPawns(campaign: Campaign, placement: Placement): Party
     dispose() {
       for (const g of geometries) g.dispose();
       for (const m of materials) m.dispose();
+      // The pawns are rebuilt whenever the party moves, so this leaks faster
+      // than the places do if it is left out (D-289).
+      for (const label of captions) dropCaption(label);
     },
   };
 }

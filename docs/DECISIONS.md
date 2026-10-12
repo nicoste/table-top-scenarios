@@ -6675,9 +6675,14 @@ Four hypotheses were wrong before that one: a shadow of the label (the sun
 crossed the whole arc and the shape did not move), the sprite's own pill
 (colouring it red left the black behind), the sprite's quad (filling the whole
 quad green showed the quad horizontal and the black shape elsewhere), and
-depth pollution (`depthWrite: false` changed nothing visible). The keyboard
-toggle for occlusion does not reach its handler, which is why the pass was
-cleared last instead of first — worth fixing on its own.
+depth pollution (`depthWrite: false` changed nothing visible).
+
+~~The keyboard toggle for occlusion does not reach its handler.~~ **Wrong, and
+retracted (D-289.)** The toggle works; the synthetic keypress used to test it
+did not carry `code: 'Backquote'`. The pass was ruled out last because of a
+faulty instrument, and the entry blamed the product for it — which is the
+worse of the two mistakes, because a rule that records a bug nobody has sends
+the next person looking for it.
 
 `depthWrite: false` is kept anyway. A caption that does not depth-test should
 not depth-write either; it was not the cause and it is still right.
@@ -6757,3 +6762,40 @@ opens the place.
 **Deleted along the way**: `nameLabel`, `floatLabels`, `Label`,
 `LABEL_PIXELS`, `LABEL_GAP`, both copies of `scaleLabels`, and the canvas and
 texture each caption used to allocate.
+
+### D-289 — A caption's node has to be taken out by hand · `agreed`
+The ghost captions: four hundred and nineteen `<div>`s reading "Toll
+Crossing", stacked where the camera had been each time, the real one
+disappearing past the zoom threshold while the dead ones stayed. Reported from
+a map the GM was building, with a count to match — 492 rebuilds, 419 orphans.
+
+**The cause is a comment I wrote in D-288 and did not check.** It said the
+captions need no disposal because "three.js takes their nodes out itself, on
+the `removed` event every `CSS2DObject` listens for". The event is real and
+the listener is real. It fires on **the object removed from a parent** — and a
+caption is a grandchild: the stage removes the marker *group* from the scene,
+which says nothing to the captions hanging two levels under it.
+
+The markers are rebuilt on **every accepted intent**, so the leak ran at the
+speed the GM was painting.
+
+`dropCaption` now detaches each one explicitly, and both builders call it from
+`dispose`. Two lines in it on purpose: `removeFromParent` is the event the
+class is waiting for, and `remove` covers a caption built and disposed without
+ever being rendered, which never parented its node to the layer at all.
+
+**What this says about the change it followed.** D-288's ledger of what CSS2D
+bought listed "nothing to dispose", and that was the one item on it that was
+not true. Moving work out of the GPU pipeline moved it into the document; it
+did not make it disappear. The comment asserting otherwise is what let the
+code ship without the four lines it needed.
+
+**Also retracted here**: D-287's claim that the occlusion keyboard toggle does
+not reach its handler. It does. The synthetic keypress used to test it was not
+carrying `code: 'Backquote'`, and a faulty instrument got written into the
+record as a product bug.
+
+**Checked, not assumed, this time.** Camera motion alone — six turns, six
+tilts, twenty zooms — leaves the count at one, so nothing leaks per frame. In
+a throwaway campaign, eleven rebuilds driven by real paint strokes also leave
+it at one. Before the fix those eleven would have been eleven.

@@ -9,7 +9,8 @@ import type { BufferGeometry, Material } from 'three';
 import type { Campaign, Marker, MarkerPart } from '@tt/domain';
 import { CHUNK_SIZE, DEFAULT_MARKERS, markerById } from '@tt/domain';
 import { surfaceAt } from '../world/index.js';
-import { caption } from '../captions/index.js';
+import type { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import { caption, dropCaption } from '../captions/index.js';
 
 /**
  * Zoom at which markers and names appear, in world units visible vertically.
@@ -50,7 +51,7 @@ function geometryFor(part: MarkerPart): BufferGeometry {
 export function buildPlaceMarkers(campaign: Campaign): PlaceMarkers {
   const group = new Group();
   const owners = new Map<object, string>();
-  const captions: { readonly element: HTMLElement; readonly placeId: string }[] = [];
+  const captions: { readonly object: CSS2DObject; readonly placeId: string }[] = [];
   const geometries: BufferGeometry[] = [];
   const materials: Material[] = [];
   const colour = new Color();
@@ -87,7 +88,7 @@ export function buildPlaceMarkers(campaign: Campaign): PlaceMarkers {
     const name = caption(place.name);
     name.position.set(0, tallest, 0);
     pin.add(name);
-    captions.push({ element: name.element as HTMLElement, placeId: place.id });
+    captions.push({ object: name, placeId: place.id });
 
     group.add(pin);
   }
@@ -97,7 +98,8 @@ export function buildPlaceMarkers(campaign: Campaign): PlaceMarkers {
     placeOf: (object) => owners.get(object) ?? null,
     captionAt(clientX, clientY) {
       if (!group.visible) return null;
-      for (const { element, placeId } of captions) {
+      for (const { object, placeId } of captions) {
+        const element = object.element as HTMLElement;
         // Hidden captions have no box worth asking about, and off-screen ones
         // are display:none, which reports an empty rect anyway.
         if (element.style.display === 'none') continue;
@@ -108,14 +110,12 @@ export function buildPlaceMarkers(campaign: Campaign): PlaceMarkers {
       }
       return null;
     },
-    /*
-     * The captions are DOM and three.js takes their nodes out itself, on the
-     * `removed` event every `CSS2DObject` listens for. Nothing to dispose
-     * here, which is most of what this change bought (O-031).
-     */
     dispose() {
       for (const g of geometries) g.dispose();
       for (const m of materials) m.dispose();
+      // Each caption by hand: removing the group from the scene says nothing
+      // to the nodes hanging under it (D-289).
+      for (const { object } of captions) dropCaption(object);
     },
   };
 }
