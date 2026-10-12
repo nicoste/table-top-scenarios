@@ -2433,6 +2433,13 @@ apps/host/src/
 > than the painted grey it replaces. Metal is a decision with an environment
 > attached, not a number to raise.
 >
+> **The world's columns are split the same way** (D-283). They were one
+> `MeshLambertMaterial` for everything, which is exactly why lava on the world
+> was painted grey while lava in a room glowed — and why every appearance
+> feature since D-237 landed on maps only. One registry drawn by one piece of
+> arithmetic is the whole point of the rule; two renderers reading two
+> registries was the thing it was written against.
+>
 > Measured on the church: **seven meshes instead of one, +12 draw calls** (the
 > occlusion pass rasterises the scene twice, so each mesh is counted twice),
 > **GPU unchanged** at 12.6 ms, rebuild 3.2 ms to 6.0 ms. Thirteen draw calls

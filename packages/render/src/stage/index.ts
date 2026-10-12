@@ -521,7 +521,7 @@ export class Stage {
      * world, which is what makes this an identity check.
      */
     const sameWorld = campaign !== null && this.world !== null && campaign.world === this.campaign?.world;
-    if (this.world && !sameWorld) { this.scene.remove(this.world.mesh); this.world.dispose(); this.world = null; }
+    if (this.world && !sameWorld) { this.scene.remove(this.world.group); this.world.dispose(); this.world = null; }
     if (this.places) { this.scene.remove(this.places.group); this.places.dispose(); this.places = null; }
     this.dropPawns();
     this.campaign = campaign;
@@ -539,9 +539,12 @@ export class Stage {
       const world = buildWorldMeshes(campaign);
       this.world = world;
       this.rebuilds++;
-      world.mesh.castShadow = true;
-      world.mesh.receiveShadow = true;
-      this.scene.add(world.mesh);
+      // Shadows are set per mesh, inside: a group has no `castShadow`.
+      // The toggle is the stage's, so a rebuilt world does not turn the
+      // figures back on behind the switch's back — the same reason the
+      // blocks reapply it (D-244).
+      world.setFigures(this.figuring);
+      this.scene.add(world.group);
       if (!this.showingMap) this.fitShadows(CHUNK_SIZE * 3, worldCentre(campaign.world));
     }
 
@@ -578,7 +581,7 @@ export class Stage {
    */
   private applySurface(): void {
     const worldVisible = !this.showingMap;
-    if (this.world) this.world.mesh.visible = worldVisible;
+    if (this.world) this.world.group.visible = worldVisible;
     if (this.places) this.places.group.visible = worldVisible;
     if (this.pawns) this.pawns.group.visible = worldVisible;
     this.slots.visible = worldVisible;
@@ -1060,8 +1063,12 @@ export class Stage {
 
     let rayCell: WorldCell | null = null;
     if (this.world) {
-      const hit = this.raycaster.intersectObject(this.world.mesh, false)[0];
-      if (hit && hit.instanceId !== undefined) rayCell = this.world.addressOf(hit.instanceId);
+      // Across every material's mesh now (R-173), nearest first, so a sea
+      // cube does not hide the hill behind it or the other way about.
+      for (const hit of this.raycaster.intersectObjects(this.world.group.children, false)) {
+        rayCell = this.world.cellOf(hit);
+        if (rayCell) break;
+      }
     }
     // Which cell that *meant* is a rule, and it lives in `picking` where it can
     // be tested without a GL context (R-87c, D-163).
@@ -1223,6 +1230,7 @@ export class Stage {
     this.invalidate();
     this.figuring = on;
     this.blocks?.setFigures(on);
+    this.world?.setFigures(on);
   }
 
   /**

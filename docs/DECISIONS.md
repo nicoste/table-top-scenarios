@@ -6454,3 +6454,41 @@ name.
 `MeshLambertMaterial` and still flat (increment 2), and covers do not exist
 (increment 3). The world now *holds* the right values; it does not yet draw
 them.
+
+### D-283 — The world mesh splits per material, like a map's body · `agreed`
+The third piece of the world round (D-280), and the one the GM asked for first:
+*"I would love to share the same materials between the world map and the poi
+map, it should look all the same, also using the MeshStandardMaterial both."*
+
+**One `InstancedMesh` per material (R-173), not one for everything.** The world
+was a single `MeshLambertMaterial` with a per-instance colour, which is why
+lava on the world was painted grey while lava in a room glowed: roughness,
+emission and opacity are uniforms, and one mesh can only hold one set of them.
+The split is the same one `blocks` makes and costs the same nothing — nine
+families is nine draw calls where the world already made twenty.
+
+**What came with it, all of it already written:**
+
+- `MeshStandardMaterial` with the family's roughness, glow and opacity. Water
+  and glass transmit on the world now, which they did not.
+- **Grain** (R-172): a hash of the cell's global coordinate nudges lightness in
+  HSL, so two cells of one ground differ without storing anything. This is the
+  "derived, not stored" variation D-280 settled, and it turned out to be a
+  function that already existed.
+- **Figures** (R-177), through the same `figure()` the cubes use. The
+  coordinate is the world position, so a figure drawn on a world cell is at the
+  same scale as one on a cube — which is right, because a world cell is a
+  representation and not a photograph of 1.5 km of ground.
+
+**The height cue stays.** High ground reads lighter, by a plain multiply after
+the grain. It predates lighting and survives it: a world is seen from directly
+above, where a sun says very little about which way the land slopes.
+
+**Picking moved from one mesh to a group.** `addressOf(instanceId)` became
+`cellOf(hit)`, and the stage raycasts the group's children nearest-first rather
+than one mesh — otherwise a sea cube in the first mesh would hide the hill
+behind it.
+
+**The figure switch had to be reapplied on rebuild**, the same trap the blocks
+hit (D-244): a rebuilt world is new materials, and new materials come up with
+the figure on regardless of what the diagnostics toggle says.
