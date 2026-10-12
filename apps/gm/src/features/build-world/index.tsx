@@ -5,7 +5,7 @@
 // rather than reading a copy off the wire — which the renderer always did, and
 // which the panels had quietly not been doing (D-222).
 import {
-  DEFAULT_MATERIALS, DEFAULT_COVERS, DEFAULT_BIOMES,
+  DEFAULT_MATERIALS, DEFAULT_COVERS,
   cutOf, difficultyOf, familyOf, cutIdIn, coverById,
 } from '@tt/domain';
 import type { CoverId, SwatchId } from '@tt/domain';
@@ -46,22 +46,27 @@ export function BuildWorldPanel({
     <>
       <div className="card">
         <h2>Tool</h2>
+        {/*
+          Paired by what they are for, down the two columns: the two that
+          change nothing, then the two that shape the land, then the two that
+          dress it (D-285). The icons are the map's own — the same action is
+          the same picture on both surfaces, so a GM who learns ✏ for
+          repainting a wall has learned it for repainting a coast.
+        */}
         <div className="btn-grid tools">
           <Tooltip label="Select — key 1" placement="bottom" stretch>
             <button className={tool === 'select' ? 'on' : ''} onClick={() => onTool('select')}>
               ⌖ Select
             </button>
           </Tooltip>
-          <Tooltip label="Paint the ground — key 2" placement="bottom" stretch>
-            <button className={tool === 'paint' ? 'on' : ''} onClick={() => onTool('paint')}>
-              🖌 Ground
+          <Tooltip label="Move the party — key 2" placement="bottom" stretch>
+            <button className={tool === 'travel' ? 'on' : ''} onClick={() => onTool('travel')}>
+              ♟ Travel
             </button>
           </Tooltip>
-          {/* The second axis, beside the first and not inside it: a cell holds
-              both, and either may be painted without disturbing the other. */}
-          <Tooltip label="Plant what stands on it — key 3" placement="bottom" stretch>
-            <button className={tool === 'cover' ? 'on' : ''} onClick={() => onTool('cover')}>
-              ⇞ Cover
+          <Tooltip label="Place markers on the world map — key 3" placement="bottom" stretch>
+            <button className={tool === 'places' ? 'on' : ''} onClick={() => onTool('places')}>
+              ⚑ Places
             </button>
           </Tooltip>
           <Tooltip label="Raise and lower — key 4" placement="bottom" stretch>
@@ -69,18 +74,16 @@ export function BuildWorldPanel({
               ⛰ Height
             </button>
           </Tooltip>
-          <Tooltip label="Place markers on the world map — key 5" placement="bottom" stretch>
-            <button className={tool === 'places' ? 'on' : ''} onClick={() => onTool('places')}>
-              ⚑ Places
+          <Tooltip label="Paint what a cell is made of — key 5" placement="bottom" stretch>
+            <button className={tool === 'paint' ? 'on' : ''} onClick={() => onTool('paint')}>
+              ✏ Ground
             </button>
           </Tooltip>
-          {/* Spans both columns rather than sitting alone in half of a row. */}
-          <Tooltip label="Move the party — key 6" placement="bottom" stretch>
-            <button
-              className={`wide${tool === 'travel' ? ' on' : ''}`}
-              onClick={() => onTool('travel')}
-            >
-              ⤳ Travel
+          {/* The second axis, beside the first and not inside it: a cell holds
+              both, and either may be painted without disturbing the other. */}
+          <Tooltip label="Plant what stands on it — key 6" placement="bottom" stretch>
+            <button className={tool === 'cover' ? 'on' : ''} onClick={() => onTool('cover')}>
+              ⇞ Cover
             </button>
           </Tooltip>
         </div>
@@ -202,37 +205,6 @@ export function BuildWorldPanel({
         </div>
       )}
 
-      {/*
-        Presets, and only beside the two axes they set. A cell stores a ground
-        and a cover and never "Forest" (D-280), so this list is free to change
-        in a way the old terrain palette never was.
-      */}
-      {(tool === 'paint' || tool === 'cover') && (
-        <div className="card">
-          <h2>Biomes</h2>
-          <div className="btn-grid biomes">
-            {DEFAULT_BIOMES.map((biome) => {
-              const on = biome.ground === ground && (biome.cover ?? null) === cover;
-              return (
-                <Tooltip key={biome.name} label={`${biome.name} — sets both`} placement="bottom" stretch>
-                  <button
-                    className={on ? 'on' : ''}
-                    onClick={() => { onGround(biome.ground); onCover(biome.cover); }}
-                    aria-pressed={on}
-                  >
-                    {biome.name}
-                  </button>
-                </Tooltip>
-              );
-            })}
-          </div>
-          <p className="hint">
-            A shortcut, not a thing: it loads both brushes and the cell still
-            stores a ground and a cover. Which is why snow and pines are a
-            taiga without anybody having invented one.
-          </p>
-        </div>
-      )}
     </>
   );
 }

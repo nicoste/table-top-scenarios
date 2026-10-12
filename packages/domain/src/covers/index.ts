@@ -9,13 +9,19 @@
 // ids.
 //
 // **A cover is made of swatches, not colours.** A tree is a Wood·oak trunk
-// under a Vegetation·leaves canopy; retune the Vegetation family and every
+// under a Vegetation·leaves crown; retune the Vegetation family and every
 // forest on every world follows, the same way retuning it moves every leaf in
 // every building. No substance is described twice anywhere (R-194).
 //
-// **It is a representation.** A world cell is 1.5 km across, so one tree is a
-// map symbol and not a tree — the same idiom as the place markers, which have
-// been drawing a whole village as two houses since R-82.
+// **A cover is several of a thing, not one of it.** Two trees, two pines, two
+// clumps of scrub, two boulders — because one object alone in a cell reads as
+// a specimen and two read as cover. Each is a **clump**, and a clump is what
+// wanders and resizes on its own: the parts of one tree hold together while
+// the two trees do not (D-285).
+//
+// **It is a representation.** A world cell is 1.5 km across, so a pair of
+// trees is a map symbol and not a wood — the same idiom as the place markers,
+// which have been drawing a whole village as two houses since R-82.
 
 import type { CoverId, SwatchId } from '../ids/index.js';
 import { registryId } from '../ids/index.js';
@@ -26,6 +32,14 @@ import type { PartShape } from '../markers/index.js';
 
 export interface CoverPart {
   readonly shape: PartShape;
+  /**
+   * Which object of the cover this belongs to, counted from zero.
+   *
+   * Parts of one clump wander, turn and resize together, so a trunk keeps its
+   * crown. Two clumps do all three independently, which is what stops a cell
+   * of forest from reading as a stamp (R-194).
+   */
+  readonly clump: number;
   /** Offset from the cover's base centre, in cell widths. y is up. */
   readonly at: readonly [number, number, number];
   /** box: full extents. cone/cylinder: [radius, height, radius]. */
@@ -64,12 +78,49 @@ const LIGHT_LEAVES = s('material:vegetation/light');
 const ROCK = s('material:mineral');
 const DARK_ROCK = s('material:mineral/dark-rock');
 
-const box = (at: CoverPart['at'], size: CoverPart['size'], swatch: SwatchId): CoverPart =>
-  ({ shape: 'box', at, size, swatch });
-const cone = (at: CoverPart['at'], size: CoverPart['size'], swatch: SwatchId): CoverPart =>
-  ({ shape: 'cone', at, size, swatch });
-const cyl = (at: CoverPart['at'], size: CoverPart['size'], swatch: SwatchId): CoverPart =>
-  ({ shape: 'cylinder', at, size, swatch });
+type Spot = readonly [number, number];
+
+const box = (
+  clump: number, at: CoverPart['at'], size: CoverPart['size'], swatch: SwatchId,
+): CoverPart => ({ shape: 'box', clump, at, size, swatch });
+const cone = (
+  clump: number, at: CoverPart['at'], size: CoverPart['size'], swatch: SwatchId,
+): CoverPart => ({ shape: 'cone', clump, at, size, swatch });
+const cyl = (
+  clump: number, at: CoverPart['at'], size: CoverPart['size'], swatch: SwatchId,
+): CoverPart => ({ shape: 'cylinder', clump, at, size, swatch });
+
+/**
+ * A broadleaf: a trunk under **two stacked boxes**, narrowing upward.
+ *
+ * Boxes rather than a cone, and that is the whole point of it — a cone is a
+ * conifer, and a cone of one green beside a cone of another green is two
+ * conifers (D-285). A stepped crown reads as a different kind of tree at a
+ * glance, and it is the shape the rest of this world is already made of.
+ */
+const broadleaf = (clump: number, [x, z]: Spot, trunk: SwatchId, crown: SwatchId) => [
+  cyl(clump, [x, 0.08, z], [0.032, 0.16, 0.032], trunk),
+  box(clump, [x, 0.21, z], [0.21, 0.13, 0.21], crown),
+  box(clump, [x, 0.32, z], [0.14, 0.1, 0.14], crown),
+];
+
+/** A conifer: taller, narrower, and a single cone, which is what says so. */
+const conifer = (clump: number, [x, z]: Spot, trunk: SwatchId, crown: SwatchId) => [
+  cyl(clump, [x, 0.06, z], [0.026, 0.12, 0.026], trunk),
+  cone(clump, [x, 0.3, z], [0.115, 0.42, 0.115], crown),
+];
+
+/*
+ * Where the two clumps of a cover stand before anything wanders them.
+ *
+ * Off-centre and not symmetric: a mirrored pair reads as a pair, and the one
+ * thing a cell of forest must not look like is a stamp. Far enough apart that
+ * two crowns do not merge, near enough that with the wander on top neither
+ * reaches the cell edge — a cover that crosses into its neighbour makes the
+ * one thing it has to say, *which cell this is*, a lie.
+ */
+const LEFT: Spot = [-0.15, 0.09];
+const RIGHT: Spot = [0.16, -0.12];
 
 const cover = (
   value: string, name: string, difficulty: number, parts: readonly CoverPart[],
@@ -95,28 +146,31 @@ const cover = (
  */
 export const DEFAULT_COVERS: readonly Cover[] = [
   cover('trees', 'Trees', 1.5, [
-    cyl([0, 0.1, 0], [0.045, 0.2, 0.045], OAK),
-    cone([0, 0.37, 0], [0.2, 0.42, 0.2], LEAVES),
+    ...broadleaf(0, LEFT, OAK, LEAVES),
+    ...broadleaf(1, RIGHT, OAK, LEAVES),
   ]),
-  // Taller, narrower, darker: the same two shapes saying "conifer" rather than
-  // needing a conifer of their own.
   cover('pines', 'Pines', 1.5, [
-    cyl([0, 0.08, 0], [0.035, 0.16, 0.035], DARK_OAK),
-    cone([0, 0.42, 0], [0.15, 0.56, 0.15], DARK_LEAVES),
+    ...conifer(0, LEFT, DARK_OAK, DARK_LEAVES),
+    ...conifer(1, RIGHT, DARK_OAK, DARK_LEAVES),
   ]),
   // No trunk, because the thing about scrub is that there is nothing to walk
-  // under. Two clumps so a cell does not read as one lost shrub.
+  // under. Squat and wide where a tree is narrow and tall.
   cover('scrub', 'Scrub', 1.25, [
-    cone([-0.1, 0.07, 0.05], [0.13, 0.15, 0.13], LIGHT_LEAVES),
-    cone([0.11, 0.055, -0.07], [0.1, 0.12, 0.1], LEAVES),
+    cone(0, [LEFT[0], 0.07, LEFT[1]], [0.14, 0.15, 0.14], LIGHT_LEAVES),
+    cone(1, [RIGHT[0], 0.055, RIGHT[1]], [0.11, 0.12, 0.11], LEAVES),
   ]),
   // Boxes, not spheres: everything else here is a cube and a smooth boulder
   // would read as a bubble sitting on a voxel world.
   cover('boulders', 'Boulders', 1.5, [
-    box([-0.06, 0.09, 0.03], [0.22, 0.18, 0.2], ROCK),
-    box([0.12, 0.06, -0.09], [0.15, 0.12, 0.14], DARK_ROCK),
+    box(0, [LEFT[0], 0.09, LEFT[1]], [0.22, 0.18, 0.2], ROCK),
+    box(1, [RIGHT[0], 0.06, RIGHT[1]], [0.15, 0.12, 0.14], DARK_ROCK),
   ]),
 ];
+
+/** How many separate objects a cover is made of (R-194). */
+export function clumpsIn(cover: Cover): number {
+  return cover.parts.reduce((most, part) => Math.max(most, part.clump + 1), 0);
+}
 
 export function coverById(covers: readonly Cover[], id: CoverId): Cover | null {
   return covers.find((entry) => entry.id === id) ?? null;

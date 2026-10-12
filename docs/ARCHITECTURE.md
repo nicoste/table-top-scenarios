@@ -2584,12 +2584,15 @@ apps/host/src/
 > a chunk with nothing growing on it, which is also what every chunk written
 > before this says (D-187).
 >
-> **Two tools, not one.** The ground brush and the cover brush edit one axis
-> each and neither disturbs the other, so repainting a forest's floor to snow
-> gives a taiga rather than a clearing. **Biome presets** give the one click
-> back: "Forest" loads both brushes at once. A preset is a shortcut and not an
-> entity — a cell stores a ground and a cover, never "Forest" — so that list
-> may be renamed, retuned or deleted freely and R-11 never touches it.
+> **Two tools, and only two.** The ground brush and the cover brush edit one
+> axis each and neither disturbs the other, so repainting a forest's floor to
+> snow gives a taiga rather than a clearing.
+>
+> **No presets.** A list of named pairs was built and removed (D-285): it was
+> a third way to say what two tools already say, and it re-introduced the
+> vocabulary — "Forest", "Taiga" — that the two axes exist to do without. The
+> GM builds by parts. Two strokes is what two axes cost, and the cost is the
+> point.
 
 > **R-194.** **A cover is made of swatches, never of colours.**
 >
@@ -2602,15 +2605,28 @@ apps/host/src/
 > goes stale. Place markers (R-82) predate the materials registry and still
 > carry literal colours; covers do not get that excuse.
 >
-> **It costs nothing.** A part is a fixed shape in a fixed material, so every
-> oak trunk in the world is one `InstancedMesh` and every canopy above them is
-> another — eight draw calls for however many trees a GM plants.
+> **A cover is several of a thing, not one of it.** Two trees, two pines, two
+> clumps of scrub, two boulders. One object alone in a cell reads as a
+> specimen; two read as cover. Each is a **clump**, and the clump — not the
+> cover and not the part — is the unit that is posed: the parts of one tree
+> hold together while the two trees do not (D-285).
 >
-> **Placement is derived, never stored** (D-280). Where a cover stands inside
-> its cell, which way it faces and how big it is come from a hash of the cell's
-> coordinate, the same way grain does (R-172): two forest cells differ without
-> a byte on disk, and the same cell looks the same for the life of the
-> campaign.
+> **Shape is what tells two covers apart, not colour.** A cone of one green
+> beside a cone of another green is two conifers. A broadleaf is a trunk under
+> stacked boxes and a conifer is a trunk under a cone, and that reads at a
+> glance where two greens never will.
+>
+> **It costs nothing.** A mesh is per *geometry and material*, so the two
+> trunks of a pair of oaks are one `InstancedMesh` with two instances per cell
+> — three meshes for every tree in the world, two for every pine. A dozen draw
+> calls for a continent of forest.
+>
+> **Placement is derived, never stored** (D-280). Where a clump stands inside
+> its cell, which way it faces and how big it is come from a hash of the
+> cell's coordinate **and which clump it is**, the same way grain does
+> (R-172). So the two trees in a cell differ from each other as well as from
+> the two next door, nothing is on disk, and the same cell looks the same for
+> the life of the campaign.
 >
 > **A cover is scenery and is never picked.** It stands on a cell and the cell
 > is always what a click means, so nothing raycasts it and a tool aiming

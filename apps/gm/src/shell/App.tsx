@@ -1035,11 +1035,11 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       } else {
         switch (digit) {
           case '1': setTool('select'); return;
-          case '2': setTool('paint'); return;
-          case '3': setTool('cover'); return;
+          case '2': setTool('travel'); return;
+          case '3': setTool('places'); return;
           case '4': setTool('height'); return;
-          case '5': setTool('places'); return;
-          case '6': setTool('travel'); return;
+          case '5': setTool('paint'); return;
+          case '6': setTool('cover'); return;
           // The brushes follow the tools, so the digits still run
           // left-to-right across the panel. `[` and `]` are the primary brush
           // keys anyway, which is what makes shuffling these harmless.
@@ -1295,7 +1295,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
           </div>
 
           <div className="hints">
-            1–5 tool · 6/7/8 or [ ] brush · {CAMERA_HINT}
+            1–6 tool · 7/8/9 or [ ] brush · {CAMERA_HINT}
           </div>
           <ConnectBadge urls={view?.connect ?? []} />
         </>

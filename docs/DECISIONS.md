@@ -6534,3 +6534,59 @@ every chunk written before this says (D-187). No schema bump.
 back. At the world's opening zoom they are already a couple of pixels and read
 as a tint on the ground, which is the right answer for free; a zoom gate like
 the markers' (R-83) can be added if the tint turns out to be noise.
+
+### D-285 — No biome presets; a cover is two of a thing · `agreed`
+The GM's pass over covers, and one of the five reverses a call D-280 made
+before any of it existed.
+
+**The biome presets are gone, registry and all.** *"Lets give the GM the
+chance to create by parts, not a third option of doing all together."*
+
+D-280 reasoned that two axes cost the GM a click they did not use to pay and
+that presets would give it back. Having built them, the panel answered the
+question: a third control that says in one word what the two beside it say in
+two is not a shortcut, it is a second vocabulary. And the words it needed were
+"Forest" and "Taiga" — exactly the names the two axes exist to stop anybody
+having to agree on. The open question D-284 flagged (a preset is one click but
+painting a forest is two strokes) is answered by deleting the preset: two
+strokes is what two axes cost, and paying it is how the GM builds by parts.
+
+`DEFAULT_BIOMES` and its module are deleted rather than left unused. A
+registry with no reader is not a spare part, it is a thing that goes stale.
+
+**Covers are two clumps, not one object.** *"I would love to have 2 trees and
+pines as we have 2 boulders or scrubs per place."* Scrub and boulders were
+already pairs and the trees were not, which is why a cell of forest read as a
+specimen on a plinth.
+
+This needed a real change, not two more parts: the pose was computed **per
+cell** and shared by every part, so adding a second tree would have given two
+trees that moved as one and every cell the same pair. The unit is now the
+**clump** — `CoverPart.clump` says which object a part belongs to — and the
+hash is salted by it. A trunk keeps its crown; the tree beside it goes its own
+way. Yes, seeded from the coordinate exactly as a material's grain is (R-172),
+never random: the world is rebuilt whole on every edit, and a random jitter
+would mean every forest shimmering each time the GM paints a cell.
+
+The clump's *offset* is deliberately not rotated by its yaw — two clumps
+orbiting the cell centre by their own angles can swing on top of each other.
+The yaw spins each part about its own axis instead, which is the variety
+without the collision.
+
+**A broadleaf is stacked boxes, not a cone.** *"I want a more distinguished
+tree, it looks almost like the pine."* Correct, and the reason is that colour
+was doing the work: two cones of two greens is two conifers. A trunk under two
+boxes narrowing upward reads as a different kind of tree at a glance, and it
+is the shape the rest of this world is already made of.
+
+**Meshes are grouped by geometry and material, not by part.** Two clumps would
+otherwise have doubled the draw calls to say the same thing twice. The two
+trunks of a pair of oaks are one `InstancedMesh` with two instances per cell —
+three meshes for every tree in the world, which is fewer than the six the
+first cut would have made.
+
+**The tool grid is paired by purpose**: select & travel, places & height,
+ground & cover. And the world borrows the map's icons — `✏` for Ground, `♟`
+for Travel — because the same action should be the same picture on both
+surfaces. The digits follow the panel's own order, so the keyboard hint moved
+from "1–5 tool · 6/7/8 brush" to "1–6 · 7/8/9".

@@ -8,8 +8,8 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-  DEFAULT_COVERS, DEFAULT_BIOMES, DEFAULT_TRAVEL_MODES,
-  coverById, isKnownCover, overCover, cellCost, isKnownSwatch,
+  DEFAULT_COVERS, DEFAULT_TRAVEL_MODES,
+  coverById, isKnownCover, overCover, cellCost, isKnownSwatch, clumpsIn,
   createChunk, columnAt, paintCover, paintGround, emptyWorld, addChunk, chunkAt, coverArea,
   toGlobal, CHUNK_SIZE,
 } from '@tt/domain';
@@ -55,6 +55,55 @@ describe('the cover registry (R-193, R-11)', () => {
       expect(Number.isFinite(cover.difficulty), cover.name).toBe(true);
       expect(cover.difficulty, cover.name).toBeGreaterThanOrEqual(1);
     }
+  });
+
+  it('is two of a thing, never one (R-194)', () => {
+    // One object alone in a cell reads as a specimen; two read as cover, and
+    // two that wander apart read as different cells (D-285).
+    for (const cover of DEFAULT_COVERS) {
+      expect(clumpsIn(cover), cover.name).toBe(2);
+    }
+  });
+
+  it('numbers its clumps from zero with no gaps, since the renderer indexes them', () => {
+    for (const cover of DEFAULT_COVERS) {
+      const used = new Set(cover.parts.map((part) => part.clump));
+      expect([...used].sort(), cover.name).toEqual(
+        Array.from({ length: clumpsIn(cover) }, (_unused, i) => i),
+      );
+    }
+  });
+
+  it('keeps every clump inside its own cell, wander and all', () => {
+    /*
+     * The one thing a cover has to say is *which cell this is*, and a crown
+     * that laps over the edge makes that a lie. Half a cell is the limit; the
+     * renderer's wander and its fifth of extra scale are priced in here
+     * rather than left to be noticed on screen.
+     */
+    const WANDER = 0.075;
+    const BIGGEST = 1.2;
+    for (const cover of DEFAULT_COVERS) {
+      for (const part of cover.parts) {
+        const reach = Math.max(part.size[0], part.size[2]);
+        // A cone and a cylinder take a radius; a box takes full extents.
+        const half = part.shape === 'box' ? reach / 2 : reach;
+        for (const axis of [0, 2] as const) {
+          const edge = (Math.abs(part.at[axis]) + half) * BIGGEST + WANDER;
+          expect(edge, `${cover.name} ${part.shape} on axis ${axis}`).toBeLessThan(0.5);
+        }
+      }
+    }
+  });
+
+  it('tells a broadleaf from a conifer by its shape, not its colour', () => {
+    // Two cones of two greens is two conifers. The trees are stacked boxes
+    // and the pines are a cone, which is what reads at a glance (D-285).
+    const trees = coverById(DEFAULT_COVERS, TREES)!;
+    const pines = coverById(DEFAULT_COVERS, 'cover:pines' as CoverId)!;
+    expect(trees.parts.some((part) => part.shape === 'cone')).toBe(false);
+    expect(trees.parts.filter((part) => part.shape === 'box').length).toBe(4);
+    expect(pines.parts.filter((part) => part.shape === 'cone').length).toBe(2);
   });
 
   it('stands everything at or above the ground it is planted on', () => {
@@ -163,32 +212,5 @@ describe('painting the two axes independently (R-193)', () => {
     const planted = coverArea(world, at, 3, TREES);
     expect(columnAt(chunkAt(planted, { cx: 5, cz: 5 })!, CHUNK_SIZE - 1, 10)?.cover).toBe(TREES);
     expect(columnAt(chunkAt(planted, { cx: 6, cz: 5 })!, 0, 10)?.cover).toBe(TREES);
-  });
-});
-
-describe('biome presets are shortcuts, not entities (D-280)', () => {
-  it('names only grounds and covers that exist', () => {
-    for (const biome of DEFAULT_BIOMES) {
-      expect(isKnownSwatch(biome.ground), `${biome.name}: ${biome.ground}`).toBe(true);
-      if (biome.cover) {
-        expect(isKnownCover(biome.cover), `${biome.name}: ${biome.cover}`).toBe(true);
-      }
-    }
-  });
-
-  it('gives no two the same pair, which would be two names for one cell', () => {
-    const pairs = DEFAULT_BIOMES.map((b) => `${b.ground}+${b.cover ?? ''}`);
-    expect(new Set(pairs).size).toBe(pairs.length);
-  });
-
-  it('reaches combinations the old terrain palette had no entry for', () => {
-    // The argument for two axes, as a test: taiga is snow and pines, and
-    // neither of those was added for it.
-    const taiga = DEFAULT_BIOMES.find((b) => b.name === 'Taiga')!;
-    expect(taiga.ground).toBe('material:soil/snow');
-    expect(taiga.cover).toBe('cover:pines');
-    const tundra = DEFAULT_BIOMES.find((b) => b.name === 'Tundra')!;
-    expect(tundra.ground).toBe(taiga.ground);
-    expect(tundra.cover).toBeNull();
   });
 });

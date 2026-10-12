@@ -47,10 +47,8 @@ export {
 export type { Material, Cut, Difficulty } from './materials/index.js';
 export type { Cover, CoverPart } from './covers/index.js';
 export {
-  DEFAULT_COVERS, coverById, isKnownCover, overCover,
+  DEFAULT_COVERS, coverById, isKnownCover, overCover, clumpsIn,
 } from './covers/index.js';
-export type { Biome } from './biomes/index.js';
-export { DEFAULT_BIOMES } from './biomes/index.js';
 export {
   DEFAULT_MATERIALS, DEFAULT_FLOOR, materialById, isKnownMaterial, requireMaterial,
   swatchOf, swatchFor, materialIn, cutIdIn, cutOf, colourOf, isKnownSwatch, difficultyOf,

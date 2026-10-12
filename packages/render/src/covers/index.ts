@@ -7,11 +7,13 @@
 // GM plants, and the only thing that varies per instance is a colour and a
 // matrix — which is exactly what an instance can carry.
 //
-// **Placement is derived, never stored** (D-280). A cover's jitter, its turn
-// and its size come from a hash of the cell's own coordinate, so two forest
-// cells differ without a byte on disk, retuning a cover restyles every world
-// that uses it, and the same cell looks the same for the life of the campaign.
-// The same reasoning as grain, and the same hash (R-172).
+// **Placement is derived, never stored** (D-280). A clump's jitter, its turn
+// and its size come from a hash of the cell's own coordinate **and which
+// clump it is**, so the two trees in a cell differ from each other as well as
+// from the two in the cell beside it — all without a byte on disk. Retuning a
+// cover restyles every world that uses it, and the same cell looks the same
+// for the life of the campaign. The same reasoning as grain, and the same
+// hash (R-172).
 //
 // **Covers are not picked.** They are scenery standing on a cell, and the cell
 // is always what a click means — so they are raycast by nothing, and a tool
@@ -25,21 +27,31 @@ import {
 import type { BufferGeometry } from 'three';
 import type { Campaign, Cover, CoverPart, World } from '@tt/domain';
 import {
-  CHUNK_SIZE, DEFAULT_COVERS, coverById, colourOf, cutIdIn, familyOf,
+  CHUNK_SIZE, DEFAULT_COVERS, clumpsIn, coverById, colourOf, cutIdIn, familyOf,
 } from '@tt/domain';
 import { grainAt } from '../grain/index.js';
 import { HEIGHT_SCALE } from '../world/index.js';
 
 /**
- * How far a cover may wander from the middle of its cell, in cell widths.
+ * How far a clump may wander from where the registry stands it, in cell
+ * widths.
  *
- * Enough that a wood does not read as a chessboard, little enough that a cover
- * never crosses into the cell beside it — which would make the one thing a
- * cover has to say, *which cell this is*, a lie.
+ * Enough that a wood does not read as a chessboard, little enough that nothing
+ * crosses into the cell beside it — which would make the one thing a cover has
+ * to say, *which cell this is*, a lie. The registry already puts the two
+ * clumps a third of a cell apart, so this only has to break the repeat.
  */
-const WANDER = 0.17;
-/** And how much bigger or smaller one may be. A tenth either way. */
-const VARY = 0.1;
+const WANDER = 0.075;
+/** And how much bigger or smaller one may be. A fifth either way. */
+const VARY = 0.2;
+/*
+ * Salts, so the five numbers a clump needs come from five different draws of
+ * the same hash. Odd and spread out, for the reason `grainAt` gives: the axes
+ * must not share factors or neighbours land together. The clump index is
+ * folded in, which is what makes the two trees in a cell differ.
+ */
+const SALT = { x: 7, z: 13, yaw: 19, scale: 23, shade: 29 } as const;
+const CLUMP_STRIDE = 37;
 
 export interface CoverField {
   readonly group: Group;
@@ -115,27 +127,51 @@ export function buildCovers(campaign: Campaign): CoverField {
 
   for (const { cover, cells } of stands.values()) {
     /*
-     * Worked out once per cell and shared by every part of the cover, so a
-     * trunk and the canopy above it wander together. Separate hashes per part
-     * would scatter a tree into its pieces.
+     * One pose per clump per cell, shared by every part of that clump: a
+     * trunk and the crown above it wander together, and the tree beside them
+     * does not. Hashing per *part* would scatter a tree into its pieces;
+     * hashing per *cell* — which is what this did first — moved both trees as
+     * one and left every cell a copy of the same pair (D-285).
      */
-    const poses = cells.map(({ gx, gz, top }) => ({
-      x: gx + 0.5 + grainAt(gx, 7, gz) * WANDER,
-      z: gz + 0.5 + grainAt(gx, 13, gz) * WANDER,
-      y: top,
-      yaw: grainAt(gx, 19, gz) * Math.PI,
-      scale: 1 + grainAt(gx, 23, gz) * VARY,
-      drift: grainAt(gx, 29, gz),
-    }));
+    const clumps = clumpsIn(cover);
+    const poses = cells.map(({ gx, gz, top }) => (
+      Array.from({ length: clumps }, (_unused, clump) => {
+        const salt = clump * CLUMP_STRIDE;
+        return {
+          x: gx + 0.5 + grainAt(gx, SALT.x + salt, gz) * WANDER,
+          z: gz + 0.5 + grainAt(gx, SALT.z + salt, gz) * WANDER,
+          y: top,
+          yaw: grainAt(gx, SALT.yaw + salt, gz) * Math.PI,
+          scale: 1 + grainAt(gx, SALT.scale + salt, gz) * VARY,
+          drift: grainAt(gx, SALT.shade + salt, gz),
+        };
+      })
+    ));
 
-    cover.parts.forEach((part, partIndex) => {
-      const family = familyOf(part.swatch);
-      if (!family) return;
-      const geometry = geometryFor(part);
+    /*
+     * Parts that are the same shape, the same size and the same substance
+     * share a mesh however many clumps they belong to — the two trunks of a
+     * pair of oaks are one `InstancedMesh` with two instances per cell, not
+     * two meshes with one each. R-173's rule, applied where it actually bites:
+     * a mesh is per *material and geometry*, and everything else an instance
+     * carries.
+     */
+    const kinds = new Map<string, CoverPart[]>();
+    for (const part of cover.parts) {
+      const key = `${part.shape}|${part.size.join(',')}|${part.swatch}`;
+      const kind = kinds.get(key);
+      if (kind) kind.push(part); else kinds.set(key, [part]);
+    }
+
+    for (const parts of kinds.values()) {
+      const sample = parts[0]!;
+      const family = familyOf(sample.swatch);
+      if (!family) continue;
+      const geometry = geometryFor(sample);
       geometries.push(geometry);
 
       // The family's own surface, exactly as a cube of it would be drawn
-      // (R-173) — which is the point: retune Vegetation and every canopy on
+      // (R-173) — which is the point: retune Vegetation and every crown on
       // every world follows, along with every leaf in every building.
       const surface = new MeshStandardMaterial({
         roughness: family.roughness,
@@ -149,45 +185,63 @@ export function buildCovers(campaign: Campaign): CoverField {
       }
       surfaces.push(surface);
 
-      const base = new Color(colourOf(family, cutIdIn(part.swatch)));
-      const mesh = new InstancedMesh(geometry, surface, Math.max(1, poses.length));
+      const base = new Color(colourOf(family, cutIdIn(sample.swatch)));
+      const total = poses.length * parts.length;
+      const mesh = new InstancedMesh(geometry, surface, Math.max(1, total));
       mesh.instanceMatrix.setUsage(DynamicDrawUsage);
-      mesh.count = poses.length;
+      mesh.count = total;
       mesh.frustumCulled = false;
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       // Nothing raycasts this group, but a cover must not be pickable even by
       // accident: a tool aiming through a wood means the ground under it.
       mesh.raycast = () => {};
-      mesh.name = `cover:${cover.id}:${partIndex}`;
+      mesh.name = `cover:${cover.id}:${sample.shape}`;
 
-      const [ox, oy, oz] = part.at;
-      poses.forEach((at, index) => {
-        pose.position.set(
-          at.x + ox * at.scale,
-          at.y + oy * at.scale,
-          at.z + oz * at.scale,
-        );
-        pose.rotation.set(0, at.yaw, 0);
-        pose.scale.setScalar(at.scale);
-        pose.updateMatrix();
-        mesh.setMatrixAt(index, pose.matrix);
+      let index = 0;
+      for (const part of parts) {
+        const [ox, oy, oz] = part.at;
+        for (const perClump of poses) {
+          // Clamped rather than trusted: a part naming a clump the cover does
+          // not have would otherwise read `undefined` and throw, and the
+          // cover it belongs to is data.
+          const at = perClump[Math.min(part.clump, perClump.length - 1)]!;
+          /*
+           * The clump's offset is **not** turned by the yaw. Rotating it
+           * would orbit each clump around the cell's centre by its own angle,
+           * and two clumps orbiting independently can swing on top of each
+           * other. The yaw spins each part about its own axis instead — a
+           * crown at thirty degrees against its neighbour's — which is the
+           * variety without the collision. Both parts of a clump share this
+           * offset, so a crown stays over its trunk either way.
+           */
+          pose.position.set(
+            at.x + ox * at.scale,
+            at.y + oy * at.scale,
+            at.z + oz * at.scale,
+          );
+          pose.rotation.set(0, at.yaw, 0);
+          pose.scale.setScalar(at.scale);
+          pose.updateMatrix();
+          mesh.setMatrixAt(index, pose.matrix);
 
-        // Lightness in HSL, not a multiply: scaling the channels together
-        // drags the family's hue about (R-172, D-237).
-        shade.copy(base);
-        if (family.grain > 0) {
-          shade.getHSL(hsl);
-          shade.setHSL(hsl.h, hsl.s,
-            Math.min(1, Math.max(0, hsl.l + at.drift * family.grain)));
+          // Lightness in HSL, not a multiply: scaling the channels together
+          // drags the family's hue about (R-172, D-237).
+          shade.copy(base);
+          if (family.grain > 0) {
+            shade.getHSL(hsl);
+            shade.setHSL(hsl.h, hsl.s,
+              Math.min(1, Math.max(0, hsl.l + at.drift * family.grain)));
+          }
+          mesh.setColorAt(index, shade);
+          index += 1;
         }
-        mesh.setColorAt(index, shade);
-      });
+      }
       mesh.instanceMatrix.needsUpdate = true;
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
       group.add(mesh);
       meshes.push(mesh);
-    });
+    }
   }
 
   return {
