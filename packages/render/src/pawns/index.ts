@@ -7,12 +7,11 @@
 import {
   Color, CylinderGeometry, Group, Mesh, MeshLambertMaterial, SphereGeometry,
 } from 'three';
-import type { BufferGeometry, CanvasTexture, Material } from 'three';
+import type { BufferGeometry, Material } from 'three';
 import type { Campaign, PartyMember, Placement, WorldCell } from '@tt/domain';
 import { CHUNK_SIZE, pawns as pawnsOf } from '@tt/domain';
 import { surfaceAt } from '../world/index.js';
-import type { Label } from '../places/index.js';
-import { floatLabels, nameLabel } from '../places/index.js';
+import { caption } from '../captions/index.js';
 
 /** Which pawn was picked: a member, or the whole party travelling together. */
 export interface PawnRef {
@@ -23,7 +22,6 @@ export interface PawnRef {
 export interface PartyPawns {
   readonly group: Group;
   pawnAt(object: object): PawnRef | null;
-  scaleLabels(zoom: number, viewportHeightPx: number): void;
   /**
    * Puts the ghost on a cell, or takes it off the board.
    *
@@ -56,8 +54,6 @@ export function buildPartyPawns(campaign: Campaign, placement: Placement): Party
   const owners = new Map<object, PawnRef>();
   const geometries: BufferGeometry[] = [];
   const materials: Material[] = [];
-  const textures: CanvasTexture[] = [];
-  const labels: Label[] = [];
   const colour = new Color();
 
   const byId = new Map<string, PartyMember>(campaign.party.map((m) => [m.id, m]));
@@ -81,12 +77,11 @@ export function buildPartyPawns(campaign: Campaign, placement: Placement): Party
     // Only the separated pawns are named. One pawn needs no caption, and six
     // captions on a 1350 km map is soup (O-021).
     if (name) {
-      const label = nameLabel(name, PAWN_TOP);
-      pawn.add(label.sprite);
-      owners.set(label.sprite, ref);
-      textures.push(label.sprite.material.map as CanvasTexture);
-      materials.push(label.sprite.material);
-      labels.push(label);
+      // At the pawn's crown; the gap above it is the caption's padding, in
+      // pixels, at every zoom (R-196).
+      const label = caption(name);
+      label.position.set(0, PAWN_TOP, 0);
+      pawn.add(label);
     }
 
     group.add(pawn);
@@ -125,9 +120,6 @@ export function buildPartyPawns(campaign: Campaign, placement: Placement): Party
   return {
     group,
     pawnAt: (object) => owners.get(object) ?? null,
-    scaleLabels(zoom, viewportHeightPx) {
-      floatLabels(labels, zoom, viewportHeightPx);
-    },
     aimAt(cell) {
       if (!cell) {
         ghost.visible = false;
@@ -140,7 +132,6 @@ export function buildPartyPawns(campaign: Campaign, placement: Placement): Party
     dispose() {
       for (const g of geometries) g.dispose();
       for (const m of materials) m.dispose();
-      for (const t of textures) t.dispose();
     },
   };
 }

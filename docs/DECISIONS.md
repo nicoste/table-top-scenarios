@@ -6689,7 +6689,7 @@ what the screen sees. The real fix inside the pipeline is a second scene for
 captions and a second render pass — strictly more machinery than taking them
 out of the pipeline altogether. See O-031.
 
-### O-031 — Captions as DOM, not as sprites · `open`
+### O-031 — Captions as DOM, not as sprites · `closed by D-288`
 The question the halo raised (D-287): should a map caption stop being a
 three.js `Sprite` and become an HTML element positioned over the canvas, with
 `CSS2DRenderer`?
@@ -6715,3 +6715,45 @@ canvas alone.
 GM should see it before it lands rather than after. Everything it touches is
 in `render/places` and `render/pawns`, which R-23 exempts from tests, so there
 is nothing to protect here but the eye.
+
+### D-288 — Captions are DOM · `agreed`
+O-031, taken. R-196 is new.
+
+**What it fixed.** The black parallelogram behind every name, which was the
+occlusion pass drawing a sprite's quad flat in world space (D-287), and which
+had no cheap fix while captions were in the scene: three.js gives the pass no
+object filter, so the only way out was a second scene and a second render —
+more machinery than leaving the pipeline entirely. And text that is now drawn
+by the browser at the display's resolution rather than magnified from a 64 px
+canvas.
+
+**What it cost.** A `<div>` over the canvas, mounted by the stage into the
+canvas's parent, with `pointer-events: none`. The parent is given
+`position: relative` only when it has none — both apps already position
+theirs, so neither changed at all.
+
+**One thing had to be rebuilt rather than carried over.** Clicking a place's
+*name* selected it, because a `Sprite` is raycastable and the name was one.
+An element that passes pointer events through is not, so the pick now tests
+the pointer against each caption's rectangle before the ray. Letting the
+caption take the click instead would have moved that gesture outside the
+canvas handler that owns every other one (R-87c), for a name that is the
+easiest target on the map.
+
+**The stylesheet is injected by `render`, once per document**, rather than
+asked of each app: `render` makes the markup, so it owns the look, and an app
+that forgot the rule would get unstyled text over its map with nothing to say
+why. One class at the lowest specificity, appended before an app's own sheet
+runs, so overriding it stays easy.
+
+**Checked on both screens**, by what is actually in the DOM rather than by
+eye alone: the layer mounts into each canvas's parent, matches the canvas size
+exactly, reports `pointer-events: none`, carries the one caption the console
+is showing and none inside a map. By eye: the halo is gone, the name holds its
+place from the zoom threshold down to the closest the camera goes, it still
+disappears with its marker past `MARKER_ZOOM` (R-83), and clicking it still
+opens the place.
+
+**Deleted along the way**: `nameLabel`, `floatLabels`, `Label`,
+`LABEL_PIXELS`, `LABEL_GAP`, both copies of `scaleLabels`, and the canvas and
+texture each caption used to allocate.

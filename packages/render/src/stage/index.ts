@@ -15,6 +15,7 @@ import type {
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
+import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import {
   CHUNK_SIZE, brushCentreOffset, mapCentre, DAYLIGHT, sunDirection, shadowReach, bounceOf,
@@ -167,6 +168,15 @@ export class Stage {
   private readonly renderer: WebGLRenderer;
   private readonly composer: EffectComposer;
   private readonly occlusion: GTAOPass;
+  /**
+   * The captions' layer: a `<div>` over the canvas, not pixels in it (R-196).
+   *
+   * Built here because the stage is what owns the canvas and knows its size,
+   * so an app mounts a canvas and gets captions without being told to add
+   * anything. Its pointer events are off, so every click still reaches the
+   * canvas underneath.
+   */
+  private readonly captions = new CSS2DRenderer();
   private readonly key: DirectionalLight;
   private readonly fill: HemisphereLight;
   /** What the GM has set. The lights are its consequence, not its home. */
@@ -326,6 +336,7 @@ export class Stage {
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     this.renderer = new WebGLRenderer({ canvas, antialias: true });
+    this.mountCaptions();
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     /*
      * Shadows, **never updated on their own** (R-180).
@@ -1064,9 +1075,14 @@ export class Stage {
 
     let placeId: string | null = null;
     if (this.places && this.places.group.visible) {
-      for (const hit of this.raycaster.intersectObjects(this.places.group.children, true)) {
-        placeId = this.places.placeOf(hit.object);
-        if (placeId) break;
+      // The caption first: it stands in front of its marker and a click on a
+      // name has always meant the place (R-196).
+      placeId = this.places.captionAt(clientX, clientY);
+      if (!placeId) {
+        for (const hit of this.raycaster.intersectObjects(this.places.group.children, true)) {
+          placeId = this.places.placeOf(hit.object);
+          if (placeId) break;
+        }
       }
     }
 
@@ -1205,11 +1221,33 @@ export class Stage {
     };
   }
 
+  /**
+   * Lays the caption layer over the canvas, in whatever the app put it in.
+   *
+   * The parent is given `position: relative` if it has none, because an
+   * absolutely positioned overlay with no positioned ancestor walks to the
+   * page corner. Reading the computed style rather than setting it blindly:
+   * an app that has already laid its canvas out keeps its own rule.
+   */
+  private mountCaptions(): void {
+    const layer = this.captions.domElement;
+    layer.style.position = 'absolute';
+    layer.style.inset = '0';
+    // Never swallow a click: every pointer gesture belongs to the canvas
+    // underneath, and a caption is something to read, not something to hit.
+    layer.style.pointerEvents = 'none';
+    const parent = this.canvas.parentElement;
+    if (!parent) return;
+    if (getComputedStyle(parent).position === 'static') parent.style.position = 'relative';
+    parent.append(layer);
+  }
+
   resize(): void {
     this.invalidate();
     const w = this.canvas.clientWidth || 1;
     const h = this.canvas.clientHeight || 1;
     this.renderer.setSize(w, h, false);
+    this.captions.setSize(w, h);
     // The composer owns the buffers now, and an unresized pass renders the
     // last size into the new canvas.
     this.composer.setSize(w, h);
@@ -1277,15 +1315,9 @@ export class Stage {
     // check only the zoom, which quietly undid `setMap`'s hiding on the very
     // next frame — a map's zoom is always under the threshold.
     const markers = showWorldMarkers(this.showingMap, this.target.zoom, MARKER_ZOOM);
-    if (this.places) {
-      this.places.group.visible = markers;
-      if (markers) this.places.scaleLabels(this.target.zoom, this.canvas.clientHeight || 1);
-    }
+    if (this.places) this.places.group.visible = markers;
     // The party shares the threshold, so pawns and places come and go together.
-    if (this.pawns) {
-      this.pawns.group.visible = markers;
-      if (markers) this.pawns.scaleLabels(this.target.zoom, this.canvas.clientHeight || 1);
-    }
+    if (this.pawns) this.pawns.group.visible = markers;
     this.renderer.info.reset();
     const gl = this.renderer.getContext() as WebGL2RenderingContext;
     this.readTimer(gl);
@@ -1316,6 +1348,17 @@ export class Stage {
     }
     if (this.occluding) this.composer.render();
     else this.renderer.render(this.scene, this.camera);
+    /*
+     * The captions, after the picture and never inside it (R-196).
+     *
+     * This is a walk of the scene and a `transform` per caption — no GL work
+     * at all — and it runs on drawn *and* heartbeat frames alike, because a
+     * caption that is not repositioned after the camera eases is a caption in
+     * the wrong place. `CSS2DRenderer` hides what the camera cannot see and
+     * respects `visible`, so the zoom threshold above still takes them away
+     * with their markers (R-83).
+     */
+    this.captions.render(this.scene, this.camera);
     if (changed && this.timer && this.pending) gl.endQuery(this.timer.TIME_ELAPSED_EXT);
     return changed ? 'drawn' : 'heartbeat';
   }
@@ -1330,6 +1373,7 @@ export class Stage {
     this.pawns?.dispose();
     this.places?.dispose();
     this.world?.dispose();
+    this.captions.domElement.remove();
     this.renderer.dispose();
   }
 }

@@ -2594,6 +2594,44 @@ apps/host/src/
 > GM builds by parts. Two strokes is what two axes cost, and the cost is the
 > point.
 
+> **R-196.** **A caption is HTML over the canvas, not pixels in it.**
+>
+> A place's name and a pawn's are `CSS2DObject`s: a world position, projected
+> by three.js, with the browser positioning a `<div>` there. They were sprites
+> with the text baked into a canvas texture, and both bugs that cost were the
+> same bug — **a caption is a thing on the screen, and it was living in the
+> scene** (D-288).
+>
+> - Its **size** had to be undone from the zoom on every drawn frame, while
+>   its **offset** was in world units, so it flew off its marker as you zoomed
+>   in (D-287). Now both are CSS pixels and neither is computed.
+> - The occlusion pass renders the scene with an **override material**, which
+>   replaces the very shader that makes a sprite face the camera. It drew each
+>   caption's quad flat across the ground as a black parallelogram. Nothing in
+>   the DOM is in the depth buffer, so no pass can reach it — not that one and
+>   not the next one we add.
+>
+> **The layer belongs to the stage**, which is what owns the canvas and knows
+> its size, so an app mounts a canvas and gets captions without being told to
+> add anything. Pointer events are off on it: every gesture still reaches the
+> canvas underneath.
+>
+> **A click on a name still selects its place.** That is not free any more — a
+> ray cannot find an element that passes pointer events through — so the pick
+> tests the pointer against each caption's own rectangle first. It is a
+> handful of places and only on a pick. The alternative, letting the caption
+> take the click, would have put the gesture outside the canvas handler that
+> owns every other one (R-87c).
+>
+> **They are repositioned on heartbeat frames as well as drawn ones**, because
+> a caption that is not moved after the camera eases is a caption in the wrong
+> place. It is a scene walk and a `transform` each, with no GL work at all, so
+> R-170's trade does not apply to it.
+>
+> **It is less than it replaced**: no canvas per place, no texture, no aspect
+> ratio, no per-frame rescale, and nothing to dispose — three.js removes a
+> `CSS2DObject`'s node itself.
+
 > **R-195.** **A cover earns its id by costing something; what it looks like
 > is free.**
 >
