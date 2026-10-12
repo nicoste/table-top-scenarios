@@ -36,6 +36,14 @@ export interface PlaceMarkers {
 
 /** How tall a name should be on screen, in CSS pixels. */
 export const LABEL_PIXELS = 13;
+/**
+ * And how far above the thing it names it floats, **also in pixels**.
+ *
+ * Both in the same frame, which is the bug this replaces: the size was in
+ * pixels and the offset was in world units, so zooming in flung the label off
+ * the marker while the text stayed the same size (D-287).
+ */
+export const LABEL_GAP = 5;
 
 function geometryFor(part: MarkerPart): BufferGeometry {
   const [w, h, d] = part.size;
@@ -47,10 +55,15 @@ function geometryFor(part: MarkerPart): BufferGeometry {
   }
 }
 
-export interface Label { readonly sprite: Sprite; readonly aspect: number }
+export interface Label {
+  readonly sprite: Sprite;
+  readonly aspect: number;
+  /** The world height the label has to clear: the top of what it names. */
+  readonly base: number;
+}
 
 /** A map caption. Shared with the party pawns, which label the same way (R-90). */
-export function nameLabel(text: string): Label {
+export function nameLabel(text: string, base: number): Label {
   const pad = 16;
   const font = '600 34px ui-sans-serif, system-ui, sans-serif';
   const measure = document.createElement('canvas').getContext('2d');
@@ -75,11 +88,36 @@ export function nameLabel(text: string): Label {
 
   const texture = new CanvasTexture(canvas);
   texture.colorSpace = SRGBColorSpace;
-  const sprite = new Sprite(new SpriteMaterial({ map: texture, transparent: true, depthTest: false }));
+  const sprite = new Sprite(new SpriteMaterial({ map: texture, transparent: true, depthTest: false, depthWrite: false }));
   sprite.renderOrder = 6;
-  // Scale is set every frame by scaleLabels; this is a placeholder.
+  // Scale and height are set by `floatLabels` on every drawn frame; these are
+  // placeholders, and a label is never drawn before one runs.
   sprite.scale.set(1, 1, 1);
-  return { sprite, aspect: canvas.width / canvas.height };
+  return { sprite, aspect: canvas.width / canvas.height, base };
+}
+
+/**
+ * Sizes every label and lifts it clear of what it names — both in pixels.
+ *
+ * One function for the places and the pawns, because they caption the same
+ * way (R-90) and two copies of this had the same bug in both. `zoom` is how
+ * much world fits on screen vertically, so dividing by it converts a pixel
+ * into a world length at the camera's current setting.
+ *
+ * The sprite's origin is its middle, hence the half-height: the gap is
+ * measured from the top of the marker to the *bottom* of the caption.
+ */
+export function floatLabels(
+  labels: readonly Label[], zoom: number, viewportHeightPx: number,
+): void {
+  if (viewportHeightPx <= 0) return;
+  const perPixel = zoom / viewportHeightPx;
+  const height = LABEL_PIXELS * perPixel;
+  const gap = LABEL_GAP * perPixel;
+  for (const label of labels) {
+    label.sprite.scale.set(height * label.aspect, height, 1);
+    label.sprite.position.y = label.base + gap + height / 2;
+  }
 }
 
 export function buildPlaceMarkers(campaign: Campaign): PlaceMarkers {
@@ -114,8 +152,7 @@ export function buildPlaceMarkers(campaign: Campaign): PlaceMarkers {
       tallest = Math.max(tallest, part.at[1] + part.size[1] / 2);
     }
 
-    const name = nameLabel(place.name);
-    name.sprite.position.set(0, tallest + 0.45, 0);
+    const name = nameLabel(place.name, tallest);
     pin.add(name.sprite);
     owners.set(name.sprite, place.id);
     textures.push(name.sprite.material.map as CanvasTexture);
@@ -129,11 +166,7 @@ export function buildPlaceMarkers(campaign: Campaign): PlaceMarkers {
     group,
     placeOf: (object) => owners.get(object) ?? null,
     scaleLabels(zoom, viewportHeightPx) {
-      if (viewportHeightPx <= 0) return;
-      const height = (LABEL_PIXELS / viewportHeightPx) * zoom;
-      for (const entry of labels) {
-        entry.sprite.scale.set(height * entry.aspect, height, 1);
-      }
+      floatLabels(labels, zoom, viewportHeightPx);
     },
     dispose() {
       for (const g of geometries) g.dispose();

@@ -7,11 +7,12 @@
 import {
   Color, CylinderGeometry, Group, Mesh, MeshLambertMaterial, SphereGeometry,
 } from 'three';
-import type { BufferGeometry, CanvasTexture, Material, Sprite } from 'three';
+import type { BufferGeometry, CanvasTexture, Material } from 'three';
 import type { Campaign, PartyMember, Placement, WorldCell } from '@tt/domain';
 import { CHUNK_SIZE, pawns as pawnsOf } from '@tt/domain';
 import { surfaceAt } from '../world/index.js';
-import { LABEL_PIXELS, nameLabel } from '../places/index.js';
+import type { Label } from '../places/index.js';
+import { floatLabels, nameLabel } from '../places/index.js';
 
 /** Which pawn was picked: a member, or the whole party travelling together. */
 export interface PawnRef {
@@ -56,7 +57,7 @@ export function buildPartyPawns(campaign: Campaign, placement: Placement): Party
   const geometries: BufferGeometry[] = [];
   const materials: Material[] = [];
   const textures: CanvasTexture[] = [];
-  const labels: { readonly sprite: Sprite; readonly aspect: number }[] = [];
+  const labels: Label[] = [];
   const colour = new Color();
 
   const byId = new Map<string, PartyMember>(campaign.party.map((m) => [m.id, m]));
@@ -80,8 +81,7 @@ export function buildPartyPawns(campaign: Campaign, placement: Placement): Party
     // Only the separated pawns are named. One pawn needs no caption, and six
     // captions on a 1350 km map is soup (O-021).
     if (name) {
-      const label = nameLabel(name);
-      label.sprite.position.set(0, PAWN_TOP + 0.4, 0);
+      const label = nameLabel(name, PAWN_TOP);
       pawn.add(label.sprite);
       owners.set(label.sprite, ref);
       textures.push(label.sprite.material.map as CanvasTexture);
@@ -126,9 +126,7 @@ export function buildPartyPawns(campaign: Campaign, placement: Placement): Party
     group,
     pawnAt: (object) => owners.get(object) ?? null,
     scaleLabels(zoom, viewportHeightPx) {
-      if (viewportHeightPx <= 0) return;
-      const height = (LABEL_PIXELS / viewportHeightPx) * zoom;
-      for (const entry of labels) entry.sprite.scale.set(height * entry.aspect, height, 1);
+      floatLabels(labels, zoom, viewportHeightPx);
     },
     aimAt(cell) {
       if (!cell) {

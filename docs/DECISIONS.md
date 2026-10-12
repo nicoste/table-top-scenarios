@@ -6645,3 +6645,73 @@ Order here is purely presentational — nothing stores an index — but a regist
 that is append-only except when the order looks untidy is not append-only
 (R-11). Grouping them is a sort in the panel if it ever matters, not a
 reorder here.
+
+### D-287 — A label is measured in pixels, and the halo behind it is the AO pass · `agreed, half fixed`
+Two bugs the GM has been looking at for a while, in one caption. They turned
+out to be unrelated, and only one of them is fixed here.
+
+**The drift: the size was in pixels and the offset was in world units.**
+`scaleLabels` sized a caption so it is 13 px tall whatever the zoom, and then
+the caption sat at a fixed `+0.45` **world units** above what it named. Zoom
+out and 0.45 units is two pixels, so the name sits on the marker; zoom in and
+it is thirty, so it flies off. The same code, the same bug, in the places and
+in the pawns.
+
+Fixed by putting both in the same frame: a label carries the world height it
+must clear, and one `floatLabels` sets its size *and* its height from a pixel
+gap divided by the zoom. It also folds the two copies of `scaleLabels` into
+one — they caption the same way (R-90) and had the same bug twice.
+
+**The halo is the occlusion pass, and it is not fixed.** The black
+parallelogram behind every name is `GTAOPass`. It renders the scene with an
+**override material**, and a `Sprite`'s geometry is a plane in its own local
+XY — the camera-facing part lives in the *sprite shader*, which an override
+replaces. So the AO pass sees an upright quad standing in the world where the
+caption is, and shades the ground around it. That is why it is grid-aligned
+rather than screen-aligned, why it is indifferent to the sun, and why it
+scales with the caption rather than with the world.
+
+Four hypotheses were wrong before that one: a shadow of the label (the sun
+crossed the whole arc and the shape did not move), the sprite's own pill
+(colouring it red left the black behind), the sprite's quad (filling the whole
+quad green showed the quad horizontal and the black shape elsewhere), and
+depth pollution (`depthWrite: false` changed nothing visible). The keyboard
+toggle for occlusion does not reach its handler, which is why the pass was
+cleared last instead of first — worth fixing on its own.
+
+`depthWrite: false` is kept anyway. A caption that does not depth-test should
+not depth-write either; it was not the cause and it is still right.
+
+**Why it is not fixed here.** Keeping sprites means keeping them out of the
+occlusion pass, and three.js gives no object filter for it: the pass renders
+one scene with one camera, so layers cannot separate what the AO sees from
+what the screen sees. The real fix inside the pipeline is a second scene for
+captions and a second render pass — strictly more machinery than taking them
+out of the pipeline altogether. See O-031.
+
+### O-031 — Captions as DOM, not as sprites · `open`
+The question the halo raised (D-287): should a map caption stop being a
+three.js `Sprite` and become an HTML element positioned over the canvas, with
+`CSS2DRenderer`?
+
+**The case for.** A sprite is in the scene, so it fights every screen-space
+pass we own and every one we add later — the occlusion halo is that bill
+arriving once, and bloom or fog would send it again. A DOM element is in none
+of them. Text is rendered by the browser at the display's own resolution
+rather than magnified from a 64 px canvas. Offsets are already in pixels,
+which is the frame a caption wants (D-287). A `CSS2DObject` parents to the pin
+exactly as the sprite does, so nothing about positioning changes. And it is
+*less* code: no canvas per place, no texture, no `aspect`, no `floatLabels`,
+no disposal.
+
+**The case against, such as it is.** A second DOM layer over the canvas that
+must not eat pointer events, and it must be sized on resize beside the
+renderer. Captions would no longer be anti-aliased by the composer's
+multisampled target — they would be sharper, not softer, but they would also
+no longer sit *inside* the picture, which matters if we ever screenshot the
+canvas alone.
+
+**Not decided yet**, because it changes how text looks on both screens and the
+GM should see it before it lands rather than after. Everything it touches is
+in `render/places` and `render/pawns`, which R-23 exempts from tests, so there
+is nothing to protect here but the eye.

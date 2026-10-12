@@ -12,7 +12,9 @@ export type { ColumnAddress, WorldMeshes } from './world/index.js';
 export { buildCovers } from './covers/index.js';
 export type { CoverField } from './covers/index.js';
 
-export { MARKER_ZOOM, LABEL_PIXELS, buildPlaceMarkers, nameLabel } from './places/index.js';
+export {
+  MARKER_ZOOM, LABEL_PIXELS, LABEL_GAP, buildPlaceMarkers, nameLabel, floatLabels,
+} from './places/index.js';
 export type { PlaceMarkers, Label } from './places/index.js';
 
 export { buildPartyPawns } from './pawns/index.js';
