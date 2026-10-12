@@ -8,7 +8,7 @@ import type {
 } from '@tt/domain';
 import {
   createCampaign, duplicateCampaign, uniqueCampaignName, createMember, editMember, removeMember,
-  addChunk, chunkAt, terrainById, isCreatableSlot, DEFAULT_TERRAIN,
+  addChunk, chunkAt, isCreatableSlot,
   toGlobal, paintArea, setHeightArea, raiseArea,
   addPlace, renamePlace, setPlaceMarker, movePlace, removePlace, placeById, placeAt, isValidPlaceCell,
   addNote, editNote, setNoteVisible, removeNote, moveNote, isKnownMarker,
@@ -31,7 +31,7 @@ import {
   exploredIn, pruneExplored, lookAround, blockKey, forgetMap,
 } from '@tt/domain';
 import type { HostState, Intent, Role } from '@tt/protocol';
-import { parseTerrainId, parseMarkerId } from '@tt/protocol';
+import { parseGround, parseMarkerId } from '@tt/protocol';
 import { emptyHistory, remember, undone, redone } from '../history/index.js';
 
 /** Side effects `sim` asks the host to perform. It performs none itself. */
@@ -359,17 +359,19 @@ function applyToCampaign(state: HostState, role: Role, intent: Intent, now: stri
       return commitWorld(world);
     }
 
-    case 'paintTerrain': {
+    case 'paintGround': {
       const anchorChunk = { cx: intent.cx, cz: intent.cz };
       if (!chunkAt(campaign.world, anchorChunk)) return reject(state, 'that chunk does not exist');
-      const terrain = parseTerrainId(intent.terrainId);
-      if (!terrainById(DEFAULT_TERRAIN, terrain)) {
-        return reject(state, `unknown terrain: ${intent.terrainId}`);
+      // The same guard a cube gets (R-176): a swatch the registry does not
+      // know is refused rather than painted and discovered later.
+      const ground = parseGround(intent.ground);
+      if (!isKnownSwatch(ground)) {
+        return reject(state, `unknown ground: ${intent.ground}`);
       }
       // A brush wider than one cell can cross into neighbouring chunks; cells in
       // chunks that do not exist are skipped, never created.
       const at = toGlobal(anchorChunk, intent.x, intent.z);
-      return commitWorld(paintArea(campaign.world, at, intent.size ?? 1, terrain));
+      return commitWorld(paintArea(campaign.world, at, intent.size ?? 1, ground));
     }
 
     case 'setHeight':

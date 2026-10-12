@@ -1,79 +1,111 @@
 import { describe, it, expect } from 'vitest';
 import {
-  DEFAULT_TERRAIN, DEFAULT_TRAVEL_MODES, terrainCost, isPassable, registryId, requireTerrain,
+  DEFAULT_TRAVEL_MODES, groundCost, isPassable, swatchOf, isKnownSwatch,
   DEFAULT_METRES_PER_CELL, DEFAULT_METRES_PER_LEVEL, DEFAULT_BOUNDS, CHUNK_SIZE, MAX_HEIGHT,
   DEFAULT_SLOPE_FACTOR,
 } from '@tt/domain';
-import type { TerrainId, TravelMode } from '@tt/domain';
+import type { MaterialId, SwatchId, TravelMode } from '@tt/domain';
 
-const t = (name: string) => registryId<'TerrainId'>('terrain', name) as TerrainId;
+/** A swatch written the way the world stores one: "liquid", "liquid/shore". */
+const g = (spec: string): SwatchId => {
+  const [family, cut] = spec.split('/');
+  const swatch = swatchOf(`material:${family}` as MaterialId, cut ?? null);
+  if (!isKnownSwatch(swatch)) throw new Error(`no such ground: ${spec}`);
+  return swatch;
+};
+
 const mode = (id: string): TravelMode => {
   const found = DEFAULT_TRAVEL_MODES.find((m) => m.id === `travel:${id}`);
   if (!found) throw new Error(`no such mode: ${id}`);
   return found;
 };
-const cost = (m: string, terrain: string) => terrainCost(mode(m), DEFAULT_TERRAIN, t(terrain));
+const cost = (m: string, ground: string) => groundCost(mode(m), g(ground));
 
 describe('the ocean needs a boat, not a big multiplier', () => {
   it('cannot be crossed on foot at any cost', () => {
-    expect(cost('foot', 'water')).toBe('impassable');
-    expect(cost('horse', 'water')).toBe('impassable');
-    expect(cost('forced', 'water')).toBe('impassable');
+    expect(cost('foot', 'liquid')).toBe('impassable');
+    expect(cost('horse', 'liquid')).toBe('impassable');
+    expect(cost('forced', 'liquid')).toBe('impassable');
+    // Every cut of the family, because a boat is what the family needs and
+    // green water is not a loophole (R-192).
+    expect(cost('foot', 'liquid/green')).toBe('impassable');
   });
 
   it('is ordinary going by ship', () => {
-    expect(cost('ship', 'water')).toBe(1);
-    expect(cost('galley', 'water')).toBe(1);
+    expect(cost('ship', 'liquid')).toBe(1);
+    expect(cost('galley', 'liquid')).toBe(1);
+    // Keyed on the family, so a cut nobody thought about is still sailable.
+    expect(cost('ship', 'liquid/green')).toBe(1);
   });
 
   it('does not let a ship sail overland', () => {
-    for (const terrain of ['grass', 'forest', 'rock', 'road', 'swamp', 'sand']) {
-      expect(cost('ship', terrain), terrain).toBe('impassable');
+    for (const ground of ['grass', 'vegetation', 'mineral', 'brick/dressed', 'soil/sand']) {
+      expect(cost('ship', ground), ground).toBe('impassable');
     }
   });
 
-  it('meets the land at the shallows, so a boat has somewhere to put in', () => {
-    expect(isPassable(cost('ship', 'shallows'))).toBe(true);
-    expect(isPassable(cost('foot', 'shallows'))).toBe(true);
+  it('meets the land at the shore, so a boat has somewhere to put in', () => {
+    // One cut of the same family, going both ways: a boat is slower there and
+    // a party can wade it. The swatch key beats the family key, and the cut's
+    // own difficulty beats the family's (R-192, D-281).
+    expect(cost('ship', 'liquid/shore')).toBe(1.5);
+    expect(cost('foot', 'liquid/shore')).toBe(3);
+    expect(isPassable(cost('ship', 'liquid/shore'))).toBe(true);
+    expect(isPassable(cost('foot', 'liquid/shore'))).toBe(true);
   });
 });
 
 describe('a column override beats the mode', () => {
   it('lets a bridge cross water', () => {
-    expect(terrainCost(mode('foot'), DEFAULT_TERRAIN, t('water'), 1)).toBe(1);
+    expect(groundCost(mode('foot'), g('liquid'), 1)).toBe(1);
   });
 
   it('lets the GM close a road', () => {
-    expect(terrainCost(mode('foot'), DEFAULT_TERRAIN, t('road'), 'impassable')).toBe('impassable');
+    expect(groundCost(mode('foot'), g('brick/dressed'), 'impassable')).toBe('impassable');
+  });
+
+  it('beats even a mode that says the ground is its own', () => {
+    // A ford in the shallows: the place wins over the boat's 1.5.
+    expect(groundCost(mode('ship'), g('liquid/shore'), 0.5)).toBe(0.5);
   });
 });
 
-describe('terrain difficulties are grounded and ordered', () => {
-  const of = (name: string) => {
-    const d = requireTerrain(DEFAULT_TERRAIN, t(name)).defaultDifficulty;
-    if (d === 'impassable') throw new Error(`${name} is impassable`);
+describe('ground difficulties are grounded and ordered (R-192)', () => {
+  const of = (spec: string) => {
+    const d = groundCost(mode('foot'), g(spec));
+    if (d === 'impassable') throw new Error(`${spec} is impassable`);
     return d;
   };
 
-  it('uses grassland as the reference at exactly 1', () => {
+  it('uses grass as the reference at exactly 1', () => {
+    // The 3.5 overland table normalised so open country is 1, which is what
+    // every other number here is a multiple of.
     expect(of('grass')).toBe(1);
   });
 
-  it('makes roads the only thing faster than open ground', () => {
-    expect(of('road')).toBeLessThan(1);
-    for (const name of ['sand', 'forest', 'hills', 'rock', 'snow', 'swamp', 'jungle', 'shallows']) {
-      expect(of(name), name).toBeGreaterThanOrEqual(1);
+  it('makes laid stone the only thing faster than open ground', () => {
+    expect(of('brick')).toBeLessThan(1);
+    for (const spec of [
+      'soil/sand', 'vegetation', 'mineral', 'soil/snow', 'vegetation/dark', 'liquid/shore',
+    ]) {
+      expect(of(spec), spec).toBeGreaterThanOrEqual(1);
     }
   });
 
-  it('ranks jungle as the worst passable land', () => {
-    const land = ['grass', 'road', 'sand', 'forest', 'hills', 'rock', 'snow', 'swamp', 'moor'];
-    for (const name of land) expect(of('jungle'), name).toBeGreaterThan(of(name));
+  it('ranks dark undergrowth as the worst passable land', () => {
+    const land = ['grass', 'brick', 'soil', 'soil/sand', 'vegetation', 'mineral', 'wood'];
+    for (const spec of land) expect(of('vegetation/dark'), spec).toBeGreaterThan(of(spec));
   });
 
-  it('keeps rock and hills modest, because slope charges for the climb (R-52a)', () => {
-    expect(of('rock')).toBeLessThanOrEqual(2);
-    expect(of('hills')).toBeLessThanOrEqual(2);
+  it('keeps bare rock modest, because slope charges for the climb (R-52a)', () => {
+    // A hill is height now, not a ground (D-281). Charging for the climb here
+    // as well as in the slope factor is what made mountains absurd.
+    expect(of('mineral')).toBeLessThanOrEqual(2);
+  });
+
+  it('charges more for wading than for any of it', () => {
+    const land = ['grass', 'brick', 'soil/sand', 'vegetation/dark', 'mineral'];
+    for (const spec of land) expect(of('liquid/shore'), spec).toBeGreaterThan(of(spec));
   });
 });
 

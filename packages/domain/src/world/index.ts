@@ -3,9 +3,9 @@
 // Sparse at the chunk level (D-010) because an absent chunk *is* the unknown,
 // and dense inside a chunk because creating one fills all 400 cells with water.
 
-import type { TerrainId } from '../ids/index.js';
+import type { SwatchId } from '../ids/index.js';
 import type { Difficulty } from '../materials/index.js';
-import { WATER } from '../terrain/index.js';
+import { DEFAULT_MATERIALS, swatchOf } from '../materials/index.js';
 
 /** Cells along one edge of a chunk: 30 x 1.5 km = a 45 km chunk (D-103). */
 export const CHUNK_SIZE = 30;
@@ -37,8 +37,16 @@ export const MAX_HEIGHT = 30;
 
 export interface Column {
   readonly height: number;
-  readonly terrainId: TerrainId;
-  /** Per-cell override; absent means "use the terrain's default" (R-77). */
+  /**
+   * What the cell is made of: a swatch from the materials registry, the same
+   * one a map's cubes hold (R-176, D-280).
+   *
+   * Not a terrain id. A terrain was a colour and a difficulty for twelve
+   * names the material registry already describes, and keeping it meant every
+   * appearance feature since D-237 landed on maps and not on the world.
+   */
+  readonly ground: SwatchId;
+  /** Per-cell override; absent means "use the ground's own" (R-77, R-192). */
   readonly difficulty?: Difficulty;
 }
 
@@ -108,7 +116,45 @@ export function parseChunkKey(key: string): ChunkCoord | null {
   return { cx, cz };
 }
 
-export const SEA_LEVEL_WATER: Column = { height: 0, terrainId: WATER };
+/** What a freshly created chunk is filled with (R-78): open water at sea level. */
+export const OPEN_WATER: SwatchId = swatchOf(
+  DEFAULT_MATERIALS.find((m) => m.name === 'Liquids')!.id,
+);
+
+export const SEA_LEVEL_WATER: Column = { height: 0, ground: OPEN_WATER };
+
+/**
+ * The twelve terrain ids a world written before D-280 holds, as swatches.
+ *
+ * Read-only and read-once: a world is decoded through this and written back as
+ * swatches from then on (R-137a, R-144). It is a table rather than a rule
+ * because there is nothing general to say — somebody chose twelve names once
+ * and this is where they land.
+ *
+ * **Forest and jungle arrive as undergrowth, not as trees.** A cover is a
+ * second axis that does not exist yet (D-280), so the closest honest ground is
+ * Vegetation, which also happens to carry forest's old difficulty exactly. The
+ * GM repaints them with the Forest preset when covers land.
+ *
+ * **Hills arrive as grass and lose their 1.5.** A hill is *height*, and the
+ * slope factor already charges for climbing it (R-52a); the old palette kept a
+ * flat 1.5 on top because a terrain had nowhere else to say "hilly". Two axes
+ * mean it does.
+ */
+export const GROUND_FROM_TERRAIN: Readonly<Record<string, SwatchId>> = {
+  'terrain:water': 'material:liquid' as SwatchId,
+  'terrain:shallows': 'material:liquid/shore' as SwatchId,
+  'terrain:sand': 'material:soil/sand' as SwatchId,
+  'terrain:grass': 'material:grass' as SwatchId,
+  'terrain:forest': 'material:vegetation' as SwatchId,
+  'terrain:hills': 'material:grass/dark' as SwatchId,
+  'terrain:rock': 'material:mineral' as SwatchId,
+  'terrain:snow': 'material:soil/snow' as SwatchId,
+  'terrain:swamp': 'material:vegetation/dark' as SwatchId,
+  'terrain:road': 'material:brick/dressed' as SwatchId,
+  'terrain:moor': 'material:grass/dried' as SwatchId,
+  'terrain:jungle': 'material:vegetation/dark' as SwatchId,
+};
 
 /** All eight neighbours: a chunk may be grown diagonally as well (R-79). */
 export const CHUNK_NEIGHBOURS = [
@@ -177,12 +223,12 @@ function withColumn(chunk: Chunk, x: number, z: number, next: Column): Chunk {
   return { coord: chunk.coord, columns };
 }
 
-/** Paint tool (R-88): sets terrain, leaves height alone. */
-export function paintTerrain(chunk: Chunk, x: number, z: number, terrainId: TerrainId): Chunk {
+/** Paint tool (R-88): sets the ground, leaves height alone. */
+export function paintGround(chunk: Chunk, x: number, z: number, ground: SwatchId): Chunk {
   const current = columnAt(chunk, x, z);
   if (!current) return chunk;
-  if (current.terrainId === terrainId) return chunk;
-  return withColumn(chunk, x, z, { ...current, terrainId });
+  if (current.ground === ground) return chunk;
+  return withColumn(chunk, x, z, { ...current, ground });
 }
 
 export function clampHeight(height: number): number {
@@ -190,7 +236,7 @@ export function clampHeight(height: number): number {
   return Math.min(MAX_HEIGHT, Math.max(0, Math.round(height)));
 }
 
-/** Height tool (R-89): sets height, leaves terrain alone, snaps and clamps. */
+/** Height tool (R-89): sets height, leaves the ground alone, snaps and clamps. */
 export function setHeight(chunk: Chunk, x: number, z: number, height: number): Chunk {
   const current = columnAt(chunk, x, z);
   if (!current) return chunk;
@@ -298,8 +344,8 @@ function applyBrush(
   return next;
 }
 
-export function paintArea(world: World, at: GlobalCell, size: number, terrainId: TerrainId): World {
-  return applyBrush(world, at, size, (chunk, x, z) => paintTerrain(chunk, x, z, terrainId));
+export function paintArea(world: World, at: GlobalCell, size: number, ground: SwatchId): World {
+  return applyBrush(world, at, size, (chunk, x, z) => paintGround(chunk, x, z, ground));
 }
 
 /** Absolute height across the brush, so a wide brush stamps a plateau. */

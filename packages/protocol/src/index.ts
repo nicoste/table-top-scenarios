@@ -1,7 +1,7 @@
 // @tt/protocol — the wire contract. Defines the messages; never sends one.
 
 export {
-  TerrainIdSchema, MarkerIdSchema, CellIndex, ChunkCoordSchema,
+  TerrainIdSchema, GroundSchema, MarkerIdSchema, CellIndex, ChunkCoordSchema,
   MarkerWireSchema, PlaceCellSchema, WorldCellSchema, PlaceNoteWireSchema, PlaceWireSchema,
   MapWireSchema, PoiWireSchema,
   encodePoi, decodePoi, parseMarkerId,
@@ -10,7 +10,7 @@ export {
   CellsWireSchema, cellsWire, cellsFromWire,
   ChunkWireSchema, TerrainWireSchema, MemberWireSchema, WorldWireSchema, CampaignWireSchema,
   encodeChunk, encodeWorld, encodeCampaign, decodeChunk, decodeWorld, decodeCampaign,
-  parseTerrainId,
+  parseGround,
   mapWire,
 } from './wire/index.js';
 export type {

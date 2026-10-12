@@ -7,7 +7,7 @@ import {
   chunkAt, columnAt,
   creatableSlots, sameWorldCell,
   DEFAULT_MATERIALS, DEFAULT_FLOOR, mapFromJSON, fillRegion, sliceOf, inRange, inMap, blockAt,
-  bottomOfMap, DEFAULT_TERRAIN, sunReaches, litBy, MAP_MAX_HEIGHT,
+  bottomOfMap, cutOf, cutIdIn, familyOf, sunReaches, litBy, MAP_MAX_HEIGHT,
   DAYLIGHT, clampLighting,
   NO_TOKENS, tokensIn, onRoster, unplaced, tokensInBand, standsInBand, standingAt,
   NO_CELLS, shownBy,
@@ -53,7 +53,7 @@ interface Props {
 
 export function App({ view, status, seat, rejection, dispatch }: Props) {
   const [tool, setTool] = useState<Tool>('select');
-  const [terrainId, setTerrainId] = useState('terrain:grass');
+  const [ground, setGround] = useState<SwatchId>('material:grass' as SwatchId);
   const [hoverLabel, setHoverLabel] = useState<string | null>(null);
   const [brush, setBrush] = useState(1);
   const [markerId, setMarkerId] = useState('marker:village');
@@ -567,8 +567,11 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     if (!column) return null;
     return {
       height: column.height,
-      terrain: DEFAULT_TERRAIN.find((t) => t.id === column.terrainId)?.name
-        ?? (column.terrainId as string),
+      terrain: (() => {
+        // The cut's name, which is what a GM says out loud (R-178).
+        const family = familyOf(column.ground);
+        return family ? cutOf(family, cutIdIn(column.ground)).name : (column.ground as string);
+      })(),
     };
   }, [decoded, campaign]);
 
@@ -774,7 +777,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
 
       case 'paint':
         painting.current = cellKey(action.cell);
-        dispatch({ kind: 'paintTerrain', ...action.cell, terrainId, size: brush, stroke: newStroke() });
+        dispatch({ kind: 'paintGround', ...action.cell, ground, size: brush, stroke: newStroke() });
         e.currentTarget.setPointerCapture(e.pointerId);
         return;
 
@@ -891,7 +894,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
         if (key !== painting.current) {
           painting.current = key;
           dispatch({
-            kind: 'paintTerrain', ...picked.column, terrainId, size: brush,
+            kind: 'paintGround', ...picked.column, ground, size: brush,
             ...(stroke.current ? { stroke: stroke.current } : {}),
           });
         }
@@ -1220,13 +1223,13 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
             </div>
           <BuildWorldPanel
               tool={tool}
-              terrainId={terrainId}
+              ground={ground}
               brush={brush}
               // Mid-sequence the readout says what the click will do, since that
-              // is more useful than the terrain under the pointer (R-132).
+              // is more useful than the ground under the pointer (R-132).
               hoverLabel={travelPrompt(travel, memberName) ?? hoverLabel}
               onTool={setTool}
-              onTerrain={setTerrainId}
+              onGround={setGround}
               onBrush={setBrush}
             />
             {tool === 'places' && (

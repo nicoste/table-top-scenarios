@@ -1,19 +1,19 @@
 import { describe, it, expect } from 'vitest';
 import {
-  CHUNK_SIZE, MAX_HEIGHT, WATER, DEFAULT_TERRAIN,
+  CHUNK_SIZE, MAX_HEIGHT, OPEN_WATER, GROUND_FROM_TERRAIN, isKnownSwatch, registryId,
   createChunk, emptyWorld, addChunk, replaceChunk, chunkAt, isAuthored, creatableSlots,
-  columnAt, paintTerrain, setHeight, raiseHeight, clampHeight, requireTerrain, registryId,
+  columnAt, paintGround, setHeight, raiseHeight, clampHeight,
   isCreatableSlot, packRuns, unpackRuns,
 } from '@tt/domain';
-import type { TerrainId } from '@tt/domain';
+import type { SwatchId } from '@tt/domain';
 
-const grass = registryId<'TerrainId'>('terrain', 'grass') as TerrainId;
+const grass = 'material:grass' as SwatchId;
 
 describe('a fresh chunk (R-78)', () => {
   it('is flat at height 0 and entirely water', () => {
     const chunk = createChunk({ cx: 3, cz: 4 });
     expect(chunk.columns).toHaveLength(CHUNK_SIZE * CHUNK_SIZE);
-    expect(chunk.columns.every((c) => c.height === 0 && c.terrainId === WATER)).toBe(true);
+    expect(chunk.columns.every((c) => c.height === 0 && c.ground === OPEN_WATER)).toBe(true);
   });
 });
 
@@ -34,15 +34,15 @@ describe('the two tools never touch each other (R-88, R-89)', () => {
   it('painting changes terrain and leaves height alone', () => {
     let chunk = createChunk({ cx: 0, cz: 0 });
     chunk = setHeight(chunk, 5, 5, 7);
-    chunk = paintTerrain(chunk, 5, 5, grass);
-    expect(columnAt(chunk, 5, 5)).toEqual({ height: 7, terrainId: grass });
+    chunk = paintGround(chunk, 5, 5, grass);
+    expect(columnAt(chunk, 5, 5)).toEqual({ height: 7, ground: grass });
   });
 
   it('raising changes height and leaves terrain alone', () => {
     let chunk = createChunk({ cx: 0, cz: 0 });
-    chunk = paintTerrain(chunk, 2, 2, grass);
+    chunk = paintGround(chunk, 2, 2, grass);
     chunk = raiseHeight(chunk, 2, 2, 3);
-    expect(columnAt(chunk, 2, 2)).toEqual({ height: 3, terrainId: grass });
+    expect(columnAt(chunk, 2, 2)).toEqual({ height: 3, ground: grass });
   });
 });
 
@@ -74,7 +74,7 @@ describe('edits are immutable', () => {
   it('returns the same chunk when nothing would change', () => {
     const chunk = createChunk({ cx: 0, cz: 0 });
     expect(setHeight(chunk, 1, 1, 0)).toBe(chunk);
-    expect(paintTerrain(chunk, 1, 1, WATER)).toBe(chunk);
+    expect(paintGround(chunk, 1, 1, OPEN_WATER)).toBe(chunk);
   });
 });
 
@@ -137,21 +137,27 @@ describe('the + affordance (R-79)', () => {
   });
 });
 
-describe('the terrain palette (R-77, R-11)', () => {
-  it('addresses entries by namespaced string id, never by index', () => {
-    expect(DEFAULT_TERRAIN.every((t) => /^terrain:[a-z0-9-]+$/.test(t.id))).toBe(true);
+describe('a world written before D-280 still reads (R-137a)', () => {
+  it('maps every one of the twelve old terrain ids onto a swatch the registry knows', () => {
+    const old = [
+      'water', 'shallows', 'sand', 'grass', 'forest', 'hills',
+      'rock', 'snow', 'swamp', 'road', 'moor', 'jungle',
+    ];
+    for (const name of old) {
+      const ground = GROUND_FROM_TERRAIN[`terrain:${name}`];
+      expect(ground, `terrain:${name} has no ground`).toBeTruthy();
+      expect(isKnownSwatch(ground!), `${name} -> ${ground}`).toBe(true);
+    }
+    expect(Object.keys(GROUND_FROM_TERRAIN)).toHaveLength(old.length);
   });
-  it('has unique ids', () => {
-    expect(new Set(DEFAULT_TERRAIN.map((t) => t.id)).size).toBe(DEFAULT_TERRAIN.length);
+
+  it('keeps water impassable and the road the fast one, which is the point of the table', () => {
+    expect(GROUND_FROM_TERRAIN['terrain:water']).toBe(OPEN_WATER);
+    expect(GROUND_FROM_TERRAIN['terrain:road']).toBe('material:brick/dressed');
   });
-  it('makes water impassable so routes go around it', () => {
-    expect(requireTerrain(DEFAULT_TERRAIN, WATER).defaultDifficulty).toBe('impassable');
-  });
-  it('carries a difficulty on every entry, so painting sets travel cost (D-071)', () => {
-    expect(DEFAULT_TERRAIN.every((t) => t.defaultDifficulty !== undefined)).toBe(true);
-  });
+
   it('rejects a malformed registry id', () => {
-    expect(() => registryId('terrain', 'Not Valid')).toThrow();
+    expect(() => registryId('material', 'Not Valid')).toThrow();
   });
 });
 

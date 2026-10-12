@@ -23,7 +23,7 @@ describe('permissions (R-3, R-4)', () => {
   const mutations: Intent[] = [
     { kind: 'createCampaign', name: 'x' },
     { kind: 'addChunk', cx: 10, cz: 11 },
-    { kind: 'paintTerrain', cx: 10, cz: 10, x: 1, z: 1, terrainId: 'terrain:grass' },
+    { kind: 'paintGround', cx: 10, cz: 10, x: 1, z: 1, ground: 'material:grass' },
     { kind: 'setHeight', cx: 10, cz: 10, x: 1, z: 1, height: 3 },
     { kind: 'addMember' },
     { kind: 'removeMember', id: 'whatever' },
@@ -51,7 +51,7 @@ describe('purity (R-97)', () => {
 
   it('is deterministic for the same input', () => {
     const state = withCampaign();
-    const intent: Intent = { kind: 'paintTerrain', cx: ORIGIN.cx, cz: ORIGIN.cz, x: 4, z: 4, terrainId: 'terrain:grass' };
+    const intent: Intent = { kind: 'paintGround', cx: ORIGIN.cx, cz: ORIGIN.cz, x: 4, z: 4, ground: 'material:grass' };
     const a = run(state, intent);
     const b = run(state, intent);
     expect(JSON.stringify(viewFor('table', a.state))).toBe(JSON.stringify(viewFor('table', b.state)));
@@ -91,18 +91,18 @@ describe('campaigns', () => {
 });
 
 describe('the two tools (R-88, R-89)', () => {
-  it('paints terrain and asks for a save', () => {
+  it('paints the ground and asks for a save', () => {
     const state = withCampaign();
-    const result = run(state, { kind: 'paintTerrain', cx: ORIGIN.cx, cz: ORIGIN.cz, x: 3, z: 3, terrainId: 'terrain:grass' });
+    const result = run(state, { kind: 'paintGround', cx: ORIGIN.cx, cz: ORIGIN.cz, x: 3, z: 3, ground: 'material:grass' });
     expect(result.rejected).toBeUndefined();
-    expect(columnAt(chunkAt(result.state.active!.world, ORIGIN)!, 3, 3)?.terrainId).toBe('terrain:grass');
+    expect(columnAt(chunkAt(result.state.active!.world, ORIGIN)!, 3, 3)?.ground).toBe('material:grass');
     expect(result.effects).toHaveLength(1);
   });
 
-  it('rejects a terrain that is not in the palette', () => {
+  it('rejects a ground that is not in the registry', () => {
     const state = withCampaign();
-    const result = run(state, { kind: 'paintTerrain', cx: ORIGIN.cx, cz: ORIGIN.cz, x: 3, z: 3, terrainId: 'terrain:lava' });
-    expect(result.rejected).toMatch(/unknown terrain/);
+    const result = run(state, { kind: 'paintGround', cx: ORIGIN.cx, cz: ORIGIN.cz, x: 3, z: 3, ground: 'material:unobtanium' });
+    expect(result.rejected).toMatch(/unknown ground/);
   });
 
   it('raises and lowers, clamping at sea level', () => {
@@ -178,7 +178,7 @@ describe('the wire boundary (R-17)', () => {
   it('rejects malformed intents before they reach sim', () => {
     expect(parseIntent({ kind: 'nope' }).ok).toBe(false);
     expect(parseIntent({ kind: 'setHeight', cx: 0, cz: 0, x: 99, z: 0, height: 1 }).ok).toBe(false);
-    expect(parseIntent({ kind: 'paintTerrain', cx: 0, cz: 0, x: 0, z: 0, terrainId: 'NOT VALID' }).ok).toBe(false);
+    expect(parseIntent({ kind: 'paintGround', cx: 0, cz: 0, x: 0, z: 0, ground: 'NOT VALID' }).ok).toBe(false);
     expect(parseIntent({ kind: 'createCampaign', name: '' }).ok).toBe(false);
   });
 

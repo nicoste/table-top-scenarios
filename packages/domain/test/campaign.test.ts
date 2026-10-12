@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   createCampaign, ORIGIN, SCHEMA_VERSION, DEFAULT_VISION_RANGE,
   createMember, editMember, removeMember, startingParty, nextPawnColour,
-  isAuthored, creatableSlots, chunkAt, WATER, DEFAULT_BOUNDS, centreOfBounds,
+  isAuthored, creatableSlots, chunkAt, OPEN_WATER, DEFAULT_BOUNDS, centreOfBounds,
 } from '@tt/domain';
 
 describe('creating a campaign (R-92)', () => {
@@ -21,7 +21,7 @@ describe('creating a campaign (R-92)', () => {
     const c = createCampaign('Ashfall');
     expect(isAuthored(c.world, ORIGIN)).toBe(true);
     expect(c.world.chunks.size).toBe(1);
-    expect(chunkAt(c.world, ORIGIN)?.columns.every((col) => col.terrainId === WATER)).toBe(true);
+    expect(chunkAt(c.world, ORIGIN)?.columns.every((col) => col.ground === OPEN_WATER)).toBe(true);
     expect(creatableSlots(c.world)).toHaveLength(8); // all eight neighbours
   });
 

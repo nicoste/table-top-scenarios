@@ -86,11 +86,11 @@ export type MapTool = 'build' | 'paint' | 'move';
 export interface ViewState {
   readonly camera: CameraTarget;
   readonly tool: Tool;
-  readonly terrainId: string;
+  readonly ground: string;
   readonly hover: { cx: number; cz: number; x: number; z: number } | null;
   readonly panel: 'none' | 'party';
 }
 
 export function initialViewState(camera: CameraTarget): ViewState {
-  return { camera, tool: 'select', terrainId: 'terrain:grass', hover: null, panel: 'party' };
+  return { camera, tool: 'select', ground: 'material:grass', hover: null, panel: 'party' };
 }

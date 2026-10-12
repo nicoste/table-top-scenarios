@@ -1,6 +1,6 @@
 // Terrain on the wire (R-59, D-220).
 //
-// A chunk used to carry 900 copies of strings like `terrain:grass`, which was
+// A chunk used to carry 900 copies of strings like `material:grass`, which was
 // 126 KiB of a 143 KiB world and went to every screen on every accepted
 // intent. The same world packs to 1.6 KiB. What these protect is the part that
 // can go wrong quietly: a run stream that is off by one shears the world.
@@ -27,7 +27,7 @@ describe('a chunk round trips', () => {
         const was = columnAt(chunk, x, z)!;
         const now = columnAt(back, x, z)!;
         expect(now.height, `${x},${z}`).toBe(was.height);
-        expect(now.terrainId, `${x},${z}`).toBe(was.terrainId);
+        expect(now.ground, `${x},${z}`).toBe(was.ground);
       }
     }
   });
@@ -41,13 +41,13 @@ describe('a chunk round trips', () => {
     expect(columnAt(back, 0, CHUNK_SIZE - 1)?.height).toBe(0);
   });
 
-  it('carries several terrains through the palette', () => {
+  it('carries several grounds through the palette', () => {
     const world = campaign().world;
     const at = { gx: ORIGIN.cx * CHUNK_SIZE + 3, gz: ORIGIN.cz * CHUNK_SIZE + 3 };
-    const painted = chunkAt(paintArea(world, at, 3, 'terrain:grass' as never), ORIGIN)!;
+    const painted = chunkAt(paintArea(world, at, 3, 'material:grass' as never), ORIGIN)!;
     const back = decodeChunk(encodeChunk(painted));
-    expect(columnAt(back, 3, 3)?.terrainId).toBe('terrain:grass');
-    expect(columnAt(back, 20, 20)?.terrainId).toBe(columnAt(painted, 20, 20)?.terrainId);
+    expect(columnAt(back, 3, 3)?.ground).toBe('material:grass');
+    expect(columnAt(back, 20, 20)?.ground).toBe(columnAt(painted, 20, 20)?.ground);
   });
 
   it('is dramatically smaller than one entry per cell, which is the point', () => {
@@ -55,7 +55,7 @@ describe('a chunk round trips', () => {
     const packed = JSON.stringify(encodeChunk(chunk)).length;
     const perCell = JSON.stringify({
       heights: chunk.columns.map((c) => c.height),
-      terrain: chunk.columns.map((c) => c.terrainId),
+      terrain: chunk.columns.map((c) => c.ground),
     }).length;
     expect(packed).toBeLessThan(perCell / 10);
   });
@@ -67,11 +67,11 @@ describe('a chunk round trips', () => {
       cz: ORIGIN.cz,
       size: CHUNK_SIZE,
       heights: Array.from({ length: CHUNK_SIZE * CHUNK_SIZE }, (_, i) => (i === 5 ? 4 : 0)),
-      terrain: Array.from({ length: CHUNK_SIZE * CHUNK_SIZE }, () => 'terrain:water'),
+      terrain: Array.from({ length: CHUNK_SIZE * CHUNK_SIZE }, () => 'material:liquid'),
     };
     const back = decodeChunk(old as never);
     expect(columnAt(back, 5, 0)?.height).toBe(4);
-    expect(columnAt(back, 6, 0)?.terrainId).toBe('terrain:water');
+    expect(columnAt(back, 6, 0)?.ground).toBe('material:liquid');
   });
 
   it('reads an unreadable chunk as sea rather than losing the campaign', () => {
@@ -110,7 +110,7 @@ describe('a chunk is packed once per version of it (R-165, D-220)', () => {
     expect(at(second, ORIGIN.cx + 1)).toBe(at(first, ORIGIN.cx + 1));
   });
 
-  it('never serves the old terrain after an edit', () => {
+  it('never serves the old ground after an edit', () => {
     const base = campaign();
     const raised = replaceChunk(base.world, setHeight(chunkAt(base.world, ORIGIN)!, 1, 1, 8));
     expect(columnAt(chunkAt(decodeWorld(encodeWorld(raised)), ORIGIN)!, 1, 1)?.height).toBe(8);

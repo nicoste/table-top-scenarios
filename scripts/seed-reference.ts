@@ -29,14 +29,14 @@ import { join } from 'node:path';
 import {
   createCampaign, createLiveSave, addPlace, addPoi, createMap, createMember,
   setBlocks, paintBlocks, growMap, MAP_PATCH, DEFAULT_MATERIALS, swatchFor, materialById,
-  paintTerrain, chunkAt, chunkKey, ORIGIN, DEFAULT_TERRAIN,
+  paintGround, chunkAt, chunkKey, ORIGIN, swatchOf,
   withDiscovery, setChunkKnown, setPlaceRevealed, enteringMap, withTokens,
   NO_TOKENS, placeToken, whyNotStand, withPlacement, withGroupAt, emptyPlacement, lookAround,
   exploredIn,
 } from '@tt/domain';
 import type {
   BlockCoord, Campaign, EncounterMap, MaterialId, PartyMember, PlaceCell, PlaceId, PoiId, Save,
-  SwatchId, TerrainId, Tokens,
+  SwatchId, Tokens,
 } from '@tt/domain';
 import { fileCampaignStore, fileSaveStore } from '@tt/persistence';
 
@@ -195,16 +195,21 @@ function buildBody(): EncounterMap {
 }
 
 function buildWorld(campaign: Campaign): Campaign {
-  // Three terrains in a fixed pattern, so "the world beside it" is a stated
-  // quantity rather than whatever the default happened to be.
+  // Three grounds in a fixed pattern, so "the world beside it" is a stated
+  // quantity rather than whatever the default happened to be. Grass, sand and
+  // water: a coast, and three families rather than three cuts of one.
   const chunk = chunkAt(campaign.world, ORIGIN);
   if (!chunk) return campaign;
-  const spread: readonly TerrainId[] = DEFAULT_TERRAIN.slice(0, 3).map((t) => t.id);
+  const spread: readonly SwatchId[] = (['grass', 'soil', 'liquid'] as const)
+    .map((family) => swatchOf(
+      DEFAULT_MATERIALS.find((m) => m.id.endsWith(`:${family}`))!.id,
+      family === 'soil' ? 'sand' : null,
+    ));
   let painted = chunk;
   for (let x = 0; x < 30; x += 1) {
     for (let z = 0; z < 30; z += 1) {
       const pick = spread[Math.floor(hash(x, 1, z) * spread.length)];
-      if (pick) painted = paintTerrain(painted, x, z, pick);
+      if (pick) painted = paintGround(painted, x, z, pick);
     }
   }
   const chunks = new Map(campaign.world.chunks);

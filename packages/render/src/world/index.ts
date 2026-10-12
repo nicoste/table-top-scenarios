@@ -1,5 +1,5 @@
 // The world as columns. One InstancedMesh for every column in every known
-// chunk, coloured by terrain, so a repaint is an attribute write rather than a
+// chunk, coloured by its ground, so a repaint is an attribute write rather than a
 // rebuild (the same reasoning as R-69/R-70).
 
 import {
@@ -7,7 +7,7 @@ import {
   Object3D, Vector3,
 } from 'three';
 import type { Campaign, Chunk, World, WorldCell } from '@tt/domain';
-import { CHUNK_SIZE, MAX_HEIGHT, DEFAULT_TERRAIN, chunkAt, columnAt, terrainById } from '@tt/domain';
+import { CHUNK_SIZE, MAX_HEIGHT, chunkAt, columnAt, colourOf, cutIdIn, familyOf } from '@tt/domain';
 
 /**
  * Vertical exaggeration, in cell widths per height level.
@@ -93,8 +93,8 @@ export function buildWorldMeshes(campaign: Campaign): WorldMeshes {
         matrix.copy(dummy.matrix);
         mesh.setMatrixAt(i, matrix);
 
-        const terrain = terrainById(DEFAULT_TERRAIN, column.terrainId);
-        colour.set(terrain?.colour ?? '#888888');
+        const family = familyOf(column.ground);
+        colour.set(family ? colourOf(family, cutIdIn(column.ground)) : '#888888');
         // Cheap depth cue: higher ground reads lighter (R-34 territory).
         if (column.height > 0) colour.multiplyScalar(0.82 + (Math.min(column.height, MAX_HEIGHT) / MAX_HEIGHT) * 0.24);
         mesh.setColorAt(i, colour);

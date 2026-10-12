@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { fileCampaignStore, memoryCampaignStore } from '@tt/persistence';
 import {
   createCampaign, addChunk, ORIGIN, chunkAt, columnAt, setHeight, replaceChunk,
-  addPlace, addPoi, setMapBlock, blockAt, DEFAULT_FLOOR, DEFAULT_MARKERS, DEFAULT_TERRAIN,
+  addPlace, addPoi, setMapBlock, blockAt, DEFAULT_FLOOR, DEFAULT_MARKERS, DEFAULT_MATERIALS,
 } from '@tt/domain';
 import { encodeCampaign } from '@tt/protocol';
 
@@ -113,9 +113,9 @@ describe('the terrain palette is code, not campaign data (D-107)', () => {
     // today's markers and today's palette, because they were never its to
     // carry.
     expect(DEFAULT_MARKERS.map((m) => m.id as string)).toContain('marker:castle');
-    const swamp = DEFAULT_TERRAIN.find((t) => (t.id as string) === 'terrain:swamp');
-    expect(swamp?.name).toBe('Swamp');
-    expect(DEFAULT_TERRAIN.map((t) => t.id as string)).toContain('terrain:jungle');
+    const mineral = DEFAULT_MATERIALS.find((m) => (m.id as string) === 'material:mineral');
+    expect(mineral?.name).toBe('Mineral');
+    expect(DEFAULT_MATERIALS.map((m) => m.id as string)).toContain('material:vegetation');
   });
 });
 
@@ -172,11 +172,12 @@ describe('a chunk written at a different stride migrates (R-61)', () => {
     // The diagonal must still be a diagonal at the new stride.
     for (let i = 0; i < 20; i++) {
       expect(columnAt(chunk, i, i)?.height, `cell ${i},${i}`).toBe(5);
-      expect(columnAt(chunk, i, i)?.terrainId).toBe('terrain:rock');
+      // Written as `terrain:rock`, read as the swatch it means (D-281).
+      expect(columnAt(chunk, i, i)?.ground).toBe('material:mineral');
     }
     // Everything the old chunk never covered is sea.
     expect(columnAt(chunk, 25, 25)?.height).toBe(0);
-    expect(columnAt(chunk, 25, 25)?.terrainId).toBe('terrain:water');
+    expect(columnAt(chunk, 25, 25)?.ground).toBe('material:liquid');
     // And a cell just off the diagonal is untouched.
     expect(columnAt(chunk, 5, 6)?.height).toBe(0);
   });

@@ -6,20 +6,18 @@ export {
   isRegistryId, registryId, freshId,
 } from './ids/index.js';
 export type {
-  CampaignId, SaveId, MemberId, TerrainId, PlaceId, NoteId, PoiId, PlaneId, MarkerId, MaterialId,
+  CampaignId, SaveId, MemberId, PlaceId, NoteId, PoiId, PlaneId, MarkerId, MaterialId,
   SwatchId,
 } from './ids/index.js';
 
-export type { Terrain } from './terrain/index.js';
-export { DEFAULT_TERRAIN, WATER, terrainById, requireTerrain } from './terrain/index.js';
 
 export type { Column, Chunk, ChunkCoord, World, GlobalCell, WorldCell } from './world/index.js';
 export {
   CHUNK_SIZE, MAX_HEIGHT, DEFAULT_METRES_PER_CELL, DEFAULT_METRES_PER_LEVEL,
-  DEFAULT_WORLD_BOUNDS, SEA_LEVEL_WATER, centreOfBounds,
+  DEFAULT_WORLD_BOUNDS, SEA_LEVEL_WATER, OPEN_WATER, GROUND_FROM_TERRAIN, centreOfBounds,
   chunkKey, parseChunkKey, createChunk, emptyWorld, inBounds, chunkAt, isAuthored,
   sameWorldCell, chunkOf, isValidWorldCell,
-  columnAt, paintTerrain, clampHeight, setHeight, raiseHeight,
+  columnAt, paintGround, clampHeight, setHeight, raiseHeight,
   addChunk, replaceChunk, creatableSlots, isCreatableSlot, CHUNK_NEIGHBOURS,
   MAX_BRUSH, clampBrush, toGlobal, fromGlobal, brushCells, brushCentreOffset,
   paintArea, setHeightArea, raiseArea,
@@ -34,7 +32,7 @@ export {
 
 export type { TravelMode, TravelModeId } from './travel/index.js';
 export {
-  DEFAULT_TRAVEL_MODES, DEFAULT_SLOPE_FACTOR, travelModeById, terrainCost, isPassable,
+  DEFAULT_TRAVEL_MODES, DEFAULT_SLOPE_FACTOR, travelModeById, groundCost, isPassable,
 } from './travel/index.js';
 
 export type { Marker, MarkerPart, PartShape } from './markers/index.js';
@@ -50,6 +48,7 @@ export type { Material, Cut, Difficulty } from './materials/index.js';
 export {
   DEFAULT_MATERIALS, DEFAULT_FLOOR, materialById, isKnownMaterial, requireMaterial,
   swatchOf, swatchFor, materialIn, cutIdIn, cutOf, colourOf, isKnownSwatch, difficultyOf,
+  familyOf,
 } from './materials/index.js';
 export type { EncounterMap, BlockCoord, Brush, Expand, MapJSON, MapJSONIn } from './map/index.js';
 

@@ -377,3 +377,14 @@ export const DEFAULT_FLOOR: SwatchId = swatchOf(
 export function difficultyOf(material: Material, cutId: string | null): Difficulty {
   return cutOf(material, cutId).difficulty ?? material.difficulty;
 }
+
+/**
+ * The family a swatch names, or null when the registry has never heard of it.
+ *
+ * The one lookup everything that holds a swatch rather than a material has to
+ * do first — a world column, a travel cost, the world mesh — so it is written
+ * once instead of three times.
+ */
+export function familyOf(swatch: SwatchId): Material | null {
+  return materialById(DEFAULT_MATERIALS, materialIn(swatch));
+}

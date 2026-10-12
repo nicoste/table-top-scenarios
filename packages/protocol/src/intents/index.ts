@@ -4,7 +4,7 @@
 import { z } from 'zod';
 import { LightingWireSchema, AmbienceWireSchema } from '../wire/index.js';
 import {
-  CellIndex, TerrainIdSchema, MarkerIdSchema, PlaceCellSchema, WorldCellSchema, CubeWireSchema,
+  CellIndex, GroundSchema, MarkerIdSchema, PlaceCellSchema, WorldCellSchema, CubeWireSchema,
 } from '../wire/index.js';
 import { MAX_HEIGHT, MAX_BRUSH, MAP_BRUSH_CELLS } from '@tt/domain';
 
@@ -38,7 +38,7 @@ export const IntentSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('deleteCampaign'), id: z.string().min(1) }),
 
   z.object({ kind: z.literal('addChunk'), cx: z.number().int(), cz: z.number().int() }),
-  z.object({ kind: z.literal('paintTerrain'), ...cell, terrainId: TerrainIdSchema, size, stroke }),
+  z.object({ kind: z.literal('paintGround'), ...cell, ground: GroundSchema, size, stroke }),
   z.object({ kind: z.literal('setHeight'), ...cell, height: z.number().int().min(0).max(MAX_HEIGHT), size, stroke }),
   z.object({ kind: z.literal('raiseHeight'), ...cell, delta: z.number().int().min(-MAX_HEIGHT).max(MAX_HEIGHT), size, stroke }),
 

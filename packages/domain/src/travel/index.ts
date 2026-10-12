@@ -5,11 +5,10 @@
 // the party wade the ocean; making water impassable on foot and ordinary by boat
 // is what turns an island into something you need a ship for.
 
-import type { TerrainId } from '../ids/index.js';
 import { registryId } from '../ids/index.js';
+import type { SwatchId } from '../ids/index.js';
 import type { Difficulty } from '../materials/index.js';
-import type { Terrain } from '../terrain/index.js';
-import { terrainById } from '../terrain/index.js';
+import { materialIn, cutIdIn, difficultyOf, familyOf } from '../materials/index.js';
 
 export type TravelModeId = string & { readonly __travelMode: true };
 
@@ -29,18 +28,27 @@ export interface TravelMode {
   readonly name: string;
   /** Distance covered in a day of travel on reference terrain. */
   readonly kmPerDay: number;
-  /** How to treat terrain with no explicit entry below. */
-  readonly fallback: 'terrain-default' | 'impassable';
-  /** Per-terrain costs that override the terrain's own default. */
+  /** How to treat ground with no explicit entry below. */
+  readonly fallback: 'ground-default' | 'impassable';
+  /**
+   * Costs that override the ground's own, keyed by **family or swatch**
+   * (R-192, D-281).
+   *
+   * A family key is the usual one: a boat does not care whether it is on water
+   * or green water, only that the family is Liquids. A swatch key is there for
+   * when one cut of that family really is different — a boat in the shallows
+   * is slower than a boat at sea — and it is checked first, exactly as a cut's
+   * own difficulty beats its family's.
+   */
   readonly overrides: Readonly<Record<string, Difficulty>>;
 }
 
-const WATER = 'terrain:water';
-const SHALLOWS = 'terrain:shallows';
+const LIQUIDS = 'material:liquid';
+const SHORE = 'material:liquid/shore';
 
 const mode = (
   value: string, name: string, kmPerDay: number,
-  fallback: TravelMode['fallback'] = 'terrain-default',
+  fallback: TravelMode['fallback'] = 'ground-default',
   overrides: Record<string, Difficulty> = {},
 ): TravelMode => ({
   id: registryId<'__travelMode'>('travel', value) as unknown as TravelModeId,
@@ -58,8 +66,8 @@ export const DEFAULT_TRAVEL_MODES: readonly TravelMode[] = [
   mode('forced', 'On foot — forced march', 48),
   mode('horse', 'Mounted', 77),
   // A ship may only be where there is water, which is the whole point.
-  mode('ship', 'By ship', 77, 'impassable', { [WATER]: 1, [SHALLOWS]: 1.5 }),
-  mode('galley', 'By galley', 154, 'impassable', { [WATER]: 1, [SHALLOWS]: 1.5 }),
+  mode('ship', 'By ship', 77, 'impassable', { [LIQUIDS]: 1, [SHORE]: 1.5 }),
+  mode('galley', 'By galley', 154, 'impassable', { [LIQUIDS]: 1, [SHORE]: 1.5 }),
 ];
 
 export function travelModeById(modes: readonly TravelMode[], id: TravelModeId): TravelMode | null {
@@ -67,21 +75,26 @@ export function travelModeById(modes: readonly TravelMode[], id: TravelModeId): 
 }
 
 /**
- * What one cell of this terrain costs a party travelling this way.
+ * What one cell of this ground costs a party travelling this way.
+ *
  * `override` is the column's own difficulty and wins outright when present — a
- * bridge or a ford is a property of the place, not of the mode.
+ * bridge or a ford is a property of the place, not of the mode. After that the
+ * mode's own table is read most-specific-first, and only then does the ground
+ * get to say what it costs.
  */
-export function terrainCost(
+export function groundCost(
   travelMode: TravelMode,
-  palette: readonly Terrain[],
-  terrainId: TerrainId,
+  ground: SwatchId,
   override?: Difficulty,
 ): Difficulty {
   if (override !== undefined) return override;
-  const explicit = travelMode.overrides[terrainId as string];
+  const family = materialIn(ground);
+  const explicit = travelMode.overrides[ground as string]
+    ?? travelMode.overrides[family as string];
   if (explicit !== undefined) return explicit;
   if (travelMode.fallback === 'impassable') return 'impassable';
-  return terrainById(palette, terrainId)?.defaultDifficulty ?? 'impassable';
+  const material = familyOf(ground);
+  return material ? difficultyOf(material, cutIdIn(ground)) : 'impassable';
 }
 
 export function isPassable(cost: Difficulty): cost is number {

@@ -7,7 +7,6 @@ type Brand<T, B extends string> = T & { readonly [brand]: B };
 export type CampaignId = Brand<string, 'CampaignId'>;
 export type SaveId = Brand<string, 'SaveId'>;
 export type MemberId = Brand<string, 'MemberId'>;
-export type TerrainId = Brand<string, 'TerrainId'>;
 export type PlaceId = Brand<string, 'PlaceId'>;
 export type NoteId = Brand<string, 'NoteId'>;
 export type PoiId = Brand<string, 'PoiId'>;

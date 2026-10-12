@@ -4,26 +4,34 @@
 // The registries are code, not campaign data (D-107), so this imports them
 // rather than reading a copy off the wire — which the renderer always did, and
 // which the panels had quietly not been doing (D-222).
-import { DEFAULT_TERRAIN } from '@tt/domain';
+import { DEFAULT_MATERIALS, cutOf, difficultyOf, familyOf, cutIdIn } from '@tt/domain';
+import type { SwatchId } from '@tt/domain';
 import type { Tool } from '@tt/client-core';
 import { Tooltip } from '@tt/ui';
+import { SwatchPalette } from '../swatches/index.js';
 
 interface Props {
   tool: Tool;
-  terrainId: string;
+  /** What the brush is loaded with: a swatch, the same as a map's (D-280). */
+  ground: SwatchId;
   brush: number;
   hoverLabel: string | null;
   onTool: (tool: Tool) => void;
-  onTerrain: (id: string) => void;
+  onGround: (ground: SwatchId) => void;
   onBrush: (size: number) => void;
 }
+
+/** "×1.5", or the mark for ground a party cannot cross at all (R-192). */
+const costOf = (difficulty: number | 'impassable') =>
+  (difficulty === 'impassable' ? '✕' : `×${difficulty}`);
 
 const BRUSHES = [1, 2, 3] as const;
 
 export function BuildWorldPanel({
-  tool, terrainId, brush, hoverLabel, onTool, onTerrain, onBrush,
+  tool, ground, brush, hoverLabel, onTool, onGround, onBrush,
 }: Props) {
-  const selected = DEFAULT_TERRAIN.find((t) => t.id === terrainId);
+  const family = familyOf(ground);
+  const selected = family ? cutOf(family, cutIdIn(ground)) : null;
 
   return (
     <>
@@ -35,7 +43,7 @@ export function BuildWorldPanel({
               ⌖ Select
             </button>
           </Tooltip>
-          <Tooltip label="Paint terrain — key 2" placement="bottom" stretch>
+          <Tooltip label="Paint the ground — key 2" placement="bottom" stretch>
             <button className={tool === 'paint' ? 'on' : ''} onClick={() => onTool('paint')}>
               🖌 Paint
             </button>
@@ -93,41 +101,42 @@ export function BuildWorldPanel({
       </div>
 
       {/*
-        Terrain is only offered while the brush is active. Being able to pick a
-        terrain that the current tool will not apply is a standing invitation to
-        wonder why nothing happened.
+        The ground is only offered while the brush is active. Being able to
+        pick one that the current tool will not apply is a standing invitation
+        to wonder why nothing happened.
       */}
       {tool === 'paint' && (
         <div className="card">
-          {/* Every terrain is labelled, never colour alone: a colour-blind GM
-              cannot pick "the green one", and difficulty is invisible in a
-              swatch either way. */}
-          <h2>Terrain</h2>
-          <ul className="palette">
-            {DEFAULT_TERRAIN.map((t) => (
-              <li key={t.id}>
-                <Tooltip
-                  label={t.defaultDifficulty === 'impassable'
-                    ? `${t.name} — impassable on foot`
-                    : `${t.name} — travel cost ×${t.defaultDifficulty}`}
-                  placement="right"
-                  stretch
-                >
-                <button
-                  className={t.id === terrainId ? 'on' : ''}
-                  onClick={() => onTerrain(t.id)}
-                  aria-pressed={t.id === terrainId}
-                >
-                  <span className="chip" style={{ background: t.colour }} aria-hidden="true" />
-                  <span className="nm">{t.name}</span>
-                  <span className="diff">
-                    {t.defaultDifficulty === 'impassable' ? '✕' : `×${t.defaultDifficulty}`}
-                  </span>
-                </button>
-                </Tooltip>
-              </li>
-            ))}
-          </ul>
+          {/* The map's panel, unchanged (D-282). A world cell and a cube hold
+              the same kind of value, so they are picked the same way — and
+              every cut is labelled, never colour alone: a colour-blind GM
+              cannot pick "the green one". */}
+          <h2>Ground</h2>
+          <SwatchPalette
+            materials={DEFAULT_MATERIALS}
+            chosen={ground}
+            onSwatch={onGround}
+            /* What a map has no use for and the world lives on: a cost. It is
+               on the squares as well as the chosen line because this is the
+               panel a GM scans while deciding where a road goes. */
+            cutLabel={(material, cutId) => {
+              const difficulty = difficultyOf(material, cutId);
+              const cut = cutOf(material, cutId);
+              return difficulty === 'impassable'
+                ? `${cut.name} — impassable on foot`
+                : `${cut.name} — travel cost ×${difficulty}`;
+            }}
+            detail={(material, cutId) => (
+              <span className="diff">{costOf(difficultyOf(material, cutId))}</span>
+            )}
+            hint={(
+              <>
+                A row is how a thing is built; the squares are what it is made
+                of. The cost is what one cell of it takes to cross on foot —
+                a climb is charged on top, from the height.
+              </>
+            )}
+          />
         </div>
       )}
     </>

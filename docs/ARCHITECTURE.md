@@ -199,11 +199,11 @@ World {
   chunks: SparseMap<ChunkCoord, Chunk>             // sparse: absent = unauthored
 }
 
-Chunk  { coord: ChunkCoord; terrain: ColumnGrid /* 30x30 */ }
+Chunk  { coord: ChunkCoord; columns: ColumnGrid /* 30x30 */ }
 Column {
-  height: number                 // in cells; 0 = sea level
-  terrainId: TerrainId           // from the palette; carries the default difficulty
-  difficulty?: number            // per-cell override; absent = the terrain's default
+  height: number                 // in levels; 0 = sea level
+  ground: SwatchId               // the materials registry; carries the difficulty
+  difficulty?: Difficulty        // per-cell override; absent = the ground's own
 }
 
 Place {                          // one cell of the world map
@@ -509,25 +509,35 @@ cube and a short far cube can land on the same pixels. These are not polish.
 
 ---
 
-## 6c2. World terrain
+## 6c2. World ground
 
-> **R-77.** Terrain is chosen from an append-only **palette**, not a colour
-> picker. Each entry carries its own default difficulty, so painting geography
-> paints travel cost at the same time.
+> **R-77.** A world cell holds a **swatch from the materials registry** — the
+> same value a map's cube holds (R-176) — and it carries the difficulty of
+> whatever it is made of (R-192), so painting geography paints travel cost at
+> the same time.
 >
 > ```ts
-> Terrain {
->   id: TerrainId               // stable string (R-11): terrain:swamp
->   name: string
->   colour: string
->   defaultDifficulty: number   // or 'impassable'
+> Column {
+>   height: number
+>   ground: SwatchId            // material:grass, material:liquid/shore
+>   difficulty?: Difficulty     // this cell's own
 > }
 > ```
 >
-> A column may **override** the difficulty it inherited (`Column.difficulty`), so
-> the road through the swamp does not need its own terrain type.
+> **One registry, not two.** There was a second one here — `Terrain`, twelve
+> names each with a colour and a `defaultDifficulty` — and keeping it meant
+> every appearance feature since D-237 landed on maps and never on the world.
+> Lava edited once now looks like lava everywhere (D-280, D-281).
+>
+> A column may **override** the difficulty it inherited (`Column.difficulty`),
+> so a ford does not need a substance of its own. A mode may override it too,
+> by family (R-192).
+>
+> **What a terrain really was, a biome, is two axes and not one.** Forest is
+> not a substance: it is grass with trees standing on it. Ground is the first
+> axis and cover is the second (D-280).
 
-> **R-78.** A new chunk is created **flat at height 0, entirely `terrain:water`**.
+> **R-78.** A new chunk is created **flat at height 0, entirely open water**.
 > The GM raises land out of the sea rather than starting from a blank plane, which
 > makes "unfinished" and "ocean" the same state instead of two.
 
@@ -604,7 +614,7 @@ cube and a short far cube can land on the same pixels. These are not polish.
 
 ---
 
-## 6c4. The world terrain builder
+## 6c4. The world ground builder
 
 Two tools that share one hover affordance. This is the surface the GM spends the
 most time in, so it gets specified rather than improvised.
@@ -635,7 +645,7 @@ most time in, so it gets specified rather than improvised.
 
 > **R-87c.** **`render` reports what is under the pointer; the tool decides what
 > it meant.** `Picked` resolves pawn, place, cell and empty slot *independently*,
-> with no precedence, so a tool that wants terrain always gets terrain.
+> with no precedence, so a tool that wants a cell always gets a cell.
 >
 > The cell it reports for a marker or a pawn is **that thing's own cell**, not
 > what the ray found. A strict raycast answers "the ground visible through this
@@ -674,8 +684,13 @@ most time in, so it gets specified rather than improvised.
 > readout says *"Already a place here"* first, so the dropped click reads as the
 > rule rather than as a dead button (R-18).
 
-> **R-88.** **Paint tool** (brush icon): pick a terrain from the palette (R-77),
+> **R-88.** **Paint tool** (brush icon): pick a swatch from the palette (R-77),
 > tap a cell to paint it, or drag to paint many. Height is untouched.
+>
+> **It is the map's palette, unchanged** (D-282). A world cell and a cube hold
+> the same kind of value, so a GM who learns to pick limestone in a building
+> has learned it for the coast as well. The one thing the world adds is what
+> the ground costs to cross, which a map has no use for.
 
 > **R-88a.** Both tools share a **brush size** of 1×1, 2×2 or 3×3, and the hover
 > outline is drawn at that size so what is outlined is what will change.
@@ -715,18 +730,20 @@ most time in, so it gets specified rather than improvised.
 Travel is arithmetic over spatial data — squarely the "hard to hold in your head"
 category (R-1), and squarely in scope.
 
-> **R-52.** A column's difficulty comes from its **terrain** (R-77), optionally
-> overridden per cell. `impassable` routes around.
+> **R-52.** A column's difficulty comes from its **ground** (R-77, R-192),
+> optionally overridden per cell. `impassable` routes around.
 
-> **R-52b.** Difficulty is resolved **per travel mode**, not per terrain alone. A
-> `TravelMode` carries `kmPerDay`, a `fallback` of `terrain-default` or
-> `impassable`, and per-terrain overrides.
+> **R-52b.** Difficulty is resolved **per travel mode**, not per ground alone. A
+> `TravelMode` carries `kmPerDay`, a `fallback` of `ground-default` or
+> `impassable`, and overrides keyed by **family or swatch**.
 >
 > This is why water is impassable rather than merely expensive: a multiplier of
 > any size means "crossable, slowly", which would let an armoured party wade the
-> ocean. `travel:ship` sets `fallback: impassable` and overrides water to 1, so a
-> ship crosses water and **cannot sail overland**. `shallows` is passable to both,
-> which is what gives a boat somewhere to put in.
+> ocean. `travel:ship` sets `fallback: impassable` and overrides the Liquids
+> *family* to 1 — a boat does not care which cut of water it is on — so a ship
+> crosses water and **cannot sail overland**. The shore is the exception the
+> swatch key exists for: slower for a boat, wadeable on foot, and what gives a
+> boat somewhere to put in.
 >
 > A **column override beats the mode**, so a bridge is a cell painted passable —
 > a property of the place, not of the traveller. And mixed journeys need no new

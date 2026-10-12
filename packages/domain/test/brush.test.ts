@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import {
   CHUNK_SIZE, MAX_BRUSH, clampBrush, brushCells, brushCentreOffset, toGlobal, fromGlobal,
-  paintArea, setHeightArea, raiseArea, emptyWorld, addChunk, chunkAt, columnAt, registryId,
+  paintArea, setHeightArea, raiseArea, emptyWorld, addChunk, chunkAt, columnAt,
 } from '@tt/domain';
-import type { TerrainId } from '@tt/domain';
+import type { SwatchId } from '@tt/domain';
 
-const grass = registryId<'TerrainId'>('terrain', 'grass') as TerrainId;
+const grass = 'material:grass' as SwatchId;
 const key = (c: { gx: number; gz: number }) => `${c.gx},${c.gz}`;
 
 describe('global coordinates round-trip', () => {
@@ -68,8 +68,8 @@ describe('brushes across chunk boundaries', () => {
     // last column of chunk 5, so a 3-wide brush reaches into chunk 6
     const at = toGlobal({ cx: 5, cz: 5 }, CHUNK_SIZE - 1, 10);
     const painted = paintArea(world, at, 3, grass);
-    expect(columnAt(chunkAt(painted, { cx: 5, cz: 5 })!, CHUNK_SIZE - 1, 10)?.terrainId).toBe(grass);
-    expect(columnAt(chunkAt(painted, { cx: 6, cz: 5 })!, 0, 10)?.terrainId).toBe(grass);
+    expect(columnAt(chunkAt(painted, { cx: 5, cz: 5 })!, CHUNK_SIZE - 1, 10)?.ground).toBe(grass);
+    expect(columnAt(chunkAt(painted, { cx: 6, cz: 5 })!, 0, 10)?.ground).toBe(grass);
   });
 
   it('skips cells in chunks that do not exist rather than creating them', () => {
@@ -77,7 +77,7 @@ describe('brushes across chunk boundaries', () => {
     const at = toGlobal({ cx: 5, cz: 5 }, CHUNK_SIZE - 1, 10);
     const painted = paintArea(world, at, 3, grass);
     expect(painted.chunks.size).toBe(1);
-    expect(columnAt(chunkAt(painted, { cx: 5, cz: 5 })!, CHUNK_SIZE - 1, 10)?.terrainId).toBe(grass);
+    expect(columnAt(chunkAt(painted, { cx: 5, cz: 5 })!, CHUNK_SIZE - 1, 10)?.ground).toBe(grass);
   });
 
   it('stamps a flat plateau with setHeightArea', () => {

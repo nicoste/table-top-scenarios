@@ -6408,3 +6408,49 @@ not care whether it is on water or green water: it cares that the family is
 Liquids. So the override table has to key on the **family**, not the swatch,
 which D-280's list of work did not say. It belongs to the increment that
 deletes `terrain`.
+
+### D-282 — The world holds swatches, and both maps share one palette · `agreed`
+The second piece of the world round (D-280). `Terrain`, `TerrainId` and
+`DEFAULT_TERRAIN` are gone; a `Column` holds a `ground: SwatchId`.
+
+**One palette, in two panels.** The map's material list was lifted out as
+`SwatchPalette` and the world's terrain list replaced with it. They had to be
+the same component rather than the same shape, because the same shape is what
+drifted: the world's list was still `MeshLambertMaterial`-era while the map's
+grew families, cuts, figures and a chosen line.
+
+What differs between them is a sentence, not a layout, so that is all the
+caller supplies — a map says whether what is in hand sees through, the world
+says what it costs to cross. The world puts the cost on each cut's tooltip as
+well, because that panel is scanned while deciding where a road goes.
+
+**The old worlds read, and the twelve ids are a table.** `GROUND_FROM_TERRAIN`
+maps them onto swatches on the way in; worlds are written as swatches from then
+on (R-137a, R-144). Two of the twelve are honest losses, recorded because they
+are decisions and not bugs:
+
+- **Forest and jungle arrive as undergrowth.** A cover is the second axis and
+  does not exist yet, so the closest ground is Vegetation — which happens to
+  carry forest's old 1.5 exactly. The GM repaints with the Forest preset when
+  covers land.
+- **Hills lose their flat 1.5.** A hill is *height*, and the slope factor
+  already charges for climbing it (R-52a). The old palette added a difficulty
+  on top because a terrain had nowhere else to say "hilly"; two axes mean it
+  does.
+
+**The wire kept its field names.** A chunk still sends `palette` and
+`terrainRuns`, now holding swatches, because renaming them would have been a
+schema bump that bought nothing — the packing, the run-length encoding and the
+decode cache are all unchanged (D-220, D-270). What changed is the regex, which
+now admits both spellings and maps one.
+
+**`terrainCost` became `groundCost` and lost its palette argument.** It used to
+be handed the registry; it now reads the one registry there is. Its override
+table keys on family first and swatch second, which is the gap D-281 flagged:
+a boat cares that it is on Liquids, and only the shore is special enough to
+name.
+
+**What is left of the round.** The world mesh is still one
+`MeshLambertMaterial` and still flat (increment 2), and covers do not exist
+(increment 3). The world now *holds* the right values; it does not yet draw
+them.

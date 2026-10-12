@@ -3,7 +3,7 @@
 
 import { z } from 'zod';
 import type {
-  Campaign, Chunk, Column, World, PartyMember, TerrainId, Place, PlaceNote, MarkerId, Save,
+  Campaign, Chunk, Column, World, PartyMember, SwatchId, Place, PlaceNote, MarkerId, Save,
   Placement, Inside, EncounterMap, LevelRange, Cells,
 } from '@tt/domain';
 import {
@@ -12,6 +12,7 @@ import {
   packRuns, unpackRuns,
   placementToJSON, placementFromJSON, tokensToJSON, tokensFromJSON,
   DAYLIGHT, OPEN_SKY, clampLighting, clampAmbience, cellsToJSON, cellsFromJSON,
+  GROUND_FROM_TERRAIN, OPEN_WATER,
 } from '@tt/domain';
 
 /** The light inside one place (R-182). */
@@ -47,7 +48,23 @@ export const LightingWireSchema = z.object({
 }));
 export type LightingWire = z.infer<typeof LightingWireSchema>;
 
+/**
+ * Still here, and still only for reading: a world written before D-280 holds
+ * twelve of these, and `TerrainWireSchema` below is what an old campaign's
+ * inline registry is measured against when it is stripped. Nothing is written
+ * in this shape any more.
+ */
 export const TerrainIdSchema = z.string().regex(/^terrain:[a-z0-9]+(-[a-z0-9]+)*$/);
+
+/**
+ * What a world cell is made of, on the wire (R-176).
+ *
+ * A plain string, like a map body's palette, and for the same reason: the
+ * registry is the authority on which swatches exist and a regex that repeated
+ * it would be a second place to keep in step. A `terrain:*` entry is accepted
+ * and mapped on the way in (R-137a).
+ */
+export const GroundSchema = z.string().regex(/^(material|terrain):[a-z0-9-]+(\/[a-z0-9-]+)?$/);
 export const CellIndex = z.number().int().min(0).max(CHUNK_SIZE - 1);
 export const ChunkCoordSchema = z.object({ cx: z.number().int(), cz: z.number().int() });
 
@@ -80,11 +97,11 @@ export const ChunkWireSchema = z.object({
    * because an empty array is truthy and the reader has to tell absence from
    * emptiness.
    */
-  palette: z.array(TerrainIdSchema).optional(),
+  palette: z.array(GroundSchema).optional(),
   terrainRuns: z.array(z.number().int().nonnegative()).optional(),
   heightRuns: z.array(z.number().int().nonnegative()).optional(),
   heights: z.array(z.number().int().min(0)).optional(),
-  terrain: z.array(TerrainIdSchema).optional(),
+  terrain: z.array(GroundSchema).optional(),
 });
 export type ChunkWire = z.infer<typeof ChunkWireSchema>;
 
@@ -336,14 +353,14 @@ const packedChunks = new WeakMap<Chunk, ChunkWire>();
 export function encodeChunk(chunk: Chunk): ChunkWire {
   const already = packedChunks.get(chunk);
   if (already) return already;
-  const palette = [...new Set(chunk.columns.map((c) => c.terrainId as string))].sort();
+  const palette = [...new Set(chunk.columns.map((c) => c.ground as string))].sort();
   const indexOf = new Map(palette.map((id, i) => [id, i]));
   const made: ChunkWire = {
     cx: chunk.coord.cx,
     cz: chunk.coord.cz,
     size: CHUNK_SIZE,
     palette,
-    terrainRuns: packRuns(chunk.columns.map((c) => indexOf.get(c.terrainId as string)!)),
+    terrainRuns: packRuns(chunk.columns.map((c) => indexOf.get(c.ground as string)!)),
     heightRuns: packRuns(chunk.columns.map((c) => c.height)),
   };
   packedChunks.set(chunk, made);
@@ -376,17 +393,23 @@ export function encodeCampaign(campaign: Campaign): CampaignWire {
 
 // -- decode ------------------------------------------------------------------
 
-/** Turns a validated wire string back into a branded TerrainId. */
 export function parseMarkerId(value: string): MarkerId {
   const [ns, ...rest] = value.split(':');
   return registryId<'MarkerId'>(ns ?? 'marker', rest.join(':'));
 }
 
-export function parseTerrainId(value: string): TerrainId {
-  const [ns, ...rest] = value.split(':');
-  return registryId<'TerrainId'>(ns ?? 'terrain', rest.join(':'));
+/**
+ * A wire string as the swatch a column holds, mapping the twelve old terrain
+ * ids through on the way (R-137a, D-281).
+ *
+ * Anything unreadable becomes open water rather than throwing: one bad cell in
+ * a world should not cost the campaign, and water is what an unauthored one
+ * already is (R-78).
+ */
+export function parseGround(value: string): SwatchId {
+  if (value.startsWith('terrain:')) return GROUND_FROM_TERRAIN[value] ?? OPEN_WATER;
+  return value.startsWith('material:') ? (value as SwatchId) : OPEN_WATER;
 }
-const terrainId = parseTerrainId;
 
 export function encodeSave(save: Save): SaveWire {
   return {
@@ -595,7 +618,7 @@ export function decodeChunk(wire: ChunkWire): Chunk {
     ? unpackRuns(wire.heightRuns, cells) ?? []
     : wire.heights ?? [];
   const terrain = wire.terrainRuns
-    ? (unpackRuns(wire.terrainRuns, cells) ?? []).map((i) => wire.palette?.[i] ?? 'terrain:water')
+    ? (unpackRuns(wire.terrainRuns, cells) ?? []).map((i) => wire.palette?.[i] ?? '')
     : wire.terrain ?? [];
   const columns: Column[] = [];
   for (let z = 0; z < CHUNK_SIZE; z++) {
@@ -604,7 +627,7 @@ export function decodeChunk(wire: ChunkWire): Chunk {
       const source = inside ? z * stride + x : -1;
       columns.push({
         height: source >= 0 ? (heights[source] ?? 0) : 0,
-        terrainId: terrainId(source >= 0 ? (terrain[source] ?? 'terrain:water') : 'terrain:water'),
+        ground: parseGround(source >= 0 ? (terrain[source] ?? '') : ''),
       });
     }
   }

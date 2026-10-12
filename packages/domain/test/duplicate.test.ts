@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import {
   createCampaign, duplicateCampaign, uniqueCampaignName,
-  chunkAt, columnAt, setHeight, paintTerrain, replaceChunk, registryId, ORIGIN,
+  chunkAt, columnAt, setHeight, paintGround, replaceChunk, ORIGIN,
   addPlace, addNote, addPoi, setMapBlock, blockAt, DEFAULT_FLOOR,
 } from '@tt/domain';
-import type { Campaign, TerrainId } from '@tt/domain';
+import type { Campaign, SwatchId } from '@tt/domain';
 
-const grass = registryId<'TerrainId'>('terrain', 'grass') as TerrainId;
+const grass = 'material:grass' as SwatchId;
 
 /**
  * Every identifier anywhere in a campaign.
@@ -38,7 +38,7 @@ function allIds(c: Campaign): string[] {
 function built(): Campaign {
   let c = createCampaign('Ashfall');
   let chunk = chunkAt(c.world, ORIGIN)!;
-  chunk = paintTerrain(chunk, 4, 5, grass);
+  chunk = paintGround(chunk, 4, 5, grass);
   chunk = setHeight(chunk, 4, 5, 6);
   c = { ...c, world: replaceChunk(c.world, chunk) };
   let places = addPlace([], { cx: ORIGIN.cx, cz: ORIGIN.cz, x: 4, z: 5 }, 'Casilda');
@@ -97,11 +97,11 @@ describe('a duplicate shares nothing identifiable (R-106)', () => {
     expect(blockAt(place.pois[0]!.map!, { x: 2, y: 1, z: 3 })).toBe(DEFAULT_FLOOR);
   });
 
-  it('carries the terrain across', () => {
+  it('carries the ground across', () => {
     const copy = duplicateCampaign(built(), 'x');
     const column = columnAt(chunkAt(copy.world, ORIGIN)!, 4, 5);
     expect(column?.height).toBe(6);
-    expect(column?.terrainId).toBe(grass);
+    expect(column?.ground).toBe(grass);
   });
 
   it('cannot have one campaign edit the other, despite sharing the world', () => {

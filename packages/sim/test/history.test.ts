@@ -24,33 +24,33 @@ function open(): HostState {
   };
 }
 
-const terrainAt = (state: HostState, x: number, z: number) => {
+const groundAt = (state: HostState, x: number, z: number) => {
   const chunk = chunkAt(state.active!.world, ORIGIN)!;
-  return columnAt(chunk, x, z)!.terrainId as string;
+  return columnAt(chunk, x, z)!.ground as string;
 };
 const gm = (state: HostState) => viewFor('gm', state) as GmView;
 
 describe('an edit can be taken back', () => {
-  it('restores the terrain a paint replaced', () => {
+  it('restores the ground a paint replaced', () => {
     const start = open();
-    const before = terrainAt(start, 4, 4);
-    const painted = run(start, { kind: 'paintTerrain', ...at(4, 4), terrainId: 'terrain:rock' }).state;
-    expect(terrainAt(painted, 4, 4)).toBe('terrain:rock');
+    const before = groundAt(start, 4, 4);
+    const painted = run(start, { kind: 'paintGround', ...at(4, 4), ground: 'material:mineral' }).state;
+    expect(groundAt(painted, 4, 4)).toBe('material:mineral');
 
     const undoneState = run(painted, { kind: 'undo' }).state;
-    expect(terrainAt(undoneState, 4, 4)).toBe(before);
+    expect(groundAt(undoneState, 4, 4)).toBe(before);
   });
 
   it('asks the host to persist the result, so undo survives a reload', () => {
-    const painted = run(open(), { kind: 'paintTerrain', ...at(4, 4), terrainId: 'terrain:rock' }).state;
+    const painted = run(open(), { kind: 'paintGround', ...at(4, 4), ground: 'material:mineral' }).state;
     expect(run(painted, { kind: 'undo' }).effects.map((e) => e.kind)).toEqual(['saveCampaign']);
   });
 
   it('redoes what it undid', () => {
-    const painted = run(open(), { kind: 'paintTerrain', ...at(4, 4), terrainId: 'terrain:rock' }).state;
+    const painted = run(open(), { kind: 'paintGround', ...at(4, 4), ground: 'material:mineral' }).state;
     const back = run(painted, { kind: 'undo' }).state;
     const forward = run(back, { kind: 'redo' }).state;
-    expect(terrainAt(forward, 4, 4)).toBe('terrain:rock');
+    expect(groundAt(forward, 4, 4)).toBe('material:mineral');
   });
 
   it('refuses with a reason rather than silently doing nothing (R-18)', () => {
@@ -59,9 +59,9 @@ describe('an edit can be taken back', () => {
   });
 
   it('drops the redo branch once you edit again', () => {
-    let state = run(open(), { kind: 'paintTerrain', ...at(4, 4), terrainId: 'terrain:rock' }).state;
+    let state = run(open(), { kind: 'paintGround', ...at(4, 4), ground: 'material:mineral' }).state;
     state = run(state, { kind: 'undo' }).state;
-    state = run(state, { kind: 'paintTerrain', ...at(9, 9), terrainId: 'terrain:snow' }).state;
+    state = run(state, { kind: 'paintGround', ...at(9, 9), ground: 'material:soil/snow' }).state;
     // Diverged: the abandoned branch is not reachable any more.
     expect(run(state, { kind: 'redo' }).rejected).toBe('nothing to redo');
   });
@@ -69,18 +69,18 @@ describe('an edit can be taken back', () => {
 
 describe('a drag is one action (D-170)', () => {
   const strokePaint = (x: number, z: number, stroke?: string): Intent => ({
-    kind: 'paintTerrain', ...at(x, z), terrainId: 'terrain:rock', ...(stroke ? { stroke } : {}),
+    kind: 'paintGround', ...at(x, z), ground: 'material:mineral', ...(stroke ? { stroke } : {}),
   });
 
   it('collapses every cell of one stroke into a single undo', () => {
     const start = open();
     let state = start;
     for (let x = 0; x < 6; x += 1) state = run(state, strokePaint(x, 0, 's1')).state;
-    for (let x = 0; x < 6; x += 1) expect(terrainAt(state, x, 0)).toBe('terrain:rock');
+    for (let x = 0; x < 6; x += 1) expect(groundAt(state, x, 0)).toBe('material:mineral');
 
     state = run(state, { kind: 'undo' }).state;
     // One press, the whole stroke gone — not one cell at a time.
-    for (let x = 0; x < 6; x += 1) expect(terrainAt(state, x, 0)).toBe(terrainAt(start, x, 0));
+    for (let x = 0; x < 6; x += 1) expect(groundAt(state, x, 0)).toBe(groundAt(start, x, 0));
     expect(gm(state).canUndo).toBe(false);
   });
 
@@ -90,8 +90,8 @@ describe('a drag is one action (D-170)', () => {
     state = run(state, strokePaint(1, 1, 's2')).state;
 
     state = run(state, { kind: 'undo' }).state;
-    expect(terrainAt(state, 1, 1)).not.toBe('terrain:rock');
-    expect(terrainAt(state, 0, 0)).toBe('terrain:rock');
+    expect(groundAt(state, 1, 1)).not.toBe('material:mineral');
+    expect(groundAt(state, 0, 0)).toBe('material:mineral');
   });
 
   it('does not collapse two untagged edits into one', () => {
@@ -102,8 +102,8 @@ describe('a drag is one action (D-170)', () => {
     state = run(state, strokePaint(1, 1)).state;
 
     state = run(state, { kind: 'undo' }).state;
-    expect(terrainAt(state, 1, 1)).not.toBe('terrain:rock');
-    expect(terrainAt(state, 0, 0)).toBe('terrain:rock');
+    expect(groundAt(state, 1, 1)).not.toBe('material:mineral');
+    expect(groundAt(state, 0, 0)).toBe('material:mineral');
   });
 
   it('cannot coalesce across an undo', () => {
@@ -114,12 +114,12 @@ describe('a drag is one action (D-170)', () => {
     // unrecoverable.
     state = run(state, strokePaint(5, 5, 's1')).state;
     expect(gm(state).canUndo).toBe(true);
-    expect(terrainAt(run(state, { kind: 'undo' }).state, 5, 5)).not.toBe('terrain:rock');
+    expect(groundAt(run(state, { kind: 'undo' }).state, 5, 5)).not.toBe('material:mineral');
   });
 });
 
 describe('what counts as an edit', () => {
-  it('records a place, its notes, and roster changes — not just terrain', () => {
+  it('records a place, its notes, and roster changes — not just ground', () => {
     let state = open();
     state = run(state, { kind: 'addPlace', cell: at(3, 3), name: 'Keep' }).state;
     expect(state.active!.places).toHaveLength(1);
@@ -133,12 +133,12 @@ describe('what counts as an edit', () => {
   });
 
   it('ignores an intent that changed nothing', () => {
-    // paint the same terrain twice: identity-preserving edits mean the second
+    // paint the same ground twice: identity-preserving edits mean the second
     // returns the same campaign, so there is nothing to take back (R-165).
-    let state = run(open(), { kind: 'paintTerrain', ...at(4, 4), terrainId: 'terrain:rock' }).state;
-    state = run(state, { kind: 'paintTerrain', ...at(4, 4), terrainId: 'terrain:rock' }).state;
+    let state = run(open(), { kind: 'paintGround', ...at(4, 4), ground: 'material:mineral' }).state;
+    state = run(state, { kind: 'paintGround', ...at(4, 4), ground: 'material:mineral' }).state;
     state = run(state, { kind: 'undo' }).state;
-    expect(terrainAt(state, 4, 4)).not.toBe('terrain:rock');
+    expect(groundAt(state, 4, 4)).not.toBe('material:mineral');
     expect(gm(state).canUndo).toBe(false);
   });
 
@@ -150,14 +150,14 @@ describe('what counts as an edit', () => {
   });
 
   it('is refused for the table seat', () => {
-    const painted = run(open(), { kind: 'paintTerrain', ...at(4, 4), terrainId: 'terrain:rock' }).state;
+    const painted = run(open(), { kind: 'paintGround', ...at(4, 4), ground: 'material:mineral' }).state;
     expect(run(painted, { kind: 'undo' }, 'table').rejected).toBe('only the GM can do that');
   });
 });
 
 describe('history belongs to one campaign', () => {
   it('starts again when a different campaign is opened', () => {
-    let state = run(open(), { kind: 'paintTerrain', ...at(4, 4), terrainId: 'terrain:rock' }).state;
+    let state = run(open(), { kind: 'paintGround', ...at(4, 4), ground: 'material:mineral' }).state;
     expect(gm(state).canUndo).toBe(true);
 
     state = run(state, { kind: 'closeCampaign' }).state;
@@ -167,7 +167,7 @@ describe('history belongs to one campaign', () => {
   });
 
   it('starts again on create, which opens a different campaign', () => {
-    let state = run(open(), { kind: 'paintTerrain', ...at(4, 4), terrainId: 'terrain:rock' }).state;
+    let state = run(open(), { kind: 'paintGround', ...at(4, 4), ground: 'material:mineral' }).state;
     state = run(state, { kind: 'createCampaign', name: 'Elsewhere' }).state;
     expect(gm(state).canUndo).toBe(false);
   });
@@ -177,7 +177,7 @@ describe('what the GM console is told', () => {
   it('gets two booleans and never the history itself', () => {
     // It holds whole campaigns; serialising it would put a world on the wire per
     // entry, fifty times over.
-    const painted = run(open(), { kind: 'paintTerrain', ...at(4, 4), terrainId: 'terrain:rock' }).state;
+    const painted = run(open(), { kind: 'paintGround', ...at(4, 4), ground: 'material:mineral' }).state;
     const view = gm(painted);
     expect(view.canUndo).toBe(true);
     expect(view.canRedo).toBe(false);
@@ -189,12 +189,12 @@ describe('what the GM console is told', () => {
 describe('the stack is bounded', () => {
   it('forgets the oldest rather than growing forever', () => {
     let state = open();
-    // Alternating terrain on one cell, so every intent is a real change. Cycling
+    // Alternating ground on one cell, so every intent is a real change. Cycling
     // cells instead would repaint what is already painted, and those are
     // correctly no-ops that record nothing — which is how this test first failed.
     for (let i = 0; i < MAX_HISTORY + 10; i += 1) {
-      const terrainId = i % 2 === 0 ? 'terrain:rock' : 'terrain:snow';
-      state = run(state, { kind: 'paintTerrain', ...at(4, 4), terrainId }).state;
+      const ground = i % 2 === 0 ? 'material:mineral' : 'material:soil/snow';
+      state = run(state, { kind: 'paintGround', ...at(4, 4), ground }).state;
     }
     expect(state.history.past).toHaveLength(MAX_HISTORY);
   });
