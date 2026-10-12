@@ -19,7 +19,8 @@ export {
   sameWorldCell, chunkOf, isValidWorldCell,
   columnAt, paintGround, paintCover, clampHeight, setHeight, raiseHeight,
   addChunk, replaceChunk, creatableSlots, isCreatableSlot, CHUNK_NEIGHBOURS,
-  MAX_BRUSH, clampBrush, toGlobal, fromGlobal, brushCells, brushCentreOffset,
+  WORLD_BRUSHES, MAX_BRUSH, clampBrush, stepBrush, toGlobal, fromGlobal,
+  brushCells, brushCentreOffset,
   paintArea, coverArea, setHeightArea, raiseArea,
 } from './world/index.js';
 

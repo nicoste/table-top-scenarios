@@ -6799,3 +6799,58 @@ record as a product bug.
 tilts, twenty zooms — leaves the count at one, so nothing leaks per frame. In
 a throwaway campaign, eleven rebuilds driven by real paint strokes also leave
 it at one. Before the fix those eleven would have been eleven.
+
+### D-290 — Markers are kept when nothing they draw has changed · `agreed`
+The caption that "tilts while I paint the ground, even when I paint far away
+from it". It is not tilting and the distance is a red herring: it is being
+**destroyed and rebuilt**, and every paint anywhere does it.
+
+**Measured before touching anything.** A twelve-step drag produced eleven
+`remove`s and eleven `add`s on the caption layer, every one of them carrying
+*the identical transform*. The label never moves. It is torn out of the
+document and a fresh node put back, eleven times in under a second, and what
+that looks like on an isometric map is a name that blinks and shifts.
+
+**The cause is one unconditional line.** `setCampaign` disposed and rebuilt
+the place markers on **every accepted intent**, whatever had changed — a cube
+placed in a cellar, a note added, a coastline painted. The world next to it
+has had an identity check since D-270; the markers never got one.
+
+A marker is drawn from its place and the height of the cell under it, and
+from nothing else. So `PlaceMarkers.matches(campaign)` compares exactly that,
+as a string, and the stage keeps the markers when it holds. A **value** check,
+not an identity one: `places` is decoded fresh from the wire on every message
+and only the world has a decode cache.
+
+**Confirmed on the GM's own map**, and it took three attempts to make the test
+mean anything. The first drag ran while the caption was off-screen, so there
+was no node to churn. The second painted grass onto grass, which R-165
+identity-preserves into no intent at all — the rebuild counter did not move.
+The third painted mineral over grass with the caption in the document: the
+counter went 1 → 3, so the world really was rebuilt twice, and the DOM churn
+was **zero**. Both false starts would have read as a pass.
+
+**What it also buys.** The markers are geometry too — a handful of meshes and
+materials built and thrown away on every brush cell before this.
+
+### D-291 — The world's brushes are 1×1, 3×3 and 5×5 · `agreed`
+*"Can you put brush sizes into the same shape for world map and poi? I think
+POI's brush is the correct one 1x1, 3x3 and 5x5. World map 2x2 looks
+uncentered and doesn't add a good use."*
+
+Both true. **2×2 has no centre cell**, so it had to lean one way off the
+pointer — forward, the voxel-editor convention, which is defensible and still
+reads as the brush sitting half a cell from where you are aiming. And two
+sizes one step apart said less than three a stride apart: 1, 3 and 5 is a
+cell, a patch and a stroke.
+
+The map settled this already (R-164) and the world simply had not followed.
+There is a test asserting the two lists are the same, so they cannot drift
+apart again.
+
+`clampBrush` now snaps to the nearest listed size rather than rounding, and
+`[` / `]` step through the list — arithmetic on the number would land between
+them. `brushCentreOffset` is zero for every size now and **stays exported and
+stays called**: the hover outline reads it instead of assuming, so an even
+brush could return without the outline drifting off the cells that get
+painted.

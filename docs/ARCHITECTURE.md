@@ -692,8 +692,15 @@ most time in, so it gets specified rather than improvised.
 > has learned it for the coast as well. The one thing the world adds is what
 > the ground costs to cross, which a map has no use for.
 
-> **R-88a.** Both tools share a **brush size** of 1×1, 2×2 or 3×3, and the hover
-> outline is drawn at that size so what is outlined is what will change.
+> **R-88a.** The brushed tools share a **brush size of 1×1, 3×3 or 5×5** — the
+> same three the map offers as flats (R-164) — and the hover outline is drawn
+> at that size so what is outlined is what will change.
+>
+> **Every size is odd, so every brush has a centre cell** (D-291). 2×2 had
+> none, so it had to lean one way off the pointer; the arithmetic for that is
+> still here and still correct, but nothing offers an even size any more. Two
+> sizes one step apart also said less than three a stride apart: a cell, a
+> patch and a stroke.
 >
 > A brush is **one intent**, not one per cell: nine intents would mean nine saves
 > and nine broadcasts for a single click (R-19a). Odd sizes centre on the anchor;

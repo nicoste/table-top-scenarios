@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { decodeCampaign, decodePlacement, cellsFromWire } from '@tt/protocol';
 import {
-  MAX_HEIGHT, WHOLE_MAP, rangeIn, clampBrush, BRUSHES, DEFAULT_BRUSH, brushById,
+  MAX_HEIGHT, WHOLE_MAP, rangeIn, stepBrush, WORLD_BRUSHES, BRUSHES, DEFAULT_BRUSH, brushById,
   chunkAt, columnAt,
   creatableSlots, sameWorldCell,
   DEFAULT_MATERIALS, DEFAULT_FLOOR, mapFromJSON, fillRegion, sliceOf, inRange, inMap, blockAt,
@@ -1043,15 +1043,17 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
           // The brushes follow the tools, so the digits still run
           // left-to-right across the panel. `[` and `]` are the primary brush
           // keys anyway, which is what makes shuffling these harmless.
-          case '7': setBrush(1); return;
-          case '8': setBrush(2); return;
-          case '9': setBrush(3); return;
+          case '7': setBrush(WORLD_BRUSHES[0]!); return;
+          case '8': setBrush(WORLD_BRUSHES[1]!); return;
+          case '9': setBrush(WORLD_BRUSHES[2]!); return;
           default: break;
         }
 
         switch (e.code) {
-          case 'BracketLeft': setBrush((n) => clampBrush(n - 1)); return;
-          case 'BracketRight': setBrush((n) => clampBrush(n + 1)); return;
+          // A step through the listed sizes, not arithmetic on the number:
+          // they are 1, 3 and 5 now, so n ± 1 would land between them (D-291).
+          case 'BracketLeft': setBrush((n) => stepBrush(n, -1)); return;
+          case 'BracketRight': setBrush((n) => stepBrush(n, 1)); return;
           case 'Escape':
             setTravel(idle);
             stage.showHighlight(null, 0);

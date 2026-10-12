@@ -537,7 +537,19 @@ export class Stage {
     const sameWorld = campaign !== null && this.world !== null && campaign.world === this.campaign?.world;
     if (this.world && !sameWorld) { this.scene.remove(this.world.group); this.world.dispose(); this.world = null; }
     if (this.covers && !sameWorld) { this.scene.remove(this.covers.group); this.covers.dispose(); this.covers = null; }
-    if (this.places) { this.scene.remove(this.places.group); this.places.dispose(); this.places = null; }
+    /*
+     * Kept when they still draw the same thing (D-290). Markers depend on
+     * their places and on the ground under them, so a painted coast, a cube
+     * placed in a cellar or a note added leaves them alone — and leaves their
+     * captions in the document rather than replacing each one.
+     */
+    const samePlaces = campaign !== null && this.places !== null
+      && this.places.matches(campaign);
+    if (this.places && !samePlaces) {
+      this.scene.remove(this.places.group);
+      this.places.dispose();
+      this.places = null;
+    }
     this.dropPawns();
     this.campaign = campaign;
     if (!campaign) this.setFogChunks([]);
@@ -567,8 +579,10 @@ export class Stage {
       if (!this.showingMap) this.fitShadows(CHUNK_SIZE * 3, worldCentre(campaign.world));
     }
 
-    this.places = buildPlaceMarkers(campaign);
-    this.scene.add(this.places.group);
+    if (!this.places) {
+      this.places = buildPlaceMarkers(campaign);
+      this.scene.add(this.places.group);
+    }
 
     this.campaign = campaign;
     this.rebuildPawns();

@@ -308,11 +308,33 @@ export function fromGlobal(cell: GlobalCell): { coord: ChunkCoord; x: number; z:
   };
 }
 
-export const MAX_BRUSH = 3;
+/**
+ * The world's brushes, and **every one of them is odd** (R-88a, D-291).
+ *
+ * The same three the map offers as flats (R-164), for the same reason: an odd
+ * span has a centre cell, so the footprint sits on the cell you are pointing
+ * at and the outline is where the edit lands. 2×2 had no centre, so it had to
+ * lean one way — forward, which is the voxel-editor convention and still
+ * reads as the brush being off by half a cell from the pointer. Two sizes a
+ * step apart also said less than three a stride apart: 1, 3 and 5 is a cell,
+ * a patch and a stroke.
+ */
+export const WORLD_BRUSHES = [1, 3, 5] as const;
 
+export const MAX_BRUSH: number = WORLD_BRUSHES[WORLD_BRUSHES.length - 1]!;
+
+/** The listed size nearest the one asked for; the narrowest for nonsense. */
 export function clampBrush(size: number): number {
-  if (!Number.isFinite(size)) return 1;
-  return Math.min(MAX_BRUSH, Math.max(1, Math.round(size)));
+  if (!Number.isFinite(size)) return WORLD_BRUSHES[0];
+  return WORLD_BRUSHES.reduce((best, n) => (
+    Math.abs(n - size) < Math.abs(best - size) ? n : best
+  ), WORLD_BRUSHES[0] as number);
+}
+
+/** One size wider or narrower, stopping at the ends. `[` and `]` (R-88a). */
+export function stepBrush(size: number, by: number): number {
+  const at = WORLD_BRUSHES.indexOf(clampBrush(size) as 1 | 3 | 5);
+  return WORLD_BRUSHES[Math.min(WORLD_BRUSHES.length - 1, Math.max(0, at + by))]!;
 }
 
 /** The first offset a brush of this size reaches, relative to its anchor. */
@@ -322,11 +344,12 @@ function brushStart(size: number): number {
 
 /**
  * How far the centre of a brush's footprint sits from the centre of its anchor
- * cell, in cells. Zero for odd sizes; half a cell for even ones, which have no
- * centre cell to sit on.
+ * cell, in cells.
  *
- * Exported so the hover outline can be drawn over exactly the cells `brushCells`
- * will edit, rather than each side deriving it and disagreeing.
+ * **Always zero now**, because every brush is odd (D-291). It stays exported
+ * and stays called: the hover outline reads it rather than assuming, so the
+ * day an even brush comes back the outline follows it instead of drifting
+ * half a cell off the cells `brushCells` edits.
  */
 export function brushCentreOffset(size: number): number {
   const n = clampBrush(size);
@@ -336,9 +359,9 @@ export function brushCentreOffset(size: number): number {
 /**
  * The cells a brush of this size covers, anchored on `at`.
  *
- * Odd sizes centre on the anchor. Even sizes have no centre, so they extend
- * forward from it — the standard voxel-editor behaviour, and predictable in a
- * way that "round one way or the other" is not.
+ * Centred, because every listed size is odd (D-291). The arithmetic still
+ * handles an even one by extending forward from the anchor, which is the
+ * voxel-editor convention and the behaviour the outline is derived from.
  */
 export function brushCells(at: GlobalCell, size: number): readonly GlobalCell[] {
   const n = clampBrush(size);

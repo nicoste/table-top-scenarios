@@ -22,6 +22,23 @@ export const MARKER_ZOOM = 55;
 
 export interface PlaceMarkers {
   readonly group: Group;
+  /**
+   * Whether these markers still draw this campaign, so they can be kept
+   * (R-69, D-290).
+   *
+   * A marker depends on its place and on the height of the cell under it, and
+   * on nothing else — so painting a coastline leaves every marker exactly
+   * where it was. The stage used to rebuild them on **every accepted intent**
+   * regardless, which tore each caption out of the document and put a fresh
+   * one back: eleven times in one brush stroke, which is what a GM sees as a
+   * name that blinks and shifts while they paint.
+   *
+   * A value check and not an identity one, because `places` is decoded fresh
+   * from the wire every message (the world has a cache, D-270; this does not).
+   * It is a handful of places and a string compare, against a rebuild of
+   * every marker's geometry.
+   */
+  matches(campaign: Campaign): boolean;
   /** Which place a picked object belongs to. */
   placeOf(object: object): string | null;
   /**
@@ -38,6 +55,20 @@ export interface PlaceMarkers {
   dispose(): void;
 }
 
+/**
+ * Everything a marker is drawn from, as one string.
+ *
+ * The cell's surface is in it because a marker stands on the ground: raise
+ * the land under a village and it has to come up with it.
+ */
+function signatureOf(campaign: Campaign): string {
+  return campaign.places.map((place) => [
+    place.id, place.name, place.markerId,
+    place.cell.cx, place.cell.cz, place.cell.x, place.cell.z,
+    surfaceAt(campaign, place.cell),
+  ].join(':')).join('|');
+}
+
 function geometryFor(part: MarkerPart): BufferGeometry {
   const [w, h, d] = part.size;
   switch (part.shape) {
@@ -49,6 +80,7 @@ function geometryFor(part: MarkerPart): BufferGeometry {
 }
 
 export function buildPlaceMarkers(campaign: Campaign): PlaceMarkers {
+  const signature = signatureOf(campaign);
   const group = new Group();
   const owners = new Map<object, string>();
   const captions: { readonly object: CSS2DObject; readonly placeId: string }[] = [];
@@ -95,6 +127,7 @@ export function buildPlaceMarkers(campaign: Campaign): PlaceMarkers {
 
   return {
     group,
+    matches: (next) => signatureOf(next) === signature,
     placeOf: (object) => owners.get(object) ?? null,
     captionAt(clientX, clientY) {
       if (!group.visible) return null;

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   CHUNK_SIZE, MAX_BRUSH, clampBrush, brushCells, brushCentreOffset, toGlobal, fromGlobal,
   paintArea, setHeightArea, raiseArea, emptyWorld, addChunk, chunkAt, columnAt,
+  WORLD_BRUSHES, stepBrush, BRUSHES,
 } from '@tt/domain';
 import type { SwatchId } from '@tt/domain';
 
@@ -24,7 +25,7 @@ describe('global coordinates round-trip', () => {
 
 describe('brush footprints', () => {
   it('covers size² cells', () => {
-    for (const n of [1, 2, 3]) expect(brushCells({ gx: 10, gz: 10 }, n)).toHaveLength(n * n);
+    for (const n of WORLD_BRUSHES) expect(brushCells({ gx: 10, gz: 10 }, n)).toHaveLength(n * n);
   });
 
   it('centres odd sizes on the anchor', () => {
@@ -34,25 +35,51 @@ describe('brush footprints', () => {
     );
   });
 
-  it('extends even sizes forward, since they have no centre cell', () => {
-    expect(brushCells({ gx: 5, gz: 5 }, 2).map(key).sort()).toEqual(['5,5', '5,6', '6,5', '6,6']);
+  it('offers only odd sizes, so every brush has a centre cell (D-291)', () => {
+    // The whole reason 2x2 went: it had to lean one way off the pointer.
+    expect(WORLD_BRUSHES.every((n) => n % 2 === 1)).toBe(true);
+    expect([...WORLD_BRUSHES]).toEqual([1, 3, 5]);
+    // The same three the map offers as flats, which is the point of it.
+    expect([...WORLD_BRUSHES]).toEqual(
+      BRUSHES.filter((brush) => brush.rise === 1).map((brush) => brush.span),
+    );
+  });
+
+  it('reaches five across at the widest', () => {
+    expect(brushCells({ gx: 5, gz: 5 }, 5)).toHaveLength(25);
+    expect(brushCells({ gx: 5, gz: 5 }, 5).map(key)).toContain('3,3');
+    expect(brushCells({ gx: 5, gz: 5 }, 5).map(key)).toContain('7,7');
   });
 
   it('always includes the anchor itself', () => {
-    for (const n of [1, 2, 3]) expect(brushCells({ gx: 9, gz: 9 }, n).map(key)).toContain('9,9');
+    for (const n of WORLD_BRUSHES) {
+      expect(brushCells({ gx: 9, gz: 9 }, n).map(key)).toContain('9,9');
+    }
   });
 
-  it('offsets the outline to match the cells it will edit', () => {
-    expect(brushCentreOffset(1)).toBe(0);
-    expect(brushCentreOffset(2)).toBe(0.5);
-    expect(brushCentreOffset(3)).toBe(0);
+  it('needs no outline offset at all now, and still asks for one', () => {
+    // Zero for every listed size, because every listed size is odd. The
+    // outline keeps reading it so an even brush could come back without the
+    // outline drifting half a cell off the cells that get painted.
+    for (const n of WORLD_BRUSHES) expect(brushCentreOffset(n), `${n}`).toBe(0);
   });
 
-  it('clamps out-of-range sizes rather than throwing', () => {
+  it('snaps anything else to the nearest size it offers', () => {
     expect(clampBrush(0)).toBe(1);
     expect(clampBrush(99)).toBe(MAX_BRUSH);
-    expect(clampBrush(2.4)).toBe(2);
+    expect(clampBrush(2)).toBe(1);     // a tie goes to the narrower
+    expect(clampBrush(2.4)).toBe(3);
+    expect(clampBrush(4)).toBe(3);
     expect(clampBrush(Number.NaN)).toBe(1);
+  });
+
+  it('steps through the sizes rather than counting, and stops at the ends', () => {
+    // `[` and `]`. Arithmetic on the number would land between them.
+    expect(stepBrush(1, 1)).toBe(3);
+    expect(stepBrush(3, 1)).toBe(5);
+    expect(stepBrush(5, 1)).toBe(5);
+    expect(stepBrush(5, -1)).toBe(3);
+    expect(stepBrush(1, -1)).toBe(1);
   });
 });
 

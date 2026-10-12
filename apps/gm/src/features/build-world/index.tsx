@@ -5,7 +5,7 @@
 // rather than reading a copy off the wire — which the renderer always did, and
 // which the panels had quietly not been doing (D-222).
 import {
-  DEFAULT_MATERIALS, DEFAULT_COVERS,
+  DEFAULT_MATERIALS, DEFAULT_COVERS, WORLD_BRUSHES,
   cutOf, difficultyOf, familyOf, cutIdIn, coverById,
 } from '@tt/domain';
 import type { CoverId, SwatchId } from '@tt/domain';
@@ -31,7 +31,6 @@ interface Props {
 const costOf = (difficulty: number | 'impassable') =>
   (difficulty === 'impassable' ? '✕' : `×${difficulty}`);
 
-const BRUSHES = [1, 2, 3] as const;
 /** Which tools lay something down over an area, and so take a brush. */
 const BRUSHED: readonly Tool[] = ['paint', 'cover', 'height'];
 
@@ -105,8 +104,8 @@ export function BuildWorldPanel({
         <div className="brush-group">
           <span className="brush-lbl">Brush</span>
           <div className="btn-grid brush">
-            {BRUSHES.map((n) => (
-              <Tooltip key={n} label={`${n}×${n} cells — key ${n + 6}`} placement="bottom" stretch>
+            {WORLD_BRUSHES.map((n, i) => (
+              <Tooltip key={n} label={`${n}×${n} cells — key ${i + 7}`} placement="bottom" stretch>
                 <button className={brush === n ? 'on' : ''} onClick={() => onBrush(n)} aria-pressed={brush === n}>
                   {n}×{n}
                 </button>
