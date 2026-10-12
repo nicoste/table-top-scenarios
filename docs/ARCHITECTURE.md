@@ -2594,6 +2594,28 @@ apps/host/src/
 > GM builds by parts. Two strokes is what two axes cost, and the cost is the
 > point.
 
+> **R-195.** **A cover earns its id by costing something; what it looks like
+> is free.**
+>
+> Every cover's difficulty is **above one**. A cover that changes nothing
+> about crossing a cell is scenery, and scenery does not earn a permanent id
+> under R-11 — what a cell looks like is already the ground's job, and grain
+> and figures vary that for nothing.
+>
+> **Several covers may share a cost, and that is the point.** Trees, pines,
+> palms and dead trees are all ×1.5: a wood is a wood, and what makes one slow
+> is the trunks. They exist as four because a GM building a coast, a taiga, an
+> oasis and a blighted march needs four *looks* — and once a cover is paying
+> its way, another silhouette at the same price costs nothing but a few boxes.
+>
+> It follows that **the silhouette is what has to differ**, not the colour. A
+> cone of one green beside a cone of another green is two conifers whatever
+> the registry calls them.
+>
+> This is the test for every cover anybody proposes: *does a party cross this
+> cell differently?* If no, it is a figure on the ground (R-177) or a cut of a
+> material (R-176), not a cover.
+
 > **R-194.** **A cover is made of swatches, never of colours.**
 >
 > A tree is a Wood·oak trunk under a Vegetation·leaves canopy; a pine is

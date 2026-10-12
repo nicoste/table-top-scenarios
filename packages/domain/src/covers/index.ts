@@ -33,6 +33,14 @@ import type { PartShape } from '../markers/index.js';
 export interface CoverPart {
   readonly shape: PartShape;
   /**
+   * How far this part is turned about its own axis, in radians.
+   *
+   * Added on top of the clump's own turn, and it does **not** move the part —
+   * it spins where it stands. A palm's fronds are three planks at sixty
+   * degrees to each other, which is one number each and no new shape.
+   */
+  readonly turn?: number;
+  /**
    * Which object of the cover this belongs to, counted from zero.
    *
    * Parts of one clump wander, turn and resize together, so a trunk keeps its
@@ -58,6 +66,10 @@ export interface Cover {
    * trees 1.5 = 2.25, so sixty-five combinations fall out of thirteen numbers
    * and nobody hand-authors a table.
    *
+   * **Always above one** (R-195). A cover that costs nothing is scenery, and
+   * scenery does not earn a permanent id — what a cell looks like is already
+   * the ground's job, and the grain and the figures vary that for free.
+   *
    * Never `impassable`. What a party cannot cross at all is a property of the
    * ground — an ocean, a lava field — and a cover standing on passable ground
    * has never been the thing that stops them.
@@ -69,6 +81,7 @@ export interface Cover {
 const s = (value: string) => value as SwatchId;
 
 const OAK = s('material:wood');
+const BIRCH = s('material:wood/birch');
 const DARK_OAK = s('material:wood/dark-oak');
 const LEAVES = s('material:vegetation');
 const DARK_LEAVES = s('material:vegetation/dark');
@@ -82,7 +95,8 @@ type Spot = readonly [number, number];
 
 const box = (
   clump: number, at: CoverPart['at'], size: CoverPart['size'], swatch: SwatchId,
-): CoverPart => ({ shape: 'box', clump, at, size, swatch });
+  turn = 0,
+): CoverPart => ({ shape: 'box', clump, at, size, swatch, turn });
 const cone = (
   clump: number, at: CoverPart['at'], size: CoverPart['size'], swatch: SwatchId,
 ): CoverPart => ({ shape: 'cone', clump, at, size, swatch });
@@ -102,6 +116,34 @@ const broadleaf = (clump: number, [x, z]: Spot, trunk: SwatchId, crown: SwatchId
   cyl(clump, [x, 0.08, z], [0.032, 0.16, 0.032], trunk),
   box(clump, [x, 0.21, z], [0.21, 0.13, 0.21], crown),
   box(clump, [x, 0.32, z], [0.14, 0.1, 0.14], crown),
+];
+
+/**
+ * A palm: a bare trunk with **three planks in a helix** at the top.
+ *
+ * Each frond is one plank, sixty degrees and a hair higher than the last, so
+ * the thing reads as a propeller from the god camera that is the only view
+ * this world is seen from. No new shape and no droop — a drooping frond needs
+ * a second angle on every part to buy one tree.
+ */
+const palm = (clump: number, [x, z]: Spot, trunk: SwatchId, frond: SwatchId) => [
+  cyl(clump, [x, 0.15, z], [0.026, 0.3, 0.026], trunk),
+  box(clump, [x, 0.3, z], [0.26, 0.02, 0.07], frond, 0),
+  box(clump, [x, 0.325, z], [0.26, 0.02, 0.07], frond, Math.PI / 3),
+  box(clump, [x, 0.35, z], [0.26, 0.02, 0.07], frond, (Math.PI * 2) / 3),
+];
+
+/**
+ * A dead tree: a trunk and two bare limbs, and **no crown at all**.
+ *
+ * The absence is the whole silhouette. Every other wooded cover is a trunk
+ * under something; this one is the trunk on its own, which reads as blight
+ * from any distance at which it reads as anything.
+ */
+const deadwood = (clump: number, [x, z]: Spot, trunk: SwatchId) => [
+  cyl(clump, [x, 0.17, z], [0.028, 0.34, 0.028], trunk),
+  box(clump, [x, 0.25, z], [0.17, 0.024, 0.024], trunk, 0.4),
+  box(clump, [x, 0.31, z], [0.13, 0.02, 0.02], trunk, 2.2),
 ];
 
 /** A conifer: taller, narrower, and a single cone, which is what says so. */
@@ -164,6 +206,25 @@ export const DEFAULT_COVERS: readonly Cover[] = [
   cover('boulders', 'Boulders', 1.5, [
     box(0, [LEFT[0], 0.09, LEFT[1]], [0.22, 0.18, 0.2], ROCK),
     box(1, [RIGHT[0], 0.06, RIGHT[1]], [0.15, 0.12, 0.14], DARK_ROCK),
+  ]),
+
+  /*
+   * Appended, not slotted in beside the other trees, because this list is
+   * append-only and the panel reads it in order (R-11). Order here is only
+   * presentational — nothing stores an index — but a registry that is
+   * append-only except when the order looks untidy is not append-only.
+   */
+
+  // Jungle and oasis out of one entry, which is why a palm earns its place
+  // where a jungle of its own would not: what makes a jungle slow is the
+  // trees, and a palm is a tree. The ground under it says which one it is.
+  cover('palms', 'Palms', 1.5, [
+    ...palm(0, LEFT, BIRCH, LIGHT_LEAVES),
+    ...palm(1, RIGHT, BIRCH, LIGHT_LEAVES),
+  ]),
+  cover('deadwood', 'Dead trees', 1.5, [
+    ...deadwood(0, LEFT, DARK_OAK),
+    ...deadwood(1, RIGHT, DARK_OAK),
   ]),
 ];
 

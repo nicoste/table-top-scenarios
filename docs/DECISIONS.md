@@ -6590,3 +6590,58 @@ ground & cover. And the world borrows the map's icons — `✏` for Ground, `♟
 for Travel — because the same action should be the same picture on both
 surfaces. The digits follow the panel's own order, so the keyboard hint moved
 from "1–5 tool · 6/7/8 brush" to "1–6 · 7/8/9".
+
+### D-286 — Palms and dead trees, and the test every cover has to pass · `agreed`
+The GM's answer to the list of covers I proposed, and it came with a rule
+worth more than the two entries: *"any cover we add should be there only if it
+creates more difficulty, then having a pine, a normal tree or a palm is just
+for the look."*
+
+**R-195.** A cover's difficulty is above one or it does not exist. That
+settles the open half of the list in one line — ruins and cactus were on it
+because they would look good somewhere, which is not a reason for a permanent
+id. It also settles the other half: a palm costs exactly what a pine costs,
+and the four wooded covers sharing ×1.5 is not a redundancy to clean up. Cost
+is the axis; look is free once the cost is paid.
+
+**No density.** *"Density will not be a thing, I believe is adding too much.
+Toppings are already adding difficulty to a plain terrain, enough for a world
+builder of this detail level."* The two-axis argument does not recurse — it
+was right for ground × cover and would be a third axis here for a distinction
+a GM at 1.5 km a cell cannot see. The question is closed, not deferred.
+
+**No jungle cover either**, because palms cover it: *"palms can be reused in
+the jungle biome or in the desert."* Which is the two-axis design paying out
+again — the ground says whether sand or dark undergrowth is underneath, so
+one entry is an oasis in one cell and a jungle in the next.
+
+**Palms are a trunk and three planks in a helix**, the GM's own shape. That
+needed one new thing in the vocabulary: `CoverPart.turn`, a rotation about the
+part's own axis, added on top of the clump's. Three planks at sixty degrees
+and a hair apart in height is a propeller from the god camera, which is the
+only camera this world has. No droop — a drooping frond wants a second angle
+on every part in the project to buy one tree.
+
+**Dead trees are the absence of a crown.** Every other wooded cover is a trunk
+under something; this is the trunk alone with two bare limbs, which reads as
+blight at any distance at which it reads as anything.
+
+**Two things the tests caught.**
+
+- The "no two wooded covers share a silhouette" check failed on its first run,
+  comparing shape names: a dead tree is a cylinder and two boxes, and so is a
+  broadleaf. That was the test being a crude proxy rather than a real
+  collision — what separates them is that one pair of boxes is a wide green
+  crown and the other is two brown sticks — so the check now compares shape
+  **and size**.
+- The "stays inside its cell" check was measuring extent per axis, which a
+  turned part makes meaningless: a plank 0.26 long and 0.07 wide swings its
+  length into z at sixty degrees. It measures the bounding circle now. The
+  palms passed either way, but only by luck.
+
+**Appended, not slotted in beside the other trees.** The panel reads the
+registry in order, so the wooded covers are no longer adjacent in the list.
+Order here is purely presentational — nothing stores an index — but a registry
+that is append-only except when the order looks untidy is not append-only
+(R-11). Grouping them is a sort in the panel if it ever matters, not a
+reorder here.

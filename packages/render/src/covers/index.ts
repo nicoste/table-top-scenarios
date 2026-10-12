@@ -220,7 +220,9 @@ export function buildCovers(campaign: Campaign): CoverField {
             at.y + oy * at.scale,
             at.z + oz * at.scale,
           );
-          pose.rotation.set(0, at.yaw, 0);
+          // The clump's turn and the part's own, which is what splays a
+          // palm's fronds without a shape for a frond.
+          pose.rotation.set(0, at.yaw + (part.turn ?? 0), 0);
           pose.scale.setScalar(at.scale);
           pose.updateMatrix();
           mesh.setMatrixAt(index, pose.matrix);

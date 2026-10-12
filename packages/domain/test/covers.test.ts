@@ -48,13 +48,23 @@ describe('the cover registry (R-193, R-11)', () => {
     }
   });
 
-  it('keeps every cover a plain multiplier above one', () => {
-    // Below one would mean something growing on ground makes it *easier* to
-    // cross, and `impassable` belongs to the ground (R-193).
+  it('makes every cover cost something, because that is what earns the id (R-195)', () => {
+    // A cover at exactly 1 is scenery, and scenery does not get a permanent
+    // id: what a cell *looks* like is the ground's job already. Several
+    // covers may share a cost — a pine, an oak and a palm are one price and
+    // three climates — but none of them may be free.
     for (const cover of DEFAULT_COVERS) {
       expect(Number.isFinite(cover.difficulty), cover.name).toBe(true);
-      expect(cover.difficulty, cover.name).toBeGreaterThanOrEqual(1);
+      expect(cover.difficulty, cover.name).toBeGreaterThan(1);
     }
+  });
+
+  it('lets covers share a cost, which is how look and cost stay separate', () => {
+    // The evidence that R-195 is about earning an id and not about being
+    // unique: the wooded ones are all one price.
+    const wooded = ['Trees', 'Pines', 'Palms', 'Dead trees']
+      .map((name) => DEFAULT_COVERS.find((c) => c.name === name)!);
+    expect(wooded.every((c) => c?.difficulty === 1.5)).toBe(true);
   });
 
   it('is two of a thing, never one (R-194)', () => {
@@ -85,25 +95,48 @@ describe('the cover registry (R-193, R-11)', () => {
     const BIGGEST = 1.2;
     for (const cover of DEFAULT_COVERS) {
       for (const part of cover.parts) {
-        const reach = Math.max(part.size[0], part.size[2]);
-        // A cone and a cylinder take a radius; a box takes full extents.
-        const half = part.shape === 'box' ? reach / 2 : reach;
-        for (const axis of [0, 2] as const) {
-          const edge = (Math.abs(part.at[axis]) + half) * BIGGEST + WANDER;
-          expect(edge, `${cover.name} ${part.shape} on axis ${axis}`).toBeLessThan(0.5);
-        }
+        /*
+         * The bounding *circle*, not the extent along each axis. A part may
+         * be turned about its own axis — a palm's fronds are — and a plank
+         * 0.26 long and 0.07 wide swings its length into z at sixty degrees.
+         * Measuring per axis would have passed that and let a frond lap into
+         * the cell next door.
+         */
+        const reach = part.shape === 'box'
+          ? Math.hypot(part.size[0] / 2, part.size[2] / 2)
+          : Math.max(part.size[0], part.size[2]);
+        const from = Math.hypot(part.at[0], part.at[2]);
+        const edge = (from + reach) * BIGGEST + WANDER;
+        expect(edge, `${cover.name} ${part.shape}`).toBeLessThan(0.5);
       }
     }
   });
 
-  it('tells a broadleaf from a conifer by its shape, not its colour', () => {
-    // Two cones of two greens is two conifers. The trees are stacked boxes
-    // and the pines are a cone, which is what reads at a glance (D-285).
-    const trees = coverById(DEFAULT_COVERS, TREES)!;
-    const pines = coverById(DEFAULT_COVERS, 'cover:pines' as CoverId)!;
-    expect(trees.parts.some((part) => part.shape === 'cone')).toBe(false);
-    expect(trees.parts.filter((part) => part.shape === 'box').length).toBe(4);
-    expect(pines.parts.filter((part) => part.shape === 'cone').length).toBe(2);
+  it('tells the wooded covers apart by shape, not by colour (D-286)', () => {
+    // Four covers at one price, so the silhouette is the only thing carrying
+    // the difference: stacked boxes, a cone, a helix of planks, and a trunk
+    // with nothing on top at all.
+    const of = (id: string) => coverById(DEFAULT_COVERS, id as CoverId)!;
+    /*
+     * Shape *and* size. Shape alone is too crude a proxy and said so: a dead
+     * tree's two limbs are a cylinder and two boxes, and so is a broadleaf's
+     * trunk and crown. What separates them is that one pair of boxes is wide
+     * and the other is a pair of sticks.
+     */
+    const silhouette = (id: string) => of(id).parts
+      .map((part) => `${part.shape}:${part.size.map((n) => n.toFixed(2)).join('x')}`)
+      .join(',');
+
+    expect(of(TREES).parts.some((part) => part.shape === 'cone')).toBe(false);
+    expect(of('cover:pines').parts.filter((part) => part.shape === 'cone').length).toBe(2);
+    // The palm's fronds are turned and the dead tree's limbs are, which is
+    // the whole of what `turn` buys.
+    expect(of('cover:palms').parts.filter((part) => part.turn).length).toBe(4);
+    expect(of('cover:deadwood').parts.every((part) => part.shape !== 'cone')).toBe(true);
+
+    const wooded = ['cover:trees', 'cover:pines', 'cover:palms', 'cover:deadwood'];
+    expect(new Set(wooded.map(silhouette)).size, 'two wooded covers share a silhouette')
+      .toBe(wooded.length);
   });
 
   it('stands everything at or above the ground it is planted on', () => {
