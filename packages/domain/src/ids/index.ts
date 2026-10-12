@@ -13,6 +13,8 @@ export type PoiId = Brand<string, 'PoiId'>;
 export type PlaneId = Brand<string, 'PlaneId'>;
 export type MarkerId = Brand<string, 'MarkerId'>;
 export type MaterialId = Brand<string, 'MaterialId'>;
+/** What stands on a world cell (D-280): `cover:trees`. */
+export type CoverId = Brand<string, 'CoverId'>;
 /**
  * A material in one of its shades (R-176) — `material:stone`, or
  * `material:stone/dark`. What a cube actually holds.
@@ -23,7 +25,7 @@ export type MaterialId = Brand<string, 'MaterialId'>;
  */
 export type SwatchId = Brand<string, 'SwatchId'>;
 
-/** Registry ids are namespaced strings: `terrain:swamp`, never an index (R-11). */
+/** Registry ids are namespaced strings: `cover:trees`, never an index (R-11). */
 const REGISTRY_ID = /^[a-z][a-z0-9]*:[a-z0-9]+(-[a-z0-9]+)*$/;
 
 export function isRegistryId(value: string): boolean {

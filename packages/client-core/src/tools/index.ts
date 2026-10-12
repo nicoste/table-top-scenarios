@@ -31,6 +31,7 @@ export type ClickAction =
   | { readonly kind: 'pickPawn'; readonly pawn: { readonly memberId: string | null } }
   | { readonly kind: 'placePoi'; readonly cell: Cell }
   | { readonly kind: 'paint'; readonly cell: Cell }
+  | { readonly kind: 'cover'; readonly cell: Cell }
   | { readonly kind: 'raise'; readonly cell: Cell };
 
 const nothing: ClickAction = { kind: 'nothing' };
@@ -86,6 +87,11 @@ export function clickAction(tool: Tool, pointed: Pointed, context: Context): Cli
 
     case 'paint':
       return pointed.cell ? { kind: 'paint', cell: pointed.cell } : nothing;
+
+    // The second axis, and the same gesture: covers are not pickable, so a
+    // click through a wood aims at the ground under it (R-193).
+    case 'cover':
+      return pointed.cell ? { kind: 'cover', cell: pointed.cell } : nothing;
 
     case 'height':
       return pointed.cell ? { kind: 'raise', cell: pointed.cell } : nothing;

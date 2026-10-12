@@ -3,7 +3,7 @@
 
 import { z } from 'zod';
 import type {
-  Campaign, Chunk, Column, World, PartyMember, SwatchId, Place, PlaceNote, MarkerId, Save,
+  Campaign, Chunk, Column, World, PartyMember, SwatchId, CoverId, Place, PlaceNote, MarkerId, Save,
   Placement, Inside, EncounterMap, LevelRange, Cells,
 } from '@tt/domain';
 import {
@@ -102,6 +102,18 @@ export const ChunkWireSchema = z.object({
   heightRuns: z.array(z.number().int().nonnegative()).optional(),
   heights: z.array(z.number().int().min(0)).optional(),
   terrain: z.array(GroundSchema).optional(),
+  /**
+   * What stands on each cell (R-193), packed the same way the ground is, with
+   * the empty string for a bare cell — which is most of them, so a chunk of
+   * forest is a handful of runs and a chunk of sea is one.
+   *
+   * **Both absent means no covers in this chunk**, which is the honest reading
+   * and also what every chunk written before D-280 says. No schema bump: the
+   * absence says what it means (D-187), and a world with nothing standing on
+   * it sends nothing rather than 900 empty strings.
+   */
+  coverPalette: z.array(z.string()).optional(),
+  coverRuns: z.array(z.number().int().nonnegative()).optional(),
 });
 export type ChunkWire = z.infer<typeof ChunkWireSchema>;
 
@@ -363,6 +375,16 @@ export function encodeChunk(chunk: Chunk): ChunkWire {
     terrainRuns: packRuns(chunk.columns.map((c) => indexOf.get(c.ground as string)!)),
     heightRuns: packRuns(chunk.columns.map((c) => c.height)),
   };
+  // Only when there is something to say. A world with nothing growing on it —
+  // which is every world until a GM plants one — sends no cover arrays at all.
+  if (chunk.columns.some((c) => c.cover)) {
+    const covers = [...new Set(chunk.columns.map((c) => (c.cover ?? '') as string))].sort();
+    const coverIndex = new Map(covers.map((id, i) => [id, i]));
+    made.coverPalette = covers;
+    made.coverRuns = packRuns(
+      chunk.columns.map((c) => coverIndex.get((c.cover ?? '') as string)!),
+    );
+  }
   packedChunks.set(chunk, made);
   return made;
 }
@@ -406,6 +428,12 @@ export function parseMarkerId(value: string): MarkerId {
  * a world should not cost the campaign, and water is what an unauthored one
  * already is (R-78).
  */
+/** A wire string as a cover id, or null for a bare cell (R-193). */
+export function parseCover(value: string | undefined): CoverId | null {
+  if (!value || !value.startsWith('cover:')) return null;
+  return value as CoverId;
+}
+
 export function parseGround(value: string): SwatchId {
   if (value.startsWith('terrain:')) return GROUND_FROM_TERRAIN[value] ?? OPEN_WATER;
   return value.startsWith('material:') ? (value as SwatchId) : OPEN_WATER;
@@ -620,14 +648,21 @@ export function decodeChunk(wire: ChunkWire): Chunk {
   const terrain = wire.terrainRuns
     ? (unpackRuns(wire.terrainRuns, cells) ?? []).map((i) => wire.palette?.[i] ?? '')
     : wire.terrain ?? [];
+  const covers = wire.coverRuns
+    ? (unpackRuns(wire.coverRuns, cells) ?? []).map((i) => wire.coverPalette?.[i] ?? '')
+    : [];
   const columns: Column[] = [];
   for (let z = 0; z < CHUNK_SIZE; z++) {
     for (let x = 0; x < CHUNK_SIZE; x++) {
       const inside = x < stride && z < stride;
       const source = inside ? z * stride + x : -1;
+      const cover = source >= 0 ? parseCover(covers[source]) : null;
       columns.push({
         height: source >= 0 ? (heights[source] ?? 0) : 0,
         ground: parseGround(source >= 0 ? (terrain[source] ?? '') : ''),
+        // Spread rather than `cover: cover ?? undefined`: a bare cell has no
+        // key at all, so it is one shape however it was written (R-137a).
+        ...(cover ? { cover } : {}),
       });
     }
   }

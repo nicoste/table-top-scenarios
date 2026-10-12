@@ -6492,3 +6492,45 @@ behind it.
 **The figure switch had to be reapplied on rebuild**, the same trap the blocks
 hit (D-244): a rebuilt world is new materials, and new materials come up with
 the figure on regardless of what the diagnostics toggle says.
+
+### D-284 — Covers: the world's second axis, built · `agreed`
+The last piece of the world round (D-280), and the one the whole two-axis
+design was for. R-193 and R-194 are new.
+
+**Four covers, not a dozen biomes.** Trees, pines, scrub and boulders, each a
+couple of primitives made of swatches. Against nine ground families that is
+sixty-odd combinations from thirteen permanent ids — and adding boulders gave
+badlands *and* dunes without either being an entry.
+
+**Fourteen biome presets, and they are not entities.** "Taiga" loads
+Soil·snow and pines into the two brushes; the cell stores those two and has
+never heard of taiga. The list is free to be renamed, retuned or deleted in a
+way the twelve-entry terrain palette it replaces never was, because nothing
+references it. The test that earns its keep is the one asserting taiga and
+tundra share a ground and differ only in cover: neither entry was added for
+either name.
+
+**Two tools.** The GM left this open — *"2 tools grant us the chance to
+customize more, 1 tool simplifies"* — and D-280 picked two. Built that way:
+each brush edits one axis and neither disturbs the other, so repainting a
+forest's floor to snow gives a taiga rather than a clearing. **What is not yet
+answered is the stroke count**: a preset loads both brushes in one click, but
+painting a forest is still two strokes over the same ground. Worth revisiting
+with the GM; the fix is small either way, and nothing about the stored shape
+would change.
+
+**What the tests caught.** The "every part is a swatch the registry knows"
+check failed on its first run: `material:mineral/grey-rock` is Mineral's
+*default* cut, and R-176 refuses the default spelled out. That is precisely
+the silent failure the test was written for — a cover part with a bad swatch
+has no colour to be obviously wrong in, it simply draws nothing.
+
+**Costs, all small.** Two meshes per cover kind however many are planted. The
+wire sends a second palette and run stream, and only for chunks that have
+something growing in them — a bare world sends nothing, which is also what
+every chunk written before this says (D-187). No schema bump.
+
+**Not decided, deliberately.** Covers do not fade out when the camera pulls
+back. At the world's opening zoom they are already a couple of pixels and read
+as a tint on the ground, which is the right answer for free; a zoom gate like
+the markers' (R-83) can be added if the tint turns out to be noise.

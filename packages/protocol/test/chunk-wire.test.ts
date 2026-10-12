@@ -7,9 +7,10 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-  createCampaign, addChunk, ORIGIN, chunkAt, columnAt, setHeight, paintArea,
+  createCampaign, addChunk, ORIGIN, chunkAt, columnAt, setHeight, paintArea, paintCover,
   replaceChunk, CHUNK_SIZE,
 } from '@tt/domain';
+import type { CoverId } from '@tt/domain';
 import { encodeChunk, decodeChunk, encodeWorld, decodeWorld } from '@tt/protocol';
 
 const campaign = () => createCampaign('Ashfall');
@@ -115,5 +116,55 @@ describe('a chunk is packed once per version of it (R-165, D-220)', () => {
     const raised = replaceChunk(base.world, setHeight(chunkAt(base.world, ORIGIN)!, 1, 1, 8));
     expect(columnAt(chunkAt(decodeWorld(encodeWorld(raised)), ORIGIN)!, 1, 1)?.height).toBe(8);
     expect(columnAt(chunkAt(decodeWorld(encodeWorld(base.world)), ORIGIN)!, 1, 1)?.height).toBe(0);
+  });
+});
+
+describe('what stands on a cell travels with it (R-193)', () => {
+  const TREES = 'cover:trees' as CoverId;
+  const PINES = 'cover:pines' as CoverId;
+
+  it('says nothing at all about a chunk with nothing growing on it', () => {
+    // The absence is the message (D-187). A bare world would otherwise send
+    // 900 empty strings per chunk to say "no trees here".
+    const wire = encodeChunk(chunkAt(campaign().world, ORIGIN)!);
+    expect(wire.coverPalette).toBeUndefined();
+    expect(wire.coverRuns).toBeUndefined();
+  });
+
+  it('brings back every cover, and every bare cell as bare', () => {
+    let chunk = chunkAt(campaign().world, ORIGIN)!;
+    chunk = paintCover(chunk, 3, 3, TREES);
+    chunk = paintCover(chunk, 4, 3, TREES);
+    chunk = paintCover(chunk, 9, 9, PINES);
+    const back = decodeChunk(encodeChunk(chunk));
+    expect(columnAt(back, 3, 3)?.cover).toBe(TREES);
+    expect(columnAt(back, 4, 3)?.cover).toBe(TREES);
+    expect(columnAt(back, 9, 9)?.cover).toBe(PINES);
+    // Not `undefined` by accident: the key must be absent, so a bare cell is
+    // one shape wherever it came from.
+    expect('cover' in columnAt(back, 0, 0)!).toBe(false);
+  });
+
+  it('packs a forest into runs rather than a cover per cell', () => {
+    let chunk = chunkAt(campaign().world, ORIGIN)!;
+    for (let x = 0; x < CHUNK_SIZE; x += 1) chunk = paintCover(chunk, x, 0, TREES);
+    const wire = encodeChunk(chunk);
+    // One run of trees and one of bare, as pairs: far short of 900 entries.
+    expect(wire.coverRuns!.length).toBeLessThan(10);
+    expect(wire.coverPalette).toEqual(['', 'cover:trees']);
+  });
+
+  it('reads a chunk written before covers existed', () => {
+    // Which is every chunk on disk right now (R-137a).
+    const wire = encodeChunk(chunkAt(campaign().world, ORIGIN)!);
+    const back = decodeChunk({ ...wire, coverPalette: undefined, coverRuns: undefined });
+    expect(back.columns.every((c) => c.cover === undefined)).toBe(true);
+  });
+
+  it('drops a cover id it cannot read rather than losing the column', () => {
+    const wire = encodeChunk(paintCover(chunkAt(campaign().world, ORIGIN)!, 2, 2, TREES));
+    const back = decodeChunk({ ...wire, coverPalette: ['', 'not an id'] });
+    expect(columnAt(back, 2, 2)?.cover).toBeUndefined();
+    expect(columnAt(back, 2, 2)?.ground).toBe('material:liquid');
   });
 });

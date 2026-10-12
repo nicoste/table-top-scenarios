@@ -105,6 +105,37 @@ describe('the two tools (R-88, R-89)', () => {
     expect(result.rejected).toMatch(/unknown ground/);
   });
 
+  it('plants a cover, and clears one with null', () => {
+    let state = withCampaign();
+    const at = { cx: ORIGIN.cx, cz: ORIGIN.cz, x: 3, z: 3 };
+    state = run(state, { kind: 'paintCover', ...at, cover: 'cover:trees' }).state;
+    expect(columnAt(chunkAt(state.active!.world, ORIGIN)!, 3, 3)?.cover).toBe('cover:trees');
+    // Null is the eraser, and is always allowed (R-193).
+    const cleared = run(state, { kind: 'paintCover', ...at, cover: null });
+    expect(cleared.rejected).toBeUndefined();
+    expect(columnAt(chunkAt(cleared.state.active!.world, ORIGIN)!, 3, 3)?.cover).toBeUndefined();
+  });
+
+  it('rejects a cover that is not in the registry', () => {
+    const state = withCampaign();
+    const result = run(state, {
+      kind: 'paintCover', cx: ORIGIN.cx, cz: ORIGIN.cz, x: 3, z: 3, cover: 'cover:beanstalk',
+    });
+    expect(result.rejected).toMatch(/unknown cover/);
+  });
+
+  it('leaves the ground alone when it plants, and the cover alone when it paints', () => {
+    // The whole point of two axes: a GM repainting a forest's floor to snow
+    // gets a taiga, not a clearing (D-280).
+    let state = withCampaign();
+    const at = { cx: ORIGIN.cx, cz: ORIGIN.cz, x: 5, z: 5 };
+    state = run(state, { kind: 'paintCover', ...at, cover: 'cover:pines' }).state;
+    state = run(state, { kind: 'paintGround', ...at, ground: 'material:soil/snow' }).state;
+    const column = columnAt(chunkAt(state.active!.world, ORIGIN)!, 5, 5);
+    expect(column?.ground).toBe('material:soil/snow');
+    expect(column?.cover).toBe('cover:pines');
+  });
+
   it('raises and lowers, clamping at sea level', () => {
     let state = withCampaign();
     state = run(state, { kind: 'raiseHeight', cx: ORIGIN.cx, cz: ORIGIN.cz, x: 1, z: 1, delta: 3 }).state;

@@ -39,6 +39,13 @@ export const IntentSchema = z.discriminatedUnion('kind', [
 
   z.object({ kind: z.literal('addChunk'), cx: z.number().int(), cz: z.number().int() }),
   z.object({ kind: z.literal('paintGround'), ...cell, ground: GroundSchema, size, stroke }),
+  /* `cover: null` is the eraser, and is why this is nullable rather than
+     optional: absent would be indistinguishable from a malformed intent. */
+  z.object({
+    kind: z.literal('paintCover'), ...cell,
+    cover: z.string().regex(/^cover:[a-z0-9]+(-[a-z0-9]+)*$/).nullable(),
+    size, stroke,
+  }),
   z.object({ kind: z.literal('setHeight'), ...cell, height: z.number().int().min(0).max(MAX_HEIGHT), size, stroke }),
   z.object({ kind: z.literal('raiseHeight'), ...cell, delta: z.number().int().min(-MAX_HEIGHT).max(MAX_HEIGHT), size, stroke }),
 

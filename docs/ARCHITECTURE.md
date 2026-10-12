@@ -2550,6 +2550,73 @@ apps/host/src/
 >
 > A family always has at least one cut, and the first is its default.
 
+> **R-193.** **A world cell has two axes: what it is made of, and what stands
+> on it.**
+>
+> ```ts
+> Column { height, ground: SwatchId, cover?: CoverId, difficulty? }
+> ```
+>
+> **There is no such thing as a forest.** Forest is grass with trees on it,
+> taiga is snow with pines, and a marsh is undergrowth with scrub. The GM
+> paints two axes and the biome is what comes out — which is why the registry
+> holds four covers rather than a dozen named landscapes, and why adding
+> boulders gave badlands and dunes in the same stroke.
+>
+> **Enumerating biomes would repeat the mistake D-245 undid.** Thirteen
+> materials whose identity was a colour held four near-duplicate pairs; a list
+> of Forest, Jungle, Taiga, Oasis and Scrub has the same shape, and every entry
+> on it is permanent under R-11 the moment a world references it. Nine grounds
+> and four covers is sixty-odd combinations from thirteen ids that each say one
+> thing.
+>
+> **A cover multiplies the ground's difficulty**, and cannot rescue it: grass 1
+> × trees 1.5 is a forest at 1.5, sand 1.5 × trees is 2.25, and `impassable`
+> stays impassable whatever is growing in it. Sixty-five costs and no
+> hand-authored table. A cell's own `difficulty` still wins outright and is
+> **not** multiplied — a GM who writes a number on a cell has said what
+> crossing it costs, and a road through a wood is the case.
+>
+> **One cover per cell** to begin with. A density — light scrub through to
+> dense jungle — is a later question and a second field when it comes.
+>
+> **Absent means bare**, and most cells are. The wire says nothing at all about
+> a chunk with nothing growing on it, which is also what every chunk written
+> before this says (D-187).
+>
+> **Two tools, not one.** The ground brush and the cover brush edit one axis
+> each and neither disturbs the other, so repainting a forest's floor to snow
+> gives a taiga rather than a clearing. **Biome presets** give the one click
+> back: "Forest" loads both brushes at once. A preset is a shortcut and not an
+> entity — a cell stores a ground and a cover, never "Forest" — so that list
+> may be renamed, retuned or deleted freely and R-11 never touches it.
+
+> **R-194.** **A cover is made of swatches, never of colours.**
+>
+> A tree is a Wood·oak trunk under a Vegetation·leaves canopy; a pine is
+> Wood·dark-oak and Vegetation·dark. Retune the Vegetation family and every
+> forest on every world follows, along with every leaf in every building.
+>
+> This is R-173's rule one level down and it is the same argument: no substance
+> is described twice anywhere, because the second description is the one that
+> goes stale. Place markers (R-82) predate the materials registry and still
+> carry literal colours; covers do not get that excuse.
+>
+> **It costs nothing.** A part is a fixed shape in a fixed material, so every
+> oak trunk in the world is one `InstancedMesh` and every canopy above them is
+> another — eight draw calls for however many trees a GM plants.
+>
+> **Placement is derived, never stored** (D-280). Where a cover stands inside
+> its cell, which way it faces and how big it is come from a hash of the cell's
+> coordinate, the same way grain does (R-172): two forest cells differ without
+> a byte on disk, and the same cell looks the same for the life of the
+> campaign.
+>
+> **A cover is scenery and is never picked.** It stands on a cell and the cell
+> is always what a click means, so nothing raycasts it and a tool aiming
+> through a wood lands on the ground beneath. A marker needed `intendedCell`
+> for this (D-163); a cover needs only to stay out of the way.
+
 > **R-192.** **How hard a surface is to cross belongs to the surface.**
 >
 > A family carries a difficulty and a cut may override it. There is no second

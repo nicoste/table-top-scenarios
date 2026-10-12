@@ -6,7 +6,7 @@ export {
   isRegistryId, registryId, freshId,
 } from './ids/index.js';
 export type {
-  CampaignId, SaveId, MemberId, PlaceId, NoteId, PoiId, PlaneId, MarkerId, MaterialId,
+  CampaignId, SaveId, MemberId, PlaceId, CoverId, NoteId, PoiId, PlaneId, MarkerId, MaterialId,
   SwatchId,
 } from './ids/index.js';
 
@@ -17,10 +17,10 @@ export {
   DEFAULT_WORLD_BOUNDS, SEA_LEVEL_WATER, OPEN_WATER, GROUND_FROM_TERRAIN, centreOfBounds,
   chunkKey, parseChunkKey, createChunk, emptyWorld, inBounds, chunkAt, isAuthored,
   sameWorldCell, chunkOf, isValidWorldCell,
-  columnAt, paintGround, clampHeight, setHeight, raiseHeight,
+  columnAt, paintGround, paintCover, clampHeight, setHeight, raiseHeight,
   addChunk, replaceChunk, creatableSlots, isCreatableSlot, CHUNK_NEIGHBOURS,
   MAX_BRUSH, clampBrush, toGlobal, fromGlobal, brushCells, brushCentreOffset,
-  paintArea, setHeightArea, raiseArea,
+  paintArea, coverArea, setHeightArea, raiseArea,
 } from './world/index.js';
 
 export { packRuns, unpackRuns } from './runs/index.js';
@@ -32,7 +32,7 @@ export {
 
 export type { TravelMode, TravelModeId } from './travel/index.js';
 export {
-  DEFAULT_TRAVEL_MODES, DEFAULT_SLOPE_FACTOR, travelModeById, groundCost, isPassable,
+  DEFAULT_TRAVEL_MODES, DEFAULT_SLOPE_FACTOR, travelModeById, groundCost, cellCost, isPassable,
 } from './travel/index.js';
 
 export type { Marker, MarkerPart, PartShape } from './markers/index.js';
@@ -45,6 +45,12 @@ export {
   clampLighting, clampAmbience, sunDirection, shadowReach, hourLabel, bounceOf, litBy,
 } from './light/index.js';
 export type { Material, Cut, Difficulty } from './materials/index.js';
+export type { Cover, CoverPart } from './covers/index.js';
+export {
+  DEFAULT_COVERS, coverById, isKnownCover, overCover,
+} from './covers/index.js';
+export type { Biome } from './biomes/index.js';
+export { DEFAULT_BIOMES } from './biomes/index.js';
 export {
   DEFAULT_MATERIALS, DEFAULT_FLOOR, materialById, isKnownMaterial, requireMaterial,
   swatchOf, swatchFor, materialIn, cutIdIn, cutOf, colourOf, isKnownSwatch, difficultyOf,

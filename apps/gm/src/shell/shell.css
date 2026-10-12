@@ -106,6 +106,16 @@ button.quiet:hover { background: #3a2222; color: #ffc9c9; border-color: transpar
   color: var(--dim); font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em;
 }
 .brush { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+/*
+  Biome presets (D-280). Two columns like the tools, and the same small type:
+  fourteen of them in a 228px dock, and a name that wraps to two lines is
+  worse than one that is simply short.
+*/
+.biomes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.biomes button {
+  padding: 5px 4px; font-size: 11.5px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .brush button { padding: 6px 2px; font-size: 12px; }
 
 .reveal { display: flex; gap: 5px; }

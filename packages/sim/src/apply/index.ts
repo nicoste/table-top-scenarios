@@ -8,8 +8,8 @@ import type {
 } from '@tt/domain';
 import {
   createCampaign, duplicateCampaign, uniqueCampaignName, createMember, editMember, removeMember,
-  addChunk, chunkAt, isCreatableSlot,
-  toGlobal, paintArea, setHeightArea, raiseArea,
+  addChunk, chunkAt, isCreatableSlot, isKnownCover,
+  toGlobal, paintArea, coverArea, setHeightArea, raiseArea,
   addPlace, renamePlace, setPlaceMarker, movePlace, removePlace, placeById, placeAt, isValidPlaceCell,
   addNote, editNote, setNoteVisible, removeNote, moveNote, isKnownMarker,
   addPoi, renamePoi, setPoiVisible, removePoi, movePoi,
@@ -31,7 +31,7 @@ import {
   exploredIn, pruneExplored, lookAround, blockKey, forgetMap,
 } from '@tt/domain';
 import type { HostState, Intent, Role } from '@tt/protocol';
-import { parseGround, parseMarkerId } from '@tt/protocol';
+import { parseGround, parseCover, parseMarkerId } from '@tt/protocol';
 import { emptyHistory, remember, undone, redone } from '../history/index.js';
 
 /** Side effects `sim` asks the host to perform. It performs none itself. */
@@ -372,6 +372,19 @@ function applyToCampaign(state: HostState, role: Role, intent: Intent, now: stri
       // chunks that do not exist are skipped, never created.
       const at = toGlobal(anchorChunk, intent.x, intent.z);
       return commitWorld(paintArea(campaign.world, at, intent.size ?? 1, ground));
+    }
+
+    case 'paintCover': {
+      const anchorChunk = { cx: intent.cx, cz: intent.cz };
+      if (!chunkAt(campaign.world, anchorChunk)) return reject(state, 'that chunk does not exist');
+      // Null is the eraser and is always allowed; anything else has to be in
+      // the registry, the same guard a ground gets (R-193).
+      const cover = intent.cover === null ? null : parseCover(intent.cover);
+      if (intent.cover !== null && (!cover || !isKnownCover(cover))) {
+        return reject(state, `unknown cover: ${intent.cover}`);
+      }
+      const at = toGlobal(anchorChunk, intent.x, intent.z);
+      return commitWorld(coverArea(campaign.world, at, intent.size ?? 1, cover));
     }
 
     case 'setHeight':

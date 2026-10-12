@@ -27,6 +27,8 @@ import {
 } from '../camera/index.js';
 import { surfaceMove, showWorldMarkers } from '../surface/index.js';
 import type { ColumnAddress, WorldMeshes } from '../world/index.js';
+import type { CoverField } from '../covers/index.js';
+import { buildCovers } from '../covers/index.js';
 import { buildWorldMeshes, columnCentre, worldCentre, HEIGHT_SCALE } from '../world/index.js';
 import type { PlaceMarkers } from '../places/index.js';
 import { buildPlaceMarkers, MARKER_ZOOM } from '../places/index.js';
@@ -257,6 +259,7 @@ export class Stage {
   private gpuMs: number | null = null;
   private readonly slots = new Group();
   private world: WorldMeshes | null = null;
+  private covers: CoverField | null = null;
   private places: PlaceMarkers | null = null;
   private pawns: PartyPawns | null = null;
   /** Held because pawns are rebuilt on their own schedule, not the world's. */
@@ -522,6 +525,7 @@ export class Stage {
      */
     const sameWorld = campaign !== null && this.world !== null && campaign.world === this.campaign?.world;
     if (this.world && !sameWorld) { this.scene.remove(this.world.group); this.world.dispose(); this.world = null; }
+    if (this.covers && !sameWorld) { this.scene.remove(this.covers.group); this.covers.dispose(); this.covers = null; }
     if (this.places) { this.scene.remove(this.places.group); this.places.dispose(); this.places = null; }
     this.dropPawns();
     this.campaign = campaign;
@@ -545,6 +549,10 @@ export class Stage {
       // blocks reapply it (D-244).
       world.setFigures(this.figuring);
       this.scene.add(world.group);
+      // Its own group beside the columns, not inside them: covers are drawn
+      // and never picked, and the cell raycast is over the columns alone.
+      this.covers = buildCovers(campaign);
+      this.scene.add(this.covers.group);
       if (!this.showingMap) this.fitShadows(CHUNK_SIZE * 3, worldCentre(campaign.world));
     }
 
@@ -582,6 +590,7 @@ export class Stage {
   private applySurface(): void {
     const worldVisible = !this.showingMap;
     if (this.world) this.world.group.visible = worldVisible;
+    if (this.covers) this.covers.group.visible = worldVisible;
     if (this.places) this.places.group.visible = worldVisible;
     if (this.pawns) this.pawns.group.visible = worldVisible;
     this.slots.visible = worldVisible;

@@ -9,6 +9,8 @@ import { registryId } from '../ids/index.js';
 import type { SwatchId } from '../ids/index.js';
 import type { Difficulty } from '../materials/index.js';
 import { materialIn, cutIdIn, difficultyOf, familyOf } from '../materials/index.js';
+import type { Column } from '../world/index.js';
+import { DEFAULT_COVERS, coverById, overCover } from '../covers/index.js';
 
 export type TravelModeId = string & { readonly __travelMode: true };
 
@@ -99,4 +101,22 @@ export function groundCost(
 
 export function isPassable(cost: Difficulty): cost is number {
   return cost !== 'impassable' && Number.isFinite(cost) && cost > 0;
+}
+
+/**
+ * What one cell costs a party travelling this way: **both axes** (R-193).
+ *
+ * The ground says what it is made of and the cover says what is standing on
+ * it, and the second multiplies the first — grass 1 × trees 1.5 is a forest at
+ * 1.5, and sand 1.5 × trees 1.5 is 2.25, without a table of biomes anywhere.
+ *
+ * The cell's own `difficulty` still wins outright and is **not** multiplied:
+ * a GM who writes a number on a cell has said what crossing it costs, full
+ * stop. A road through a wood is the case, and multiplying their 0.75 by the
+ * trees they explicitly routed around would be arguing with them.
+ */
+export function cellCost(travelMode: TravelMode, column: Column): Difficulty {
+  if (column.difficulty !== undefined) return column.difficulty;
+  const ground = groundCost(travelMode, column.ground);
+  return overCover(ground, column.cover ? coverById(DEFAULT_COVERS, column.cover) : null);
 }

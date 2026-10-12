@@ -69,7 +69,7 @@ export function keepUnchanged<T>(previous: unknown, next: T): T {
  * inspect a place without risking creating another one — and no safe state to
  * return to after an action completes (D-127).
  */
-export type Tool = 'select' | 'paint' | 'height' | 'places' | 'travel';
+export type Tool = 'select' | 'paint' | 'cover' | 'height' | 'places' | 'travel';
 
 /**
  * Tools that exist only inside an encounter map (R-148).
@@ -87,10 +87,12 @@ export interface ViewState {
   readonly camera: CameraTarget;
   readonly tool: Tool;
   readonly ground: string;
+  /** What the cover brush is loaded with; null is the eraser (R-193). */
+  readonly cover: string | null;
   readonly hover: { cx: number; cz: number; x: number; z: number } | null;
   readonly panel: 'none' | 'party';
 }
 
 export function initialViewState(camera: CameraTarget): ViewState {
-  return { camera, tool: 'select', ground: 'material:grass', hover: null, panel: 'party' };
+  return { camera, tool: 'select', ground: 'material:grass', cover: 'cover:trees', hover: null, panel: 'party' };
 }

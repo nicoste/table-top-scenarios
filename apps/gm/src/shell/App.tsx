@@ -12,7 +12,7 @@ import {
   NO_TOKENS, tokensIn, onRoster, unplaced, tokensInBand, standsInBand, standingAt,
   NO_CELLS, shownBy,
 } from '@tt/domain';
-import type { SwatchId, Lighting, Ambience, MemberId, Tokens, BlockCoord } from '@tt/domain';
+import type { SwatchId, CoverId, Lighting, Ambience, MemberId, Tokens, BlockCoord } from '@tt/domain';
 import type { GmView, Intent } from '@tt/protocol';
 import { defaultTarget, worldCentre } from '@tt/render';
 import type { Standing, StageFog } from '@tt/render';
@@ -54,6 +54,8 @@ interface Props {
 export function App({ view, status, seat, rejection, dispatch }: Props) {
   const [tool, setTool] = useState<Tool>('select');
   const [ground, setGround] = useState<SwatchId>('material:grass' as SwatchId);
+  /** What the cover brush holds; null is the eraser (R-193). */
+  const [cover, setCover] = useState<CoverId | null>('cover:trees' as CoverId);
   const [hoverLabel, setHoverLabel] = useState<string | null>(null);
   const [brush, setBrush] = useState(1);
   const [markerId, setMarkerId] = useState('marker:village');
@@ -162,7 +164,13 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   const openedId = useRef<string | null>(null);
   const drag = useRef<{ startY: number; base: number; cell: { cx: number; cz: number; x: number; z: number } } | null>(null);
   const panning = useRef<{ x: number; y: number } | null>(null);
-  const painting = useRef<string | null>(null);
+  /**
+   * The stroke in progress: which cell it last touched, and which axis it is
+   * painting (R-193). Both tools drag identically — a cell under a stationary
+   * pointer stays where it is — so they share one gesture and differ only in
+   * the intent they send.
+   */
+  const painting = useRef<{ key: string; axis: 'ground' | 'cover' } | null>(null);
   /**
    * Ties one gesture's intents together for undo (D-170). Generated per
    * pointerdown; the host only ever compares it to the previous one, so any
@@ -776,8 +784,14 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       }
 
       case 'paint':
-        painting.current = cellKey(action.cell);
+        painting.current = { key: cellKey(action.cell), axis: 'ground' };
         dispatch({ kind: 'paintGround', ...action.cell, ground, size: brush, stroke: newStroke() });
+        e.currentTarget.setPointerCapture(e.pointerId);
+        return;
+
+      case 'cover':
+        painting.current = { key: cellKey(action.cell), axis: 'cover' };
+        dispatch({ kind: 'paintCover', ...action.cell, cover, size: brush, stroke: newStroke() });
         e.currentTarget.setPointerCapture(e.pointerId);
         return;
 
@@ -891,12 +905,13 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       if (picked.column) {
         const key = cellKey(picked.column);
         stage.showHighlight(picked.column, heightAt(picked.column), brush);
-        if (key !== painting.current) {
-          painting.current = key;
-          dispatch({
-            kind: 'paintGround', ...picked.column, ground, size: brush,
-            ...(stroke.current ? { stroke: stroke.current } : {}),
-          });
+        if (key !== painting.current.key) {
+          const tagged = stroke.current ? { stroke: stroke.current } : {};
+          const axis = painting.current.axis;
+          painting.current = { key, axis };
+          dispatch(axis === 'cover'
+            ? { kind: 'paintCover', ...picked.column, cover, size: brush, ...tagged }
+            : { kind: 'paintGround', ...picked.column, ground, size: brush, ...tagged });
         }
       }
       return;
@@ -1021,15 +1036,16 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
         switch (digit) {
           case '1': setTool('select'); return;
           case '2': setTool('paint'); return;
-          case '3': setTool('height'); return;
-          case '4': setTool('places'); return;
-          case '5': setTool('travel'); return;
-          // Brush moved down one when travel took 5, so the digits still run
-          // left-to-right through the tools and then the brushes. `[` and `]`
-          // are the primary brush keys anyway.
-          case '6': setBrush(1); return;
-          case '7': setBrush(2); return;
-          case '8': setBrush(3); return;
+          case '3': setTool('cover'); return;
+          case '4': setTool('height'); return;
+          case '5': setTool('places'); return;
+          case '6': setTool('travel'); return;
+          // The brushes follow the tools, so the digits still run
+          // left-to-right across the panel. `[` and `]` are the primary brush
+          // keys anyway, which is what makes shuffling these harmless.
+          case '7': setBrush(1); return;
+          case '8': setBrush(2); return;
+          case '9': setBrush(3); return;
           default: break;
         }
 
@@ -1224,12 +1240,14 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
           <BuildWorldPanel
               tool={tool}
               ground={ground}
+              cover={cover}
               brush={brush}
               // Mid-sequence the readout says what the click will do, since that
               // is more useful than the ground under the pointer (R-132).
               hoverLabel={travelPrompt(travel, memberName) ?? hoverLabel}
               onTool={setTool}
               onGround={setGround}
+              onCover={setCover}
               onBrush={setBrush}
             />
             {tool === 'places' && (

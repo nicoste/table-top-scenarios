@@ -10,7 +10,7 @@ export {
   CellsWireSchema, cellsWire, cellsFromWire,
   ChunkWireSchema, TerrainWireSchema, MemberWireSchema, WorldWireSchema, CampaignWireSchema,
   encodeChunk, encodeWorld, encodeCampaign, decodeChunk, decodeWorld, decodeCampaign,
-  parseGround,
+  parseGround, parseCover,
   mapWire,
 } from './wire/index.js';
 export type {

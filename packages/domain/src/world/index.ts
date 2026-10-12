@@ -3,7 +3,7 @@
 // Sparse at the chunk level (D-010) because an absent chunk *is* the unknown,
 // and dense inside a chunk because creating one fills all 400 cells with water.
 
-import type { SwatchId } from '../ids/index.js';
+import type { CoverId, SwatchId } from '../ids/index.js';
 import type { Difficulty } from '../materials/index.js';
 import { DEFAULT_MATERIALS, swatchOf } from '../materials/index.js';
 
@@ -46,6 +46,15 @@ export interface Column {
    * appearance feature since D-237 landed on maps and not on the world.
    */
   readonly ground: SwatchId;
+  /**
+   * What stands on it (R-193): trees, boulders, nothing.
+   *
+   * **Absent on most cells, and absent means bare.** A forest is grass with
+   * this set to trees; there is no "forest" anywhere (D-280). One per cell to
+   * begin with — a density, light scrub through to dense jungle, is a later
+   * question and a second field when it comes.
+   */
+  readonly cover?: CoverId;
   /** Per-cell override; absent means "use the ground's own" (R-77, R-192). */
   readonly difficulty?: Difficulty;
 }
@@ -223,6 +232,26 @@ function withColumn(chunk: Chunk, x: number, z: number, next: Column): Chunk {
   return { coord: chunk.coord, columns };
 }
 
+/**
+ * Cover tool (R-193): sets what stands on a cell, or clears it.
+ *
+ * `null` is the eraser and the reason this takes one rather than having a
+ * `clearCover` beside it: "nothing" is a value the GM picks from the same
+ * list, not a separate gesture.
+ */
+export function paintCover(chunk: Chunk, x: number, z: number, cover: CoverId | null): Chunk {
+  const current = columnAt(chunk, x, z);
+  if (!current) return chunk;
+  if ((current.cover ?? null) === cover) return chunk;
+  if (!cover) {
+    // Deleted rather than set to null, so a bare cell is one shape however it
+    // got that way — and so the wire can tell "no cover" from "cover: null".
+    const { cover: _gone, ...bare } = current;
+    return withColumn(chunk, x, z, bare);
+  }
+  return withColumn(chunk, x, z, { ...current, cover });
+}
+
 /** Paint tool (R-88): sets the ground, leaves height alone. */
 export function paintGround(chunk: Chunk, x: number, z: number, ground: SwatchId): Chunk {
   const current = columnAt(chunk, x, z);
@@ -346,6 +375,12 @@ function applyBrush(
 
 export function paintArea(world: World, at: GlobalCell, size: number, ground: SwatchId): World {
   return applyBrush(world, at, size, (chunk, x, z) => paintGround(chunk, x, z, ground));
+}
+
+export function coverArea(
+  world: World, at: GlobalCell, size: number, cover: CoverId | null,
+): World {
+  return applyBrush(world, at, size, (chunk, x, z) => paintCover(chunk, x, z, cover));
 }
 
 /** Absolute height across the brush, so a wide brush stamps a plateau. */
