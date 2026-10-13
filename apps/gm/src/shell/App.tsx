@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { decodeCampaign, decodePlacement, cellsFromWire } from '@tt/protocol';
 import {
   MAX_HEIGHT, WHOLE_MAP, rangeIn, stepBrush, WORLD_BRUSHES, BRUSHES, DEFAULT_BRUSH, brushById,
+  routeAcross, toGlobal, DEFAULT_TRAVEL_MODES, discoveryFromJSON,
   chunkAt, columnAt,
   creatableSlots, sameWorldCell,
   DEFAULT_MATERIALS, DEFAULT_FLOOR, mapFromJSON, fillRegion, sliceOf, inRange, inMap, blockAt,
@@ -368,6 +369,8 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     stage?.aimAt(ghostCell(travel));
   }, [travel, stage]);
 
+
+
   /**
    * The open map as domain data.
    *
@@ -567,6 +570,49 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    * need to know how a chunk is encoded to say what is under the pointer.
    */
   const decoded = useMemo(() => (campaign ? decodeCampaign(campaign) : null), [campaign]);
+
+  /**
+   * The route under the pointer during the aim step (R-197, O-019).
+   *
+   * Keyed on `travel`, which is **identity-preserving within a cell** (R-165):
+   * `aim` hands back the same object while the pointer wanders inside one
+   * cell, so this runs when the pointer crosses into a new one and not on
+   * every move. An A* per pointer move would have been the obvious reading of
+   * R-132 and the wrong one.
+   *
+   * It needs the party's own cell to start from, and the discovery to stay out
+   * of ground nobody has seen (R-133).
+   */
+  useEffect(() => {
+    if (!stage) return;
+    const placed = view?.save ? decodePlacement(view.save.placement) : null;
+    const known = view?.save ? discoveryFromJSON(view.save.discovery) : null;
+    // Where the mover is standing now: the whole party, or the one pawn.
+    const from = travel.step === 'aiming'
+      ? (travel.pawn.memberId
+        ? placed?.members.get(travel.pawn.memberId as MemberId) ?? null
+        : placed?.at ?? null)
+      : null;
+    const to = travel.step === 'aiming' ? travel.at : null;
+    if (!decoded || !known || !from || !to) {
+      stage.showRoute(null, '#ffffff');
+      return;
+    }
+    const route = routeAcross(
+      decoded.world,
+      known,
+      // On foot for now: the mode is the confirm step's to choose (O-020).
+      DEFAULT_TRAVEL_MODES[1]!,
+      toGlobal({ cx: from.cx, cz: from.cz }, from.x, from.z),
+      toGlobal({ cx: to.cx, cz: to.cz }, to.x, to.z),
+    );
+    stage.showRoute(
+      route?.cells ?? null,
+      travel.step === 'aiming' && travel.pawn.memberId
+        ? memberColour(travel.pawn.memberId)
+        : '#e6e9ef',
+    );
+  }, [travel, stage, decoded, view?.save?.discovery, view?.save?.placement]);
 
   const columnInfo = useCallback((cell: { cx: number; cz: number; x: number; z: number }) => {
     const chunk = decoded ? chunkAt(decoded.world, { cx: cell.cx, cz: cell.cz }) : null;

@@ -7,10 +7,10 @@ import {
   Vector3,
   MeshBasicMaterial, PlaneGeometry, Raycaster, Scene, Vector2, WebGLRenderer, BoxGeometry,
   WebGLRenderTarget, HalfFloatType, MathUtils,
-  EdgesGeometry, LineSegments, LineBasicMaterial, Group,
+  EdgesGeometry, LineSegments, LineBasicMaterial, Group, BufferGeometry, DoubleSide,
 } from 'three';
 import type {
-  BlockCoord, Campaign, EncounterMap, Lighting, Material, Placement, WorldCell,
+  BlockCoord, Campaign, EncounterMap, GlobalCell, Lighting, Material, Placement, WorldCell,
 } from '@tt/domain';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -19,7 +19,7 @@ import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import {
   CHUNK_SIZE, brushCentreOffset, mapCentre, DAYLIGHT, sunDirection, shadowReach, bounceOf,
-  dropBelow,
+  dropBelow, fromGlobal,
 } from '@tt/domain';
 import type { CameraTarget } from '../camera/index.js';
 import {
@@ -27,7 +27,9 @@ import {
   PITCH_STEPS, pitchDegrees, placeCamera, yawDegrees, yawRadians,
 } from '../camera/index.js';
 import { surfaceMove, showWorldMarkers } from '../surface/index.js';
+import { surfaceAt } from '../world/index.js';
 import type { ColumnAddress, WorldMeshes } from '../world/index.js';
+import { ribbonGeometry, ROUTE_LIFT } from '../route/index.js';
 import type { CoverField } from '../covers/index.js';
 import { buildCovers } from '../covers/index.js';
 import { buildWorldMeshes, columnCentre, worldCentre, HEIGHT_SCALE } from '../world/index.js';
@@ -270,6 +272,25 @@ export class Stage {
   private readonly slots = new Group();
   private world: WorldMeshes | null = null;
   private covers: CoverField | null = null;
+  /**
+   * The travel route under the pointer (R-197). One mesh, rebuilt when the
+   * route changes and hidden otherwise — which is on crossing into a new
+   * cell, not on every pointer move, because `aim` hands back the same travel
+   * when the cell has not changed (R-165).
+   */
+  private readonly routeMesh = new Mesh(
+    new BufferGeometry(),
+    new MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.72,
+      // Over the ground it crosses, under everything standing on it: a route
+      // the party cannot see past a hill is worse than one drawn on top.
+      depthTest: false,
+      depthWrite: false,
+      side: DoubleSide,
+    }),
+  );
   private places: PlaceMarkers | null = null;
   private pawns: PartyPawns | null = null;
   /** Held because pawns are rebuilt on their own schedule, not the world's. */
@@ -456,7 +477,11 @@ export class Stage {
     this.blockGhost.visible = false;
     this.blockGhost.renderOrder = 11;
 
-    this.scene.add(this.highlight, this.blockGhost, this.slots, this.fog);
+    this.routeMesh.visible = false;
+    // Under the highlight and the ghost: those say what a click will do, and
+    // the route only says what the journey would be.
+    this.routeMesh.renderOrder = 4;
+    this.scene.add(this.highlight, this.blockGhost, this.slots, this.fog, this.routeMesh);
 
     /*
      * Ambient occlusion, as a post-process (R-168).
@@ -635,6 +660,9 @@ export class Stage {
     if (this.places) this.places.group.visible = worldVisible;
     if (this.pawns) this.pawns.group.visible = worldVisible;
     this.slots.visible = worldVisible;
+    // A world route has no meaning inside a map (R-148), and the ribbon is
+    // only ever shown while aiming anyway.
+    if (!worldVisible) this.routeMesh.visible = false;
     this.fog.visible = worldVisible;
     if (this.grid) this.grid.visible = worldVisible;
     // The other way round: tokens stand in a map and nowhere else (R-148).
@@ -1143,6 +1171,35 @@ export class Stage {
    * The snapped hover highlight (R-87), sized to the brush footprint so what you
    * are about to change is what is outlined.
    */
+  /**
+   * Draws the route the party would take, or clears it (R-197).
+   *
+   * Each point takes the height of its own cell, so the ribbon drapes over
+   * the land rather than floating above the highest part of it — which is
+   * half of what the cost it previews is about.
+   */
+  showRoute(cells: readonly GlobalCell[] | null, colour: string): void {
+    this.invalidate();
+    this.routeMesh.geometry.dispose();
+    if (!cells || cells.length < 2 || !this.campaign) {
+      this.routeMesh.visible = false;
+      this.routeMesh.geometry = new BufferGeometry();
+      return;
+    }
+    const points = cells.map((cell) => {
+      const { coord, x, z } = fromGlobal(cell);
+      const at = { cx: coord.cx, cz: coord.cz, x, z };
+      return new Vector3(
+        cell.gx + 0.5,
+        surfaceAt(this.campaign!, at) + ROUTE_LIFT,
+        cell.gz + 0.5,
+      );
+    });
+    this.routeMesh.geometry = ribbonGeometry(points);
+    (this.routeMesh.material as MeshBasicMaterial).color.set(colour);
+    this.routeMesh.visible = !this.showingMap;
+  }
+
   showHighlight(address: ColumnAddress | null, height: number, size = 1): void {
     this.invalidate();
     if (!address) { this.highlight.visible = false; return; }
@@ -1403,6 +1460,8 @@ export class Stage {
     this.pawns?.dispose();
     this.places?.dispose();
     this.world?.dispose();
+    this.routeMesh.geometry.dispose();
+    (this.routeMesh.material as MeshBasicMaterial).dispose();
     this.captions.domElement.remove();
     this.renderer.dispose();
   }

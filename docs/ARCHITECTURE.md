@@ -2689,6 +2689,30 @@ apps/host/src/
 > cheapest one — which is what a GM drawing a road with an override wants
 > anyway.
 
+> **R-198.** **The route is drawn as a ribbon, and recomputed on a new cell.**
+>
+> **A ribbon, not outlined cells.** The hover outline is right for *one* cell —
+> it says "this one". For forty it is wrong, because what a GM reads is a line
+> going somewhere, not a set of squares. The strip follows the route and takes
+> each point to the height of its own cell, so it **drapes** over the land it
+> crosses — which is half of what the cost it previews is about (R-52a).
+>
+> Its width is laid off the **turn**, not the incoming leg, so a corner does
+> not pinch on the inside or notch on the outside; and the width stays
+> horizontal however steeply the ribbon climbs, or the line would thin out
+> exactly where the ground gets interesting.
+>
+> **Recomputed when the pointer crosses into a new cell, never per move.** An
+> A\* on every pointer move is the obvious reading of R-132 and the wrong one.
+> This needs no new machinery: `aim` is identity-preserving within a cell
+> (R-165) and already tested to be, so the effect that reads the travel state
+> simply does not fire until the cell changes.
+>
+> **It is drawn over the ground and under what stands on it.** A route the
+> party cannot see past a hill is worse than one drawn on top, so it does not
+> depth-test; it renders below the hover outline and the ghost, which say what
+> a click will *do* where the route only says what the journey would *be*.
+
 > **R-195.** **A cover earns its id by costing something; what it looks like
 > is free.**
 >

@@ -6959,3 +6959,35 @@ walked through.
 a design decision with a number attached and it went into a commit without
 ever being said out loud. The record is for exactly this, and it only works if
 the decision reaches it before the code does.
+
+### D-295 — The route, drawn · `agreed`
+The second half of O-019: the router from D-293 now has something looking at
+it. R-198 is new.
+
+**A ribbon, and the GM chose it over outlined cells.** The outline the hover
+already uses is right for one cell — it says *this one* — and wrong for forty,
+where what is being read is a line going somewhere. The strip takes each point
+to the height of its own cell, so it drapes rather than floats, which is half
+of what the cost it previews is about.
+
+Two pieces of arithmetic in it are worth the test they got, because both fail
+as something that looks like a rendering glitch rather than a bug: the width is
+laid off the **turn** and not the incoming leg, so corners neither pinch nor
+notch; and it stays horizontal however steeply the ribbon climbs, or the line
+would thin out exactly where the ground gets interesting.
+
+**Recomputed on a new cell, and it needed no machinery.** The GM asked for it
+and the answer was already in the codebase: `aim` is identity-preserving within
+a cell (R-165) with a test that says so in as many words — *"identity, so a
+pointer move does not re-render the world"*. The effect depends on the travel
+state, so it does not fire until the cell changes. An A\* per pointer move was
+the obvious reading of R-132 and would have been the wrong one.
+
+**Seen working** on the GM's own map: the strip runs from the pawn to the
+ghost, mitres its bends, and climbs the ground under it.
+
+**What is deliberately still crude.** The mode is hardcoded to on foot, because
+choosing it belongs to the confirm step (O-020) and putting a picker anywhere
+else would have to move later. Nothing yet reports the **days** — `daysAcross`
+exists, is tested, and has no reader, which is the same shape of gap this round
+opened by closing. That is O-020's, and it is now the obvious next thing.
