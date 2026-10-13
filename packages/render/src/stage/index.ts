@@ -1181,12 +1181,22 @@ export class Stage {
   showRoute(cells: readonly GlobalCell[] | null, colour: string): void {
     this.invalidate();
     this.routeMesh.geometry.dispose();
-    if (!cells || cells.length < 2 || !this.campaign) {
+    /*
+     * Both ends are dropped: the party's own cell already has the pawn
+     * standing in it and the destination already has the ghost, so a square
+     * under either is the same thing said twice. What is left is the journey
+     * between them, which is the part nothing else is drawing.
+     *
+     * A route of two cells therefore draws nothing at all, and should: the
+     * pawn and the ghost are adjacent and there is no journey to show.
+     */
+    const between = cells ? cells.slice(1, -1) : [];
+    if (between.length === 0 || !this.campaign) {
       this.routeMesh.visible = false;
       this.routeMesh.geometry = new BufferGeometry();
       return;
     }
-    const points = cells.map((cell) => {
+    const points = between.map((cell) => {
       const { coord, x, z } = fromGlobal(cell);
       const at = { cx: coord.cx, cz: coord.cz, x, z };
       return new Vector3(

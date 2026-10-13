@@ -2737,6 +2737,12 @@ apps/host/src/
 > them into one unbroken band, which is a ribbon again with the same lie in
 > it.
 >
+> **Neither end is drawn.** The party's cell already has the pawn standing in
+> it and the destination already has the ghost (R-138), so a square under
+> either says the same thing twice. What is left is the journey between them,
+> which is the part nothing else is showing — and a move to the next cell
+> along draws nothing at all, correctly, because there is no journey to show.
+>
 > **Recomputed when the pointer crosses into a new cell, never per move.** An
 > A\* on every pointer move is the obvious reading of R-132 and the wrong one.
 > This needs no new machinery: `aim` is identity-preserving within a cell
