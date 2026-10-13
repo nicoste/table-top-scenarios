@@ -6887,3 +6887,39 @@ never about distance.
 **One thing nearly went with it.** `fitShadows` sat inside the branch I was
 restructuring and followed the covers out of it. The shadow camera is sized to
 the terrain, so it belongs with the terrain's rebuild; it is back there.
+
+### D-293 — The route, and the first thing to read the difficulty model · `agreed`
+O-019, opened. R-197 is new.
+
+**Nothing read any of it.** `cellCost`, `groundCost`, `isPassable`,
+`DEFAULT_SLOPE_FACTOR` and `DEFAULT_TRAVEL_MODES` had, between them, **zero
+non-test consumers**. Material difficulty (R-192), a cut's override, a cover's
+multiplier (R-193), a mode's family-keyed overrides, the 0.83 slope factor —
+all written, all tested, all inert. A GM could paint a jungle on a mountain
+and the map said what it said about a meadow. That is the strongest argument
+for this round and it was sitting in a grep.
+
+**A\\* over the world's cells**, eight-way, diagonals at √2, costed exactly as
+R-52a states. Known chunks only (R-133). A budget of 12,000 settled cells,
+because this runs on pointer move.
+
+**Four tests had to be rewritten because the router was right and I was not.**
+Worth recording, because each one is a fact about the model rather than about
+the code:
+
+- It walks **around** a single raised cell rather than over it. Two diagonals
+  beat a climb, so a one-cell bump measures nothing; the ridge has to span the
+  chunk before the slope charge is observable.
+- It walks **through** a wide belt of trees. Rounding the end of a fifteen-cell
+  belt costs far more than the ×1.5 once.
+- Stepping aside one cell and back is two diagonals where it would have been
+  two orthogonals: **2√2 against 1 + d**. So a cell is worth avoiding only
+  once it costs more than **1.83** — trees at ×1.5 are not, dark undergrowth
+  at ×2.5 is. That margin is tighter than it looks and is now pinned.
+- Painting a whole row leaves nothing to step aside *to*, so a detour test has
+  to block one cell, not a line.
+
+**What is not here.** The route is computed and nothing draws it yet, which is
+the next increment: under the pointer during the aim step of R-132, where the
+sequence was built to take it. O-020's confirm menu — transport, pace, days —
+follows that.

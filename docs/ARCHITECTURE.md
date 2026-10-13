@@ -2647,6 +2647,36 @@ apps/host/src/
 > Moving work out of the GPU pipeline moved it into the document; it did not
 > make it disappear.
 
+> **R-197.** **A route is a preview, not a rule.**
+>
+> R-133 says the destination is never adjacency-checked: a GM may move the
+> party anywhere. So the router answers *what that journey is like*, and
+> `null` means "I cannot show you a way", never "you may not go". Four cases
+> share that one answer — the destination is unknown ground, it is impassable
+> to this mode, nothing connects the two, or the search ran out of budget —
+> and they are deliberately not told apart, because the aim step says the same
+> thing for all four and the move is allowed in all four.
+>
+> **Known ground only.** Routing through unexplored country would undo R-131
+> by the back door: the party would read the shape of land they have never
+> seen off the shape of the line drawn across it.
+>
+> **The step cost is R-52a's, and nothing else is:**
+> `baseDistance × difficulty(target) + slopeFactor × |Δheight|`, with the
+> diagonal costing √2. The absolute height difference, so a descent is charged
+> like a climb.
+>
+> **A budget, not a guarantee.** It runs on pointer move over a world of up to
+> 810,000 cells, so it settles at most `ROUTE_BUDGET` of them and then stops.
+> A ceiling that sometimes says "no line" is the right trade for a preview;
+> an unbounded search on a pointer move is not.
+>
+> **The A\* estimate is derived from the registry**, not typed, so retuning a
+> material cannot quietly make it optimistic. A per-cell override (R-77) may
+> go below it, and then the route is a very good one rather than a provably
+> cheapest one — which is what a GM drawing a road with an override wants
+> anyway.
+
 > **R-195.** **A cover earns its id by costing something; what it looks like
 > is free.**
 >

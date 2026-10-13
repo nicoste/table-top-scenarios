@@ -45,6 +45,8 @@ export {
   DAYLIGHT, OPEN_SKY, MIN_ANGLE, MAX_ANGLE, MIN_SUN, MAX_SUN, MIN_FILL, MAX_FILL,
   clampLighting, clampAmbience, sunDirection, shadowReach, hourLabel, bounceOf, litBy,
 } from './light/index.js';
+export type { Route } from './route/index.js';
+export { routeAcross, daysAcross, ROUTE_BUDGET } from './route/index.js';
 export type { Material, Cut, Difficulty } from './materials/index.js';
 export type { Cover, CoverPart } from './covers/index.js';
 export {
