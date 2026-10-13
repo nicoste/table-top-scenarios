@@ -536,7 +536,18 @@ export class Stage {
      */
     const sameWorld = campaign !== null && this.world !== null && campaign.world === this.campaign?.world;
     if (this.world && !sameWorld) { this.scene.remove(this.world.group); this.world.dispose(); this.world = null; }
-    if (this.covers && !sameWorld) { this.scene.remove(this.covers.group); this.covers.dispose(); this.covers = null; }
+    /*
+     * Covers get their own question, not the world's (D-292): a painted
+     * coastline changes the world and moves no tree, and re-instancing a
+     * continent of forest per brush cell is the cost of asking the wrong one.
+     */
+    const sameCovers = campaign !== null && this.covers !== null
+      && this.covers.matches(campaign);
+    if (this.covers && !sameCovers) {
+      this.scene.remove(this.covers.group);
+      this.covers.dispose();
+      this.covers = null;
+    }
     /*
      * Kept when they still draw the same thing (D-290). Markers depend on
      * their places and on the ground under them, so a painted coast, a cube
@@ -572,11 +583,16 @@ export class Stage {
       // blocks reapply it (D-244).
       world.setFigures(this.figuring);
       this.scene.add(world.group);
+      // The shadow camera is sized to the terrain, so it refits with the
+      // terrain — not with the covers, which stand on it.
+      if (!this.showingMap) this.fitShadows(CHUNK_SIZE * 3, worldCentre(campaign.world));
+    }
+
+    if (!this.covers) {
       // Its own group beside the columns, not inside them: covers are drawn
       // and never picked, and the cell raycast is over the columns alone.
       this.covers = buildCovers(campaign);
       this.scene.add(this.covers.group);
-      if (!this.showingMap) this.fitShadows(CHUNK_SIZE * 3, worldCentre(campaign.world));
     }
 
     if (!this.places) {

@@ -25,7 +25,7 @@ import {
   MeshStandardMaterial, Object3D,
 } from 'three';
 import type { BufferGeometry } from 'three';
-import type { Campaign, Cover, CoverPart, World } from '@tt/domain';
+import type { Campaign, Chunk, Cover, CoverPart, World } from '@tt/domain';
 import {
   CHUNK_SIZE, DEFAULT_COVERS, clumpsIn, coverById, colourOf, cutIdIn, familyOf,
 } from '@tt/domain';
@@ -55,6 +55,17 @@ const CLUMP_STRIDE = 37;
 
 export interface CoverField {
   readonly group: Group;
+  /**
+   * Whether this field still draws this campaign, so it can be kept (D-292).
+   *
+   * A cover is drawn from where it stands, which cover it is and how high the
+   * ground under it is — so painting a coastline moves not one tree, and the
+   * stage used to re-instance every tree in the world on each brush cell
+   * anyway. The same mistake the markers had (D-290), made twice in one
+   * round, because "the world changed" is not the same question as "did what
+   * I draw change".
+   */
+  matches(campaign: Campaign): boolean;
   /** How many covers are standing. Zero means a bare world, not a missing one. */
   readonly count: number;
   dispose(): void;
@@ -83,8 +94,50 @@ interface Standing {
   readonly top: number;
 }
 
+/**
+ * What a chunk contributes to the field, as a string — **cached on the chunk
+ * object itself**.
+ *
+ * A signature that walked every column of every chunk on every intent would
+ * have replaced a rebuild with a slightly cheaper walk, which is not the
+ * point. A chunk is identity-preserved when nothing in it changed (R-165), so
+ * an edit makes exactly one new `Chunk` and every other one answers from the
+ * cache. A `WeakMap`, so chunks the world has dropped take their entries with
+ * them.
+ */
+const signatures = new WeakMap<Chunk, string>();
+
+function chunkSignature(chunk: Chunk): string {
+  const known = signatures.get(chunk);
+  if (known !== undefined) return known;
+  const parts: string[] = [];
+  for (let i = 0; i < chunk.columns.length; i += 1) {
+    const column = chunk.columns[i]!;
+    // Only the cells that hold something: most of a world holds nothing, and
+    // the empty ones are exactly what must not make this O(world).
+    if (column.cover) parts.push(`${i}:${column.cover}:${column.height}`);
+  }
+  const made = parts.join(',');
+  signatures.set(chunk, made);
+  return made;
+}
+
+/**
+ * Everything the cover field is drawn from, as one string (D-292).
+ *
+ * Exported and tested, because "a painted coast moves no tree" is a rule and
+ * its failure mode is silent — it does not look wrong, it just re-instances a
+ * continent of forest per brush cell (R-23b).
+ */
+export function coverSignature(world: World): string {
+  const parts: string[] = [];
+  for (const [key, chunk] of world.chunks) parts.push(`${key}=${chunkSignature(chunk)}`);
+  return parts.join(';');
+}
+
 export function buildCovers(campaign: Campaign): CoverField {
   const world: World = campaign.world;
+  const signature = coverSignature(world);
   const group = new Group();
 
   // Grouped by cover first, because a mesh is per part and its size has to be
@@ -248,6 +301,7 @@ export function buildCovers(campaign: Campaign): CoverField {
 
   return {
     group,
+    matches: (next) => coverSignature(next.world) === signature,
     count,
     dispose() {
       for (const geometry of geometries) geometry.dispose();

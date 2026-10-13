@@ -6281,7 +6281,7 @@ seeing the rays. It would be a GM-only drawing of the lines `lineIsClear` walks
 — from one member's eye to the points of one cube, green through and red
 stopped (D-271) — and nothing in vision as built is in its way.
 
-### D-280 — The world is painted in two axes: ground and cover · `agreed, unbuilt`
+### D-280 — The world is painted in two axes: ground and cover · `agreed, built in D-281 to D-284`
 The design for the world round, settled in conversation and written before any
 of it is built, because it took several wrong turns to reach and none of them
 are worth taking twice.
@@ -6854,3 +6854,36 @@ them. `brushCentreOffset` is zero for every size now and **stays exported and
 stays called**: the hover outline reads it instead of assuming, so an even
 brush could return without the outline drifting off the cells that get
 painted.
+
+### D-292 — Covers get their own question, not the world's · `agreed`
+The same mistake as D-290, found by looking for it rather than by being bitten:
+the cover field was rebuilt whenever `sameWorld` was false, which is **every
+ground paint, every height change, every cover stroke**. Painting a coastline
+moves not one tree, and re-instancing a continent of forest per brush cell is
+what asking the wrong question costs.
+
+Twice in one round, from the same confusion: *"did the world change"* is not
+*"did what I draw change"*.
+
+**The signature is cached on the chunk, not recomputed over the world.** This
+is the part worth keeping. A signature that walked every column of every chunk
+on every intent would have swapped a rebuild for a slightly cheaper walk,
+which is not a fix. A `Chunk` is identity-preserved when nothing in it changed
+(R-165), so an edit makes exactly one new chunk object and every other one
+answers from a `WeakMap`. The cost of asking is one chunk, whatever the world
+costs to draw.
+
+**Both signatures are exported and tested** (R-23b). The builders need three.js
+and R-23 exempts them, so the rule moved out to `coverSignature` and
+`markerSignature` where it can be checked — and it has to be, because neither
+failure looks wrong on screen. The markers and the trees come back identical;
+all that shows is the cost, and the caption that blinked.
+
+The test states the GM's own observation as the first case: the ground painted
+**far from a cover** and the ground painted **directly under one** both leave
+the signature alone. The distance never mattered, because the rebuild was
+never about distance.
+
+**One thing nearly went with it.** `fitShadows` sat inside the branch I was
+restructuring and followed the covers out of it. The shadow camera is sized to
+the terrain, so it belongs with the terrain's rebuild; it is back there.
