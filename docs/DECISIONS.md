@@ -7039,3 +7039,36 @@ because the route **takes the face at an angle**. A diagonal covers √2 cells
 of ground for the same rise, so it is a gentler gradient and costs less. The
 router invented switchbacks out of `grade = rise / run` and nothing else, and
 that now has a test of its own.
+
+### D-297 — The route is cells, not a ribbon · `agreed`
+The GM, after we had spent a while trying to fix the cost model: *"I think
+that what's adding noise is the ribbon, the diagonals with huge 2 steps of
+height look weird."* Right, and it reframed the whole problem — the model was
+fine and the **drawing** was lying.
+
+**A ribbon has to interpolate and the world does not.** Between two cells a
+step apart in height it drew a sloping plane the ground does not have. Across
+a diagonal onto a two-level step it leant over a corner, which is the shape
+that looked wrong. One flat square per cell claims nothing about what is
+between, because there is nothing between — the world is cells.
+
+Inset rather than filling each one, so a run of them can be counted. Filling
+would join them into a band, which is a ribbon again with the same lie in it.
+
+**What this closed.** We had been about to change the cost curve to make a
+stepped route beat a diagonal one. It was possible — `bite > 8.37` against
+Tobler's 3.5, computed exactly — but it cost the gentle end badly: a 10% hill,
+the commonest slope on any map, would have dropped walking from 3.55 km/h to
+1.68 against 5.04 on the flat. The GM's call was to leave the model alone:
+*"we should comply with the work that's used everywhere, not invent things."*
+The diagonal in their A→D example is genuinely the faster way — 41 minutes
+against 51 — and it only looked wrong because the ribbon drew it wrongly.
+
+**And one thing I kept getting wrong.** Twice in this round I proposed making
+a diagonal account for the cells it passes between, which is the question
+D-294 already answered. Told so the second time, plainly, and the answer has
+not changed: passing between two cliffs does not make the trip harder.
+
+**Seen working** on the GM's map: aiming across a stepped mountainside draws a
+staircase of flat squares, each on its own column, instead of a plane tilted
+across the steps.

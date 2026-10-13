@@ -10,7 +10,7 @@ export type { CameraTarget, CameraView } from './camera/index.js';
 export { HEIGHT_SCALE, buildWorldMeshes, columnCentre, worldCentre, surfaceAt } from './world/index.js';
 export type { ColumnAddress, WorldMeshes } from './world/index.js';
 export { buildCovers, coverSignature } from './covers/index.js';
-export { ribbonGeometry, ROUTE_WIDTH, ROUTE_LIFT } from './route/index.js';
+export { routePatches, ROUTE_PATCH, ROUTE_LIFT } from './route/index.js';
 export type { CoverField } from './covers/index.js';
 
 export { MARKER_ZOOM, buildPlaceMarkers, markerSignature } from './places/index.js';

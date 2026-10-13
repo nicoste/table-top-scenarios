@@ -805,42 +805,6 @@ category (R-1), and squarely in scope.
 > at 4.5× exaggeration (`HEIGHT_SCALE`), so one level is 5.7° in the fiction
 > and **31° on screen**. Quote levels per cell, which is what a GM paints.
 
-> **R-52b.** Difficulty is resolved **per travel mode**, not per ground alone. A
-> `TravelMode` carries `kmPerDay`, a `fallback` of `ground-default` or
-> `impassable`, and overrides keyed by **family or swatch**.
->
-> This is why water is impassable rather than merely expensive: a multiplier of
-> any size means "crossable, slowly", which would let an armoured party wade the
-> ocean. `travel:ship` sets `fallback: impassable` and overrides the Liquids
-> *family* to 1 — a boat does not care which cut of water it is on — so a ship
-> crosses water and **cannot sail overland**. The shore is the exception the
-> swatch key exists for: slower for a boat, wadeable on foot, and what gives a
-> boat somewhere to put in.
->
-> A **column override beats the mode**, so a bridge is a cell painted passable —
-> a property of the place, not of the traveller. And mixed journeys need no new
-> machinery: walk to the port, then sail, is two legs of the trip splitting
-> already agreed in R-57.
-
-> **R-52a.** **Altitude costs nothing; slope costs.** Being high is free — climbing
-> is not. Entering a neighbouring column adds a penalty proportional to the
-> difference in height, so a mountain is expensive to cross and a plateau is not.
->
-> ```
-> stepCost = baseDistance × difficulty(target) + slopeFactor × |Δheight|
-> ```
->
-> `slopeFactor` is **0.83**, and it is *derived, not chosen*. Naismith's rule —
-> the standard hillwalking estimate — charges an hour per 600 m of ascent and an
-> hour per 5 km of flat ground, so one 150 m level (R-104) is worth 1.25 km of
-> walking against a 1.5 km cell.
->
-> **It moves when the height level moves**, and a test asserts the relationship,
-> so the two cannot drift apart.
->
-> Descent is charged the same as ascent until someone asks otherwise; that is the
-> simple version and this was asked to stay simple.
-
 > **R-53.** The route is **weighted shortest path** over chunk columns, 8-way with
 > `√2` diagonal cost. Generic weighted pathfinding lives in `geometry`; paces,
 > difficulty semantics and the time formula live in `domain`. Nothing fancy: a
@@ -2754,29 +2718,35 @@ apps/host/src/
 > cheapest one — which is what a GM drawing a road with an override wants
 > anyway.
 
-> **R-198.** **The route is drawn as a ribbon, and recomputed on a new cell.**
+> **R-198.** **The route is drawn as the cells it crosses, and recomputed on
+> a new cell.**
 >
-> **A ribbon, not outlined cells.** The hover outline is right for *one* cell —
-> it says "this one". For forty it is wrong, because what a GM reads is a line
-> going somewhere, not a set of squares. The strip follows the route and takes
-> each point to the height of its own cell, so it **drapes** over the land it
-> crosses — which is half of what the cost it previews is about (R-52a).
+> One flat square per cell, inset inside it, lying on the top of its own
+> column at its own height. **Nothing is drawn between them**, and that is the
+> rule rather than a saving: the world is cells, and a drawing that spans the
+> gap claims to know ground it was never given.
 >
-> Its width is laid off the **turn**, not the incoming leg, so a corner does
-> not pinch on the inside or notch on the outside; and the width stays
-> horizontal however steeply the ribbon climbs, or the line would thin out
-> exactly where the ground gets interesting.
+> This was a ribbon first and the ribbon was wrong (D-297). A strip has to
+> interpolate, so between two cells a step apart in height it drew a sloping
+> plane the ground does not have — worst across a diagonal, where it leant
+> over a corner and read as the route doing something strange rather than as
+> the route going somewhere. The cost model never changed; the drawing was
+> making a claim the model does not.
+>
+> **Inset, so a run of them can be counted.** Filling each cell would join
+> them into one unbroken band, which is a ribbon again with the same lie in
+> it.
 >
 > **Recomputed when the pointer crosses into a new cell, never per move.** An
 > A\* on every pointer move is the obvious reading of R-132 and the wrong one.
 > This needs no new machinery: `aim` is identity-preserving within a cell
 > (R-165) and already tested to be, so the effect that reads the travel state
-> simply does not fire until the cell changes.
+> does not fire until the cell changes.
 >
-> **It is drawn over the ground and under what stands on it.** A route the
-> party cannot see past a hill is worse than one drawn on top, so it does not
-> depth-test; it renders below the hover outline and the ghost, which say what
-> a click will *do* where the route only says what the journey would *be*.
+> **Over the ground and under what stands on it.** A route the party cannot
+> see past a hill is worse than one drawn on top, so it does not depth-test;
+> it renders below the hover outline and the ghost, which say what a click
+> will *do* where the route only says what the journey would *be*.
 
 > **R-195.** **A cover earns its id by costing something; what it looks like
 > is free.**

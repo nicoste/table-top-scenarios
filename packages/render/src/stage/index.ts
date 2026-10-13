@@ -29,7 +29,7 @@ import {
 import { surfaceMove, showWorldMarkers } from '../surface/index.js';
 import { surfaceAt } from '../world/index.js';
 import type { ColumnAddress, WorldMeshes } from '../world/index.js';
-import { ribbonGeometry, ROUTE_LIFT } from '../route/index.js';
+import { routePatches, ROUTE_LIFT } from '../route/index.js';
 import type { CoverField } from '../covers/index.js';
 import { buildCovers } from '../covers/index.js';
 import { buildWorldMeshes, columnCentre, worldCentre, HEIGHT_SCALE } from '../world/index.js';
@@ -1174,9 +1174,9 @@ export class Stage {
   /**
    * Draws the route the party would take, or clears it (R-197).
    *
-   * Each point takes the height of its own cell, so the ribbon drapes over
-   * the land rather than floating above the highest part of it — which is
-   * half of what the cost it previews is about.
+   * One flat square per cell, each at the height of its own column — so a
+   * staircase reads as a staircase and nothing is drawn across ground the
+   * route only touches at a corner (D-297).
    */
   showRoute(cells: readonly GlobalCell[] | null, colour: string): void {
     this.invalidate();
@@ -1195,7 +1195,7 @@ export class Stage {
         cell.gz + 0.5,
       );
     });
-    this.routeMesh.geometry = ribbonGeometry(points);
+    this.routeMesh.geometry = routePatches(points);
     (this.routeMesh.material as MeshBasicMaterial).color.set(colour);
     this.routeMesh.visible = !this.showingMap;
   }
