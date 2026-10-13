@@ -6,7 +6,10 @@ export type { Connection, Handlers } from './net/index.js';
 export { initialServerState, initialViewState, keepUnchanged } from './store/index.js';
 export type { ServerState, ViewState, Tool, MapTool } from './store/index.js';
 
-export { idle, GROUP, pick, armed, aim, ghostCell, canConfirm, travelIntent, travelPrompt } from './travel/index.js';
+export {
+  idle, GROUP, pick, armed, aim, choose, byWay, ghostCell, aimedAt,
+  canConfirm, travelIntent, travelPrompt, journeyLength,
+} from './travel/index.js';
 export type { Travel } from './travel/index.js';
 
 export {

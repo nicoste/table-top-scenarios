@@ -11,7 +11,7 @@
 // round-trip per pointer move.
 
 import type { Intent } from '@tt/protocol';
-import type { WorldCell } from '@tt/domain';
+import type { TravelModeId, WorldCell } from '@tt/domain';
 import type { PawnRef } from '@tt/render';
 
 export type Travel =
@@ -31,6 +31,20 @@ export type Travel =
      * real geometry and aims perfectly well (D-164).
      */
     readonly reachable: boolean;
+  }
+  /**
+   * Aimed and clicked, now being **costed** (R-199, O-020).
+   *
+   * A fourth step rather than a fourth thing the click does: the journey is
+   * settled and what is left is how they make it. The destination is fixed
+   * here, so the question is only the transport — and changing it re-asks the
+   * router, because a ship and a walker do not take the same way (R-52a).
+   */
+  | {
+    readonly step: 'choosing';
+    readonly pawn: PawnRef;
+    readonly at: WorldCell;
+    readonly mode: TravelModeId;
   };
 
 export const idle: Travel = { step: 'idle' };
@@ -69,9 +83,34 @@ export function aim(travel: Travel, cell: WorldCell | null, reachable: boolean):
   return { ...travel, at: cell, reachable: cell ? reachable : false };
 }
 
+/**
+ * Opens the costing step, or leaves the sequence where it is.
+ *
+ * Guarded on `canConfirm` rather than trusting the caller: the click that
+ * reaches here is the same click that lands on unreachable ground, and a menu
+ * offering to cost a journey nobody can make is worse than no menu.
+ */
+export function choose(travel: Travel, mode: TravelModeId): Travel {
+  if (!canConfirm(travel) || travel.step !== 'aiming' || !travel.at) return travel;
+  return { step: 'choosing', pawn: travel.pawn, at: travel.at, mode };
+}
+
+/** Swaps the transport while the menu is open, identity-preserving (R-165). */
+export function byWay(travel: Travel, mode: TravelModeId): Travel {
+  if (travel.step !== 'choosing' || travel.mode === mode) return travel;
+  return { ...travel, mode };
+}
+
 /** Where the ghost should stand: nowhere unless the move is actually possible. */
 export function ghostCell(travel: Travel): WorldCell | null {
+  if (travel.step === 'choosing') return travel.at;
   return travel.step === 'aiming' && travel.reachable ? travel.at : null;
+}
+
+/** The cell a route should be drawn to, through either of the live steps. */
+export function aimedAt(travel: Travel): WorldCell | null {
+  if (travel.step === 'choosing') return travel.at;
+  return travel.step === 'aiming' ? travel.at : null;
 }
 
 /** Whether a click right now would send a move. */
@@ -96,10 +135,32 @@ export function travelIntent(pawn: PawnRef, cell: WorldCell): Intent {
     : { kind: 'movePartyMember', memberId: pawn.memberId, cell };
 }
 
+/**
+ * A journey's length, said the way it is said at a table (R-199).
+ *
+ * **Hours right up to the day**, because the alternative collapses a range
+ * that matters: "a day" for everything between half a day and a day put a
+ * forced march and a mounted ride on the same line when one is half again
+ * faster than the other (D-298). Over a day it is days to one decimal, which
+ * is as much precision as a 1.5 km cell honestly carries.
+ */
+export function journeyLength(days: number): string {
+  if (!Number.isFinite(days) || days < 0) return '—';
+  if (days * 24 < 1) return 'under an hour';
+  if (days < 1) {
+    const hours = Math.round(days * 24);
+    return hours === 1 ? 'an hour' : `${hours} hours`;
+  }
+  if (days < 1.05) return 'a day';
+  return `${days.toFixed(1)} days`;
+}
+
 /** What to tell the user they are doing, on either screen. */
 export function travelPrompt(travel: Travel, nameOf: (id: string) => string | null): string | null {
-  if (travel.step !== 'aiming') return null;
+  if (travel.step === 'idle') return null;
   const who = travel.pawn.memberId === null ? 'the party' : nameOf(travel.pawn.memberId) ?? 'them';
+  // The menu says the rest; the readout only has to say whose journey it is.
+  if (travel.step === 'choosing') return `How are ${who} travelling?`;
   if (!travel.at) return `Moving ${who}. Point at a revealed cell.`;
   return travel.reachable
     ? `Move ${who} here? Click to confirm, Escape or right-click to cancel.`

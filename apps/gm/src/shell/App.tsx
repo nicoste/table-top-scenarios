@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { decodeCampaign, decodePlacement, cellsFromWire } from '@tt/protocol';
 import {
   MAX_HEIGHT, WHOLE_MAP, rangeIn, stepBrush, WORLD_BRUSHES, BRUSHES, DEFAULT_BRUSH, brushById,
-  routeAcross, toGlobal, DEFAULT_TRAVEL_MODES, discoveryFromJSON,
+  routeAcross, toGlobal, DEFAULT_TRAVEL_MODES, travelModeById, discoveryFromJSON,
   chunkAt, columnAt,
   creatableSlots, sameWorldCell,
   DEFAULT_MATERIALS, DEFAULT_FLOOR, mapFromJSON, fillRegion, sliceOf, inRange, inMap, blockAt,
@@ -13,13 +13,16 @@ import {
   NO_TOKENS, tokensIn, onRoster, unplaced, tokensInBand, standsInBand, standingAt,
   NO_CELLS, shownBy,
 } from '@tt/domain';
-import type { SwatchId, CoverId, Lighting, Ambience, MemberId, Tokens, BlockCoord } from '@tt/domain';
+import type {
+  SwatchId, CoverId, Lighting, Ambience, MemberId, Tokens, BlockCoord, Route, TravelModeId,
+  WorldCell,
+} from '@tt/domain';
 import type { GmView, Intent } from '@tt/protocol';
 import { defaultTarget, worldCentre } from '@tt/render';
 import type { Standing, StageFog } from '@tt/render';
 import type { Stride, Tool, Travel } from '@tt/client-core';
 import {
-  idle, pick, armed, aim, ghostCell, canConfirm, travelIntent, travelPrompt,
+  idle, pick, armed, aim, choose, byWay, ghostCell, aimedAt, travelIntent, travelPrompt,
   clickAction, holdsSelection, mapAction, mapHover, mapDrags, mapAllowed,
   cameraAction, wheelZoom, CAMERA_HINT,
   still, grab, armedStride, tokenAim, aimStride, strideGhost, strideIntent, standVerdict,
@@ -33,6 +36,7 @@ import { LightPanel } from '../features/light/index.js';
 import { BuildWorldPanel } from '../features/build-world/index.js';
 import { PartyPanel } from '../features/party/index.js';
 import { PlacesPanel, PlaceInspector } from '../features/place/index.js';
+import { JourneyPanel } from '../features/journey/index.js';
 import { ChunkInspector } from '../features/visibility/index.js';
 import { MapPanel } from '../features/map/index.js';
 import { ConnectBadge } from '../features/connect/index.js';
@@ -63,6 +67,12 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   const [selectedPlace, setSelectedPlace] = useState<string | null>(null);
   const [selectedChunk, setSelectedChunk] = useState<{ cx: number; cz: number } | null>(null);
   const [travel, setTravel] = useState<Travel>(idle);
+  /** The transport last chosen, kept between moves so it is not re-picked. */
+  const [way, setWay] = useState<TravelModeId>(DEFAULT_TRAVEL_MODES[1]!.id);
+  /** The route being previewed, so the menu can price it (R-199). */
+  const [route, setRoute] = useState<Route | null>(null);
+  /** Where the mover stands, resolved once for the menu to cost from. */
+  const [journeyFrom, setJourneyFrom] = useState<WorldCell | null>(null);
   /**
    * Which map is open, if any. **View state, never on the wire** (R-64, D-185):
    * which surface the console is showing is the console's business, and the
@@ -588,31 +598,37 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     const placed = view?.save ? decodePlacement(view.save.placement) : null;
     const known = view?.save ? discoveryFromJSON(view.save.discovery) : null;
     // Where the mover is standing now: the whole party, or the one pawn.
-    const from = travel.step === 'aiming'
+    const from = travel.step !== 'idle'
       ? (travel.pawn.memberId
         ? placed?.members.get(travel.pawn.memberId as MemberId) ?? null
         : placed?.at ?? null)
       : null;
-    const to = travel.step === 'aiming' ? travel.at : null;
+    const to = aimedAt(travel);
     if (!decoded || !known || !from || !to) {
+      setRoute(null);
+      setJourneyFrom(null);
       stage.showRoute(null, '#ffffff');
       return;
     }
     const route = routeAcross(
       decoded.world,
       known,
-      // On foot for now: the mode is the confirm step's to choose (O-020).
-      DEFAULT_TRAVEL_MODES[1]!,
+      // The transport being costed, which the menu can change under us
+      // (R-199) — a ship and a walker do not take the same way.
+      travelModeById(DEFAULT_TRAVEL_MODES, travel.step === 'choosing' ? travel.mode : way)
+        ?? DEFAULT_TRAVEL_MODES[1]!,
       toGlobal({ cx: from.cx, cz: from.cz }, from.x, from.z),
       toGlobal({ cx: to.cx, cz: to.cz }, to.x, to.z),
     );
+    setRoute(route);
+    setJourneyFrom(from);
     stage.showRoute(
       route?.cells ?? null,
-      travel.step === 'aiming' && travel.pawn.memberId
+      travel.step !== 'idle' && travel.pawn.memberId
         ? memberColour(travel.pawn.memberId)
         : '#e6e9ef',
     );
-  }, [travel, stage, decoded, view?.save?.discovery, view?.save?.placement]);
+  }, [travel, stage, decoded, way, view?.save?.discovery, view?.save?.placement]);
 
   const columnInfo = useCallback((cell: { cx: number; cz: number; x: number; z: number }) => {
     const chunk = decoded ? chunkAt(decoded.world, { cx: cell.cx, cz: cell.cz }) : null;
@@ -735,7 +751,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     if (e.button === 2 || e.button === 1) {
       // Right-click cancels a move in progress instead of starting a pan: it is
       // the universal "never mind" and the hand is already on the mouse (D-165).
-      if (travel.step === 'aiming') {
+      if (travel.step !== 'idle') {
         setTravel(idle);
         stage.showHighlight(null, 0);
         return;
@@ -784,14 +800,20 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
 
     // Mid-sequence, the click means confirm or cancel and nothing else (R-132).
     if (travel.step === 'aiming') {
-      // An unreachable cell is not confirmable, so the click cancels instead of
-      // sending a move the host would refuse (D-164).
-      if (canConfirm(travel) && picked.column) dispatch(travelIntent(travel.pawn, picked.column));
-      setTravel(idle);
-      // The aim highlight belongs to the sequence, so it goes with it.
-      stage.showHighlight(null, 0);
+      /*
+       * The click no longer sends the move: it opens the costing step, where
+       * the transport is chosen and the journey is reported in days (R-199).
+       * An unreachable cell is still a cancel — `choose` refuses it, and
+       * there is nothing worth costing.
+       */
+      const next = choose(travel, way);
+      setTravel(next.step === 'choosing' ? next : idle);
+      if (next.step !== 'choosing') stage.showHighlight(null, 0);
       return;
     }
+    // While the menu is open the map is not taking clicks: the answer is in
+    // the panel, and a stray click on the world must not move anybody.
+    if (travel.step === 'choosing') return;
 
     // What the click meant is decided by the tested table in `client-core`
     // (R-87c), not by the order of `if`s in a pointer handler. This switch only
@@ -1300,6 +1322,27 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
             />
             {tool === 'places' && (
               <PlacesPanel markerId={markerId} onMarker={setMarkerId} />
+            )}
+            {/* The confirm step of a move (R-199). It takes the panel while it
+                is open, because the question is in here and not on the map. */}
+            {travel.step === 'choosing' && decoded && journeyFrom && (
+              <JourneyPanel
+                who={travel.pawn.memberId ? memberName(travel.pawn.memberId) ?? 'them' : 'the party'}
+                modes={DEFAULT_TRAVEL_MODES}
+                mode={travel.mode}
+                from={journeyFrom}
+                to={travel.at}
+                campaign={decoded}
+                discovery={discoveryFromJSON(view!.save!.discovery)}
+                route={route}
+                onMode={(next: TravelModeId) => { setWay(next); setTravel((now) => byWay(now, next)); }}
+                onConfirm={() => {
+                  dispatch(travelIntent(travel.pawn, travel.at));
+                  setTravel(idle);
+                  stage?.showHighlight(null, 0);
+                }}
+                onCancel={() => { setTravel(idle); stage?.showHighlight(null, 0); }}
+              />
             )}
             <LightPanel
               lighting={lighting}

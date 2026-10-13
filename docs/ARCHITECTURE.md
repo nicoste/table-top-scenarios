@@ -2754,6 +2754,42 @@ apps/host/src/
 > it renders below the hover outline and the ghost, which say what a click
 > will *do* where the route only says what the journey would *be*.
 
+> **R-199.** **A move is pick, aim, choose, confirm** — the costing step is
+> part of the sequence, not a dialog over it.
+>
+> The click that used to send the move now opens the **journey menu**: the
+> destination is settled and what is left is how they make it. The route stays
+> drawn behind it, and **re-draws as the transport changes**, because a ship
+> and a walker do not take the same way (R-52a) — what is being decided stays
+> visible the whole time.
+>
+> **Every mode is listed with its own answer**, not one figure for the chosen
+> one. The question a GM is asking is *what is this worth*, and that is a
+> comparison: a day and a half on foot against fourteen hours mounted is the
+> decision, and showing one number at a time hides it. A mode that cannot make
+> the journey says so and stays in the list — that it was considered is worth
+> seeing.
+>
+> **One A\* per mode, on the frame the menu opens.** Affordable precisely
+> because this is the *click* step and not the aim step, which runs on a
+> pointer crossing a cell (R-198). Each mode is routed on its own rather than
+> re-costing one line, because a ship's way is the water a walker cannot
+> cross — pricing the walker's route for a boat would report a journey nobody
+> takes.
+>
+> **Hours right up to the day, then days to one decimal.** Saying "a day" for
+> everything between half a day and a day put a forced march and a mounted
+> ride on the same line when one was half again faster (D-298). A 1.5 km cell
+> carries no more precision than that.
+>
+> **The map stops taking clicks while the menu is open.** The answer is in the
+> panel, and a stray click on the world must not move anybody. Escape and
+> right-click still cancel, from either live step.
+>
+> **The transport is not on the wire.** It chooses the route and reports the
+> days; the intent is the same `moveParty` it always was. Nothing yet records
+> *how* a journey was made, and a travel log is where that would belong.
+
 > **R-195.** **A cover earns its id by costing something; what it looks like
 > is free.**
 >

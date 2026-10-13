@@ -2097,7 +2097,7 @@ exist the obvious next round is the route: easiest path by terrain difficulty
 (R-52) and the 0.83 slope factor, **constrained to Known cells** (R-133), drawn
 under the pointer during the aim step of R-132.
 
-### O-020 — The travel confirmation menu · `open`
+### O-020 — The travel confirmation menu · `closed by D-298`
 The second half of the same future: confirming a move opens a menu for transport
 and pace, reporting days of travel, with confirm/cancel. Blocked on O-006 (travel
 pace presets) for the actual numbers. R-132 keeps the confirm step local so this
@@ -7072,3 +7072,49 @@ not changed: passing between two cliffs does not make the trip harder.
 **Seen working** on the GM's map: aiming across a stepped mountainside draws a
 staircase of flat squares, each on its own column, instead of a plane tilted
 across the steps.
+
+### D-298 — The journey menu · `agreed`
+O-020, built. R-199 is new, and O-020 is closed.
+
+**A fourth step, not a fourth thing the click does.** The destination is
+settled by the aim; what is left is how they make it. Keeping it in the
+sequence rather than floating a dialog means the route stays drawn behind the
+menu and **re-draws as the transport changes** — a ship and a walker do not
+take the same way, so the decision is visible while it is being made.
+
+**Every mode listed with its own answer.** The question is a comparison: a day
+and a half on foot against fourteen hours mounted. One figure for the chosen
+mode would hide exactly the thing being chosen. A mode that cannot make the
+journey says "no way" and stays in the list, because that it was considered is
+worth seeing.
+
+That means one A\* per mode, which is affordable *because* this is the click
+step. The aim step runs on a pointer crossing a cell and gets one search
+(R-198); this runs once, on a click. And each mode is routed on its own rather
+than re-priced off one line — a ship's way is the water a walker cannot cross,
+so re-costing the walker's route for a boat would report a journey nobody
+takes.
+
+**O-006 turned out not to block it.** O-020 was recorded as waiting on travel
+pace presets for the numbers. `DEFAULT_TRAVEL_MODES` has carried `kmPerDay`
+for six modes all along, and transport and pace are one axis in it — "On foot
+— forced march" is both. No second axis was needed or invented.
+
+**A phrasing bug caught on screen, not in a test.** The first cut said "a day"
+for anything between half a day and a day, which put the forced march and the
+mounted ride on the same line when one is half again faster. Seeing them both
+read *"a day"* is what showed it. It counts in hours right up to the day now,
+and `journeyLength` moved to `client-core` beside `travelPrompt` — it is "what
+to tell the user", the same kind of thing — so it could be tested at all.
+The summary line also read "1.2 days by on foot": the mode names carry their
+own preposition.
+
+**The table display is unchanged**, and this is the one loose end. R-134 says
+both screens run the same sequence, and now the console has four steps and the
+table has three. Choosing transport is a GM decision about fiction and
+resources, so the divergence is probably right — but it is a divergence, and
+R-134 should be made to say so rather than quietly not matching.
+
+**Not on the wire.** The transport picks the route and reports the days; the
+intent is the same `moveParty`. Nothing records *how* a journey was made,
+which is a travel log's job and does not exist yet.
