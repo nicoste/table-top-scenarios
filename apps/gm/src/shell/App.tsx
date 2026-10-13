@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { decodeCampaign, decodePlacement, cellsFromWire } from '@tt/protocol';
 import {
   MAX_HEIGHT, WHOLE_MAP, rangeIn, stepBrush, WORLD_BRUSHES, BRUSHES, DEFAULT_BRUSH, brushById,
-  routeAcross, toGlobal, DEFAULT_TRAVEL_MODES, travelModeById, discoveryFromJSON,
+  routeAcross, toGlobal, DEFAULT_TRAVEL_MODES, ON_FOOT, discoveryFromJSON,
   chunkAt, columnAt,
   creatableSlots, sameWorldCell,
   DEFAULT_MATERIALS, DEFAULT_FLOOR, mapFromJSON, fillRegion, sliceOf, inRange, inMap, blockAt,
@@ -14,15 +14,14 @@ import {
   NO_CELLS, shownBy,
 } from '@tt/domain';
 import type {
-  SwatchId, CoverId, Lighting, Ambience, MemberId, Tokens, BlockCoord, Route, TravelModeId,
-  WorldCell,
+  SwatchId, CoverId, Lighting, Ambience, MemberId, Tokens, BlockCoord, Route, Travelling,
 } from '@tt/domain';
 import type { GmView, Intent } from '@tt/protocol';
 import { defaultTarget, worldCentre } from '@tt/render';
 import type { Standing, StageFog } from '@tt/render';
 import type { Stride, Tool, Travel } from '@tt/client-core';
 import {
-  idle, pick, armed, aim, choose, byWay, ghostCell, aimedAt, travelIntent, travelPrompt,
+  idle, pick, armed, aim, choose, ghostCell, aimedAt, travelIntent, travelPrompt,
   clickAction, holdsSelection, mapAction, mapHover, mapDrags, mapAllowed,
   cameraAction, wheelZoom, CAMERA_HINT,
   still, grab, armedStride, tokenAim, aimStride, strideGhost, strideIntent, standVerdict,
@@ -37,6 +36,7 @@ import { BuildWorldPanel } from '../features/build-world/index.js';
 import { PartyPanel } from '../features/party/index.js';
 import { PlacesPanel, PlaceInspector } from '../features/place/index.js';
 import { JourneyPanel } from '../features/journey/index.js';
+import { WaysPanel } from '../features/ways/index.js';
 import { ChunkInspector } from '../features/visibility/index.js';
 import { MapPanel } from '../features/map/index.js';
 import { ConnectBadge } from '../features/connect/index.js';
@@ -67,12 +67,14 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   const [selectedPlace, setSelectedPlace] = useState<string | null>(null);
   const [selectedChunk, setSelectedChunk] = useState<{ cx: number; cz: number } | null>(null);
   const [travel, setTravel] = useState<Travel>(idle);
-  /** The transport last chosen, kept between moves so it is not re-picked. */
-  const [way, setWay] = useState<TravelModeId>(DEFAULT_TRAVEL_MODES[1]!.id);
+  /**
+   * What the party can travel by (R-200), asked when the tool is picked up
+   * rather than after aiming. Kept between moves: it is a fact about the
+   * party, not about this journey.
+   */
+  const [travelling, setTravelling] = useState<Travelling>(ON_FOOT);
   /** The route being previewed, so the menu can price it (R-199). */
   const [route, setRoute] = useState<Route | null>(null);
-  /** Where the mover stands, resolved once for the menu to cost from. */
-  const [journeyFrom, setJourneyFrom] = useState<WorldCell | null>(null);
   /**
    * Which map is open, if any. **View state, never on the wire** (R-64, D-185):
    * which surface the console is showing is the console's business, and the
@@ -606,29 +608,24 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     const to = aimedAt(travel);
     if (!decoded || !known || !from || !to) {
       setRoute(null);
-      setJourneyFrom(null);
       stage.showRoute(null, '#ffffff');
       return;
     }
     const route = routeAcross(
       decoded.world,
       known,
-      // The transport being costed, which the menu can change under us
-      // (R-199) — a ship and a walker do not take the same way.
-      travelModeById(DEFAULT_TRAVEL_MODES, travel.step === 'choosing' ? travel.mode : way)
-        ?? DEFAULT_TRAVEL_MODES[1]!,
+      travelling,
       toGlobal({ cx: from.cx, cz: from.cz }, from.x, from.z),
       toGlobal({ cx: to.cx, cz: to.cz }, to.x, to.z),
     );
     setRoute(route);
-    setJourneyFrom(from);
     stage.showRoute(
       route?.cells ?? null,
       travel.step !== 'idle' && travel.pawn.memberId
         ? memberColour(travel.pawn.memberId)
         : '#e6e9ef',
     );
-  }, [travel, stage, decoded, way, view?.save?.discovery, view?.save?.placement]);
+  }, [travel, stage, decoded, travelling, view?.save?.discovery, view?.save?.placement]);
 
   const columnInfo = useCallback((cell: { cx: number; cz: number; x: number; z: number }) => {
     const chunk = decoded ? chunkAt(decoded.world, { cx: cell.cx, cz: cell.cz }) : null;
@@ -806,7 +803,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
        * An unreachable cell is still a cancel — `choose` refuses it, and
        * there is nothing worth costing.
        */
-      const next = choose(travel, way);
+      const next = choose(travel);
       setTravel(next.step === 'choosing' ? next : idle);
       if (next.step !== 'choosing') stage.showHighlight(null, 0);
       return;
@@ -1323,19 +1320,28 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
             {tool === 'places' && (
               <PlacesPanel markerId={markerId} onMarker={setMarkerId} />
             )}
+            {/*
+              Asked when the tool is picked up, like every other tool's
+              options, and never *after* aiming (R-200) — but it stays up
+              through the costing step, because the route and the days
+              recompute as it changes. Hiding it there would have taken away
+              the comparison for no reason: "what if we had a boat" is the
+              question a GM is asking while looking at four days on foot.
+            */}
+            {tool === 'travel' && (
+              <WaysPanel
+                modes={DEFAULT_TRAVEL_MODES}
+                travelling={travelling}
+                onTravelling={setTravelling}
+              />
+            )}
             {/* The confirm step of a move (R-199). It takes the panel while it
                 is open, because the question is in here and not on the map. */}
-            {travel.step === 'choosing' && decoded && journeyFrom && (
+            {travel.step === 'choosing' && (
               <JourneyPanel
                 who={travel.pawn.memberId ? memberName(travel.pawn.memberId) ?? 'them' : 'the party'}
                 modes={DEFAULT_TRAVEL_MODES}
-                mode={travel.mode}
-                from={journeyFrom}
-                to={travel.at}
-                campaign={decoded}
-                discovery={discoveryFromJSON(view!.save!.discovery)}
                 route={route}
-                onMode={(next: TravelModeId) => { setWay(next); setTravel((now) => byWay(now, next)); }}
                 onConfirm={() => {
                   dispatch(travelIntent(travel.pawn, travel.at));
                   setTravel(idle);

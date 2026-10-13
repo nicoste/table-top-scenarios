@@ -8,8 +8,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   createCampaign, ORIGIN, chunkAt, replaceChunk, paintGround, paintCover, setHeight,
-  emptyDiscovery, setChunkKnown, DEFAULT_TRAVEL_MODES,
-  DEFAULT_METRES_PER_CELL, toGlobal, routeAcross, daysAcross,
+  emptyDiscovery, setChunkKnown, DEFAULT_TRAVEL_MODES, waysOf,
+  DEFAULT_METRES_PER_CELL, toGlobal, routeAcross,
 } from '@tt/domain';
 import type { Chunk, CoverId, Discovery, SwatchId, TravelMode, World } from '@tt/domain';
 
@@ -25,8 +25,19 @@ const mode = (id: string): TravelMode => {
   if (!found) throw new Error(`no such mode: ${id}`);
   return found;
 };
-const foot = mode('foot');
-const ship = mode('ship');
+/** What the party has, one answer per medium (R-200). */
+const by = (land: string | null, water: string | null = null, air: string | null = null) => ({
+  land: land ? mode(land).id : null,
+  water: water ? mode(water).id : null,
+  air: air ? mode(air).id : null,
+});
+const foot = by('foot');
+const ship = by(null, 'ship');
+/** Days, as a multiple of what one flat cell of reference ground takes. */
+const cells = (days: number, travelling = foot) => {
+  const way = waysOf(DEFAULT_TRAVEL_MODES, travelling)[0]!;
+  return (days * way.kmPerDay) / (DEFAULT_METRES_PER_CELL / 1000);
+};
 
 /** One known chunk of grassland, which is the reference ground at ×1. */
 function grassland(): { world: World; discovery: Discovery } {
@@ -51,14 +62,14 @@ describe('a route reads the difficulty nobody was reading (R-52)', () => {
     expect(route.cells).toHaveLength(6);
     // Five steps of reference ground, flat: the number every other difficulty
     // in the registry is normalised against.
-    expect(route.cost).toBeCloseTo(5, 6);
+    expect(cells(route.days)).toBeCloseTo(5, 6);
   });
 
   it('counts a diagonal as a diagonal, not as a step', () => {
     const { world, discovery } = grassland();
     const route = routeAcross(world, discovery, foot, cell(2, 2), cell(5, 5))!;
     expect(route.cells).toHaveLength(4);
-    expect(route.cost).toBeCloseTo(3 * Math.SQRT2, 6);
+    expect(cells(route.days)).toBeCloseTo(3 * Math.SQRT2, 6);
   });
 
   it('prefers the road, because laid stone is the one ground faster than grass', () => {
@@ -69,8 +80,8 @@ describe('a route reads the difficulty nobody was reading (R-52)', () => {
     const world = put(grass, chunk);
     const straight = routeAcross(grass, discovery, foot, cell(2, 6), cell(12, 6))!;
     const paved = routeAcross(world, discovery, foot, cell(2, 6), cell(12, 6))!;
-    expect(paved.cost).toBeLessThan(straight.cost);
-    expect(paved.cost).toBeCloseTo(10 * 0.75, 6);
+    expect(paved.days).toBeLessThan(straight.days);
+    expect(cells(paved.days)).toBeCloseTo(10 * 0.75, 6);
   });
 
   it('weighs a wood against the detour round it, and the sums are tight (R-193)', () => {
@@ -104,8 +115,8 @@ describe('a route reads the difficulty nobody was reading (R-52)', () => {
     // Either way a wood costs more than open ground, which is the whole
     // reason any of these numbers exist.
     const open = routeAcross(bare, discovery, foot, cell(6, 3), cell(6, 7))!;
-    expect(routeAcross(blocked(null, TREES), discovery, foot, cell(6, 3), cell(6, 7))!.cost)
-      .toBeGreaterThan(open.cost);
+    expect(routeAcross(blocked(null, TREES), discovery, foot, cell(6, 3), cell(6, 7))!.days)
+      .toBeGreaterThan(open.days);
   });
 });
 
@@ -134,11 +145,11 @@ describe('altitude is free and slope is not (R-52a)', () => {
     const ramp = routeAcross(wall((x) => x - 5), discovery, foot, cell(5, 2), cell(15, 2))!;
 
     // Ten levels gained either way, over the same ten cells.
-    expect(ramp.cost).toBeLessThan(cliff.cost);
+    expect(ramp.days).toBeLessThan(cliff.days);
     // Not marginally, and not by the thirty-fold a head-on 45° step would
     // suggest: the cliff route halves its own gradient by taking the face at
     // an angle, which is the next test.
-    expect(cliff.cost / ramp.cost).toBeGreaterThan(1.5);
+    expect(cliff.days / ramp.days).toBeGreaterThan(1.5);
   });
 
   it('takes a steep face at an angle, which nobody told it to do', () => {
@@ -181,7 +192,7 @@ describe('altitude is free and slope is not (R-52a)', () => {
     const high = put(flat, chunk);
     const low = routeAcross(flat, discovery, foot, cell(2, 2), cell(9, 2))!;
     const plateau = routeAcross(high, discovery, foot, cell(2, 2), cell(9, 2))!;
-    expect(plateau.cost).toBeCloseTo(low.cost, 6);
+    expect(plateau.days).toBeCloseTo(low.days, 6);
   });
 
   it('walks round a mountain when going over it costs more', () => {
@@ -217,7 +228,7 @@ describe('a diagonal crosses a corner, and that is the decision (D-294)', () => 
     const world = put(land, chunk);
     const route = routeAcross(world, discovery, foot, cell(4, 4), cell(5, 5))!;
     expect(route.cells).toEqual([cell(4, 4), cell(5, 5)]);
-    expect(route.cost).toBeCloseTo(Math.SQRT2, 6);
+    expect(cells(route.days)).toBeCloseTo(Math.SQRT2, 6);
   });
 
   it('still cannot enter the water itself', () => {
@@ -259,24 +270,114 @@ describe('what a route will not do', () => {
     const { world, discovery } = grassland();
     const route = routeAcross(world, discovery, foot, cell(4, 4), cell(4, 4))!;
     expect(route.cells).toEqual([cell(4, 4)]);
-    expect(route.cost).toBe(0);
+    expect(route.days).toBe(0);
   });
 });
 
-describe('cost becomes days where the two scales meet', () => {
-  it('turns ten cells of grassland into the distance it is', () => {
+describe('the route is measured in days, because the ways do not share a pace', () => {
+  it('turns ten cells of grassland into the time it takes', () => {
     const { world, discovery } = grassland();
     const route = routeAcross(world, discovery, foot, cell(2, 2), cell(12, 2))!;
     // Ten cells at 1.5 km, against 39 km a day on foot.
-    const days = daysAcross(route, foot, DEFAULT_METRES_PER_CELL);
-    expect(days).toBeCloseTo(15 / foot.kmPerDay, 6);
-    expect(days).toBeLessThan(0.5);
+    expect(route.days).toBeCloseTo(15 / mode('foot').kmPerDay, 6);
+    expect(route.days).toBeLessThan(0.5);
   });
 
   it('makes the forced march faster than the cautious one over the same ground', () => {
     const { world, discovery } = grassland();
-    const route = routeAcross(world, discovery, foot, cell(2, 2), cell(20, 2))!;
-    expect(daysAcross(route, mode('forced'), DEFAULT_METRES_PER_CELL))
-      .toBeLessThan(daysAcross(route, mode('cautious'), DEFAULT_METRES_PER_CELL));
+    const quick = routeAcross(world, discovery, by('forced'), cell(2, 2), cell(20, 2))!;
+    const slow = routeAcross(world, discovery, by('cautious'), cell(2, 2), cell(20, 2))!;
+    expect(quick.days).toBeLessThan(slow.days);
+  });
+
+  it('attributes the days to the way that spent them', () => {
+    const { world, discovery } = grassland();
+    const route = routeAcross(world, discovery, foot, cell(2, 2), cell(12, 2))!;
+    expect(route.legs).toHaveLength(1);
+    expect(route.legs[0]!.mode).toBe(mode('foot').id);
+    expect(route.legs[0]!.days).toBeCloseTo(route.days, 6);
+  });
+});
+
+describe('one journey, several ways of making it (R-200, D-299)', () => {
+  /** Grassland split by a river four cells wide, running top to bottom. */
+  const severed = () => {
+    const { world, discovery } = grassland();
+    let chunk = only(world);
+    for (let z = 0; z < 30; z += 1) {
+      for (let x = 10; x <= 13; x += 1) chunk = paintGround(chunk, x, z, WATER);
+    }
+    return { world: put(world, chunk), discovery };
+  };
+
+  it('a river is a wall to a party with nothing to cross it in', () => {
+    // Which is the point of letting the water answer be nothing at all.
+    const { world, discovery } = severed();
+    expect(routeAcross(world, discovery, foot, cell(5, 5), cell(20, 5))).toBeNull();
+  });
+
+  it('walks to the water and swims it, in one journey', () => {
+    /*
+     * What the whole change is for. R-52 used to say a mixed journey was two
+     * separate moves — walk to the port, then sail. It is one move now: a
+     * boat is impassable on grass and a walker in the sea, so the party uses
+     * whichever of its ways can cross the cell it is entering (D-299).
+     */
+    const { world, discovery } = severed();
+    const route = routeAcross(world, discovery, by('foot', 'swim'), cell(5, 5), cell(20, 5))!;
+    expect(route).not.toBeNull();
+    const used = route.legs.map((leg) => leg.mode);
+    expect(used).toContain(mode('foot').id);
+    expect(used).toContain(mode('swim').id);
+    // And the days are split between them, not attributed to one.
+    expect(route.legs.every((leg) => leg.days > 0)).toBe(true);
+    expect(route.legs.reduce((sum, leg) => sum + leg.days, 0)).toBeCloseTo(route.days, 6);
+  });
+
+  it('swims only the water, and walks the rest', () => {
+    const { world, discovery } = severed();
+    const route = routeAcross(world, discovery, by('foot', 'swim'), cell(5, 5), cell(20, 5))!;
+    const swum = route.legs.find((leg) => leg.mode === mode('swim').id)!;
+    const walked = route.legs.find((leg) => leg.mode === mode('foot').id)!;
+    // Four cells of river against eleven of grass, and swimming is three
+    // times slower a kilometre — so the short wet leg costs real time.
+    expect(swum.days).toBeGreaterThan(0);
+    expect(walked.days).toBeGreaterThan(0);
+    expect(swum.days / 4).toBeGreaterThan(walked.days / 11);
+  });
+
+  it('takes a canoe over swimming when it has both, because it is quicker', () => {
+    const { world, discovery } = severed();
+    const slow = routeAcross(world, discovery, by('foot', 'swim'), cell(5, 5), cell(20, 5))!;
+    const quick = routeAcross(world, discovery, by('foot', 'canoe'), cell(5, 5), cell(20, 5))!;
+    expect(quick.days).toBeLessThan(slow.days);
+  });
+
+  it('flies straight over everything, which is a large thing to hand a GM', () => {
+    const { world, discovery } = severed();
+    const walked = routeAcross(world, discovery, by('foot', 'swim'), cell(5, 5), cell(20, 5))!;
+    const flown = routeAcross(world, discovery, by(null, null, 'wings'), cell(5, 5), cell(20, 5))!;
+    expect(flown.days).toBeLessThan(walked.days);
+    // Fifteen cells apart on one row: a straight line and nothing else.
+    expect(flown.cells).toHaveLength(16);
+    expect(flown.legs).toHaveLength(1);
+    expect(flown.legs[0]!.mode).toBe(mode('wings').id);
+  });
+
+  it('is not slowed by ground it is flying over', () => {
+    // `free` rather than the ground's own difficulty: a jungle costs a
+    // balloon what a meadow does.
+    const { world: plain, discovery } = grassland();
+    let chunk = only(plain);
+    for (let x = 0; x < 30; x += 1) chunk = paintGround(chunk, x, 5, DARK_LEAVES);
+    const rough = put(plain, chunk);
+    const overPlain = routeAcross(plain, discovery, by(null, null, 'balloon'), cell(6, 3), cell(6, 7))!;
+    const overRough = routeAcross(rough, discovery, by(null, null, 'balloon'), cell(6, 3), cell(6, 7))!;
+    expect(overRough.days).toBeCloseTo(overPlain.days, 9);
+  });
+
+  it('has no way anywhere with nothing at all', () => {
+    const { world, discovery } = grassland();
+    expect(routeAcross(world, discovery, by(null), cell(2, 2), cell(5, 5))).toBeNull();
   });
 });

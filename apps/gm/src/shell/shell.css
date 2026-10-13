@@ -112,7 +112,17 @@ button.quiet:hover { background: #3a2222; color: #ffc9c9; border-color: transpar
   because "under an hour" is a phrase, not a number.
 */
 .ways .diff { font-size: 10.5px; opacity: .8; }
-.ways button[disabled] { opacity: .45; }
+/*
+  A leg of a journey is read, not pressed: no hover, no dimming, because
+  `disabled` on a row that was never a control reads as broken rather than
+  as unavailable.
+*/
+.ways button.plain[disabled] { opacity: 1; }
+.ways button.plain:hover { background: transparent; }
+.ways button[disabled]:not(.plain) { opacity: .45; }
+/* The three media, each its own short list (R-200). */
+.way-group + .way-group { margin-top: 9px; }
+.way-group .lbl { margin-bottom: 3px; }
 .brush button { padding: 6px 2px; font-size: 12px; }
 
 .reveal { display: flex; gap: 5px; }

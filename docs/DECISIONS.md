@@ -7118,3 +7118,63 @@ R-134 should be made to say so rather than quietly not matching.
 **Not on the wire.** The transport picks the route and reports the days; the
 intent is the same `moveParty`. Nothing records *how* a journey was made,
 which is a travel log's job and does not exist yet.
+
+### D-299 — The party travels by what it has, and the cell picks · `agreed`
+The GM, one day after D-298 shipped: *"all tools show a set of pickable
+options when selected, but the travel tool awaits until the user picks the
+peon, selects start and end and then shows how. What if we switch the
+order?"* R-200 is new; R-52's mixed-journey note is superseded.
+
+**The observation was about consistency and the answer was about the model.**
+Every other tool shows what it will do the moment it is picked up. Travel
+asked nothing until after aiming and then asked everything. Moving the
+question earlier turned out to change what a journey *is*: once the party has
+a land answer and a water answer rather than one mode, the route can take
+whichever suits the cell — and **walking to the coast and sailing becomes one
+journey**, which R-52 had been admitting was two separate moves.
+
+**Almost no new machinery.** A boat on grass and a walker in the sea already
+came back impassable from the overrides R-52b has carried for rounds. The
+router asks each conveyance the question it was already asking one, and takes
+the quickest that can cross.
+
+**One real structural change, and the GM's question found it.** They asked
+how a river crossing counts: *"land → water → land. Do you split each step as
+a mixed move?"* No — a step is costed by the conveyance entering the target
+cell, so the medium changes at the cell boundary and nothing is half-walked.
+But answering it exposed that the search was minimising **difficulty**, which
+only works while one pace divides the whole journey. Mix 39 km/day with 77 and
+a difficulty unit stops being a duration. The search minimises **days** now.
+With one conveyance the two are the same question over a constant, so nothing
+about existing behaviour moved.
+
+**Seen working on the GM's own map**, across the river their world is split
+by, without leaving the costing step:
+
+| they have | the journey |
+| --- | --- |
+| nothing on the water | 1.5 days, walking round |
+| swimming | 1.3 days — 1.2 on foot, 3 hours swimming |
+| a canoe | 1.2 days — 1.1 on foot, 3 hours paddling |
+| a flying mount | 6 hours, straight over everything |
+
+**Six conveyances appended** — wagon, hard ride, swimming, canoe, balloon,
+flying mount — never slotted in among the six that existed, because saved
+worlds reference those ids (R-11). `fallback: 'free'` is new and is how
+anything airborne is described.
+
+**What this removed.** D-298's menu listed every mode with its own route, one
+A\* per mode. That is gone: the transport is decided before the sequence
+starts, so the costing step carries no mode and `byWay` had nothing to swap.
+Dead API deleted rather than left.
+
+**One thing I nearly got wrong.** I first hid the conveyance pickers while
+the menu was open, on the grounds that transport is chosen "before". But the
+route recomputes as they change, so hiding them took away a comparison for
+nothing — *"what if we had a boat"* is the question a GM asks while looking
+at four days on foot. They stay up.
+
+**A free-text pace field was asked about and declined.** Modes are
+append-only ids that saved worlds reference, and a typed number would sit
+outside that registry and let someone enter 400 km a day. A list per medium
+says the same thing and stays in the record.

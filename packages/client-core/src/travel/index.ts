@@ -11,7 +11,7 @@
 // round-trip per pointer move.
 
 import type { Intent } from '@tt/protocol';
-import type { TravelModeId, WorldCell } from '@tt/domain';
+import type { WorldCell } from '@tt/domain';
 import type { PawnRef } from '@tt/render';
 
 export type Travel =
@@ -33,18 +33,18 @@ export type Travel =
     readonly reachable: boolean;
   }
   /**
-   * Aimed and clicked, now being **costed** (R-199, O-020).
+   * Aimed and clicked, now being **costed** (R-199).
    *
-   * A fourth step rather than a fourth thing the click does: the journey is
-   * settled and what is left is how they make it. The destination is fixed
-   * here, so the question is only the transport — and changing it re-asks the
-   * router, because a ship and a walker do not take the same way (R-52a).
+   * A fourth step rather than a fourth thing the click does: the destination
+   * is settled and what is left is to look at what it costs and say yes. It
+   * carries no transport, because the party's conveyances are chosen when the
+   * tool is picked up and are a fact about the party, not about this journey
+   * (R-200).
    */
   | {
     readonly step: 'choosing';
     readonly pawn: PawnRef;
     readonly at: WorldCell;
-    readonly mode: TravelModeId;
   };
 
 export const idle: Travel = { step: 'idle' };
@@ -90,15 +90,9 @@ export function aim(travel: Travel, cell: WorldCell | null, reachable: boolean):
  * reaches here is the same click that lands on unreachable ground, and a menu
  * offering to cost a journey nobody can make is worse than no menu.
  */
-export function choose(travel: Travel, mode: TravelModeId): Travel {
+export function choose(travel: Travel): Travel {
   if (!canConfirm(travel) || travel.step !== 'aiming' || !travel.at) return travel;
-  return { step: 'choosing', pawn: travel.pawn, at: travel.at, mode };
-}
-
-/** Swaps the transport while the menu is open, identity-preserving (R-165). */
-export function byWay(travel: Travel, mode: TravelModeId): Travel {
-  if (travel.step !== 'choosing' || travel.mode === mode) return travel;
-  return { ...travel, mode };
+  return { step: 'choosing', pawn: travel.pawn, at: travel.at };
 }
 
 /** Where the ghost should stand: nowhere unless the move is actually possible. */

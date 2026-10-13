@@ -31,9 +31,9 @@ export {
   DEFAULT_VISION_RANGE, nextPawnColour, createMember, startingParty, editMember, removeMember,
 } from './party/index.js';
 
-export type { TravelMode, TravelModeId, Slope } from './travel/index.js';
+export type { TravelMode, TravelModeId, Slope, Medium, Travelling } from './travel/index.js';
 export {
-  DEFAULT_TRAVEL_MODES, climbFactor, travelModeById, groundCost, cellCost, isPassable,
+  DEFAULT_TRAVEL_MODES, ON_FOOT, waysOf, climbFactor, travelModeById, groundCost, cellCost, isPassable,
 } from './travel/index.js';
 
 export type { Marker, MarkerPart, PartShape } from './markers/index.js';

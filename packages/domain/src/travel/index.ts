@@ -53,7 +53,12 @@ const WALKING: Slope = { bite: 3.5, easiest: 0.05 };
  * a slope — the cost says no long before a rule would (D-296).
  */
 const RIDING: Slope = { bite: 5, easiest: 0.05 };
-/** Afloat: the water is flat, so the question never arises. */
+/** A wagon on a slope is the worst of all of them, and knows it. */
+const HAULING: Slope = { bite: 7, easiest: 0.05 };
+/**
+ * Afloat, or airborne: the water is flat and the ground is not in the way, so
+ * for either of them the question never arises.
+ */
 const AFLOAT: Slope = { bite: 0, easiest: 0 };
 
 /**
@@ -70,13 +75,31 @@ export function climbFactor(slope: Slope, grade: number): number {
   return Math.exp(slope.bite * Math.abs(grade + slope.easiest)) / flat;
 }
 
+/**
+ * Where a conveyance works (R-200).
+ *
+ * Not a *rule* about where it may go — the overrides below already say that,
+ * and say it in the one place the cost is read. This is how a GM is asked the
+ * question: what have you got on land, on the water, in the air. Three
+ * answers, and the party travels by whichever of them suits the cell they are
+ * entering.
+ */
+export type Medium = 'land' | 'water' | 'air';
+
 export interface TravelMode {
   readonly id: TravelModeId;
   readonly name: string;
+  /** Which of the GM's three answers this one is for (R-200). */
+  readonly medium: Medium;
   /** Distance covered in a day of travel on reference terrain. */
   readonly kmPerDay: number;
-  /** How to treat ground with no explicit entry below. */
-  readonly fallback: 'ground-default' | 'impassable';
+  /**
+   * How to treat ground with no explicit entry below.
+   *
+   * `free` is how anything airborne is described: the ground is under it, not
+   * in its way, so a jungle costs a balloon what a meadow does.
+   */
+  readonly fallback: 'ground-default' | 'impassable' | 'free';
   /** How this traveller answers a slope (R-52a). */
   readonly slope: Slope;
   /**
@@ -96,14 +119,17 @@ const LIQUIDS = 'material:liquid';
 const SHORE = 'material:liquid/shore';
 
 const mode = (
-  value: string, name: string, kmPerDay: number,
+  value: string, name: string, medium: Medium, kmPerDay: number,
   slope: Slope = WALKING,
   fallback: TravelMode['fallback'] = 'ground-default',
   overrides: Record<string, Difficulty> = {},
 ): TravelMode => ({
   id: registryId<'__travelMode'>('travel', value) as unknown as TravelModeId,
-  name, kmPerDay, fallback, overrides, slope,
+  name, medium, kmPerDay, fallback, overrides, slope,
 });
+
+/** What every boat and swimmer says: the water is the way, the land is not. */
+const ON_WATER: Record<string, Difficulty> = { [LIQUIDS]: 1, [SHORE]: 1.5 };
 
 /**
  * Grounded in D&D 5e travel pace and vehicle speeds, converted to kilometres:
@@ -111,14 +137,60 @@ const mode = (
  * galley 96.
  */
 export const DEFAULT_TRAVEL_MODES: readonly TravelMode[] = [
-  mode('cautious', 'On foot — cautious', 29),
-  mode('foot', 'On foot', 39),
-  mode('forced', 'On foot — forced march', 48),
-  mode('horse', 'Mounted', 77, RIDING),
+  mode('cautious', 'On foot — cautious', 'land', 29),
+  mode('foot', 'On foot', 'land', 39),
+  mode('forced', 'On foot — forced march', 'land', 48),
+  mode('horse', 'Mounted', 'land', 77, RIDING),
   // A ship may only be where there is water, which is the whole point.
-  mode('ship', 'By ship', 77, AFLOAT, 'impassable', { [LIQUIDS]: 1, [SHORE]: 1.5 }),
-  mode('galley', 'By galley', 154, AFLOAT, 'impassable', { [LIQUIDS]: 1, [SHORE]: 1.5 }),
+  mode('ship', 'By ship', 'water', 77, AFLOAT, 'impassable', ON_WATER),
+  mode('galley', 'By galley', 'water', 154, AFLOAT, 'impassable', ON_WATER),
+
+  /*
+   * Appended, never slotted in among the six above: saved worlds reference
+   * these ids and R-11 does not bend for tidiness.
+   */
+  // A cart keeps to easy ground and hates a hill more than anything else does.
+  mode('wagon', 'By wagon', 'land', 26, HAULING),
+  mode('gallop', 'Mounted — hard ride', 'land', 96, RIDING),
+  // The party's own arms. Slow, and the reason a river is a wall without it.
+  mode('swim', 'Swimming', 'water', 13, AFLOAT, 'impassable', ON_WATER),
+  mode('canoe', 'By canoe', 'water', 42, AFLOAT, 'impassable', ON_WATER),
+  /*
+   * Airborne: `free`, so the ground below is scenery. A party with either of
+   * these crosses anything in a straight line, which is correct and is a
+   * large thing to hand a GM (D-299).
+   */
+  mode('balloon', 'By balloon', 'air', 60, AFLOAT, 'free'),
+  mode('wings', 'Flying mount', 'air', 120, AFLOAT, 'free'),
 ];
+
+/**
+ * What the party can travel by, one answer per medium (R-200).
+ *
+ * `null` is the honest answer and the interesting one: no water conveyance is
+ * what makes a river a wall, and no air conveyance is the ordinary case.
+ */
+export interface Travelling {
+  readonly land: TravelModeId | null;
+  readonly water: TravelModeId | null;
+  readonly air: TravelModeId | null;
+}
+
+/** On foot and nothing else, which is how a party starts out. */
+export const ON_FOOT: Travelling = {
+  land: registryId<'__travelMode'>('travel', 'foot') as unknown as TravelModeId,
+  water: null,
+  air: null,
+};
+
+/** The conveyances a party actually has, in the order they are offered. */
+export function waysOf(
+  modes: readonly TravelMode[], travelling: Travelling,
+): readonly TravelMode[] {
+  return [travelling.land, travelling.water, travelling.air]
+    .map((id) => (id ? travelModeById(modes, id) : null))
+    .filter((found): found is TravelMode => found !== null);
+}
 
 export function travelModeById(modes: readonly TravelMode[], id: TravelModeId): TravelMode | null {
   return modes.find((m) => m.id === id) ?? null;
@@ -143,6 +215,8 @@ export function groundCost(
     ?? travelMode.overrides[family as string];
   if (explicit !== undefined) return explicit;
   if (travelMode.fallback === 'impassable') return 'impassable';
+  // Airborne: the ground is under it, not in its way.
+  if (travelMode.fallback === 'free') return 1;
   const material = familyOf(ground);
   return material ? difficultyOf(material, cutIdIn(ground)) : 'impassable';
 }

@@ -1,106 +1,61 @@
-// The confirm step of a move: how they travel, and how long it takes (R-199).
+// The confirm step of a move: how long it takes, and go or not (R-199).
 //
-// The fourth step of pick / aim / confirm, and a step rather than a dialog
-// over the map: the route stays drawn behind it and re-draws as the transport
-// changes, because a ship and a walker do not take the same way. What is
-// being decided is visible the whole time.
+// It used to ask which transport, which is now asked when the tool is picked
+// up (R-200) — so what is left is the answer: the journey, how the days were
+// spent, and two buttons. The route stays drawn behind it.
 //
-// Every mode is listed with its own answer rather than one figure for the
-// chosen one. The question a GM is actually asking is *"what is this worth"*,
-// and that is a comparison — five days on foot against two by ship is the
-// decision, and showing one number at a time hides it.
+// **The legs are the interesting line.** A journey that walks to a coast and
+// sails from it is one move now, and "4.2 days" alone would hide that half of
+// it was on the water. Saying where the time went is what makes a mixed
+// journey legible.
 
-import type { Route, TravelMode, TravelModeId } from '@tt/domain';
-import { daysAcross, routeAcross } from '@tt/domain';
-import type { Campaign, Discovery, WorldCell } from '@tt/domain';
-import { toGlobal } from '@tt/domain';
+import type { Route, TravelMode } from '@tt/domain';
 import { journeyLength } from '@tt/client-core';
 import { Tooltip } from '@tt/ui';
 
 export interface JourneyPanelProps {
   readonly who: string;
   readonly modes: readonly TravelMode[];
-  /** The transport being costed. */
-  readonly mode: TravelModeId;
-  /** Where they stand and where they are going, for costing the other modes. */
-  readonly from: WorldCell;
-  readonly to: WorldCell;
-  readonly campaign: Campaign;
-  readonly discovery: Discovery;
-  /** The route already drawn, for the mode in hand. */
+  /** The route being previewed, or null when there is no way there. */
   readonly route: Route | null;
-  onMode: (mode: TravelModeId) => void;
   onConfirm: () => void;
   onCancel: () => void;
 }
 
-export function JourneyPanel({
-  who, modes, mode, from, to, campaign, discovery, route, onMode, onConfirm, onCancel,
-}: JourneyPanelProps) {
-  const start = toGlobal({ cx: from.cx, cz: from.cz }, from.x, from.z);
-  const end = toGlobal({ cx: to.cx, cz: to.cz }, to.x, to.z);
-
-  /*
-   * Each mode routed on its own, because the cheapest way for a walker is not
-   * the cheapest way for a boat — a ship's route is the water the walker
-   * cannot cross. Re-costing the walker's line for a ship would report a
-   * journey nobody takes. It is one A* per mode on the frame the menu opens,
-   * and the menu opens on a click, not on a pointer move (R-198).
-   */
-  const legs = modes.map((entry) => {
-    const found = entry.id === mode
-      ? route
-      : routeAcross(campaign.world, discovery, entry, start, end);
-    return {
-      mode: entry,
-      days: found ? daysAcross(found, entry, campaign.world.metresPerCell) : null,
-    };
-  });
-  const chosen = legs.find((leg) => leg.mode.id === mode);
+export function JourneyPanel({ who, modes, route, onConfirm, onCancel }: JourneyPanelProps) {
+  const nameOf = (id: string) => modes.find((mode) => mode.id === id)?.name ?? 'somehow';
+  // One leg is the whole journey, and repeating it under the total is noise.
+  const legs = route && route.legs.length > 1 ? route.legs : [];
 
   return (
     <div className="card">
       <h2>Journey</h2>
       <p className="hint">Moving {who}.</p>
-      <ul className="palette ways">
-        {legs.map(({ mode: entry, days }) => (
-          <li key={entry.id}>
-            <Tooltip
-              label={days === null
-                ? `${entry.name} cannot make this journey`
-                : `${entry.name} — ${entry.kmPerDay} km a day`}
-              placement="left"
-              stretch
-            >
-              <button
-                className={entry.id === mode ? 'on' : ''}
-                onClick={() => onMode(entry.id)}
-                aria-pressed={entry.id === mode}
-                /* Not disabled: a mode that cannot make *this* journey is
-                   still worth seeing in the list, and a GM may want to know
-                   it was considered. Picking it simply shows no route. */
-              >
-                <span className="nm">{entry.name}</span>
-                <span className="diff">{days === null ? 'no way' : journeyLength(days)}</span>
-              </button>
-            </Tooltip>
-          </li>
-        ))}
-      </ul>
-      {/* The mode's own name carries the preposition — "On foot", "By ship" —
-          so putting another one in front gives "by on foot". */}
-      <p className="readout">
-        {chosen?.days != null
-          ? `${chosen.mode.name} — ${journeyLength(chosen.days)}`
-          : 'No way there by this transport.'}
-      </p>
+      {route ? (
+        <>
+          <p className="readout">{journeyLength(route.days)}</p>
+          {legs.length > 0 && (
+            <ul className="palette ways">
+              {legs.map((leg) => (
+                <li key={leg.mode}>
+                  <button className="plain" disabled>
+                    <span className="nm">{nameOf(leg.mode)}</span>
+                    <span className="diff">{journeyLength(leg.days)}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      ) : (
+        <p className="readout">
+          No way there with what they have. Give them something for the water,
+          or go round.
+        </p>
+      )}
       <div className="btn-grid tools">
-        <Tooltip label="Send them — Enter" placement="bottom" stretch>
-          <button
-            className="on"
-            onClick={onConfirm}
-            disabled={chosen?.days == null}
-          >
+        <Tooltip label="Send them" placement="bottom" stretch>
+          <button className="on" onClick={onConfirm} disabled={route === null}>
             ✓ Travel
           </button>
         </Tooltip>

@@ -20,8 +20,10 @@ import type { ChunkCoord, GlobalCell, World } from '../world/index.js';
 import { chunkAt, columnAt, fromGlobal } from '../world/index.js';
 import type { Discovery } from '../discovery/index.js';
 import { isChunkKnown } from '../discovery/index.js';
-import type { TravelMode } from '../travel/index.js';
-import { cellCost, isPassable, climbFactor } from '../travel/index.js';
+import type { TravelMode, TravelModeId, Travelling } from '../travel/index.js';
+import {
+  DEFAULT_TRAVEL_MODES, cellCost, isPassable, climbFactor, waysOf,
+} from '../travel/index.js';
 import { DEFAULT_MATERIALS, difficultyOf } from '../materials/index.js';
 
 /**
@@ -35,7 +37,23 @@ import { DEFAULT_MATERIALS, difficultyOf } from '../materials/index.js';
 export interface Route {
   /** From the party's cell to the destination, both included. */
   readonly cells: readonly GlobalCell[];
-  readonly cost: number;
+  /**
+   * How long it takes, in **days** — not an abstract cost (R-200).
+   *
+   * The search minimises this directly, which it has to once a journey may
+   * mix conveyances: a walker at 39 km a day and a ship at 77 do not turn one
+   * unit of difficulty into the same duration, so a router minimising
+   * difficulty would pick cheap routes that take longer (D-299). With one
+   * conveyance the two are the same question, divided by a constant.
+   */
+  readonly days: number;
+  /**
+   * How the days were spent, by conveyance, in the order each was first used.
+   *
+   * What makes a mixed journey readable: *"4.2 days — 3.1 on foot, 1.1 by
+   * ship"* says where the time went, which one number cannot.
+   */
+  readonly legs: readonly { readonly mode: TravelModeId; readonly days: number }[];
 }
 
 /**
@@ -136,14 +154,20 @@ class Frontier {
   }
 }
 
-/** What one cell costs to stand in, or null when it cannot be entered at all. */
+/** What a cell offers each conveyance, or null when none of them may enter. */
+interface Entry {
+  /** Difficulty under each way that can cross it, keyed by mode id. */
+  readonly ways: readonly { readonly mode: TravelMode; readonly difficulty: number }[];
+  readonly height: number;
+}
+
 function enterCost(
   world: World,
   discovery: Discovery,
-  travelMode: TravelMode,
+  ways: readonly TravelMode[],
   gx: number,
   gz: number,
-): { cost: number; height: number } | null {
+): Entry | null {
   const { coord, x, z } = fromGlobal({ gx, gz });
   // Unauthored is not the same as unknown, and neither may be crossed: one is
   // ground that does not exist and the other is ground the party has not seen
@@ -153,9 +177,17 @@ function enterCost(
   if (!chunk) return null;
   const column = columnAt(chunk, x, z);
   if (!column) return null;
-  const cost = cellCost(travelMode, column);
-  if (!isPassable(cost)) return null;
-  return { cost, height: column.height };
+  /*
+   * Every conveyance the party has, and what this cell costs each. A boat on
+   * grass and a walker in the sea both come back impassable from the machinery
+   * that already existed (R-52b) — so "which way can cross this" needs no new
+   * rule, only the question asked once per way (D-299).
+   */
+  const open = ways
+    .map((mode) => ({ mode, difficulty: cellCost(mode, column) }))
+    .filter((way): way is { mode: TravelMode; difficulty: number } => isPassable(way.difficulty));
+  if (open.length === 0) return null;
+  return { ways: open, height: column.height };
 }
 
 /**
@@ -174,28 +206,38 @@ function enterCost(
 export function routeAcross(
   world: World,
   discovery: Discovery,
-  travelMode: TravelMode,
+  travelling: Travelling,
   from: GlobalCell,
   to: GlobalCell,
   budget: number = ROUTE_BUDGET,
 ): Route | null {
+  const ways = waysOf(DEFAULT_TRAVEL_MODES, travelling);
+  if (ways.length === 0) return null;
   // The campaign's own scales, not the defaults: R-52a moves when they move.
   const metresPerCell = world.metresPerCell;
   const metresPerLevel = world.metresPerLevel;
-  const start = enterCost(world, discovery, travelMode, from.gx, from.gz);
-  const goal = enterCost(world, discovery, travelMode, to.gx, to.gz);
+  const kmPerCell = metresPerCell / 1000;
+  /** The fastest anything the party has could cross one flat cell, in days. */
+  const quickest = ways.reduce(
+    (best, way) => Math.min(best, (kmPerCell / way.kmPerDay) * CHEAPEST_STEP),
+    Number.POSITIVE_INFINITY,
+  );
+  const start = enterCost(world, discovery, ways, from.gx, from.gz);
+  const goal = enterCost(world, discovery, ways, to.gx, to.gz);
   if (!start || !goal) return null;
-  if (from.gx === to.gx && from.gz === to.gz) return { cells: [from], cost: 0 };
+  if (from.gx === to.gx && from.gz === to.gz) return { cells: [from], days: 0, legs: [] };
 
   const startKey = keyOf(from.gx, from.gz);
   const goalKey = keyOf(to.gx, to.gz);
   const best = new Map<number, number>([[startKey, 0]]);
   const cameFrom = new Map<number, number>();
+  /** Which way entered each cell, and what it cost in days to do so. */
+  const arrived = new Map<number, { mode: TravelModeId; days: number }>();
   const heights = new Map<number, number>([[startKey, start.height]]);
   const at = new Map<number, GlobalCell>([[startKey, from]]);
   const settled = new Set<number>();
   const frontier = new Frontier();
-  frontier.push(startKey, octile(from.gx, from.gz, to.gx, to.gz) * CHEAPEST_STEP);
+  frontier.push(startKey, octile(from.gx, from.gz, to.gx, to.gz) * quickest);
 
   while (frontier.size > 0 && settled.size < budget) {
     const key = frontier.pop()!;
@@ -203,11 +245,23 @@ export function routeAcross(
     settled.add(key);
     if (key === goalKey) {
       const cells: GlobalCell[] = [];
+      const spent: { mode: TravelModeId; days: number }[] = [];
       for (let walk: number | undefined = key; walk !== undefined; walk = cameFrom.get(walk)) {
         cells.push(at.get(walk)!);
+        const leg = arrived.get(walk);
+        if (leg) spent.push(leg);
       }
       cells.reverse();
-      return { cells, cost: best.get(goalKey)! };
+      spent.reverse();
+      // Gathered by conveyance, in the order each was first used, so a mixed
+      // journey can say where its time went.
+      const legs: { mode: TravelModeId; days: number }[] = [];
+      for (const { mode, days } of spent) {
+        const already = legs.find((leg) => leg.mode === mode);
+        if (already) legs[legs.indexOf(already)] = { mode, days: already.days + days };
+        else legs.push({ mode, days });
+      }
+      return { cells, days: best.get(goalKey)!, legs };
     }
     const here = at.get(key)!;
     const height = heights.get(key)!;
@@ -217,7 +271,7 @@ export function routeAcross(
       const gz = here.gz + dz;
       const next = keyOf(gx, gz);
       if (settled.has(next)) continue;
-      const step = enterCost(world, discovery, travelMode, gx, gz);
+      const step = enterCost(world, discovery, ways, gx, gz);
       if (!step) continue;
       /*
        * The gradient of this step, and it is the *step's* gradient: a
@@ -225,16 +279,32 @@ export function routeAcross(
        * steep than an orthogonal one and costs accordingly (R-52a).
        */
       const grade = ((step.height - height) * metresPerLevel) / (span * metresPerCell);
-      // Multiplied, not added: climbing through a swamp is worse than either
-      // on its own, and a factor is what a speed model gives you (D-296).
-      const cost = soFar + span * step.cost * climbFactor(travelMode.slope, grade);
+      /*
+       * The quickest way across *this* cell, which is how a journey comes to
+       * be mixed: a boat is impassable on grass and a walker in the sea, so
+       * the party simply uses whichever of its conveyances can cross, and the
+       * change of medium happens at the cell boundary (D-299).
+       *
+       * In **days**, not difficulty, because the ways do not share a pace.
+       */
+      let fastest: { mode: TravelModeId; days: number } | null = null;
+      for (const way of step.ways) {
+        // Multiplied, not added: climbing through a swamp is worse than
+        // either on its own, and a factor is what a speed model gives you.
+        const cells = span * way.difficulty * climbFactor(way.mode.slope, grade);
+        const days = (cells * kmPerCell) / way.mode.kmPerDay;
+        if (!fastest || days < fastest.days) fastest = { mode: way.mode.id, days };
+      }
+      if (!fastest) continue;
+      const cost = soFar + fastest.days;
       const known = best.get(next);
       if (known !== undefined && known <= cost) continue;
       best.set(next, cost);
       cameFrom.set(next, key);
+      arrived.set(next, fastest);
       heights.set(next, step.height);
       at.set(next, { gx, gz });
-      frontier.push(next, cost + octile(gx, gz, to.gx, to.gz) * CHEAPEST_STEP);
+      frontier.push(next, cost + octile(gx, gz, to.gx, to.gz) * quickest);
     }
   }
   return null;
@@ -243,12 +313,10 @@ export function routeAcross(
 /**
  * How long a route takes, in days.
  *
- * The cost is in cells of reference ground and a cell is `metresPerCell`
- * across, so this is the one place the two scales meet. It takes the world's
- * own figure rather than the default, because a campaign may set its own
- * (R-80's neighbourhood).
+ * Kept as a function although it now reads one field: the route carries days
+ * because the search had to minimise them (R-200), and callers asking "how
+ * long" should not have to know that changed.
  */
-export function daysAcross(route: Route, travelMode: TravelMode, metresPerCell: number): number {
-  const km = (route.cost * metresPerCell) / 1000;
-  return km / travelMode.kmPerDay;
+export function daysAcross(route: Route): number {
+  return route.days;
 }

@@ -753,9 +753,11 @@ category (R-1), and squarely in scope.
 > boat somewhere to put in.
 >
 > A **column override beats the mode**, so a bridge is a cell painted passable —
-> a property of the place, not of the traveller. And mixed journeys need no new
-> machinery: walk to the port, then sail, is two legs of the trip splitting
-> already agreed in R-57.
+> a property of the place, not of the traveller.
+>
+> ~~Mixed journeys are two legs of the trip, split by hand.~~ **Superseded by
+> R-200**: walk to the port and sail is **one journey**, because the party
+> travels by whichever of its conveyances suits the cell it is entering.
 
 > **R-52a.** **Altitude costs nothing; gradient costs, and the mode decides
 > how much.**
@@ -2763,19 +2765,15 @@ apps/host/src/
 > and a walker do not take the same way (R-52a) — what is being decided stays
 > visible the whole time.
 >
-> **Every mode is listed with its own answer**, not one figure for the chosen
-> one. The question a GM is asking is *what is this worth*, and that is a
-> comparison: a day and a half on foot against fourteen hours mounted is the
-> decision, and showing one number at a time hides it. A mode that cannot make
-> the journey says so and stays in the list — that it was considered is worth
-> seeing.
+> **It does not ask which transport** — that is asked when the tool is picked
+> up (R-200). What is left is the answer: how long, how the days were spent,
+> and go or not. The conveyance pickers stay on screen beside it, because the
+> route and the days recompute as they change: *"what if we had a boat"* is
+> exactly the question a GM asks while looking at four days on foot.
 >
-> **One A\* per mode, on the frame the menu opens.** Affordable precisely
-> because this is the *click* step and not the aim step, which runs on a
-> pointer crossing a cell (R-198). Each mode is routed on its own rather than
-> re-costing one line, because a ship's way is the water a walker cannot
-> cross — pricing the walker's route for a boat would report a journey nobody
-> takes.
+> **The legs are the interesting line.** A journey that walks to a coast and
+> sails from it is one move, and a single total would hide that half of it was
+> on the water. One leg is the whole journey and is not repeated under it.
 >
 > **Hours right up to the day, then days to one decimal.** Saying "a day" for
 > everything between half a day and a day put a forced march and a mounted
@@ -2789,6 +2787,46 @@ apps/host/src/
 > **The transport is not on the wire.** It chooses the route and reports the
 > days; the intent is the same `moveParty` it always was. Nothing yet records
 > *how* a journey was made, and a travel log is where that would belong.
+
+> **R-200.** **A party travels by whatever it has, and the cell decides
+> which.**
+>
+> The GM answers three questions when they pick the travel tool, not after
+> aiming: what you have **on land**, **on the water**, **in the air**. `None`
+> is an answer and the sharp one — nothing on the water is what makes a river
+> a wall.
+>
+> **The route then picks per cell**, taking the quickest conveyance that can
+> cross it. Walking to a coast and sailing from it is **one journey**, which
+> supersedes R-52's note that it was two moves split by hand. Nothing new says
+> which conveyance may go where: a boat on grass and a walker in the sea
+> already come back impassable from R-52b's overrides, so the question is only
+> asked once per conveyance per cell.
+>
+> **The medium changes between steps, never inside one.** A step is costed by
+> the conveyance that *enters* the target cell, so `land → water → land` is
+> three whole steps and nothing is ever half-walked. Scrambling out of a river
+> onto a high bank is charged as a climb, because the step onto land uses the
+> walker's slope.
+>
+> **The search minimises days, not difficulty.** Once a journey may mix a
+> walker at 39 km a day with a ship at 77, one unit of difficulty stops being
+> one duration, and a router minimising difficulty would choose cheap routes
+> that take longer. With a single conveyance the two questions are the same
+> one divided by a constant, so this is a generalisation and not a change
+> (D-299).
+>
+> **A route reports its legs** — days by conveyance — because a total alone
+> cannot say where the time went.
+>
+> **Airborne is `free`**: the ground is under it, not in its way, so a jungle
+> costs a balloon what a meadow does and a route becomes a straight line.
+> That is a large thing to hand a GM and it is theirs to hand over.
+>
+> **Two simplifications, named rather than hidden.** Boarding is free —
+> stepping from grass onto a boat is just a step, and real embarkation needs
+> a port concept. And a water conveyance applies to all water, so a galley
+> will sail a one-cell creek.
 
 > **R-195.** **A cover earns its id by costing something; what it looks like
 > is free.**

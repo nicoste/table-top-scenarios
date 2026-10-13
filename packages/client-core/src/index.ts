@@ -7,7 +7,7 @@ export { initialServerState, initialViewState, keepUnchanged } from './store/ind
 export type { ServerState, ViewState, Tool, MapTool } from './store/index.js';
 
 export {
-  idle, GROUP, pick, armed, aim, choose, byWay, ghostCell, aimedAt,
+  idle, GROUP, pick, armed, aim, choose, ghostCell, aimedAt,
   canConfirm, travelIntent, travelPrompt, journeyLength,
 } from './travel/index.js';
 export type { Travel } from './travel/index.js';
