@@ -8,7 +8,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   createCampaign, ORIGIN, chunkAt, replaceChunk, paintGround, paintCover, setHeight,
-  emptyDiscovery, setChunkKnown, DEFAULT_TRAVEL_MODES, DEFAULT_SLOPE_FACTOR,
+  emptyDiscovery, setChunkKnown, DEFAULT_TRAVEL_MODES,
   DEFAULT_METRES_PER_CELL, toGlobal, routeAcross, daysAcross,
 } from '@tt/domain';
 import type { Chunk, CoverId, Discovery, SwatchId, TravelMode, World } from '@tt/domain';
@@ -110,18 +110,68 @@ describe('a route reads the difficulty nobody was reading (R-52)', () => {
 });
 
 describe('altitude is free and slope is not (R-52a)', () => {
-  it('charges the climb exactly, and charges the descent too', () => {
+  it('prefers the ramp to the cliff, which is the whole of D-296', () => {
+    /*
+     * The bug the GM found: the old cost was linear in *total* ascent, so a
+     * sheer face and a gentle ramp of the same height cost the same — and
+     * whenever the face was shorter it was strictly cheaper. Measured before
+     * the fix, these two came to 18.30 and 18.30 exactly.
+     *
+     * Two separate worlds, not two rows of one, so neither journey can borrow
+     * the other's slope: the first version of this test let the "cliff" route
+     * detour to the ramp and compared a thing to itself.
+     */
+    const wall = (shape: (x: number) => number): World => {
+      const { world } = grassland();
+      let chunk = only(world);
+      for (let z = 0; z < 30; z += 1) {
+        for (let x = 6; x <= 15; x += 1) chunk = setHeight(chunk, x, z, shape(x));
+      }
+      return put(world, chunk);
+    };
+    const { discovery } = grassland();
+    const cliff = routeAcross(wall(() => 10), discovery, foot, cell(5, 2), cell(15, 2))!;
+    const ramp = routeAcross(wall((x) => x - 5), discovery, foot, cell(5, 2), cell(15, 2))!;
+
+    // Ten levels gained either way, over the same ten cells.
+    expect(ramp.cost).toBeLessThan(cliff.cost);
+    // Not marginally, and not by the thirty-fold a head-on 45° step would
+    // suggest: the cliff route halves its own gradient by taking the face at
+    // an angle, which is the next test.
+    expect(cliff.cost / ramp.cost).toBeGreaterThan(1.5);
+  });
+
+  it('takes a steep face at an angle, which nobody told it to do', () => {
+    /*
+     * Emergent, and worth pinning because it is the model being right rather
+     * than the code being clever: a diagonal covers √2 cells of ground for
+     * the same rise, so it is a gentler gradient and costs less. The router
+     * traverses a cliff instead of going at it head-on — a switchback,
+     * arrived at from `grade = rise / run` and nothing else.
+     */
+    const { world, discovery } = grassland();
+    let chunk = only(world);
+    for (let z = 0; z < 30; z += 1) for (let x = 6; x <= 15; x += 1) chunk = setHeight(chunk, x, z, 10);
+    const face = put(world, chunk);
+    const route = routeAcross(face, discovery, foot, cell(5, 2), cell(15, 2))!;
+    // The step onto the face moves in z as well as x: it is not straight on.
+    const onto = route.cells[1]!;
+    expect(onto.gx).toBe(cell(6, 0).gx);
+    expect(onto.gz).not.toBe(cell(0, 2).gz);
+  });
+
+  it('walks round a sheer face to reach a summit by its steps', () => {
+    // The GM's own words: "the travel recommends to do a huge climb instead
+    // to go over the mountain steps".
     const { world: flat, discovery } = grassland();
-    // A ridge the full width of the chunk, so there is no stepping around it
-    // — which is what the router does to a single raised cell, correctly, and
-    // what made the first version of this test measure nothing.
     let chunk = only(flat);
-    for (let z = 0; z < 30; z += 1) chunk = setHeight(chunk, 3, z, 4);
+    // A plateau at ten, met by a cliff everywhere except a staircase at z=8.
+    for (let z = 0; z < 30; z += 1) for (let x = 12; x < 30; x += 1) chunk = setHeight(chunk, x, z, 10);
+    for (let x = 2; x <= 11; x += 1) chunk = setHeight(chunk, x, 8, x - 1);
     const world = put(flat, chunk);
-    const climbed = routeAcross(world, discovery, foot, cell(2, 2), cell(4, 2))!;
-    const level = routeAcross(flat, discovery, foot, cell(2, 2), cell(4, 2))!;
-    // Four levels up and four back down, both paid: |Δheight|, not Δheight.
-    expect(climbed.cost - level.cost).toBeCloseTo(8 * DEFAULT_SLOPE_FACTOR, 6);
+    const route = routeAcross(world, discovery, foot, cell(2, 2), cell(14, 2))!;
+    // It detours to the staircase rather than taking the face head-on.
+    expect(route.cells.some((c) => c.gz === cell(0, 8).gz)).toBe(true);
   });
 
   it('leaves a plateau alone, because being high costs nothing', () => {

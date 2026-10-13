@@ -21,7 +21,7 @@ import { chunkAt, columnAt, fromGlobal } from '../world/index.js';
 import type { Discovery } from '../discovery/index.js';
 import { isChunkKnown } from '../discovery/index.js';
 import type { TravelMode } from '../travel/index.js';
-import { cellCost, isPassable, DEFAULT_SLOPE_FACTOR } from '../travel/index.js';
+import { cellCost, isPassable, climbFactor } from '../travel/index.js';
 import { DEFAULT_MATERIALS, difficultyOf } from '../materials/index.js';
 
 /**
@@ -179,6 +179,9 @@ export function routeAcross(
   to: GlobalCell,
   budget: number = ROUTE_BUDGET,
 ): Route | null {
+  // The campaign's own scales, not the defaults: R-52a moves when they move.
+  const metresPerCell = world.metresPerCell;
+  const metresPerLevel = world.metresPerLevel;
   const start = enterCost(world, discovery, travelMode, from.gx, from.gz);
   const goal = enterCost(world, discovery, travelMode, to.gx, to.gz);
   if (!start || !goal) return null;
@@ -216,8 +219,15 @@ export function routeAcross(
       if (settled.has(next)) continue;
       const step = enterCost(world, discovery, travelMode, gx, gz);
       if (!step) continue;
-      const climb = Math.abs(step.height - height) * DEFAULT_SLOPE_FACTOR;
-      const cost = soFar + span * step.cost + climb;
+      /*
+       * The gradient of this step, and it is the *step's* gradient: a
+       * diagonal covers √2 cells of ground for the same rise, so it is less
+       * steep than an orthogonal one and costs accordingly (R-52a).
+       */
+      const grade = ((step.height - height) * metresPerLevel) / (span * metresPerCell);
+      // Multiplied, not added: climbing through a swamp is worse than either
+      // on its own, and a factor is what a speed model gives you (D-296).
+      const cost = soFar + span * step.cost * climbFactor(travelMode.slope, grade);
       const known = best.get(next);
       if (known !== undefined && known <= cost) continue;
       best.set(next, cost);

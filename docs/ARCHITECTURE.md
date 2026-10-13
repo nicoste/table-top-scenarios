@@ -757,6 +757,71 @@ category (R-1), and squarely in scope.
 > machinery: walk to the port, then sail, is two legs of the trip splitting
 > already agreed in R-57.
 
+> **R-52a.** **Altitude costs nothing; gradient costs, and the mode decides
+> how much.**
+>
+> Being high is free. Climbing is not, and **how steeply** you climb is the
+> whole of it:
+>
+> ```
+> stepCost = run × difficulty(target) × climbFactor(mode, rise / run)
+> ```
+>
+> `run` is 1 across a side and √2 across a corner, so the same rise taken at
+> an angle is a gentler gradient — which is why a route **traverses** a steep
+> face instead of going at it head-on, with nobody having coded a switchback.
+>
+> **Multiplied, not added.** Climbing through a swamp is worse than either on
+> its own, and a factor is what a speed model gives you.
+>
+> **Tobler's hiking function**, `exp(-bite · |grade + easiest|)`, derived and
+> not chosen — the same claim the 0.83 Naismith constant it replaces was
+> making, and a better-founded one. Naismith is linear in *total ascent*, so
+> it cannot tell a cliff from a ramp of the same height: measured, a sheer
+> ten-level face and a ten-cell ramp came to **18.30 and 18.30 exactly**, and
+> whenever the face was shorter it was strictly cheaper. The router went
+> straight up every mountain (D-296).
+>
+> **The response belongs to the mode.** A walker takes Tobler's own 3.5; a
+> horse is bitten harder at 5, surer on the flat and worse on anything steep;
+> anything afloat takes 0 and ignores gradient entirely — which is also the
+> whole of what a flying mode will need.
+>
+> **No caps.** Nothing is forbidden for being steep; the cost says no. A
+> thirty-three-level drop — 4,950 m over one cell — is 73,000 times a flat
+> cell on foot, so a party may climb or descend anything they like if they
+> genuinely mean to pay for it.
+>
+> **Down is cheaper than up, and it falls out rather than being a rule.**
+> `easiest` is the gradient that is *fastest*, a gentle descent, so going down
+> N levels costs about what going up N−1 does. Nothing is ever cheaper than
+> flat ground.
+>
+> **It moves when the scales move.** The gradient is computed from the
+> campaign's own `metresPerCell` and `metresPerLevel`, so changing either
+> changes every slope with it, and a test says so.
+>
+> **Degrees are the wrong unit to discuss this in.** The renderer draws height
+> at 4.5× exaggeration (`HEIGHT_SCALE`), so one level is 5.7° in the fiction
+> and **31° on screen**. Quote levels per cell, which is what a GM paints.
+
+> **R-52b.** Difficulty is resolved **per travel mode**, not per ground alone. A
+> `TravelMode` carries `kmPerDay`, a `fallback` of `ground-default` or
+> `impassable`, and overrides keyed by **family or swatch**.
+>
+> This is why water is impassable rather than merely expensive: a multiplier of
+> any size means "crossable, slowly", which would let an armoured party wade the
+> ocean. `travel:ship` sets `fallback: impassable` and overrides the Liquids
+> *family* to 1 — a boat does not care which cut of water it is on — so a ship
+> crosses water and **cannot sail overland**. The shore is the exception the
+> swatch key exists for: slower for a boat, wadeable on foot, and what gives a
+> boat somewhere to put in.
+>
+> A **column override beats the mode**, so a bridge is a cell painted passable —
+> a property of the place, not of the traveller. And mixed journeys need no new
+> machinery: walk to the port, then sail, is two legs of the trip splitting
+> already agreed in R-57.
+
 > **R-52a.** **Altitude costs nothing; slope costs.** Being high is free — climbing
 > is not. Entering a neighbouring column adds a penalty proportional to the
 > difference in height, so a mountain is expensive to cross and a plateau is not.

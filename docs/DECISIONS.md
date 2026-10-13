@@ -6991,3 +6991,51 @@ choosing it belongs to the confirm step (O-020) and putting a picker anywhere
 else would have to move later. Nothing yet reports the **days** — `daysAcross`
 exists, is tested, and has no reader, which is the same shape of gap this round
 opened by closing. That is O-020's, and it is now the obvious next thing.
+
+### D-296 — Gradient, not total ascent, and the mode answers it · `agreed`
+The GM, watching a route: *"the travel recommends to do a huge climb instead
+to go over the mountain steps."* R-52a rewritten.
+
+**The model could not see gradient at all.** The cost was
+`distance + 0.83 × total ascent` — linear in the totals, blind to how the
+height was gained. Measured before changing anything: a sheer ten-level face
+and a gentle ten-cell ramp, same horizontal distance, same total climb, came
+to **18.30 and 18.30 exactly**. And whenever the steep line was *shorter* it
+was strictly cheaper — ten levels in one step cost 9.3 against the ramp's
+18.3. The router was obeying a rule that does not know what a cliff is.
+
+**Tobler's hiking function replaces Naismith's constant**, and it is the same
+kind of claim: derived, not chosen. Naismith is right about total ascent and
+is only valid to about 1-in-5; we were applying it to vertical rock.
+Multiplicative now, because a speed model gives a factor and because climbing
+through a swamp is worse than either alone.
+
+**The response moved onto the mode**, which was the GM's call and the better
+design: *"keep these cases changeable depending on the transport… users may go
+from bottom to top flying."* A walker takes 3.5, a horse 5, anything afloat 0.
+A flying mode is `bite: 0` and needs nothing else built for it.
+
+**No caps anywhere**, also the GM's call: *"players must be able to decide if
+they want to do some climbing paying the cost."* The earlier worry about
+stepping off a 5,000 m cliff is answered by arithmetic instead of a rule — 33
+levels over one cell is 73,000 times a flat cell on foot, which nobody takes
+by accident.
+
+**Two corrections of mine, both worth keeping.**
+
+- *Degrees are the wrong unit here.* I proposed a 31° cap for mounted travel
+  and the GM objected that it would forbid the smallest possible step. They
+  were reading the angle off the screen and reading it correctly: the
+  renderer exaggerates height 4.5×, so one level is 5.7° in the fiction and
+  **31.0° drawn** — the two collided on exactly my number. The cap would in
+  fact have allowed six levels, but the lesson stands and R-52a now says to
+  quote levels per cell.
+- *I kept fragmenting the decision into separate questions.* Told to stop,
+  and right.
+
+**And one correction from the router, again.** My test asserted the cliff
+should cost over 2.5× the ramp; it costs 1.85×. Not because the fix is weak —
+because the route **takes the face at an angle**. A diagonal covers √2 cells
+of ground for the same rise, so it is a gentler gradient and costs less. The
+router invented switchbacks out of `grade = rise / run` and nothing else, and
+that now has a test of its own.

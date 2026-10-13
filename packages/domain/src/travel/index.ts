@@ -15,15 +15,60 @@ import { DEFAULT_COVERS, coverById, overCover } from '../covers/index.js';
 export type TravelModeId = string & { readonly __travelMode: true };
 
 /**
- * Extra cost, in cells, per level of climb (R-52a).
+ * How a traveller answers a gradient (R-52a).
  *
- * Derived, not chosen. Naismith's rule charges an hour per 600 m of ascent and
- * an hour per 5 km of flat ground, so one 150 m level is worth 1.25 km of
- * walking against a 1.5 km cell: 1.25 / 1.5 = 0.83.
+ * **Tobler's hiking function**, which is the standard estimate for exactly
+ * this: walking speed falls off exponentially with the steepness of the
+ * ground, `exp(-bite · |grade + easiest|)`. Derived, not chosen — the same
+ * claim the Naismith constant it replaces was making, and a better-founded
+ * one, because Naismith is linear in *total ascent* and so cannot tell a
+ * cliff from a ramp of the same height (D-296).
  *
- * If the height level changes, this changes with it.
+ * **It belongs to the mode, not to the world.** A horse refuses ground a
+ * walker will scramble, and a flyer does not care at all — `bite: 0` ignores
+ * gradient entirely, which is the whole of what a flying mode needs.
  */
-export const DEFAULT_SLOPE_FACTOR = 0.83;
+export interface Slope {
+  /**
+   * How hard steepness bites. Tobler's own figure is 3.5 for a walker.
+   * **Zero ignores gradient**, which is how anything airborne or afloat is
+   * described.
+   */
+  readonly bite: number;
+  /**
+   * The gradient that is *fastest*, as rise over run.
+   *
+   * Positive, and subtracted in effect: 0.05 means a gentle **descent** is the
+   * quickest ground there is, which is both true of walking and what makes
+   * going down cheaper than going up without a second rule for it.
+   */
+  readonly easiest: number;
+}
+
+/** Anything on legs. Tobler's constants, unmodified. */
+const WALKING: Slope = { bite: 3.5, easiest: 0.05 };
+/**
+ * A horse. The same curve, bitten harder: a mount is surer than a walker on
+ * the flat and worse than one on anything steep, and it is never *forbidden*
+ * a slope — the cost says no long before a rule would (D-296).
+ */
+const RIDING: Slope = { bite: 5, easiest: 0.05 };
+/** Afloat: the water is flat, so the question never arises. */
+const AFLOAT: Slope = { bite: 0, easiest: 0 };
+
+/**
+ * How much longer one step takes at this gradient, against flat ground.
+ *
+ * `grade` is rise over run, signed: positive climbing, negative descending.
+ * One is flat ground and nothing is ever cheaper than the easiest gradient,
+ * so this never goes below one — a route cannot *gain* by going downhill,
+ * only lose less.
+ */
+export function climbFactor(slope: Slope, grade: number): number {
+  if (slope.bite === 0) return 1;
+  const flat = Math.exp(slope.bite * Math.abs(slope.easiest));
+  return Math.exp(slope.bite * Math.abs(grade + slope.easiest)) / flat;
+}
 
 export interface TravelMode {
   readonly id: TravelModeId;
@@ -32,6 +77,8 @@ export interface TravelMode {
   readonly kmPerDay: number;
   /** How to treat ground with no explicit entry below. */
   readonly fallback: 'ground-default' | 'impassable';
+  /** How this traveller answers a slope (R-52a). */
+  readonly slope: Slope;
   /**
    * Costs that override the ground's own, keyed by **family or swatch**
    * (R-192, D-281).
@@ -50,11 +97,12 @@ const SHORE = 'material:liquid/shore';
 
 const mode = (
   value: string, name: string, kmPerDay: number,
+  slope: Slope = WALKING,
   fallback: TravelMode['fallback'] = 'ground-default',
   overrides: Record<string, Difficulty> = {},
 ): TravelMode => ({
   id: registryId<'__travelMode'>('travel', value) as unknown as TravelModeId,
-  name, kmPerDay, fallback, overrides,
+  name, kmPerDay, fallback, overrides, slope,
 });
 
 /**
@@ -66,10 +114,10 @@ export const DEFAULT_TRAVEL_MODES: readonly TravelMode[] = [
   mode('cautious', 'On foot — cautious', 29),
   mode('foot', 'On foot', 39),
   mode('forced', 'On foot — forced march', 48),
-  mode('horse', 'Mounted', 77),
+  mode('horse', 'Mounted', 77, RIDING),
   // A ship may only be where there is water, which is the whole point.
-  mode('ship', 'By ship', 77, 'impassable', { [LIQUIDS]: 1, [SHORE]: 1.5 }),
-  mode('galley', 'By galley', 154, 'impassable', { [LIQUIDS]: 1, [SHORE]: 1.5 }),
+  mode('ship', 'By ship', 77, AFLOAT, 'impassable', { [LIQUIDS]: 1, [SHORE]: 1.5 }),
+  mode('galley', 'By galley', 154, AFLOAT, 'impassable', { [LIQUIDS]: 1, [SHORE]: 1.5 }),
 ];
 
 export function travelModeById(modes: readonly TravelMode[], id: TravelModeId): TravelMode | null {

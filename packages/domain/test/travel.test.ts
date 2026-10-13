@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   DEFAULT_TRAVEL_MODES, groundCost, isPassable, swatchOf, isKnownSwatch,
   DEFAULT_METRES_PER_CELL, DEFAULT_METRES_PER_LEVEL, DEFAULT_BOUNDS, CHUNK_SIZE, MAX_HEIGHT,
-  DEFAULT_SLOPE_FACTOR,
+  climbFactor,
 } from '@tt/domain';
 import type { MaterialId, SwatchId, TravelMode } from '@tt/domain';
 
@@ -162,9 +162,47 @@ describe('the scales, derived so they cannot go stale', () => {
     expect(MAX_HEIGHT * DEFAULT_METRES_PER_LEVEL).toBe(4500);
   });
 
-  it('keeps slopeFactor tied to the height level via Naismith (R-52a)', () => {
-    const flatEquivalentMetres = (DEFAULT_METRES_PER_LEVEL / 600) * 5000;
-    const implied = flatEquivalentMetres / DEFAULT_METRES_PER_CELL;
-    expect(Math.abs(implied - DEFAULT_SLOPE_FACTOR)).toBeLessThan(0.01);
+  it('answers a gradient with Tobler, and the modes answer it differently (R-52a)', () => {
+    const grade = (levels: number) => (levels * DEFAULT_METRES_PER_LEVEL) / DEFAULT_METRES_PER_CELL;
+    const walk = mode('foot').slope;
+    const ride = mode('horse').slope;
+
+    // Flat is one by construction, whatever the constants are.
+    expect(climbFactor(walk, 0)).toBeCloseTo(1, 6);
+    // One level over a cell is a tenth of a gradient — a gentle hill, and it
+    // costs about half as much again. Tobler's own figure for a walker.
+    expect(climbFactor(walk, grade(1))).toBeCloseTo(1.42, 2);
+    // A horse is worse on everything steep and never barred from any of it.
+    expect(climbFactor(ride, grade(1))).toBeGreaterThan(climbFactor(walk, grade(1)));
+    expect(Number.isFinite(climbFactor(ride, grade(33)))).toBe(true);
+  });
+
+  it('makes a descent cheaper than the climb, without a second rule for it', () => {
+    // The `easiest` offset does it: the fastest ground is a gentle downhill,
+    // so going down costs about what going up one level less does (D-296).
+    const grade = (levels: number) => (levels * DEFAULT_METRES_PER_LEVEL) / DEFAULT_METRES_PER_CELL;
+    const walk = mode('foot').slope;
+    for (const levels of [2, 3, 5, 10]) {
+      expect(climbFactor(walk, -grade(levels))).toBeLessThan(climbFactor(walk, grade(levels)));
+    }
+    expect(climbFactor(walk, -grade(1))).toBeCloseTo(1, 2);
+    // And never a bargain: nothing is cheaper than flat ground.
+    expect(climbFactor(walk, -grade(1))).toBeGreaterThanOrEqual(1);
+  });
+
+  it('lets anything afloat ignore a gradient entirely, which is what a flyer will want', () => {
+    // `bite: 0` is the whole of what a flying mode needs (D-296).
+    for (const id of ['ship', 'galley']) {
+      expect(climbFactor(mode(id).slope, 2)).toBe(1);
+      expect(climbFactor(mode(id).slope, -2)).toBe(1);
+    }
+  });
+
+  it('moves with the scales, so the model cannot drift from the map (R-52a)', () => {
+    // Halving the level makes every slope half as steep, and so cheaper.
+    const walk = mode('foot').slope;
+    const steep = climbFactor(walk, (2 * DEFAULT_METRES_PER_LEVEL) / DEFAULT_METRES_PER_CELL);
+    const gentle = climbFactor(walk, (2 * (DEFAULT_METRES_PER_LEVEL / 2)) / DEFAULT_METRES_PER_CELL);
+    expect(gentle).toBeLessThan(steep);
   });
 });
