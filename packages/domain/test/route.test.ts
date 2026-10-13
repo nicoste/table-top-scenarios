@@ -147,6 +147,39 @@ describe('altitude is free and slope is not (R-52a)', () => {
   });
 });
 
+describe('a diagonal crosses a corner, and that is the decision (D-294)', () => {
+  it('passes between two impassable cells that meet at a point', () => {
+    /*
+     * Deliberate, and the reason is about **how water is drawn**, not about
+     * pathfinding: a river is painted as an orthogonal zig-zag, because a
+     * diagonal chain of 1.5 km cells does not read as a river — it reads as a
+     * dotted line. So the squeeze needs a shape nobody paints, and guarding
+     * it would cost a check on every diagonal step of every search to forbid
+     * a case the map cannot honestly show (D-294).
+     *
+     * Here so that it is a decision in the record rather than an oversight
+     * somebody later corrects.
+     */
+    const { world: land, discovery } = grassland();
+    let chunk = only(land);
+    chunk = paintGround(chunk, 5, 4, WATER);
+    chunk = paintGround(chunk, 4, 5, WATER);
+    const world = put(land, chunk);
+    const route = routeAcross(world, discovery, foot, cell(4, 4), cell(5, 5))!;
+    expect(route.cells).toEqual([cell(4, 4), cell(5, 5)]);
+    expect(route.cost).toBeCloseTo(Math.SQRT2, 6);
+  });
+
+  it('still cannot enter the water itself', () => {
+    // The corner is a gap between cells; the cells are as impassable as ever.
+    const { world: land, discovery } = grassland();
+    let chunk = only(land);
+    for (let x = 0; x < 30; x += 1) chunk = paintGround(chunk, x, 5, WATER);
+    const world = put(land, chunk);
+    expect(routeAcross(world, discovery, foot, cell(5, 3), cell(5, 5))).toBeNull();
+  });
+});
+
 describe('what a route will not do', () => {
   it('refuses to cross water on foot, and sails it by ship', () => {
     const { world: land, discovery } = grassland();

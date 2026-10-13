@@ -2666,6 +2666,18 @@ apps/host/src/
 > diagonal costing √2. The absolute height difference, so a descent is charged
 > like a climb.
 >
+> **Eight ways out of a cell, and a diagonal may cross a corner** (D-294).
+> Four-way movement would report a diagonal journey **41% long** — 0.77 days
+> where the truth is 0.54 — and days are the whole output, so the distance has
+> to be honest before the line has to be tidy.
+>
+> The squeeze between two impassable cells meeting at a point is left open
+> deliberately, and the reason is about **how water is drawn**: a river is
+> painted as an orthogonal zig-zag, because a diagonal chain of 1.5 km cells
+> does not read as a river — it reads as a dotted line. The case needs a shape
+> nobody paints, and guarding it would cost a check on every diagonal step of
+> every search to forbid something the map cannot honestly show.
+>
 > **A budget, not a guarantee.** It runs on pointer move over a world of up to
 > 810,000 cells, so it settles at most `ROUTE_BUDGET` of them and then stops.
 > A ceiling that sometimes says "no line" is the right trade for a preview;

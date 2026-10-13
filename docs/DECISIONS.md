@@ -6923,3 +6923,39 @@ the code:
 the next increment: under the pointer during the aim step of R-132, where the
 sequence was built to take it. O-020's confirm menu — transport, pace, days —
 follows that.
+
+### D-294 — Diagonals, and the corner they may cross · `agreed`
+I decided this silently inside D-293 and the GM caught it: *"We didn't speak
+about diagonals!"* Correct, and it had already shipped a bug — water at (5,4)
+and (4,5), and the route walked (4,4) → (5,5) straight across the point where
+the two meet. Land that the map does not show.
+
+**Eight-way, because days are the output.** Four-way movement can only follow
+the axes, so a diagonal journey costs two steps where it should cost √2 — a
+**41% overestimate**, 0.77 days against a true 0.54 over ten cells on foot.
+Blocky routes are a look; a map whose job is "how long does this take"
+reporting half again too long is a lie. Distance honest first, line tidy
+second.
+
+**The corner stays open, and the argument is the GM's.** I offered a guard —
+refuse a diagonal when both orthogonal neighbours are impassable — and it was
+turned down for a better reason than I had for adding it: *"rivers should
+never be drawn like diagonals, they should be zig-zags."* Which is true of the
+GM's own map, where the river runs in orthogonal steps, and true of the medium
+— a diagonal chain of 1.5 km cells does not read as a river, it reads as a
+dotted line.
+
+So the squeeze needs a shape nobody paints. Guarding it would put a check on
+every diagonal step of every search to forbid a case the map cannot honestly
+show. **Travelling diagonally between two lakes is possible, and that is the
+decision**, not an oversight.
+
+**Two tests hold it there**: the corner crossing is asserted, with the
+reasoning beside it so a later reader does not "fix" it; and the cells
+themselves are still impassable, so a river one cell wide still cannot be
+walked through.
+
+**The lesson is the one about process, not pathfinding.** The diagonal rule is
+a design decision with a number attached and it went into a commit without
+ever being said out loud. The record is for exactly this, and it only works if
+the decision reaches it before the code does.
