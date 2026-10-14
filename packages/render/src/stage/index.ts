@@ -1123,9 +1123,12 @@ export class Stage {
       return { face, token, pawn: null, placeId: null, column: null, slot: null };
     }
 
+    // Against the pick volumes, as a map's tokens are, and for the same
+    // reason: a pawn's card turns with the camera, so the drawn shape is not
+    // a stable thing to aim at (R-36a).
     let pawn: PawnRef | null = null;
     if (this.pawns && this.pawns.group.visible) {
-      for (const hit of this.raycaster.intersectObjects(this.pawns.group.children, true)) {
+      for (const hit of this.raycaster.intersectObjects([...this.pawns.proxies], false)) {
         pawn = this.pawns.pawnAt(hit.object);
         if (pawn) break;
       }
@@ -1405,8 +1408,11 @@ export class Stage {
     this.syncCamera();
     // Tokens turn with the live camera, about their own vertical axis, on frames
     // that are drawn and no others (R-187). Mid-turn that is every frame, so a
-    // token keeps pointing at the view while it eases (R-156).
-    this.tokens?.turnTo(MathUtils.degToRad(this.live.yawDeg));
+    // token keeps pointing at the view while it eases (R-156). The world's
+    // pawns are the same standee on a bigger cell, and turn with it (D-303).
+    const bearing = MathUtils.degToRad(this.live.yawDeg);
+    this.tokens?.turnTo(bearing);
+    this.pawns?.turnTo(bearing);
     // Markers and their names share one threshold and toggle together (R-83),
     // and neither belongs to a map's surface at all (R-148). This line used to
     // check only the zoom, which quietly undid `setMap`'s hiding on the very

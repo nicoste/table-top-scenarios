@@ -730,6 +730,27 @@ most time in, so it gets specified rather than improvised.
 > party was a read-only indicator. Picking a pawn is now the first step of every
 > move (R-132), so the marker is selectable on both screens.
 
+> **R-201.** **A party member looks the same wherever they are standing.** One
+> standee (R-187) — gold plate, clip, card in their colour — on a map's cube
+> and on a world cell alike. One definition in the code, two placements
+> (D-303).
+>
+> For a while the world drew **chess pawns** and a map drew card holders: the
+> same six people in two shapes, which is the thing R-90 exists to forbid. The
+> card holder won because it is the one that can carry a face (D-257), and
+> because the GM already owns the physical object it is a picture of.
+>
+> **Sized against one cell**, which is what lets it travel: a map cell is
+> 1.5 m and a world cell is 1.5 km, and the token is a symbol at both — it
+> says *somebody is here*, not *somebody is this big*.
+>
+> Everything R-187 settles comes with it, at both scales: the plate stays
+> square to the grid, the card turns by the camera's yaw on drawn frames, it
+> casts no shadow and receives, and it is **picked by a volume that does not
+> turn** (R-36a). What differs is only what it stands on — a cube's floor
+> there, a cell's surface here — and that the world names a member only when
+> the party has split (O-021).
+
 ---
 
 ## 6d. Travel
@@ -3441,6 +3462,10 @@ apps/host/src/
 >
 > **Exactly one cube tall** (D-269): a plate 0.63 across, and a poker card's
 > proportions, 5:7, as tall as the rest of the cube allows.
+>
+> **Exactly one *cell* tall**, more precisely — this is the party's shape on
+> the world map too (R-201, D-303), and the sizes above are in cells, not
+> metres.
 >
 > **Amended by D-266.** It was a coin with a card that turned *fully* to the
 > camera and was unlit — which in an orthographic view looks the same from

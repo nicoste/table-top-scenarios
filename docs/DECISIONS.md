@@ -7264,3 +7264,45 @@ names. The same move D-246 made renaming Glass to Glassy.
 cart sits strictly between a forced march and a mount, and no medium offers
 two conveyances at the same pace — a list with nothing to choose between is
 not a list.
+
+### D-303 — One shape for a party member, two places to stand · `agreed`
+*"We still have the pawn in the world view instead of the card holders."*
+
+The world drew **chess pawns** and a map drew **standees** — a gold plate, a
+clip, a card in the member's colour. The same six people in two shapes, which
+is precisely what R-90 was written to prevent, and it had been true since the
+standee replaced the coin (D-266) without anyone looking one surface up.
+
+**The standee wins.** It is the one that can carry a face when portraits come
+(D-257), it is a picture of a thing the GM already owns, and it reads at a
+glance: a pawn in a colour says *a token is here*, a card says *this person is
+here*. The pawn's only advantage was being recognisable at a few pixels, and
+both vanish at the same zoom anyway (R-83).
+
+**Extracted rather than copied.** `render/standee` now holds the shape — plate,
+clip, card, the gold, the invisible pick volume, and the no-cast/do-receive
+rule — and `tokens` and `pawns` each add what is theirs: a cube's floor and a
+drop line on one side, a cell's surface and the split-party captions on the
+other. The alternative was `pawns` importing from `tokens`, which would have
+made the world's party a special case of a map's for no reason other than
+which one was written first.
+
+**Sized in cells, not metres.** A map cell is 1.5 m and a world cell is 1.5 km,
+and the standee is one cell tall in both. That is not a mistake to fix later:
+it is a marker saying *somebody is here*, the same claim a place marker makes
+at the same scale (R-90). A party drawn to scale on a 1350 km map is invisible.
+
+**Three things the world gained for free** by being the same object: the card
+turns to the camera on drawn frames as a map's does (R-187), picking now goes
+through the invisible volume instead of the drawn meshes — so a pick no longer
+depends on which way the last frame left the token (R-36a) — and the ghost is a
+translucent standee rather than a translucent pawn.
+
+**Two things deliberately left alone.** The group pawn keeps its neutral card
+(O-022 is still open: what the party-together card should *show* is a question
+about pictures, not about shape). And the world's aim ghost stays white, where
+a map's takes the mover's colour — the world ghost is reached from travel,
+which does not hand the stage a colour, and threading one through is a travel
+change, not a token change.
+
+R-201 is new. R-90 and R-187 are amended.
