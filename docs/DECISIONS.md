@@ -7178,3 +7178,28 @@ at four days on foot. They stay up.
 append-only ids that saved worlds reference, and a typed number would sit
 outside that registry and let someone enter 400 km a day. A list per medium
 says the same thing and stays in the record.
+
+### D-300 — One Travel panel, not two · `agreed`
+*"We have 2, the 'Travelling By' and the 'Journey', let's unify them and call
+it just 'Travel'."*
+
+Right, and the reason is sharper than tidiness: they are **one question asked
+in two halves** — what the party has, and what that makes of this journey.
+Putting a heading between them made them read as two subjects, when the
+second is the answer to the first. The conveyances are always there; the
+journey appears under a rule when there is one to cost, and the pickers stay
+live beneath it so the days move as they change.
+
+It was two cards for a single day, which is the right length of time for that
+mistake to live.
+
+`WaysPanel` and `JourneyPanel` are deleted rather than kept around, and
+`features/travel` replaces both.
+
+**One thing the merge made visible.** Fifteen conveyance rows plus a journey
+is a tall panel, and on a short window the answer sits below the fold — you
+scroll past six land options to read the number you asked for. Not introduced
+by the merge (the two cards stacked to the same height), but easier to see
+now. Worth a look: the journey could sit *above* the pickers while it is
+live, since at that moment the pickers are reference and the answer is the
+point. Left alone for now rather than changed unasked.

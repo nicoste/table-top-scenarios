@@ -2767,9 +2767,14 @@ apps/host/src/
 >
 > **It does not ask which transport** — that is asked when the tool is picked
 > up (R-200). What is left is the answer: how long, how the days were spent,
-> and go or not. The conveyance pickers stay on screen beside it, because the
-> route and the days recompute as they change: *"what if we had a boat"* is
-> exactly the question a GM asks while looking at four days on foot.
+> and go or not.
+>
+> **It is the same card as the conveyances, not a second one** (D-300). They
+> are one question asked in two halves — what the party has, and what that
+> makes of this journey — and a heading between them read as two subjects.
+> The pickers stay live underneath, because the route and the days recompute
+> as they change: *"what if we had a boat"* is exactly the question a GM asks
+> while looking at four days on foot.
 >
 > **The legs are the interesting line.** A journey that walks to a coast and
 > sails from it is one move, and a single total would hide that half of it was

@@ -123,6 +123,17 @@ button.quiet:hover { background: #3a2222; color: #ffc9c9; border-color: transpar
 /* The three media, each its own short list (R-200). */
 .way-group + .way-group { margin-top: 9px; }
 .way-group .lbl { margin-bottom: 3px; }
+/*
+  The journey, under the conveyances in the one Travel card (D-300). A rule
+  above it rather than a second heading: it is the answer to the question the
+  pickers ask, not a separate subject.
+*/
+.journey {
+  margin-top: 11px; padding-top: 10px;
+  border-top: 1px solid var(--edge);
+}
+.journey .readout { margin: 5px 0 0; }
+.journey .btn-grid { margin-top: 9px; }
 .brush button { padding: 6px 2px; font-size: 12px; }
 
 .reveal { display: flex; gap: 5px; }

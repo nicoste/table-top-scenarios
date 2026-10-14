@@ -35,8 +35,7 @@ import { LightPanel } from '../features/light/index.js';
 import { BuildWorldPanel } from '../features/build-world/index.js';
 import { PartyPanel } from '../features/party/index.js';
 import { PlacesPanel, PlaceInspector } from '../features/place/index.js';
-import { JourneyPanel } from '../features/journey/index.js';
-import { WaysPanel } from '../features/ways/index.js';
+import { TravelPanel } from '../features/travel/index.js';
 import { ChunkInspector } from '../features/visibility/index.js';
 import { MapPanel } from '../features/map/index.js';
 import { ConnectBadge } from '../features/connect/index.js';
@@ -1321,33 +1320,28 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
               <PlacesPanel markerId={markerId} onMarker={setMarkerId} />
             )}
             {/*
-              Asked when the tool is picked up, like every other tool's
-              options, and never *after* aiming (R-200) — but it stays up
-              through the costing step, because the route and the days
-              recompute as it changes. Hiding it there would have taken away
-              the comparison for no reason: "what if we had a boat" is the
-              question a GM is asking while looking at four days on foot.
+              One card for the tool (D-300): the conveyances it always shows,
+              and the journey underneath once there is one to cost. The
+              pickers stay live through the costing step, because the route
+              and the days recompute as they change.
             */}
             {tool === 'travel' && (
-              <WaysPanel
+              <TravelPanel
                 modes={DEFAULT_TRAVEL_MODES}
                 travelling={travelling}
                 onTravelling={setTravelling}
-              />
-            )}
-            {/* The confirm step of a move (R-199). It takes the panel while it
-                is open, because the question is in here and not on the map. */}
-            {travel.step === 'choosing' && (
-              <JourneyPanel
-                who={travel.pawn.memberId ? memberName(travel.pawn.memberId) ?? 'them' : 'the party'}
-                modes={DEFAULT_TRAVEL_MODES}
-                route={route}
-                onConfirm={() => {
-                  dispatch(travelIntent(travel.pawn, travel.at));
-                  setTravel(idle);
-                  stage?.showHighlight(null, 0);
-                }}
-                onCancel={() => { setTravel(idle); stage?.showHighlight(null, 0); }}
+                journey={travel.step === 'choosing' ? {
+                  who: travel.pawn.memberId
+                    ? memberName(travel.pawn.memberId) ?? 'them'
+                    : 'the party',
+                  route,
+                  onConfirm: () => {
+                    dispatch(travelIntent(travel.pawn, travel.at));
+                    setTravel(idle);
+                    stage?.showHighlight(null, 0);
+                  },
+                  onCancel: () => { setTravel(idle); stage?.showHighlight(null, 0); },
+                } : null}
               />
             )}
             <LightPanel
