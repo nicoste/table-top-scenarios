@@ -51,45 +51,39 @@ export function TravelPanel({ modes, travelling, journey, onTravelling }: Travel
     <div className="card">
       <h2>Travel</h2>
 
+      {/*
+        A dropdown a medium, not a list of every conveyance in the game
+        (D-301). Fifteen rows to say three things pushed the answer below the
+        fold, and what a GM needs to see at rest is *what the party has* —
+        which is exactly the one row a closed select shows.
+
+        The native control, like the place inspector's marker picker: the
+        shell already styles `select`, it collapses on its own, and it is
+        keyboard- and screen-reader-correct for nothing.
+      */}
       {GROUPS.map(({ medium, title, none }) => {
         const chosen = travelling[medium];
         return (
-          <div key={medium} className="way-group">
-            <p className="lbl">{title}</p>
-            <ul className="palette ways">
-              {/*
-                None first, and a choice like any other rather than a cleared
-                selection: "we have no boat" is a fact about the party, and it
-                is the fact that decides where they can go.
-              */}
-              <li>
-                <Tooltip label={none} placement="left" stretch>
-                  <button
-                    className={chosen === null ? 'on' : ''}
-                    onClick={() => onTravelling({ ...travelling, [medium]: null })}
-                    aria-pressed={chosen === null}
-                  >
-                    <span className="nm">None</span>
-                    <span className="diff">—</span>
-                  </button>
-                </Tooltip>
-              </li>
+          <label className="row way-row" key={medium}>
+            <span className="lbl">{title}</span>
+            <select
+              value={chosen ?? ''}
+              aria-label={title}
+              onChange={(e) => onTravelling({
+                ...travelling,
+                [medium]: e.target.value === '' ? null : (e.target.value as TravelModeId),
+              })}
+            >
+              {/* `None` is a choice and not an absence: no boat is the fact
+                  that decides where the party can go. */}
+              <option value="">{none}</option>
               {modes.filter((mode) => mode.medium === medium).map((mode) => (
-                <li key={mode.id}>
-                  <Tooltip label={`${mode.name} — ${mode.kmPerDay} km a day`} placement="left" stretch>
-                    <button
-                      className={mode.id === chosen ? 'on' : ''}
-                      onClick={() => onTravelling({ ...travelling, [medium]: mode.id as TravelModeId })}
-                      aria-pressed={mode.id === chosen}
-                    >
-                      <span className="nm">{mode.name}</span>
-                      <span className="diff">{mode.kmPerDay} km</span>
-                    </button>
-                  </Tooltip>
-                </li>
+                <option key={mode.id} value={mode.id}>
+                  {mode.name} · {mode.kmPerDay} km
+                </option>
               ))}
-            </ul>
-          </div>
+            </select>
+          </label>
         );
       })}
 

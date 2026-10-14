@@ -120,9 +120,16 @@ button.quiet:hover { background: #3a2222; color: #ffc9c9; border-color: transpar
 .ways button.plain[disabled] { opacity: 1; }
 .ways button.plain:hover { background: transparent; }
 .ways button[disabled]:not(.plain) { opacity: .45; }
-/* The three media, each its own short list (R-200). */
-.way-group + .way-group { margin-top: 9px; }
-.way-group .lbl { margin-bottom: 3px; }
+/*
+  The three media, one dropdown each (R-200, D-301). A fixed label column so
+  the three selects line up, and the select takes what is left — a conveyance
+  name plus its pace is long, and the ellipsis belongs on the value rather
+  than on "On water".
+*/
+.way-row { display: flex; align-items: center; gap: 8px; }
+.way-row + .way-row { margin-top: 5px; }
+.way-row .lbl { flex: none; width: 56px; margin: 0; }
+.way-row select { flex: 1; min-width: 0; }
 /*
   The journey, under the conveyances in the one Travel card (D-300). A rule
   above it rather than a second heading: it is the answer to the question the

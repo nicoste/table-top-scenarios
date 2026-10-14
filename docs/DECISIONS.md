@@ -7203,3 +7203,29 @@ by the merge (the two cards stacked to the same height), but easier to see
 now. Worth a look: the journey could sit *above* the pickers while it is
 live, since at that moment the pickers are reference and the answer is the
 point. Left alone for now rather than changed unasked.
+
+### D-301 — Three dropdowns, not fifteen rows · `agreed`
+*"Do we have dropdowns as UI objects? Or do we need to make them custom?
+Because the menu look pretty long and it will be easier to see which are your
+selected options per category if they are the only ones displayed."*
+
+**No custom component needed, and none written.** `@tt/ui` has no dropdown,
+but the place inspector has used a native `<select>` for its marker picker
+all along, and the shell already styles `button, input, select` together. So
+the answer was a control the project already had.
+
+The rest of the reasoning is the GM's and is the right one: at rest, what a
+panel needs to show is **what the party has**, not every conveyance in the
+game. A closed select shows exactly that one row. The full list is for
+choosing, which is when it opens.
+
+**237 px**, down from well over five hundred — the Light panel fits under it
+again, and the journey is no longer below the fold, which is the complaint
+D-300 left open and did not fix.
+
+**What a native select buys beyond height**: keyboard and screen-reader
+behaviour for nothing, the platform's own open-list rendering, and no new
+component to keep in step with the rest. What it costs: the pace is
+truncated on a long name when closed — "Mounted — hard ride · 96 km" does not
+fit 170 px. The option list shows it in full when open, which is when it is
+being read, so the trade is the right way round.
