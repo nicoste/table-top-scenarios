@@ -7229,3 +7229,38 @@ component to keep in step with the rest. What it costs: the pace is
 truncated on a long name when closed — "Mounted — hard ride · 96 km" does not
 fit 170 px. The option list shows it in full when open, which is when it is
 being read, so the trade is the right way round.
+
+### D-302 — Slowest first, and the cart was the wrong vehicle · `agreed`
+Two from the GM in one breath.
+
+**Ordered None → slowest → fastest, per medium.** A **sort in the panel**, not
+a reorder of the registry: those ids are append-only and saved worlds
+reference them, so the order they were added in has never been the order they
+are read in (R-11). The same move D-286 named for the covers and then did not
+need; this is where it is needed.
+
+```
+On land     Cannot cross · 29 · 39 · 48 · 60 · 77 · 96
+On water    Cannot cross · 13 · 42 · 77 · 154
+In the air  Cannot fly · 60 · 120
+```
+
+**The cart was modelled as the wrong thing.** *"I thought about a 'carreta',
+the woody thing pulled by horses, slower than just a horse ride, but quicker
+than any on-foot option."* I had built an ox-cart at 26 km a day — slower than
+walking, which is what 5e's vehicle table says and not what the GM asked for.
+
+Theirs is the better reading of the fiction: **the horses do the work and the
+party does not tire**, so a day in a cart covers more ground than a day
+marching. Less than riding, because a cart keeps to what a cart can keep to.
+60 km a day, between the forced march at 48 and the mount at 77, which is
+coaching-era ground without horse changes.
+
+The `HAULING` slope stays — a cart still hates a hill more than anything else
+does — and so does the id `travel:wagon`, because R-11 protects ids and not
+names. The same move D-246 made renaming Glass to Glassy.
+
+**Two tests**, because both are facts about numbers that drift quietly: the
+cart sits strictly between a forced march and a mount, and no medium offers
+two conveyances at the same pace — a list with nothing to choose between is
+not a list.

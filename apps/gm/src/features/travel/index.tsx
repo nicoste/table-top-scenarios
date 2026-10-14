@@ -77,11 +77,21 @@ export function TravelPanel({ modes, travelling, journey, onTravelling }: Travel
               {/* `None` is a choice and not an absence: no boat is the fact
                   that decides where the party can go. */}
               <option value="">{none}</option>
-              {modes.filter((mode) => mode.medium === medium).map((mode) => (
+              {/*
+                Slowest first, after `None` (D-302). A **sort in the panel**,
+                not a reorder of the registry: those ids are append-only and
+                saved worlds reference them, so the order they were added in
+                is not the order they are read in (R-11).
+              */}
+              {modes
+                .filter((mode) => mode.medium === medium)
+                .slice()
+                .sort((a, b) => a.kmPerDay - b.kmPerDay)
+                .map((mode) => (
                 <option key={mode.id} value={mode.id}>
                   {mode.name} · {mode.kmPerDay} km
                 </option>
-              ))}
+                ))}
             </select>
           </label>
         );

@@ -149,8 +149,16 @@ export const DEFAULT_TRAVEL_MODES: readonly TravelMode[] = [
    * Appended, never slotted in among the six above: saved worlds reference
    * these ids and R-11 does not bend for tidiness.
    */
-  // A cart keeps to easy ground and hates a hill more than anything else does.
-  mode('wagon', 'By wagon', 'land', 26, HAULING),
+  /*
+   * A cart with a team in the traces: the horses do the work and the party
+   * does not tire, so it covers more ground in a day than marching does — but
+   * less than riding, because it keeps to what a cart can keep to. Between a
+   * forced march and a mount, which is where the GM put it.
+   *
+   * The id stays `travel:wagon` though the name changed (R-11 protects ids,
+   * not names — the same move D-246 made for Glassy).
+   */
+  mode('wagon', 'Horse and cart', 'land', 60, HAULING),
   mode('gallop', 'Mounted — hard ride', 'land', 96, RIDING),
   // The party's own arms. Slow, and the reason a river is a wall without it.
   mode('swim', 'Swimming', 'water', 13, AFLOAT, 'impassable', ON_WATER),

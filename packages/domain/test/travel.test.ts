@@ -127,6 +127,28 @@ describe('travel modes', () => {
     expect(Math.round(mode('galley').kmPerDay / 1.609)).toBe(96);
   });
 
+  it('puts the cart between a forced march and a mount (D-302)', () => {
+    // The horses do the work and the party does not tire, so a cart covers
+    // more ground in a day than marching — and less than riding, because it
+    // keeps to what a cart can keep to. A number with a shape, so it is
+    // asserted rather than left to drift.
+    const cart = mode('wagon').kmPerDay;
+    expect(cart).toBeGreaterThan(mode('forced').kmPerDay);
+    expect(cart).toBeLessThan(mode('horse').kmPerDay);
+  });
+
+  it('keeps every medium offering a real spread of paces', () => {
+    // A medium whose entries all move at one speed is a list with nothing to
+    // choose between.
+    for (const medium of ['land', 'water', 'air'] as const) {
+      const paces = DEFAULT_TRAVEL_MODES
+        .filter((m) => m.medium === medium)
+        .map((m) => m.kmPerDay);
+      expect(paces.length, medium).toBeGreaterThan(1);
+      expect(new Set(paces).size, `${medium} repeats a pace`).toBe(paces.length);
+    }
+  });
+
   it('give every mode a unique namespaced id', () => {
     const ids = DEFAULT_TRAVEL_MODES.map((m) => m.id);
     expect(new Set(ids).size).toBe(ids.length);
