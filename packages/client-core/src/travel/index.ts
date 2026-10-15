@@ -11,7 +11,8 @@
 // round-trip per pointer move.
 
 import type { Intent } from '@tt/protocol';
-import type { WorldCell } from '@tt/domain';
+import type { MemberId, Placement, Route, WorldCell } from '@tt/domain';
+import { memberCell } from '@tt/domain';
 import type { PawnRef } from '@tt/render';
 
 export type Travel =
@@ -107,6 +108,20 @@ export function aimedAt(travel: Travel): WorldCell | null {
   return travel.step === 'aiming' ? travel.at : null;
 }
 
+/**
+ * Where the pawn being moved is standing **now** — the start of the route.
+ *
+ * The group pawn starts from the party's cell and a member's from their own,
+ * which is the same question `memberCell` answers one layer down. Here
+ * because both screens ask it, and because asking it twice is how the two
+ * came to disagree about everything else they ask twice (R-134).
+ */
+export function movingFrom(travel: Travel, placement: Placement): WorldCell | null {
+  if (travel.step === 'idle') return null;
+  const member = travel.pawn.memberId;
+  return member ? memberCell(placement, member as MemberId) : placement.at;
+}
+
 /** Whether a click right now would send a move. */
 export function canConfirm(travel: Travel): boolean {
   return travel.step === 'aiming' && travel.reachable && travel.at !== null;
@@ -149,14 +164,37 @@ export function journeyLength(days: number): string {
   return `${days.toFixed(1)} days`;
 }
 
-/** What to tell the user they are doing, on either screen. */
-export function travelPrompt(travel: Travel, nameOf: (id: string) => string | null): string | null {
+/**
+ * What to tell the user they are doing, on either screen.
+ *
+ * `route` is the journey currently previewed, if one has been worked out. It
+ * carries **the days into the sentence**, which is the whole point of a route
+ * (R-199) and which on the table display is the only place they can appear —
+ * that screen has no panel and will not grow one (R-94, D-304). The console
+ * passes it too, so the two screens say the same thing at the same moment
+ * (R-134).
+ *
+ * A reachable cell with **no** route says so rather than falling silent: the
+ * router returning nothing means "I cannot show you a way", not "you may not
+ * go" (R-197), and the difference is worth a clause.
+ */
+export function travelPrompt(
+  travel: Travel,
+  nameOf: (id: string) => string | null,
+  route?: Route | null,
+): string | null {
   if (travel.step === 'idle') return null;
   const who = travel.pawn.memberId === null ? 'the party' : nameOf(travel.pawn.memberId) ?? 'them';
   // The menu says the rest; the readout only has to say whose journey it is.
   if (travel.step === 'choosing') return `How are ${who} travelling?`;
   if (!travel.at) return `Moving ${who}. Point at a revealed cell.`;
-  return travel.reachable
-    ? `Move ${who} here? Click to confirm, Escape or right-click to cancel.`
-    : `${who[0]!.toUpperCase()}${who.slice(1)} have not been there — reveal the chunk first.`;
+  if (!travel.reachable) {
+    return `${who[0]!.toUpperCase()}${who.slice(1)} have not been there — reveal the chunk first.`;
+  }
+  const how = route === undefined
+    ? ''
+    : route
+      ? ` — ${journeyLength(route.days)}`
+      : ' — no way there with what they have';
+  return `Move ${who} here${how}? Click to confirm, Escape or right-click to cancel.`;
 }

@@ -234,17 +234,18 @@ describe('the permission line (R-136)', () => {
 });
 
 describe('what the table is told', () => {
-  it('receives the party position, the hour, where the party stands in a map and what it has seen there, and nothing else', () => {
+  it('receives the party position, the hour, where the party stands in a map, what it has seen there and what it travels by, and nothing else', () => {
     // The guard on the trust boundary (R-85). It is meant to fail whenever the
     // table is sent something new, so that adding a field is a decision rather
     // than a diff — which is how `lighting` came to be argued for in D-250,
-    // `tokens` in D-259, and `fog` in D-273.
+    // `tokens` in D-259, `fog` in D-273 and `travelling` in D-304.
     let state = revealed();
     state = run(state, { kind: 'moveParty', cell: at(4, 4) }).state;
     const view = tableView(state);
 
     expect(view.role).toBe('table');
-    expect(Object.keys(view).sort()).toEqual(['campaign', 'fog', 'lighting', 'placement', 'role', 'tokens']);
+    expect(Object.keys(view).sort())
+      .toEqual(['campaign', 'fog', 'lighting', 'placement', 'role', 'tokens', 'travelling']);
     expect(view.placement).toMatchObject({ together: true, at: at(4, 4) });
     // Out on the world there is no map to stand in or to see, so there is
     // nothing to send.
@@ -291,6 +292,50 @@ describe('what the table is told', () => {
     expect(lit.angle).toBe(170);
     expect(lit.sunLevel).toBe(3);
     expect(lit.ambience.level).toBe(0);
+  });
+
+  it('tells the table what the party travels by, so both screens cost one journey once (D-304)', () => {
+    let state = revealed();
+    state = run(state, {
+      kind: 'setTravelling',
+      travelling: { land: 'travel:horse', water: 'travel:ship', air: null },
+    }).state;
+
+    expect(tableView(state).travelling)
+      .toEqual({ land: 'travel:horse', water: 'travel:ship', air: null });
+    // Out of the save, not a second copy — the console reads the same field.
+    expect(state.activeSave?.travelling.water).toBe('travel:ship');
+  });
+
+  it('sends on foot when there is no save to read it from', () => {
+    // A default the table can always route with, rather than a null it would
+    // have to decide about (R-138).
+    const empty = { campaigns: [], active: null, activeSave: null, history: emptyHistory() };
+    expect(tableView(empty).travelling).toEqual({ land: 'travel:foot', water: null, air: null });
+  });
+
+  it('will not let the table grant itself a ship', () => {
+    // The party is the players' (R-136), but what the party *owns* is a
+    // decision about fiction and resources, and that is the GM's (D-298).
+    const state = revealed();
+    expect(run(state, {
+      kind: 'setTravelling',
+      travelling: { land: null, water: 'travel:galley', air: null },
+    }, 'table').rejected).toBe('only the GM can do that');
+  });
+
+  it('accepts a conveyance this build has never heard of', () => {
+    // Read where it is used: `waysOf` drops a mode with no entry, which reads
+    // as nothing for that medium. Refusing here would turn a registry the
+    // host has not been rebuilt with into an error on a dropdown (R-137a).
+    let state = revealed();
+    const applied = run(state, {
+      kind: 'setTravelling',
+      travelling: { land: 'travel:gryphon', water: null, air: null },
+    });
+    expect(applied.rejected).toBeUndefined();
+    state = applied.state;
+    expect(state.activeSave?.travelling.land).toBe('travel:gryphon');
   });
 
   it('sends no pawns when no campaign is on the table', () => {

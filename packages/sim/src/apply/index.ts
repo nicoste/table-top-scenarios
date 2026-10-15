@@ -21,7 +21,7 @@ import {
   poiById as poiOfPlace,
   createLiveSave, withDiscovery, withPlacement, touch, upgraded, upgradedCampaign, belongsTo,
   pruneDiscovery, pruneMembers, enteringMap, leavingMap, withRange, pruneInside, pruneRanges,
-  withLighting, withPoiAmbience,
+  withLighting, withTravelling, withPoiAmbience,
   settleRanges,
   pawns, withGroupAt, withMemberAt, gathered, scattered,
   isValidWorldCell, chunkOf, isChunkKnown,
@@ -31,7 +31,7 @@ import {
   exploredIn, pruneExplored, lookAround, blockKey, forgetMap,
 } from '@tt/domain';
 import type { HostState, Intent, Role } from '@tt/protocol';
-import { parseGround, parseCover, parseMarkerId } from '@tt/protocol';
+import { parseGround, parseCover, parseMarkerId, travellingFromWire } from '@tt/protocol';
 import { emptyHistory, remember, undone, redone } from '../history/index.js';
 
 /** Side effects `sim` asks the host to perform. It performs none itself. */
@@ -688,6 +688,20 @@ function applyToPois(
       // Clamped here and not trusted from the client (R-18a) — the console
       // clamps too, and the console is not the authority (R-3).
       return commitSave(state, save, withLighting(save, intent.lighting), now);
+    }
+
+    case 'setTravelling': {
+      const save = state.activeSave;
+      if (!save) return reject_('no save');
+      /*
+       * An id nobody recognises is **not** refused. It is read where it is
+       * used — `waysOf` drops a mode this build has no entry for — and that
+       * reads as the party having nothing for that medium, which is what an
+       * unknown conveyance amounts to. Refusing here would make a registry
+       * this host has not been rebuilt with into a hard error on a dropdown
+       * (R-137a).
+       */
+      return commitSave(state, save, withTravelling(save, travellingFromWire(intent.travelling)), now);
     }
 
     case 'setPoiAmbience': {

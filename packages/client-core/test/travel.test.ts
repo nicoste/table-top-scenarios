@@ -10,9 +10,9 @@ import { describe, it, expect } from 'vitest';
 import type { Travel } from '@tt/client-core';
 import {
   idle, GROUP, pick, armed, aim, choose, ghostCell, aimedAt,
-  canConfirm, travelIntent, travelPrompt, journeyLength,
+  canConfirm, movingFrom, travelIntent, travelPrompt, journeyLength,
 } from '@tt/client-core';
-import type { WorldCell } from '@tt/domain';
+import type { MemberId, Placement, Route, WorldCell } from '@tt/domain';
 
 const cell = (x: number, z: number): WorldCell => ({ cx: 15, cz: 15, x, z });
 const group = { memberId: null };
@@ -122,6 +122,60 @@ describe('what the prompt says', () => {
   it('falls back to a pronoun for a member it cannot name', () => {
     expect(travelPrompt(aim(pick({ memberId: 'gone' }), cell(1, 1), true), nameOf))
       .toMatch(/Move them here/);
+  });
+
+  it('carries the days when it is given a route (D-304)', () => {
+    // The table display has no panel to put them in, and how long it takes is
+    // the output of a route — so it goes in the sentence, on both screens.
+    const route = { cells: [], days: 2.4, legs: [] } as unknown as Route;
+    const prompt = travelPrompt(aiming(cell(1, 1), true), nameOf, route)!;
+    expect(prompt).toContain('2.4 days');
+    expect(prompt).toMatch(/Click to confirm/);
+  });
+
+  it('says there is no way rather than falling silent about it', () => {
+    // `null` from the router is "I cannot show you a way", not "you may not
+    // go" (R-197) — and the click still works, so the clause has to say which.
+    const prompt = travelPrompt(aiming(cell(1, 1), true), nameOf, null)!;
+    expect(prompt).toContain('no way there with what they have');
+    expect(prompt).toMatch(/Click to confirm/);
+  });
+
+  it('says neither when no route was asked for', () => {
+    // The third argument is optional, and a caller that leaves it out is
+    // saying "I have not worked one out", which is not the same as "none".
+    expect(travelPrompt(aiming(cell(1, 1), true), nameOf)).not.toContain('no way');
+  });
+});
+
+describe('where the route starts from', () => {
+  const together: Placement = { together: true, at: cell(3, 3), members: new Map() };
+  const apart: Placement = {
+    together: false,
+    at: cell(3, 3),
+    members: new Map([['member_frodo' as MemberId, cell(7, 9)]]),
+  };
+
+  it('is nowhere when nobody has been picked up', () => {
+    expect(movingFrom(idle, together)).toBeNull();
+  });
+
+  it('is the party cell for the group pawn', () => {
+    expect(movingFrom(pick(group), together)).toEqual(cell(3, 3));
+  });
+
+  it('is the member own cell when the party has split', () => {
+    expect(movingFrom(pick(member), apart)).toEqual(cell(7, 9));
+  });
+
+  it('falls back to the party cell for a member who has no cell of their own', () => {
+    // Somebody added to the roster after the split stands where the party was
+    // when it split, which is `memberCell`'s answer and not a second one.
+    expect(movingFrom(pick({ memberId: 'member_sam' }), apart)).toEqual(cell(3, 3));
+  });
+
+  it('is nowhere when the party has not been placed at all', () => {
+    expect(movingFrom(pick(group), { together: true, at: null, members: new Map() })).toBeNull();
   });
 });
 

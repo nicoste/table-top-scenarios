@@ -1,10 +1,10 @@
 // The GM console shell: launcher until a campaign is open, then the world.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { decodeCampaign, decodePlacement, cellsFromWire } from '@tt/protocol';
+import { decodeCampaign, decodePlacement, cellsFromWire, travellingToWire } from '@tt/protocol';
 import {
   MAX_HEIGHT, WHOLE_MAP, rangeIn, stepBrush, WORLD_BRUSHES, BRUSHES, DEFAULT_BRUSH, brushById,
-  routeAcross, toGlobal, DEFAULT_TRAVEL_MODES, ON_FOOT, discoveryFromJSON,
+  routeAcross, toGlobal, DEFAULT_TRAVEL_MODES, discoveryFromJSON,
   chunkAt, columnAt,
   creatableSlots, sameWorldCell,
   DEFAULT_MATERIALS, DEFAULT_FLOOR, mapFromJSON, fillRegion, sliceOf, inRange, inMap, blockAt,
@@ -15,6 +15,7 @@ import {
 } from '@tt/domain';
 import type {
   SwatchId, CoverId, Lighting, Ambience, MemberId, Tokens, BlockCoord, Route, Travelling,
+  TravelModeId,
 } from '@tt/domain';
 import type { GmView, Intent } from '@tt/protocol';
 import { defaultTarget, worldCentre } from '@tt/render';
@@ -68,10 +69,23 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   const [travel, setTravel] = useState<Travel>(idle);
   /**
    * What the party can travel by (R-200), asked when the tool is picked up
-   * rather than after aiming. Kept between moves: it is a fact about the
-   * party, not about this journey.
+   * rather than after aiming. A fact about the party, not about this journey.
+   *
+   * **Read from the save, not held here** (D-304). It was console state for a
+   * day, which meant a reload put the party's ship back in the harbour and,
+   * worse, that the table drew the same journey on foot while the console
+   * drew it under sail. One source, both screens (R-19).
+   *
+   * Memoised on the three ids rather than on the wire object, which is built
+   * fresh for every message the host sends: a new object each push would run
+   * an A* per push instead of per aim.
    */
-  const [travelling, setTravelling] = useState<Travelling>(ON_FOOT);
+  const way = view?.save?.travelling ?? null;
+  const travelling = useMemo<Travelling>(() => ({
+    land: (way?.land ?? null) as TravelModeId | null,
+    water: (way?.water ?? null) as TravelModeId | null,
+    air: (way?.air ?? null) as TravelModeId | null,
+  }), [way?.land, way?.water, way?.air]);
   /** The route being previewed, so the menu can price it (R-199). */
   const [route, setRoute] = useState<Route | null>(null);
   /**
@@ -1310,7 +1324,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
               brush={brush}
               // Mid-sequence the readout says what the click will do, since that
               // is more useful than the ground under the pointer (R-132).
-              hoverLabel={travelPrompt(travel, memberName) ?? hoverLabel}
+              hoverLabel={travelPrompt(travel, memberName, route) ?? hoverLabel}
               onTool={setTool}
               onGround={setGround}
               onCover={setCover}
@@ -1329,7 +1343,9 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
               <TravelPanel
                 modes={DEFAULT_TRAVEL_MODES}
                 travelling={travelling}
-                onTravelling={setTravelling}
+                onTravelling={(next) => dispatch({
+                  kind: 'setTravelling', travelling: travellingToWire(next),
+                })}
                 journey={travel.step === 'choosing' ? {
                   who: travel.pawn.memberId
                     ? memberName(travel.pawn.memberId) ?? 'them'

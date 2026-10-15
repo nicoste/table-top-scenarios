@@ -1753,6 +1753,19 @@ apps/host/src/
 > Place to read what the party knows about it. What survives is the part that
 > mattered: no tool palette and no roster. A click on that screen means whatever
 > `tableAction` says, and a travel in progress outranks everything.
+>
+> **The sequences are no longer the same length, and that is deliberate**
+> (D-304, closing the loose end D-298 left open). The console has four steps
+> — pick, aim, choose, confirm (R-199) — and the table has three: pick, aim,
+> confirm. The missing one is **choose**, and it is missing because choosing
+> what the party travels by is a decision about fiction and resources that
+> belongs to the GM (R-200). What the table does *not* lose is the answer:
+> the route is drawn there and the days are in the prompt (R-202), so a
+> player confirming a journey has seen the same cost the GM has.
+>
+> So the rule is now: **same sequence, one step shorter, and never a
+> different answer.** A step may be the GM's alone; a *result* may not differ
+> between the screens.
 
 > **R-136.** The permission line is **the party is the players', the world is the
 > GM's**. Anything about the party's own pawns — position, grouping — is open to
@@ -2853,6 +2866,47 @@ apps/host/src/
 > stepping from grass onto a boat is just a step, and real embarkation needs
 > a port concept. And a water conveyance applies to all water, so a galley
 > will sail a one-cell creek.
+>
+> **The three answers live in the save** (D-304). They were the console's own
+> state for a day, which was wrong twice over: a reload put the party's ship
+> back in the harbour, and the table — which draws the same route (R-202) —
+> had no way to know about the ship at all. They are play state and the
+> party's, beside where the party is standing; the GM is the one who grants
+> them, so `setTravelling` is GM-only while the value is sent to both screens
+> (R-136).
+>
+> **Absent means on foot.** A save written before a party could own a boat
+> decodes as walking, which is what it meant — no schema bump (R-144, D-187).
+
+> **R-202.** **Both screens draw the journey.** The route is not the console's
+> picture of the journey; it is the journey, and the table is where everybody
+> is looking (D-304).
+>
+> The table **works it out for itself** rather than being sent a line. It
+> holds the ground, it holds where the party stands, and it is now told what
+> they travel by — so a second route on the wire would be a second answer to
+> a question both screens can already answer, and the two would drift (R-19).
+> It is also the only shape that works: the table has its own aim sequence
+> (R-134), so there is a journey being planned there that the console knows
+> nothing about.
+>
+> **Its discovery is its own world.** The table is never told which chunks
+> are Known — that is itself the answer to what is hidden (R-85) — so it is
+> handed a world already cut to them and routes over "everything I hold"
+> (`allKnownIn`). The same graph, reached without being told anything new.
+>
+> **The days go wherever that screen can say them.** The console has the
+> journey menu (R-199); the table has one line of prompt and will not grow a
+> panel (R-94), so the length goes into the sentence: *"Move the party here —
+> 2.4 days?"*. Both screens now say it from the aim step onward, because the
+> moment it is worth knowing is the moment the pointer is over the
+> destination.
+>
+> **A route the router cannot find says so.** `null` means "I cannot show you
+> a way" and never "you may not go" (R-197), so the prompt says *"no way
+> there with what they have"* and the click still works. The console's
+> journey menu is stricter — its Travel button is disabled — which is a
+> divergence worth naming: see O-032.
 
 > **R-195.** **A cover earns its id by costing something; what it looks like
 > is free.**

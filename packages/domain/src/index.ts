@@ -89,7 +89,7 @@ export {
 
 export type { Discovery } from './discovery/index.js';
 export {
-  emptyDiscovery, isChunkKnown, isPlaceRevealed, setChunkKnown, setPlaceRevealed,
+  emptyDiscovery, allKnownIn, isChunkKnown, isPlaceRevealed, setChunkKnown, setPlaceRevealed,
   setPlacesRevealed, isPlaceOnTable, isPoiOnTable, discoveryToJSON, discoveryFromJSON,
 } from './discovery/index.js';
 
@@ -98,7 +98,8 @@ export {
   SAVE_SCHEMA_VERSION, LIVE_LABEL,
   liveSaveId, createLiveSave, belongsTo, matchesCampaignVersion,
   touch, upgraded, withDiscovery, withPlacement, pruneDiscovery, pruneMembers,
-  enteringMap, leavingMap, rangeFor, rangeIn, withRange, withLighting, pruneInside, pruneRanges, settleRanges,
+  enteringMap, leavingMap, rangeFor, rangeIn, withRange, withLighting, withTravelling,
+  pruneInside, pruneRanges, settleRanges,
   tokensFor, tokensIn, withTokens, settleTokens, pruneTokens,
   exploredIn, withExplored, pruneExplored, lookAround, forgetMap,
 } from './save/index.js';

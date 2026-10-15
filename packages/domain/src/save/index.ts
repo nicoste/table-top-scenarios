@@ -11,6 +11,8 @@ import type { Discovery } from '../discovery/index.js';
 import { emptyDiscovery } from '../discovery/index.js';
 import type { Placement } from '../placement/index.js';
 import { emptyPlacement, prunePlacement } from '../placement/index.js';
+import type { Travelling } from '../travel/index.js';
+import { ON_FOOT } from '../travel/index.js';
 import type { Campaign } from '../campaign/index.js';
 import type { CuttingPlane, LevelRange } from '../planes/index.js';
 import { sameRange, settleRange } from '../planes/index.js';
@@ -113,6 +115,23 @@ export interface Save {
    * (R-182).
    */
   readonly lighting: Lighting;
+  /**
+   * What the party can travel by, one conveyance per medium (R-200).
+   *
+   * **Play state, and the party's**, beside where they are standing. A horse
+   * is not a property of the world and not a property of the campaign: it is
+   * something this party has, this session, until they lose it.
+   *
+   * In the save rather than on the console for the hour's reason (D-250): the
+   * GM sets it **for both screens**. A route is drawn on the table as well as
+   * the console, and two screens costing the same journey by different
+   * transport is worse than one screen costing it at all (D-304). It also
+   * means a reload no longer puts the party's ship back in the harbour.
+   *
+   * The GM grants it — it is a question about fiction and resources (D-298) —
+   * which is why `setTravelling` is not open to the table (R-136).
+   */
+  readonly travelling: Travelling;
 }
 
 /** Which map the party has gone into. Where they are, and nothing else. */
@@ -147,6 +166,7 @@ export function createLiveSave(campaign: Campaign, savedAt: string): Save {
     tokens: new Map(),
     explored: new Map(),
     lighting: DAYLIGHT,
+    travelling: ON_FOOT,
   };
 }
 
@@ -443,4 +463,17 @@ export function withLighting(save: Save, lighting: Lighting): Save {
     && now.ambience.colour === next.ambience.colour
     && now.ambience.level === next.ambience.level;
   return same ? save : { ...save, lighting: next };
+}
+
+/**
+ * What the party travels by (R-200). Identity-preserving (R-165), compared
+ * field by field for `withLighting`'s reason: the console sends all three
+ * every time one picker changes, and two of them are the same as before.
+ */
+export function withTravelling(save: Save, travelling: Travelling): Save {
+  const now = save.travelling;
+  const same = now.land === travelling.land
+    && now.water === travelling.water
+    && now.air === travelling.air;
+  return same ? save : { ...save, travelling };
 }

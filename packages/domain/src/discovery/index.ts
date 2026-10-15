@@ -6,7 +6,7 @@
 // silently hold duplicates. Strings are also what World.chunks already keys on.
 
 import type { PlaceId } from '../ids/index.js';
-import type { ChunkCoord } from '../world/index.js';
+import type { ChunkCoord, World } from '../world/index.js';
 import { chunkKey } from '../world/index.js';
 
 export interface Discovery {
@@ -22,6 +22,24 @@ export function emptyDiscovery(): Discovery {
 
 export function isChunkKnown(discovery: Discovery, coord: ChunkCoord): boolean {
   return discovery.chunks.has(chunkKey(coord));
+}
+
+/**
+ * A discovery in which **every chunk this world holds is Known**, and no place
+ * is Revealed.
+ *
+ * For a reader whose world has already been cut to what the party may see —
+ * which is the table display, and only the table display. `viewFor` filters a
+ * campaign down to the Known chunks before sending it (R-85), so the table can
+ * no more be told *which* chunks are Known than it can be told what is in the
+ * rest; the answer it needs is the one it can work out, and this is that
+ * working-out written once instead of in the screen that needs it (D-304).
+ *
+ * No place is Revealed because nothing asks: a route reads chunks (R-197), and
+ * the table is sent the places it may see as places.
+ */
+export function allKnownIn(world: World): Discovery {
+  return { chunks: new Set(world.chunks.keys()), places: new Set() };
 }
 
 export function isPlaceRevealed(discovery: Discovery, id: PlaceId): boolean {

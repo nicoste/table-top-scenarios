@@ -2,11 +2,11 @@ import { describe, it, expect } from 'vitest';
 import {
   emptyDiscovery, isChunkKnown, isPlaceRevealed, setChunkKnown, setPlaceRevealed,
   setPlacesRevealed, isPlaceOnTable, discoveryToJSON, discoveryFromJSON,
-  createLiveSave, liveSaveId, pruneDiscovery,
+  createLiveSave, liveSaveId, pruneDiscovery, allKnownIn,
   belongsTo, matchesCampaignVersion, withDiscovery, LIVE_LABEL,
-  createCampaign, duplicateCampaign,
+  createCampaign, duplicateCampaign, ON_FOOT, withTravelling,
 } from '@tt/domain';
-import type { PlaceId } from '@tt/domain';
+import type { PlaceId, TravelModeId, World } from '@tt/domain';
 
 const place = (id: string, cx = 5, cz = 5) => ({ id: id as PlaceId, cell: { cx, cz } });
 const AT = '2026-01-01T00:00:00.000Z';
@@ -114,7 +114,7 @@ describe('saves', () => {
 
   it('prunes discovery of places the GM has deleted', () => {
     const live = withDiscovery(
-      createLiveSave(campaign(), AT),
+      createLiveSave(createCampaign('Ashfall'), AT),
       setPlacesRevealed(emptyDiscovery(), ['keep', 'gone'] as PlaceId[], true),
     );
     const pruned = pruneDiscovery(live, new Set(['keep'] as PlaceId[]));
@@ -122,4 +122,62 @@ describe('saves', () => {
     expect(pruneDiscovery(pruned, new Set(['keep'] as PlaceId[]))).toBe(pruned);
   });
 
+
+  it('a world cut to the party is a world where everything is Known (D-304)', () => {
+    // What the table display is handed: `viewFor` has already removed the
+    // chunks the party has not found, so the chunks that remain are exactly
+    // the Known ones and nothing has to be told to it.
+    const world = {
+      bounds: { x: 30, z: 30 },
+      metresPerCell: 1500,
+      metresPerLevel: 150,
+      chunks: new Map([['4,4', {}], ['5,4', {}]]),
+    } as unknown as World;
+    const known = allKnownIn(world);
+
+    expect(isChunkKnown(known, { cx: 4, cz: 4 })).toBe(true);
+    expect(isChunkKnown(known, { cx: 5, cz: 4 })).toBe(true);
+    // The chunk next door was never sent, so it is not Known either.
+    expect(isChunkKnown(known, { cx: 6, cz: 4 })).toBe(false);
+    // Nothing is claimed about places: a route reads chunks (R-197).
+    expect(known.places.size).toBe(0);
+  });
+
+  it('a world with no chunks knows nothing, rather than everything', () => {
+    const empty = { chunks: new Map() } as unknown as World;
+    expect(allKnownIn(empty).chunks.size).toBe(0);
+  });
+});
+
+describe('what the party travels by (R-200)', () => {
+  const SHIP = 'travel:ship' as TravelModeId;
+
+  it('starts on foot and nothing else', () => {
+    const live = createLiveSave(createCampaign('Ashfall'), AT);
+    expect(live.travelling).toEqual(ON_FOOT);
+    expect(live.travelling.water).toBeNull();
+  });
+
+  it('keeps its identity when nothing changed (R-165)', () => {
+    // The console sends all three media whenever one picker moves, so most
+    // of what arrives is what is already stored — and a new save object would
+    // rebuild the route on every one of them.
+    const live = createLiveSave(createCampaign('Ashfall'), AT);
+    expect(withTravelling(live, { ...live.travelling })).toBe(live);
+    const sailing = withTravelling(live, { ...live.travelling, water: SHIP });
+    expect(sailing).not.toBe(live);
+    expect(sailing.travelling.water).toBe(SHIP);
+    expect(withTravelling(sailing, { ...sailing.travelling })).toBe(sailing);
+  });
+
+  it('records losing a conveyance as well as gaining one', () => {
+    // `null` is a value, not an absence: no boat is what makes a river a wall.
+    const live = withTravelling(
+      createLiveSave(createCampaign('Ashfall'), AT),
+      { land: null, water: SHIP, air: null },
+    );
+    const sunk = withTravelling(live, { land: null, water: null, air: null });
+    expect(sunk).not.toBe(live);
+    expect(sunk.travelling.water).toBeNull();
+  });
 });

@@ -4,7 +4,7 @@
 import { z } from 'zod';
 import type {
   Campaign, Chunk, Column, World, PartyMember, SwatchId, CoverId, Place, PlaceNote, MarkerId, Save,
-  Placement, Inside, EncounterMap, LevelRange, Cells,
+  Placement, Inside, EncounterMap, LevelRange, Cells, Travelling, TravelModeId,
 } from '@tt/domain';
 import {
   CHUNK_SIZE, DEFAULT_METRES_PER_LEVEL,
@@ -12,7 +12,7 @@ import {
   packRuns, unpackRuns,
   placementToJSON, placementFromJSON, tokensToJSON, tokensFromJSON,
   DAYLIGHT, OPEN_SKY, clampLighting, clampAmbience, cellsToJSON, cellsFromJSON,
-  GROUND_FROM_TERRAIN, OPEN_WATER,
+  GROUND_FROM_TERRAIN, OPEN_WATER, ON_FOOT,
 } from '@tt/domain';
 
 /** The light inside one place (R-182). */
@@ -47,6 +47,38 @@ export const LightingWireSchema = z.object({
       : OPEN_SKY),
 }));
 export type LightingWire = z.infer<typeof LightingWireSchema>;
+
+/**
+ * What the party travels by, one conveyance per medium (R-200).
+ *
+ * `null` is a value and not an absence: no boat is the fact that makes a river
+ * a wall, so it has to survive the round trip. An id nobody recognises is
+ * tolerated rather than rejected — `waysOf` drops it, and the medium reads as
+ * having nothing, which is what a conveyance from a registry this build does
+ * not have amounts to (R-137a).
+ */
+export const TravellingWireSchema = z.object({
+  land: z.string().nullable().default(null),
+  water: z.string().nullable().default(null),
+  air: z.string().nullable().default(null),
+});
+export type TravellingWire = z.infer<typeof TravellingWireSchema>;
+
+export function travellingFromWire(wire: TravellingWire): Travelling {
+  return {
+    land: wire.land as TravelModeId | null,
+    water: wire.water as TravelModeId | null,
+    air: wire.air as TravelModeId | null,
+  };
+}
+
+export function travellingToWire(travelling: Travelling): TravellingWire {
+  return {
+    land: travelling.land as string | null,
+    water: travelling.water as string | null,
+    air: travelling.air as string | null,
+  };
+}
 
 /**
  * Still here, and still only for reading: a world written before D-280 holds
@@ -308,6 +340,12 @@ export const SaveWireSchema = z.object({
    * the same reason as the three absences above (D-187, R-144).
    */
   lighting: LightingWireSchema.default(DAYLIGHT),
+  /**
+   * What the party travels by (R-200). Absent means on foot and nothing else,
+   * which is what every save written before a party could own a boat already
+   * meant — the absence says it itself, so no bump (D-187, R-144).
+   */
+  travelling: TravellingWireSchema.default(travellingToWire(ON_FOOT)),
 });
 export type SaveWire = z.infer<typeof SaveWireSchema>;
 
@@ -462,6 +500,7 @@ export function encodeSave(save: Save): SaveWire {
       [...save.explored.keys()].sort().map((poiId) => [poiId, cellsWire(save.explored.get(poiId)!)]),
     ),
     lighting: { ...save.lighting, ambience: { ...save.lighting.ambience } },
+    travelling: travellingToWire(save.travelling),
   };
 }
 
@@ -530,6 +569,7 @@ export function decodeSave(wire: SaveWire): Save {
     ),
     // Clamped on the way in: a save file is as much an input as a socket is.
     lighting: clampLighting(wire.lighting),
+    travelling: travellingFromWire(wire.travelling),
   };
 }
 

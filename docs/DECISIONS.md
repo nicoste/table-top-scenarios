@@ -7306,3 +7306,79 @@ which does not hand the stage a colour, and threading one through is a travel
 change, not a token change.
 
 R-201 is new. R-90 and R-187 are amended.
+
+### D-304 — The table draws the journey, and the party's conveyances move into the save · `agreed`
+*"Now make the table show the travel too."*
+
+The console drew a route and reported days; the table drew nothing. Two
+screens, one journey, and only one of them could see it — on the screen
+everybody at the table is actually looking at.
+
+**The table works the route out for itself.** The alternative was sending the
+console's line over the wire, and it is wrong twice: it would be a second
+answer to a question the table can already answer (R-19), and it would not
+cover the case that matters most — the table has its **own** aim sequence
+(R-134), so there is a journey being planned there that the console knows
+nothing about.
+
+**Which made the real problem visible.** To route, the table needs what the
+party travels by, and that was **React state on the console**. So the console
+would have costed a crossing under sail while the table costed it on foot,
+and neither screen would have been wrong from where it stood. The conveyances
+were in the wrong place, not the route.
+
+**`travelling` is now play state in the save** — the fifth thing `viewFor`
+sends the table, named one at a time in the filter like the hour (D-250),
+the map tokens (D-259) and the fog (D-273) before it. It is the party's, which
+R-136 usually puts on the players' side, but *granting* a ship is a decision
+about fiction and resources, so `setTravelling` is GM-only and the value is
+shared. A reload no longer puts the party's ship back in the harbour, which
+was a bug nobody had noticed because nobody had reloaded mid-journey.
+
+**No schema bump.** Absent means on foot, which is what every save written
+before a party could own a boat already meant (D-187, R-144).
+
+**The table's discovery is its own world.** `routeAcross` wants a `Discovery`,
+and the table is never told which chunks are Known — that is itself the answer
+to what is hidden (R-85). It does not need to be: it is handed a world already
+cut to them, so `allKnownIn(world)` says the same thing without saying anything
+new. The claim was worth a function and two tests rather than a line in a
+component.
+
+**The days go in the sentence.** The console has the journey menu for them
+(R-199); the table has one line of prompt and will not grow a panel (R-94).
+`travelPrompt` takes the route now and reads *"Move the party here — 13 hours?
+Click to confirm"* — on **both** screens, because the moment it is worth
+knowing is the moment the pointer is over the destination, and that moment is
+the same on each.
+
+**Measured on the GM's own map.** The same journey across the river: 5 hours
+with a ship, 13 hours without, and taking the boat away on the console
+re-drew the players' route round by the ford while they watched. That is the
+whole feature in one observation.
+
+**D-298's loose end, closed.** The console has four steps and the table three,
+and the missing one is `choose`. That stays, and R-134 now says so: a step may
+be the GM's alone, a *result* may not differ between the screens.
+
+R-202 is new. R-134 and R-200 are amended. O-032 is opened.
+
+### O-032 — The console will not send a journey it cannot draw, and the table will · `open`
+R-197 says plainly that a route of `null` means *"I cannot show you a way"* and
+never *"you may not go"* — the destination is not adjacency-checked and a GM
+may move the party anywhere (R-133).
+
+The console does not behave that way. Its journey menu disables **✓ Travel**
+when the route is null, which reads as "you may not go". The table, whose
+confirm is a click on the map, sends it.
+
+Both are defensible. The console's version is **useful**: a GM aiming at an
+island with no boat is being told to grant one, and granting a flying mount
+(`free`, R-200) makes everything reachable, so it is never a dead end. The
+table's is **R-197 as written**.
+
+Not decided here because nothing in this round required it, and because
+changing either one is a change to what a click does rather than to what a
+screen shows. Whichever way it goes, R-197 or the console needs editing — it
+is currently a rule the product contradicts, which is the thing this file
+exists to stop.

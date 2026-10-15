@@ -6,12 +6,15 @@ import {
   isPlaceOnTable, isPoiOnTable, isChunkKnown, belongsTo, placementToJSON, rangeFor, DAYLIGHT,
   OPEN_SKY, sunReaches, litBy, MAP_MAX_HEIGHT,
   tokensFor, onRoster, tokensInBand, tokensToJSON,
-  exploredIn, partySight, shownBy, seenPart, inRange, placeById, poiById,
+  exploredIn, partySight, shownBy, seenPart, inRange, placeById, poiById, ON_FOOT,
 } from '@tt/domain';
 import type {
   CampaignWire, SaveWire, PlacementWire, MapWire, LightingWire, TokensWire, CellsWire,
+  TravellingWire,
 } from '../wire/index.js';
-import { encodeCampaign, encodeSave, mapWire, cellsWire } from '../wire/index.js';
+import {
+  encodeCampaign, encodeSave, mapWire, cellsWire, travellingToWire,
+} from '../wire/index.js';
 
 export type Role = 'gm' | 'table' | 'spectator';
 
@@ -141,6 +144,20 @@ export interface TableView {
    * And only inside the band, like everything else about that map (R-185).
    */
   readonly fog: TableFog | null;
+  /**
+   * What the party travels by (R-200).
+   *
+   * The **fifth** piece of save data the table is sent, and named here for
+   * the hour's reason once more (D-250, D-304). It is what the party owns,
+   * which R-136 puts on the players' side of the line; the GM grants it, so
+   * `setTravelling` is GM-only, but a horse is not a secret from the people
+   * riding it.
+   *
+   * Sent because **the table draws the route too**, and a route costed by
+   * different transport on each screen is two answers to one question (R-19).
+   * Always present: a party with nothing is `ON_FOOT`, not `null`.
+   */
+  readonly travelling: TravellingWire;
 }
 
 export type View = GmView | TableView;
@@ -196,6 +213,13 @@ export function viewFor(role: Role, state: HostState, connect: readonly string[]
     fog: campaign && state.active && state.activeSave
       ? fogForTheTable(state.active, state.activeSave)
       : null,
+    /*
+     * Sent whether or not a campaign is open, unlike everything above it: the
+     * others are *about* a campaign and read as absent without one, and this
+     * is a default the table can always route with. With no save it is on
+     * foot, which is what a party nobody has equipped travels by.
+     */
+    travelling: travellingToWire(state.activeSave?.travelling ?? ON_FOOT),
   };
 }
 

@@ -2,7 +2,7 @@
 // edge with Zod (R-17); trusted everywhere inside.
 
 import { z } from 'zod';
-import { LightingWireSchema, AmbienceWireSchema } from '../wire/index.js';
+import { LightingWireSchema, AmbienceWireSchema, TravellingWireSchema } from '../wire/index.js';
 import {
   CellIndex, GroundSchema, MarkerIdSchema, PlaceCellSchema, WorldCellSchema, CubeWireSchema,
 } from '../wire/index.js';
@@ -119,6 +119,16 @@ export const IntentSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('clearBlock'), placeId: z.string().min(1), poiId: z.string().min(1), cells, stroke }),
   /** The world's hour and sun (R-181). The whole description, every time. */
   z.object({ kind: z.literal('setLighting'), lighting: LightingWireSchema }),
+  /**
+   * What the party travels by (R-200). All three media, every time, like the
+   * lighting above — the console holds one record and sends it whole.
+   *
+   * **GM only.** It is about the party, which R-136 usually makes the
+   * players', but granting a ship is a decision about fiction and resources
+   * and belongs to the person holding both (D-298, D-304). The table is *sent*
+   * it, because the route it draws has to be the same route.
+   */
+  z.object({ kind: z.literal('setTravelling'), travelling: TravellingWireSchema }),
   /**
    * The light inside one point of interest (R-182).
    *

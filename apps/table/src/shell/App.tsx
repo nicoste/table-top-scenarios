@@ -10,12 +10,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { decodeCampaign, decodePlacement, cellsFromWire } from '@tt/protocol';
 import {
   CHUNK_SIZE, DEFAULT_MARKERS, DEFAULT_MATERIALS, mapFromJSON, clampLighting, tokensFromJSON,
+  allKnownIn, routeAcross, toGlobal,
 } from '@tt/domain';
-import type { BlockCoord } from '@tt/domain';
+import type { BlockCoord, Route, TravelModeId, Travelling } from '@tt/domain';
 import type { Intent, TableView } from '@tt/protocol';
 import type { Stride, Travel } from '@tt/client-core';
 import {
-  idle, pick, aim, ghostCell, canConfirm, travelIntent, travelPrompt, tableAction,
+  idle, pick, aim, ghostCell, canConfirm, movingFrom, aimedAt, travelIntent, travelPrompt,
+  tableAction,
   cameraAction, wheelZoom, CAMERA_HINT,
   still, grab, tokenAim, aimStride, strideGhost, strideIntent, standVerdict, tableCeiling,
   tokenAction, stridePrompt,
@@ -109,10 +111,17 @@ export function App({ view, status, rejection, dispatch }: Props) {
     [campaign],
   );
 
+  /**
+   * The campaign as domain types, decoded once per push.
+   *
+   * The stage needed it anyway; the route the players are shown is costed
+   * over the same object rather than a second decode of the same bytes.
+   */
+  const decoded = useMemo(() => (campaign ? decodeCampaign(campaign) : null), [campaign]);
+
   useEffect(() => {
     if (!stage) return;
-    if (!campaign) { stage.setCampaign(null); openedId.current = null; return; }
-    const decoded = decodeCampaign(campaign);
+    if (!campaign || !decoded) { stage.setCampaign(null); openedId.current = null; return; }
     const fresh = openedId.current !== campaign.id;
     stage.setCampaign(decoded, fresh);
     // Chunks the party has not been shown arrive as coordinates only (R-16) and
@@ -132,7 +141,7 @@ export function App({ view, status, rejection, dispatch }: Props) {
       stage.setTarget({ ...defaultTarget(centre), zoom: 34 });
       openedId.current = campaign.id;
     }
-  }, [campaign, stage]);
+  }, [campaign, decoded, stage]);
 
   // Pawns move far more often than the world changes, so they ride their own
   // effect rather than forcing terrain to rebuild (R-19a).
@@ -153,6 +162,69 @@ export function App({ view, status, rejection, dispatch }: Props) {
   useEffect(() => {
     stage?.aimAt(ghostCell(travel));
   }, [travel, stage]);
+
+  /**
+   * What the party travels by (R-200), as the GM granted it (D-304).
+   *
+   * Sent rather than assumed, and that is the whole reason this screen can
+   * draw a route at all: a table costing the journey on foot while the
+   * console costs it under sail would be two answers to one question (R-19).
+   *
+   * Memoised on the three ids, not on the wire object, which the host builds
+   * fresh for every message — a new object each push would run an A\* per
+   * push instead of per aim.
+   */
+  const way = view?.travelling ?? null;
+  const travelling = useMemo<Travelling>(() => ({
+    land: (way?.land ?? null) as TravelModeId | null,
+    water: (way?.water ?? null) as TravelModeId | null,
+    air: (way?.air ?? null) as TravelModeId | null,
+  }), [way?.land, way?.water, way?.air]);
+
+  /**
+   * Everything this screen holds is Known, by construction (D-140, D-304).
+   *
+   * The table is never told *which* chunks the party has found — that is
+   * itself the answer to what is hidden (R-85) — so it is handed a world
+   * already cut to them, and a discovery over exactly that world says the
+   * same thing without saying anything new.
+   */
+  const known = useMemo(() => (decoded ? allKnownIn(decoded.world) : null), [decoded]);
+
+  /**
+   * The route the players are shown while a journey is being aimed (R-197).
+   *
+   * The console's effect, on the other screen and for the same reasons: keyed
+   * on `travel`, which holds its identity while the pointer wanders inside
+   * one cell (R-165), so one search per cell crossed and not one per pointer
+   * move (R-198).
+   */
+  const [route, setRoute] = useState<Route | null>(null);
+  useEffect(() => {
+    if (!stage) return;
+    const placed = placementWire ? decodePlacement(placementWire) : null;
+    const from = placed ? movingFrom(travel, placed) : null;
+    const to = aimedAt(travel);
+    if (!decoded || !known || !from || !to) {
+      setRoute(null);
+      stage.showRoute(null, '#ffffff');
+      return;
+    }
+    const found = routeAcross(
+      decoded.world,
+      known,
+      travelling,
+      toGlobal({ cx: from.cx, cz: from.cz }, from.x, from.z),
+      toGlobal({ cx: to.cx, cz: to.cz }, to.x, to.z),
+    );
+    setRoute(found);
+    stage.showRoute(
+      found?.cells ?? null,
+      travel.step !== 'idle' && travel.pawn.memberId
+        ? colourOf(travel.pawn.memberId)
+        : '#e6e9ef',
+    );
+  }, [travel, stage, decoded, known, travelling, placementWire]);
 
   /**
    * Follow the GM into a map, and back out (R-158).
@@ -184,8 +256,12 @@ export function App({ view, status, rejection, dispatch }: Props) {
     stage.setTokens(tokens);
   }, [stage, standing, campaign?.party]);
 
-  // Leaving the map, or the GM taking the party somewhere else, ends a move.
-  useEffect(() => { setStride(still); }, [insideWire?.place.id, insideWire?.poi.id]);
+  // Leaving the map, or the GM taking the party somewhere else, ends a move —
+  // the one inside the map, and a journey aimed out on the world with it.
+  useEffect(() => {
+    setStride(still);
+    setTravel(idle);
+  }, [insideWire?.place.id, insideWire?.poi.id]);
 
   useEffect(() => {
     stage?.aimToken(
@@ -328,7 +404,11 @@ export function App({ view, status, rejection, dispatch }: Props) {
       : null;
 
   // The table only ever moves somebody already standing, so it is never placing.
-  const prompt = insideWire ? stridePrompt(stride, nameOf, false) : travelPrompt(travel, nameOf);
+  const prompt = insideWire
+    ? stridePrompt(stride, nameOf, false)
+    // The days go in the sentence: this screen has no panel to put them in,
+    // and how long it takes is the whole output of a route (R-199, D-304).
+    : travelPrompt(travel, nameOf, route);
 
   /**
    * Which way the camera is facing, for the compass (R-155).
