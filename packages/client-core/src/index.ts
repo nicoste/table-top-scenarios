@@ -2,8 +2,10 @@
 
 export { connect, uploadPicture } from './net/index.js';
 export {
-  CARD_PICTURE_WIDTH, CARD_PICTURE_HEIGHT, coverCrop, cardPicture,
+  CARD_PICTURE_WIDTH, CARD_PICTURE_HEIGHT, MIN_FRAME_WIDTH,
+  coverCrop, startingFrame, movedFrame, resizedFrame, cardPicture,
 } from './images/index.js';
+export type { Frame, Corner } from './images/index.js';
 export type { Connection, Handlers } from './net/index.js';
 
 export { initialServerState, initialViewState, keepUnchanged } from './store/index.js';

@@ -3606,11 +3606,10 @@ apps/host/src/
 > what puts it on the card. Storing changes nothing any screen shows, so every
 > change still goes through an intent (R-3) — and the socket stays JSON.
 >
-> **Made small in the browser, before it is sent.** Cut to 5:7 so it covers
-> the card without stretching, keeping more of the top of a tall picture
-> (faces are high in a portrait), scaled to 256 × 358, laid on card stock so a
-> cut-out portrait is not on black, and written as WebP — tens of kilobytes.
-> The host resizes nothing and needs no image library to do it.
+> **Made small in the browser, before it is sent.** Cut to 5:7 where the GM
+> framed it (R-205), scaled to 256 × 358, laid on card stock so a cut-out
+> portrait is not on black, and written as WebP — tens of kilobytes. The host
+> resizes nothing and needs no image library to do it.
 >
 > **The host takes WebP, PNG and JPEG up to 512 KB**, checks the first bytes
 > are what the request claims, and serves a picture with a year's cache and
@@ -3628,6 +3627,24 @@ apps/host/src/
 > per page**, not per rebuild, or every step a token took would blink it back
 > to its colour. The party standing together has no face: it is nobody in
 > particular (O-022).
+
+> **R-205.** **The GM chooses which part of a picture goes on the card.** A
+> chosen file opens a dialog: the whole picture, dimmed outside a frame of the
+> card's 5:7 shape, and a preview of the card it makes beside it (D-309).
+>
+> - **The frame starts where the console used to cut by itself** — as large
+>   as fits, a third of a tall picture's excess off the top, since faces sit
+>   high in a portrait. *Use* at once gives exactly the old result.
+> - **Drag inside it to move it; drag a corner to resize it.** The opposite
+>   corner holds still, the shape never changes, and the frame never leaves
+>   the picture or shrinks below 32 picture pixels.
+> - **Use** (or Enter) keeps the framed part; **Cancel** (or Escape, or a
+>   click outside) sends nothing. While it is open the dialog has the keys,
+>   so the camera and the tools do not move behind it.
+>
+> **Only the result is kept.** The original never leaves the browser, so
+> framing it again means choosing the file again — keeping originals would be
+> keeping files nothing shows.
 
 > **R-188.** **Move: pick a token, aim at a floor, confirm** — the world's
 > travel sequence one surface down (R-132), on both screens.

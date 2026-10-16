@@ -7601,3 +7601,44 @@ nothing — were removed from `data/images`.
 
 R-204 is new. O-033 is closed.
 
+### D-309 — The GM frames the picture · `agreed`
+*"It's invisible for the GM how much of the image will be used, will it be
+centered? Cropped? Like a canvas of the full picture and a rectangle that
+shows where it will be clipped, so the user can adjust it (we only keep the
+resulting image)."*
+
+The cut D-308 made was right on average and invisible always. R-205 makes it
+the GM's: the whole picture, a 5:7 frame over it, a live card beside it.
+
+**Built, not borrowed** — the GM's call, after I laid out the two. The
+library that matches the request is `react-image-crop`; the other common one,
+`react-easy-crop`, moves the picture under a fixed frame, which hides what is
+being thrown away. Neither was worth R-24's price: the apps carry no UI
+library but React, every control so far is the house's own, and the whole of
+the job is one rectangle of a fixed shape that moves and resizes. The part
+that can be wrong — keeping it the card's shape and inside the picture — is
+three small functions in `client-core`, tested through a 400-step walk of
+moves and corner drags that never once produced a dishonest frame.
+
+**It starts where the old cut was**, so *Use* at once is the D-308 result
+and nothing the GM did before changes meaning.
+
+**Rendered into `document.body`.** The console's panels blur what is behind
+them, and an element with `backdrop-filter` becomes the box its
+`position: fixed` children are placed in — a dialog left inside the party
+panel would have been pinned to the panel.
+
+**The dialog takes the keys while it is open**, in the capture phase, so Q
+and E do not turn the camera behind it and a digit does not change tool.
+
+**Checked with real drags on screen**, on a tall picture reading TOP, MID and
+LOW: the frame moved and stopped at the bottom edge, shrank from its
+top-left corner with the bottom-right held, and the preview followed every
+move. Cancel and Escape stored nothing. Use, by Enter, stored a 256 × 358
+picture whose corner pixel is the exact blue the test picture starts with —
+the frame really was where it was put. Tested on a member added for the
+purpose and removed after; the GM's party and placement compare identical
+to the snapshot taken first, and the test file is gone from `data/images`.
+
+R-205 is new; R-204 amended.
+

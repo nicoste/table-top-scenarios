@@ -489,3 +489,47 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
 /* A dial or a swatch that is off should look it, and not take a click. */
 .dial:disabled { opacity: .35; cursor: not-allowed; }
 .lamp input[type="color"]:disabled { opacity: .35; cursor: not-allowed; }
+
+/* Framing a picture for a card (R-205). */
+.crop-backdrop {
+  position: fixed; inset: 0; z-index: 50;
+  display: grid; place-items: center;
+  background: #05070acc;
+}
+.crop-dialog {
+  max-width: calc(100vw - 32px); max-height: calc(100vh - 32px); overflow: auto;
+  background: var(--panel); border: 1px solid var(--edge); border-radius: 12px;
+  padding: 14px 16px; box-shadow: 0 18px 60px #000a;
+}
+.crop-dialog h2 { margin: 0 0 4px; }
+.crop-dialog .hint { margin: 0 0 12px; }
+.crop-body { display: flex; gap: 16px; align-items: flex-start; }
+.crop-stage {
+  position: relative; overflow: hidden; flex: none;
+  min-width: 120px; min-height: 120px;
+  background: #0b0d11; border-radius: 6px;
+  /* The browser must not scroll or zoom under a drag. */
+  touch-action: none; user-select: none;
+}
+.crop-stage img { display: block; width: 100%; height: 100%; pointer-events: none; }
+/* Everything outside the frame is dimmed by the frame's own shadow. */
+.crop-frame {
+  position: absolute; cursor: move;
+  box-shadow: 0 0 0 9999px #000000a6;
+  outline: 1.5px solid #fff;
+}
+.crop-handle {
+  position: absolute; width: 12px; height: 12px;
+  background: #fff; border: 1px solid #0008; border-radius: 2px;
+}
+.crop-handle[data-corner=nw] { left: -6px; top: -6px; cursor: nwse-resize; }
+.crop-handle[data-corner=ne] { right: -6px; top: -6px; cursor: nesw-resize; }
+.crop-handle[data-corner=sw] { left: -6px; bottom: -6px; cursor: nesw-resize; }
+.crop-handle[data-corner=se] { right: -6px; bottom: -6px; cursor: nwse-resize; }
+.crop-side { display: flex; flex-direction: column; gap: 6px; flex: none; }
+.crop-preview {
+  width: 110px; aspect-ratio: 5 / 7;
+  background-color: #ece6d8; background-repeat: no-repeat;
+  border: 1px solid var(--edge); border-radius: 4px;
+}
+.crop-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
