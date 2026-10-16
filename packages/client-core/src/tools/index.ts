@@ -231,8 +231,9 @@ export function mapAction(
   face: FacePick | null,
   reach: MapReach,
 ): MapAction {
-  // Move edits no block: it picks tokens, and its sequence is its own (R-188).
-  if (!face || tool === 'move') return { kind: 'nothing' };
+  // Move and Spawn edit no block: they put people on floors, and their
+  // sequences are their own (R-188, R-206).
+  if (!face || tool === 'move' || tool === 'spawn') return { kind: 'nothing' };
   /** The brush's cells, with the band's say applied (R-164). */
   const patch = (at: BlockCoord, grow: 'up' | 'down' = 'up'): readonly BlockCoord[] => {
     const cells = brushPatch(at, reach.brush, grow);

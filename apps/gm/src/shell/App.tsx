@@ -5,6 +5,7 @@ import { decodeCampaign, decodePlacement, cellsFromWire, travellingToWire } from
 import {
   MAX_HEIGHT, WHOLE_MAP, rangeIn, stepBrush, WORLD_BRUSHES, BRUSHES, DEFAULT_BRUSH, brushById,
   routeAcross, toGlobal, DEFAULT_TRAVEL_MODES, discoveryFromJSON, asFacing, turned,
+  silverFromJSON, silverCubes, silverInBand, NO_SILVER,
   chunkAt, columnAt,
   creatableSlots, sameWorldCell,
   DEFAULT_MATERIALS, DEFAULT_FLOOR, mapFromJSON, fillRegion, sliceOf, inRange, inMap, blockAt,
@@ -19,10 +20,12 @@ import type {
 } from '@tt/domain';
 import type { GmView, Intent } from '@tt/protocol';
 import { defaultTarget, worldCentre } from '@tt/render';
-import type { Standing, StageFog } from '@tt/render';
-import type { Carry, Stride, Tool, Travel } from '@tt/client-core';
+import type { Present, Standing, StageFog } from '@tt/render';
+import type { Carry, SilverMove, Stride, Tool, Travel } from '@tt/client-core';
 import {
   emptyHanded, pickUp, turnCarried, canSetDown, setDownIntent, placesPrompt,
+  noSilverMove, grabSilver, aimSilverMove, silverMoveGhost, silverVerdict, silverMoveIntent,
+  spawnIntent, silverMovePrompt, spawnPrompt,
   idle, pick, armed, aim, choose, ghostCell, aimedAt, travelIntent, travelPrompt,
   clickAction, holdsSelection, mapAction, mapHover, mapDrags, mapAllowed,
   cameraAction, wheelZoom, CAMERA_HINT,
@@ -38,6 +41,8 @@ import { BuildWorldPanel } from '../features/build-world/index.js';
 import { PartyPanel } from '../features/party/index.js';
 import { PlacesPanel, PlaceInspector } from '../features/place/index.js';
 import { TravelPanel } from '../features/travel/index.js';
+import { LibraryPanel } from '../features/library/index.js';
+import { OnStagePanel } from '../features/on-stage/index.js';
 import { ChunkInspector } from '../features/visibility/index.js';
 import { MapPanel } from '../features/map/index.js';
 import { ConnectBadge } from '../features/connect/index.js';
@@ -72,6 +77,10 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   const [facing, setFacing] = useState<Facing>(0);
   /** A place being moved, if one is in hand. Local until set down (R-64). */
   const [hands, setHands] = useState<Carry>(emptyHanded);
+  /** The Tokens Library entry a Spawn click places (D-307), if one is chosen. */
+  const [chosenTemplate, setChosenTemplate] = useState<string | null>(null);
+  /** A silver token being moved, if one is (R-206). Local until confirmed. */
+  const [silverMove, setSilverMove] = useState<SilverMove>(noSilverMove);
   /**
    * The cell under the pointer while the Places tool is out, so the ghost can
    * be redrawn by a key press as well as by a pointer move. Replaced only when
@@ -335,6 +344,15 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       : NO_TOKENS),
     [partyHere, openMap?.poiId, tokensWire, roster],
   );
+  /**
+   * Everyone in the open map who is not the party (R-206) — in every map,
+   * whether or not the party is in it: the GM sets a cellar out in advance.
+   * Memoised on the wire's own list for `present`'s reason.
+   */
+  const silverWire = openMap ? view?.save?.silver?.[openMap.poiId] : undefined;
+  const silverHere = useMemo(() => (silverWire ? silverFromJSON(silverWire) : NO_SILVER), [silverWire]);
+  const library = view?.library ?? [];
+  const silverName = (id: string) => silverHere.find((token) => token.id === id)?.name ?? null;
   /** Who is still waiting to be placed, in roster order (R-188). */
   const waiting = useMemo(
     () => (partyHere && roster
@@ -565,6 +583,32 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     stage.setTokens(standing);
   }, [stage, present, banded, openRange?.lower, openRange?.upper, roster]);
 
+  /**
+   * Everyone in the open map who is not the party (R-206), hidden ones too —
+   * drawn faint, so the GM sees what the players do not. While levelling,
+   * only the ones inside the band, for the party tokens' reason (R-185).
+   */
+  useEffect(() => {
+    if (!stage) return;
+    const shown = banded && openRange ? silverInBand(silverHere, openRange) : silverHere;
+    const pictureOf = (templateId: string) => library.find((entry) => entry.id === templateId)?.image ?? null;
+    const present3d: Present[] = shown.map((token) => ({
+      id: token.id, name: token.name, at: token.at, hidden: token.hidden, picture: pictureOf(token.templateId),
+    }));
+    stage.setSilver(present3d);
+  }, [stage, silverHere, banded, openRange?.lower, openRange?.upper, library]);
+
+  // The ghost of a silver token being moved, where it would stand.
+  useEffect(() => {
+    if (mapTool !== 'spawn') stage?.aimSilver(silverMoveGhost(silverMove));
+  }, [silverMove, stage, mapTool]);
+
+  // Changing tool, or map, drops a silver token in hand and the Spawn ghost.
+  useEffect(() => {
+    setSilverMove(noSilverMove);
+    stage?.aimSilver(null);
+  }, [mapTool, openMap?.poiId, stage]);
+
   // Somebody waiting to be placed and Move in hand: the sequence holds them
   // ready, first in roster order, and the next after each confirm (D-167,
   // R-188). Keyed on the tool and on who is next, so Escape stays escaped.
@@ -588,7 +632,14 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    * the GM is looking at, which is R-159's rule for building too (R-185).
    */
   const strideVerdict = (memberId: string, at: BlockCoord) => (openBody
-    ? standVerdict(openBody, present, memberId, at, banded && openRange ? { band: openRange } : null)
+    ? standVerdict(
+      openBody, present, memberId, at, banded && openRange ? { band: openRange } : null,
+      null, silverCubes(silverHere),
+    )
+    : 'outside the map');
+  /** Whether a silver token may stand there, or why not (R-206). */
+  const silverVerdictAt = (at: BlockCoord, self?: string) => (openBody
+    ? silverVerdict(openBody, present, silverHere, at, banded && openRange ? openRange : null, self)
     : 'outside the map');
 
   // With nothing on the board there is no pawn to pick up, so the sequence
@@ -844,6 +895,10 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
         setStride(still);
         return;
       }
+      if (openMap && silverMove.step === 'aiming') {
+        setSilverMove(noSilverMove);
+        return;
+      }
       // A place in hand goes back where it came from — nothing was sent, so
       // there is nothing to undo (R-203).
       if (!openMap && hands.step === 'carrying') {
@@ -859,8 +914,11 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     if (openMap && mapTool === 'move') {
       // Move picks tokens, then a floor (R-188). A move in progress owns the
       // click: it confirms on a cube the member may stand in, judged where the
-      // click landed, and cancels anywhere else.
-      const act = tokenAction(picked.token, stride.step === 'aiming');
+      // click landed, and cancels anywhere else. Silver tokens too, on the
+      // console alone (R-206).
+      const act = tokenAction(
+        picked.token, stride.step === 'aiming' || silverMove.step === 'aiming', picked.silver,
+      );
       if (act.kind === 'confirm' && stride.step === 'aiming') {
         const at = tokenAim(picked.face);
         if (at && strideVerdict(stride.memberId, at) === null) {
@@ -869,7 +927,28 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
         setStride(still);
         return;
       }
+      if (act.kind === 'confirm' && silverMove.step === 'aiming') {
+        const at = tokenAim(picked.face);
+        if (at && silverVerdictAt(at, silverMove.id) === null) {
+          dispatch(silverMoveIntent(silverMove, at, openMap.placeId, openMap.poiId));
+        }
+        setSilverMove(noSilverMove);
+        return;
+      }
       if (act.kind === 'pickToken') setStride(grab(act.memberId));
+      if (act.kind === 'pickSilver') setSilverMove(grabSilver(act.id));
+      return;
+    }
+    /*
+     * Spawn places another of the chosen entry on the floor clicked, and
+     * stays in hand (D-307): five goblins are five clicks. A floor the token
+     * cannot stand on does nothing; the readout has already said why.
+     */
+    if (openMap && mapTool === 'spawn') {
+      const at = tokenAim(picked.face);
+      if (chosenTemplate && at && silverVerdictAt(at) === null) {
+        dispatch(spawnIntent(chosenTemplate, at, openMap.placeId, openMap.poiId));
+      }
       return;
     }
     if (openMap) {
@@ -1010,8 +1089,29 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
         setHoverLabel(null);
         return;
       }
-      const name = picked.token ? memberName(picked.token.memberId) : null;
+      if (silverMove.step === 'aiming') {
+        const at = tokenAim(picked.face);
+        setSilverMove((current) => (current.step === 'aiming'
+          ? aimSilverMove(current, at, at ? silverVerdictAt(at, current.id) : null)
+          : current));
+        setHoverLabel(null);
+        return;
+      }
+      const name = picked.token
+        ? memberName(picked.token.memberId)
+        : picked.silver ? silverName(picked.silver) : null;
       setHoverLabel(name ? `Pick up ${name}` : null);
+      return;
+    }
+
+    if (openMap && mapTool === 'spawn') {
+      lastPointer.current = { x: e.clientX, y: e.clientY };
+      stage.showBlockGhost([]);
+      const at = tokenAim(stage.pick(e.clientX, e.clientY).face);
+      const why = at ? silverVerdictAt(at) : null;
+      stage.aimSilver(chosenTemplate && at && why === null ? at : null);
+      const entry = chosenTemplate ? library.find((one) => one.id === chosenTemplate)?.name ?? null : null;
+      setHoverLabel(spawnPrompt(entry, at, why));
       return;
     }
 
@@ -1182,6 +1282,8 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
         if (digit === '2') { setMapTool('paint'); return; }
         // Tools along the digits, left to right, as in the world (D-160).
         if (digit === '3') { setMapTool('move'); return; }
+        // The fourth (D-307): everyone else, from the Tokens Library.
+        if (digit === '4') { setMapTool('spawn'); return; }
         // The brushes run along the digits from 6, which is where the world's
         // terrain brushes start — the habit transfers even though the two are
         // different things (R-164). Five shapes reach 0, which is where the
@@ -1205,6 +1307,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
         if (e.code === 'Escape') {
           // A move in progress is the nearer thing to back out of (R-139).
           if (stride.step === 'aiming') { setStride(still); return; }
+          if (silverMove.step === 'aiming') { setSilverMove(noSilverMove); return; }
           setOpenMap(null);
           return;
         }
@@ -1275,7 +1378,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     // quietly changed the world tool behind the map instead. `stride.step`
     // for the same reason: Escape has to know whether a move is in progress.
     // `tool` and `hands.step` so Z / X know whether they turn a place in hand.
-  }, [stage, openMap, stride.step, tool, hands.step]);
+  }, [stage, openMap, stride.step, silverMove.step, tool, hands.step]);
 
   return (
     <>
@@ -1348,7 +1451,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
                 stride,
                 memberName,
                 stride.step === 'aiming' && !present.has(stride.memberId as MemberId),
-              ) ?? hoverLabel
+              ) ?? silverMovePrompt(silverMove, silverName) ?? hoverLabel
               : hoverLabel}
             partyHere={partyHere}
             party={(roster ?? []).map((member) => {
@@ -1394,6 +1497,30 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
             sunlit={sunlit}
             onLighting={relight}
             onAmbience={reambience}
+          />
+        </div>
+      )}
+
+      {/*
+        The other side of a map: the Tokens Library while Spawn is in hand,
+        and everyone on stage who is not the party, always (D-307, R-206).
+      */}
+      {status === 'open' && seat === 'gm' && campaign && openMapWire && openPlace && openPoi && (
+        <div className="dock dock-right">
+          {mapTool === 'spawn' && (
+            <LibraryPanel
+              library={library}
+              chosen={chosenTemplate}
+              onChoose={setChosenTemplate}
+              dispatch={dispatch}
+            />
+          )}
+          <OnStagePanel
+            silver={silverWire ?? []}
+            library={library}
+            placeId={openPlace.id}
+            poiId={openPoi.id}
+            dispatch={dispatch}
           />
         </div>
       )}

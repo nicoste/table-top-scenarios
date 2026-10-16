@@ -12,6 +12,7 @@ import { viewFor } from '@tt/protocol';
 import type { GmView, HostState, Intent, TableView } from '@tt/protocol';
 import {
   createCampaign, createLiveSave, tokensFor, DEFAULT_MATERIALS, swatchOf, ORIGIN, blockAt,
+  EMPTY_LIBRARY,
 } from '@tt/domain';
 import type { BlockCoord } from '@tt/domain';
 
@@ -33,7 +34,7 @@ function tavern() {
     campaigns: [{ id: campaign.id, name: campaign.name }],
     active: campaign,
     activeSave: createLiveSave(campaign, NOW),
-    history: emptyHistory(),
+    history: emptyHistory(), library: EMPTY_LIBRARY,
   };
   state = run(state, { kind: 'addMember', name: 'Brann' }).state;
   state = run(state, { kind: 'setChunkKnown', cx: ORIGIN.cx, cz: ORIGIN.cz, known: true }).state;
@@ -349,7 +350,7 @@ describe('opening the campaign tidies what is remembered (R-184)', () => {
     state = run(state, { kind: 'removePoi', placeId: t.placeId, poiId: t.cellarId }).state;
 
     const reopened = openedWith(
-      { campaigns: [], active: null, activeSave: null, history: emptyHistory() },
+      { campaigns: [], active: null, activeSave: null, history: emptyHistory(), library: EMPTY_LIBRARY },
       state.active!,
       state.activeSave!,
       NOW,

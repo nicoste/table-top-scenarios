@@ -25,6 +25,11 @@ export type CoverId = Brand<string, 'CoverId'>;
  */
 export type SwatchId = Brand<string, 'SwatchId'>;
 
+/** An entry in the Tokens Library (D-307): *a goblin*, *the bartender*. */
+export type TemplateId = Brand<string, 'TemplateId'>;
+/** One silver token standing in a map: *goblin N7* (D-307). */
+export type SilverId = Brand<string, 'SilverId'>;
+
 /** Registry ids are namespaced strings: `cover:trees`, never an index (R-11). */
 const REGISTRY_ID = /^[a-z][a-z0-9]*:[a-z0-9]+(-[a-z0-9]+)*$/;
 

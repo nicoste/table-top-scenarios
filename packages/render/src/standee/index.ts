@@ -29,6 +29,19 @@ import type { BufferGeometry, Material, Texture } from 'three';
 export const GOLD = '#d2a63c';
 
 /**
+ * Silver, for everyone who is not the party (D-255, D-307): the same standee
+ * in another metal, so the two read apart at a glance across a table.
+ */
+export const SILVER = '#c3c9d0';
+
+/**
+ * The card of a silver token with no picture (D-307): *"keep the color
+ * grayish, no extra work, like we do with colors for the party, but here is
+ * always gray."* Darker than the plate, so card and stand do not run together.
+ */
+export const SILVER_CARD = '#858c94';
+
+/**
  * The base: a flat square plate, square to the grid and narrower than the
  * cell it stands in, so it never covers it (D-268, D-269).
  */
@@ -117,6 +130,9 @@ function pictureAt(url: string, onReady: () => void): Texture | null {
   return null;
 }
 
+/** How faint a faint standee is (R-206). */
+const FAINT = 0.35;
+
 /** The whole token is one cell tall, which is where a caption hangs from. */
 export const STANDEE_HEIGHT = 1;
 /**
@@ -147,7 +163,16 @@ export interface Standees {
    * The card shows the colour until the picture has arrived, then the picture
    * — never a black card while it loads.
    */
-  make(colour: string, picture?: string | null): { root: Group; turner: Group; proxy: Mesh };
+  make(
+    colour: string,
+    picture?: string | null,
+    /**
+     * Drawn faint: a token the GM has kept off the table, on the console that
+     * can still see it (R-206). Faint from the start and faint when its
+     * picture arrives, which a fade applied afterwards would not be.
+     */
+    faint?: boolean,
+  ): { root: Group; turner: Group; proxy: Mesh };
   /**
    * The same thing, translucent, for a move that has not happened yet. Its
    * card material comes back with it: a ghost is recoloured on every aim and
@@ -157,7 +182,7 @@ export interface Standees {
   dispose(): void;
 }
 
-export function standees(pictures?: Pictures): Standees {
+export function standees(pictures?: Pictures, metal: string = GOLD): Standees {
   const geometries: BufferGeometry[] = [];
   const materials: Material[] = [];
   /** Set by `dispose`, so a picture arriving afterwards touches nothing. */
@@ -173,7 +198,8 @@ export function standees(pictures?: Pictures): Standees {
   geometries.push(base, clip, card, proxyShape);
 
   // Ordinary lit materials, like everything else in a world of cubes (D-266).
-  const gold = new MeshStandardMaterial({ color: GOLD, roughness: 0.45, metalness: 0 });
+  // `gold` by name because it was first; it is whichever metal this set is in.
+  const gold = new MeshStandardMaterial({ color: metal, roughness: 0.45, metalness: 0 });
   const cards = new Map<string, MeshStandardMaterial>();
   const cardOf = (colour: string) => {
     let material = cards.get(colour);
@@ -203,6 +229,20 @@ export function standees(pictures?: Pictures): Standees {
     }
     return material;
   };
+  /** A faint copy of each material, made once per set and shared. */
+  const faints = new Map<Material, Material>();
+  const faintOf = (material: Material) => {
+    let copy = faints.get(material);
+    if (!copy) {
+      copy = material.clone();
+      copy.transparent = true;
+      copy.opacity = FAINT;
+      copy.depthWrite = false;
+      faints.set(material, copy);
+      materials.push(copy);
+    }
+    return copy;
+  };
   /*
    * The volume is never drawn. Three.js tests a mesh against a ray whatever
    * its material's `visible` says, and draws nothing whose material is
@@ -227,13 +267,14 @@ export function standees(pictures?: Pictures): Standees {
   };
 
   return {
-    make(colour, picture) {
+    make(colour, picture, faint = false) {
+      const look = (material: Material) => (faint ? faintOf(material) : material);
       const root = new Group();
       // The clip and the card turn; the base stays square to the grid.
       const turner = new Group();
-      const face = part(card, cardOf(colour));
-      turner.add(part(clip, gold), face);
-      root.add(part(base, gold), turner);
+      const face = part(card, look(cardOf(colour)));
+      turner.add(part(clip, look(gold)), face);
+      root.add(part(base, look(gold)), turner);
       const proxy = new Mesh(proxyShape, unseen);
       if (picture && pictures) {
         const url = pictures.url(picture);
@@ -241,17 +282,17 @@ export function standees(pictures?: Pictures): Standees {
           if (disposed) return;
           const texture = loaded.get(url)?.texture;
           if (!texture) return;
-          face.material = faceOf(texture);
+          face.material = look(faceOf(texture));
           pictures.redraw();
         });
         // Already here: no frame to ask for, it is being built into one.
-        if (arrived) face.material = faceOf(arrived);
+        if (arrived) face.material = look(faceOf(arrived));
       }
       return { root, turner, proxy };
     },
     ghost() {
       const ghostGold = new MeshStandardMaterial({
-        color: GOLD, roughness: 0.45, metalness: 0,
+        color: metal, roughness: 0.45, metalness: 0,
         transparent: true, opacity: 0.45, depthWrite: false,
       });
       const ghostCard = new MeshStandardMaterial({

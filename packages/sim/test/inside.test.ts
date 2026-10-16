@@ -13,6 +13,7 @@ import type { GmView, HostState, Intent, TableView } from '@tt/protocol';
 import {
   createCampaign, createLiveSave, rangeFor, planeSteps, DEFAULT_MATERIALS, swatchOf,
   MAP_MAX_HEIGHT, MAP_MIN_DEPTH, WHOLE_MAP, ORIGIN, blockAt, mapFromJSON,
+  EMPTY_LIBRARY,
 } from '@tt/domain';
 
 const NOW = '2026-01-01T00:00:00.000Z';
@@ -30,7 +31,7 @@ function tavern() {
     campaigns: [{ id: campaign.id, name: campaign.name }],
     active: campaign,
     activeSave: createLiveSave(campaign, NOW),
-    history: emptyHistory(),
+    history: emptyHistory(), library: EMPTY_LIBRARY,
   };
   state = run(state, { kind: 'setChunkKnown', cx: ORIGIN.cx, cz: ORIGIN.cz, known: true }).state;
   state = run(state, { kind: 'addPlace', cell: cell(5, 6), name: 'Casilda' }).state;
@@ -129,7 +130,7 @@ describe('taking the party in (R-158)', () => {
     const { state, placeId, poiId } = tavern();
     const inside = run(state, { kind: 'enterMap', placeId, poiId }).state;
     const reopened = openedWith(
-      { campaigns: [], active: null, activeSave: null, history: emptyHistory() },
+      { campaigns: [], active: null, activeSave: null, history: emptyHistory(), library: EMPTY_LIBRARY },
       inside.active!,
       inside.activeSave!,
       NOW,
@@ -145,7 +146,7 @@ describe('taking the party in (R-158)', () => {
     const inside = run(state, { kind: 'enterMap', placeId, poiId }).state;
     const deleted = run(inside, { kind: 'removePoi', placeId, poiId }).state;
     const reopened = openedWith(
-      { campaigns: [], active: null, activeSave: null, history: emptyHistory() },
+      { campaigns: [], active: null, activeSave: null, history: emptyHistory(), library: EMPTY_LIBRARY },
       deleted.active!,
       deleted.activeSave!,
       NOW,
@@ -343,7 +344,7 @@ describe('the range (R-146)', () => {
     let next = run(state, { kind: 'setRange', placeId, poiId, lower: 4, upper: 8 }).state;
     next = run(next, { kind: 'removePoi', placeId, poiId }).state;
     const reopened = openedWith(
-      { campaigns: [], active: null, activeSave: null, history: emptyHistory() },
+      { campaigns: [], active: null, activeSave: null, history: emptyHistory(), library: EMPTY_LIBRARY },
       next.active!,
       next.activeSave!,
       NOW,
@@ -457,7 +458,7 @@ describe('a band always rests on a level (R-161, D-206)', () => {
       activeSave: { ...state.activeSave!, ranges: new Map([[poiId as string, { lower: -2, upper: 1 }]]) },
     };
     const reopened = openedWith(
-      { campaigns: [], active: null, activeSave: null, history: emptyHistory() },
+      { campaigns: [], active: null, activeSave: null, history: emptyHistory(), library: EMPTY_LIBRARY },
       stranded.active!,
       stranded.activeSave!,
       NOW,

@@ -8,7 +8,7 @@ import { describe, it, expect } from 'vitest';
 import { apply, emptyHistory, MAX_HISTORY } from '@tt/sim';
 import { viewFor } from '@tt/protocol';
 import type { GmView, HostState, Intent } from '@tt/protocol';
-import { createCampaign, createLiveSave, columnAt, chunkAt, ORIGIN } from '@tt/domain';
+import { createCampaign, createLiveSave, columnAt, chunkAt, ORIGIN, EMPTY_LIBRARY } from '@tt/domain';
 
 const NOW = '2026-01-01T00:00:00.000Z';
 const run = (s: HostState, i: Intent, role: 'gm' | 'table' = 'gm') => apply(s, role, i, NOW);
@@ -20,7 +20,7 @@ function open(): HostState {
     campaigns: [{ id: campaign.id, name: campaign.name }],
     active: campaign,
     activeSave: createLiveSave(campaign, NOW),
-    history: emptyHistory(),
+    history: emptyHistory(), library: EMPTY_LIBRARY,
   };
 }
 

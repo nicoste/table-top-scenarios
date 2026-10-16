@@ -2,7 +2,7 @@
 // effects sim asked for. The only place side effects meet the rules (R-67,
 // R-98) — the host owns them, sim never sees them.
 
-import type { CampaignStore, SaveStore } from '@tt/persistence';
+import type { CampaignStore, LibraryStore, SaveStore } from '@tt/persistence';
 import type { HostState, Intent, Role, View } from '@tt/protocol';
 import { viewFor, liveSaveId } from '@tt/protocol';
 import { apply, openedWith, emptyHistory } from '@tt/sim';
@@ -24,9 +24,18 @@ export function createSession(
   saves: SaveStore,
   connect: () => readonly string[],
   clock: Clock = systemClock,
+  /**
+   * The Tokens Library (D-307). Optional so a host that has none — every
+   * test that predates it — runs with an empty one rather than none at all.
+   */
+  library?: LibraryStore,
 ): Session {
   let state: HostState = {
-    campaigns: store.list(), active: null, activeSave: null, history: emptyHistory(),
+    campaigns: store.list(),
+    active: null,
+    activeSave: null,
+    history: emptyHistory(),
+    library: library ? library.load() : [],
   };
 
   return {
@@ -53,6 +62,9 @@ export function createSession(
             break;
           case 'saveSave':
             saves.save(effect.save);
+            break;
+          case 'saveLibrary':
+            library?.save(effect.library);
             break;
 
           case 'loadCampaign': {

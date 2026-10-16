@@ -8,3 +8,6 @@ export type { SaveStore } from './save-store/index.js';
 
 export { fileImageStore, imageIdFor, looksLike } from './image-store/index.js';
 export type { ImageStore } from './image-store/index.js';
+
+export { fileLibraryStore, memoryLibraryStore } from './library-store/index.js';
+export type { LibraryStore } from './library-store/index.js';

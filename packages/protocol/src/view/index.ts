@@ -1,16 +1,17 @@
 // The single path from state to a screen (R-19). Every field a client receives
 // passes through viewFor, and there is no second route.
 
-import type { Campaign, Cells, LevelRange, Place, Poi, Save } from '@tt/domain';
+import type { Campaign, Cells, LevelRange, Place, Poi, Save, TokensLibrary } from '@tt/domain';
 import {
   isPlaceOnTable, isPoiOnTable, isChunkKnown, belongsTo, placementToJSON, rangeFor, DAYLIGHT,
   OPEN_SKY, sunReaches, litBy, MAP_MAX_HEIGHT,
   tokensFor, onRoster, tokensInBand, tokensToJSON,
   exploredIn, partySight, shownBy, seenPart, inRange, placeById, poiById, ON_FOOT,
+  silverIn, standsInBand, blockKey, templateById, libraryToJSON,
 } from '@tt/domain';
 import type {
   CampaignWire, SaveWire, PlacementWire, MapWire, LightingWire, TokensWire, CellsWire,
-  TravellingWire,
+  TravellingWire, TokenTemplateWire,
 } from '../wire/index.js';
 import {
   encodeCampaign, encodeSave, mapWire, cellsWire, travellingToWire,
@@ -56,6 +57,13 @@ export interface HostState {
    * GM console gets two booleans and nothing else.
    */
   readonly history: History;
+  /**
+   * The Tokens Library (D-307): shared by every campaign, so held beside
+   * them and loaded whether or not one is open. Never sent to the table —
+   * a goblin's entry is no business of the players until a goblin is in
+   * sight, and then it arrives as that goblin.
+   */
+  readonly library: TokensLibrary;
 }
 
 export interface GmView {
@@ -77,6 +85,8 @@ export interface GmView {
    * to show the GM the table's picture (R-76) without working it out again.
    */
   readonly sight: CellsWire | null;
+  /** The Tokens Library, whole (D-307). The GM's, and only the GM's. */
+  readonly library: readonly TokenTemplateWire[];
 }
 
 /**
@@ -158,6 +168,31 @@ export interface TableView {
    * Always present: a party with nothing is `ON_FOOT`, not `null`.
    */
   readonly travelling: TravellingWire;
+  /**
+   * Everyone not of the party whom the party can see **right now**, in the
+   * map the table is shown (R-206), or `null` when it is shown no map.
+   *
+   * The **sixth** piece of save data the table is sent, and the first that
+   * is the GM's rather than the players' — so it is the narrowest. A silver
+   * token reaches the table only standing inside the band, in a cube the
+   * party sees at this moment, and not hidden by the GM. *Explored* is not
+   * enough: remembering a room says nothing about who is in it now. A token
+   * that fails any of the three is not sent at all, rather than sent and not
+   * drawn (R-85).
+   *
+   * Each arrives as the table needs it and no more: its name, its cube, and
+   * the picture on its card. Not its library entry, not its tags, not
+   * whether there are others.
+   */
+  readonly silver: readonly TableSilverWire[] | null;
+}
+
+/** One silver token as the table sees it (R-206). */
+export interface TableSilverWire {
+  readonly id: string;
+  readonly name: string;
+  readonly at: { readonly x: number; readonly y: number; readonly z: number };
+  readonly image: string | null;
 }
 
 export type View = GmView | TableView;
@@ -188,6 +223,7 @@ export function viewFor(role: Role, state: HostState, connect: readonly string[]
       canRedo: state.history.future.length > 0,
       connect,
       sight: state.active && state.activeSave ? sightOf(state.active, state.activeSave) : null,
+      library: libraryToJSON(state.library),
     };
   }
   const campaign = forTheTable(state.active, state.activeSave);
@@ -220,7 +256,36 @@ export function viewFor(role: Role, state: HostState, connect: readonly string[]
      * foot, which is what a party nobody has equipped travels by.
      */
     travelling: travellingToWire(state.activeSave?.travelling ?? ON_FOOT),
+    silver: campaign && state.active && state.activeSave
+      ? silverForTheTable(state.active, state.activeSave, state.library)
+      : null,
   };
+}
+
+/**
+ * The silver tokens the party can see right now, in the map the table is
+ * shown (R-206): inside the band, in a cube of the party's present sight,
+ * and not hidden. The same `shownMap` as the body and the party's tokens,
+ * so "the table gets this map" and "the table gets who is in it" cannot come
+ * apart (D-252).
+ */
+function silverForTheTable(
+  campaign: Campaign,
+  save: Save,
+  library: TokensLibrary,
+): readonly TableSilverWire[] | null {
+  const shown = shownMap(campaign, save);
+  if (!shown?.poi.map) return null;
+  const range = rangeFor(save, shown.poi.id);
+  const sight = partySight(shown.poi.map, tokensFor(save, shown.poi.id), campaign.party);
+  return silverIn(save, shown.poi.id)
+    .filter((token) => !token.hidden && standsInBand(range, token.at) && sight.has(blockKey(token.at)))
+    .map((token) => ({
+      id: token.id,
+      name: token.name,
+      at: { x: token.at.x, y: token.at.y, z: token.at.z },
+      image: templateById(library, token.templateId)?.image ?? null,
+    }));
 }
 
 /**

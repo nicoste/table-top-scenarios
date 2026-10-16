@@ -278,12 +278,22 @@ export function MapPanel({
           </Tooltip>
           {/* The third tool (D-258): the party, picked and stood somewhere else. */}
           <Tooltip
-            label="Pick a party token up and stand it on another floor — key 3"
+            label="Pick a token up and stand it on another floor — key 3"
             placement="bottom"
             stretch
           >
-            <button className={`wide${tool === 'move' ? ' on' : ''}`} onClick={() => onTool('move')}>
+            <button className={tool === 'move' ? 'on' : ''} onClick={() => onTool('move')}>
               ♟ Move
+            </button>
+          </Tooltip>
+          {/* The fourth (D-307): everyone else, from the Tokens Library. */}
+          <Tooltip
+            label="Place tokens from the Tokens Library — key 4"
+            placement="bottom"
+            stretch
+          >
+            <button className={tool === 'spawn' ? 'on' : ''} onClick={() => onTool('spawn')}>
+              ✚ Spawn
             </button>
           </Tooltip>
         </div>
@@ -294,7 +304,7 @@ export function MapPanel({
           the outline is the real label, since it takes the shape before the
           click. Not under Move, which lays nothing down (D-110's reason).
         */}
-        {tool !== 'move' && (
+        {tool !== 'move' && tool !== 'spawn' && (
           <>
             <p className="lbl" style={{ margin: '8px 0 4px' }}>Brush</p>
             <div className="btn-grid brush">
@@ -338,17 +348,22 @@ export function MapPanel({
             </>
           )}
           {tool === 'move' && (
-            partyHere ? (
-              <>
-                Click a token to pick it up, then the top of a block to stand it there.
-                One to a cube, and always on something. Escape or right-click puts it
-                back down where it was.
-              </>
-            ) : 'The party is not in here, so there is nobody to move.'
+            <>
+              Click a token to pick it up, then the top of a block to stand it there.
+              One to a cube, gold or silver, and always on something. Escape or
+              right-click puts it back down where it was.
+            </>
+          )}
+          {tool === 'spawn' && (
+            <>
+              Choose a token from the <b>Tokens Library</b>, then click the top of a block
+              to place one there — and again, for as many as you need. Each gets its own
+              name, so the table can say which.
+            </>
           )}
         </p>
         <p className="readout">{hoverLabel ?? '—'}</p>
-        <p className="hint">1–3 tool · 6–0 or [ ] brush · {CAMERA_HINT} · Esc leaves</p>
+        <p className="hint">1–4 tool · 6–0 or [ ] brush · {CAMERA_HINT} · Esc leaves</p>
       </div>
 
       {tool !== 'move' && (

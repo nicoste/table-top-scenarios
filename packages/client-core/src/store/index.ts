@@ -81,7 +81,8 @@ export type Tool = 'select' | 'paint' | 'cover' | 'height' | 'places' | 'travel'
  * `move` is the third (D-258): the party's tokens, picked and stood somewhere
  * else (R-188). Travel's job, one surface down.
  */
-export type MapTool = 'build' | 'paint' | 'move';
+/** `spawn` places silver tokens from the Tokens Library (D-307). */
+export type MapTool = 'build' | 'paint' | 'move' | 'spawn';
 
 export interface ViewState {
   readonly camera: CameraTarget;

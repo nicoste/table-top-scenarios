@@ -7642,3 +7642,63 @@ to the snapshot taken first, and the test file is gone from `data/images`.
 
 R-205 is new; R-204 amended.
 
+### D-310 — The Tokens Library and silver tokens · `agreed`
+Round 2 of D-307, built as agreed there. R-206 is the rule.
+
+**Where they live.** Entries in `data/library.json`, beside the campaigns;
+placed tokens in the save, per map, beside the party's. Absent in every save
+and every host before this, which reads as nobody placed and an empty library
+— no bump (D-187).
+
+**Present in every map, not only the party's** — the one place they differ
+from the party's tokens, found while designing rather than said in D-307.
+Party tokens count only in the map the party is in, because elsewhere they are
+a memory. Silver tokens are the GM's setup, so they stand wherever they were
+put: otherwise a cellar could not be laid out while the party is upstairs. A
+member remembered in a map they left is no obstacle to a goblin, and is placed
+again on the way back in if a goblin took the cube (D-256's repair, one rule
+wider).
+
+**A correction to what I said in conversation.** I told the GM a fresh start
+on a map would clear silver tokens too. It must not: a fresh start is the GM
+wiping what the party has *seen*, usually right before play — and it would
+have wiped the goblins set out for that play with it. It forgets the party's
+sight and the party's positions, and leaves the GM's people where they are.
+
+**The table is sent the narrowest thing yet** — the sixth piece of save data
+`viewFor` names, and the first that is the GM's rather than the players'.
+Inside the band, in the party's present sight, not hidden; and only a name, a
+cube and a picture. Six host tests hold it: in sight, behind a wall, seen a
+moment ago and now walled off, hidden in plain sight, in a map the table is
+not shown, and with nobody standing anywhere to see.
+
+**Names.** One letter and one digit, at random, unique in the map without
+case, skipping I and O — 240 per entry name, then two digits. The host makes
+them, so two consoles cannot both pick N7.
+
+**Moving one** is its own small sequence beside the party's, not a stretch of
+it: the party's is keyed by member, shared with the table, and armed for
+first placements, none of which apply to the GM's people. Move picks either
+kind, the party first when both are under the pointer.
+
+**Tested on screen against a copy of the GM's data**, on a second host on
+another port. The one map in the GM's campaign is one the party has explored,
+and opening it on the console walks the party in and grows what they have
+seen — not something to do to a live save to test a feature. On the copy:
+two entries made through the panel, one through the crop dialog; three
+goblins placed with three clicks and named X7, L7 and H4; a bartender placed
+beside a party member inside the keep. The table was sent the bartender and
+none of the goblins on the shore outside; hidden, it was sent nothing; shown
+again, the bartender came back. The hidden goblin drew faint on the console.
+Rename, a confirmed delete, a move with the Move tool, and deleting the Goblin
+entry — which took both goblins left on stage with it. The GM's own campaign
+and save were byte-identical afterwards.
+
+**Two slips caught by looking.** The tool hint still said *1–3 tool* with four
+tools. And the table first drew no silver tokens at all — not a bug in the
+table, but a bundle built before its last edit; and then a browser tab in the
+background, where animation frames do not run and so nothing is ever drawn.
+Neither was the feature, and both would have read as one.
+
+R-206 is new; R-87a amended.
+

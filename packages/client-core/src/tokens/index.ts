@@ -151,6 +151,11 @@ export function standVerdict(
   at: BlockCoord,
   headroom: Headroom,
   seen: Cells | null = null,
+  /**
+   * Cubes silver tokens stand in (D-307) — all of them on the console, and on
+   * the table only the ones it was sent. One to a cube, gold or silver.
+   */
+  others: ReadonlySet<string> = new Set(),
 ): string | null {
   if (headroom && 'band' in headroom && !standsInBand(headroom.band, at)) {
     return 'outside the levels being shown';
@@ -159,7 +164,7 @@ export function standVerdict(
     return 'above the levels being shown';
   }
   if (seen && !seen.has(`${at.x},${at.y},${at.z}`)) return 'the party has not seen it';
-  switch (whyNotStand(map, tokens, memberId as MemberId, at)) {
+  switch (whyNotStand(map, tokens, memberId as MemberId, at, others)) {
     case 'outside': return 'outside the map';
     case 'solid': return 'a block is there';
     case 'unsupported': return 'nothing to stand on';
@@ -172,16 +177,26 @@ export function standVerdict(
 export type TokenAction =
   | { readonly kind: 'nothing' }
   | { readonly kind: 'confirm' }
-  | { readonly kind: 'pickToken'; readonly memberId: string };
+  | { readonly kind: 'pickToken'; readonly memberId: string }
+  | { readonly kind: 'pickSilver'; readonly id: string };
 
 /**
  * A move in progress owns the click (D-174's rule, inside a map): it confirms
  * or cancels, whatever is under the pointer. Otherwise a token starts a move
  * and anything else does nothing.
+ *
+ * `silver` is the silver token under the pointer — passed by the console
+ * alone, since only the GM moves them (R-206). A party token wins when both
+ * are hit: it is the players', and the one more likely meant.
  */
-export function tokenAction(token: TokenRef | null, aiming: boolean): TokenAction {
+export function tokenAction(
+  token: TokenRef | null,
+  aiming: boolean,
+  silver: string | null = null,
+): TokenAction {
   if (aiming) return { kind: 'confirm' };
   if (token) return { kind: 'pickToken', memberId: token.memberId };
+  if (silver) return { kind: 'pickSilver', id: silver };
   return { kind: 'nothing' };
 }
 

@@ -257,6 +257,26 @@ export function App({ view, status, rejection, dispatch }: Props) {
     stage.setTokens(tokens);
   }, [stage, standing, campaign?.party]);
 
+  /**
+   * Everyone not of the party whom the party can see right now (R-206). The
+   * host decided who that is; this screen draws what it was sent, and was
+   * sent no one it may not show — never a hidden one, never one behind a
+   * wall. Not pickable here: they are the GM's (R-136).
+   */
+  const silverWire = view?.silver ?? null;
+  useEffect(() => {
+    stage?.setSilver(silverWire
+      ? silverWire.map((token) => ({
+        id: token.id, name: token.name, at: token.at, picture: token.image, hidden: false,
+      }))
+      : null);
+  }, [stage, silverWire]);
+  /** Their cubes, so the party's ghost never stands on a goblin the table can see. */
+  const silverCubes = useMemo(
+    () => new Set((silverWire ?? []).map((token) => `${token.at.x},${token.at.y},${token.at.z}`)),
+    [silverWire],
+  );
+
   // Leaving the map, or the GM taking the party somewhere else, ends a move —
   // the one inside the map, and a journey aimed out on the world with it.
   useEffect(() => {
@@ -277,7 +297,7 @@ export function App({ view, status, rejection, dispatch }: Props) {
    * worked out from the plane list, since the table is never told its band.
    */
   const strideVerdict = (memberId: string, at: BlockCoord) => (body
-    ? standVerdict(body, standing, memberId, at, { ceiling: tableCeiling(body) }, seen)
+    ? standVerdict(body, standing, memberId, at, { ceiling: tableCeiling(body) }, seen, silverCubes)
     : 'outside the map');
 
   // Escape cancels a move or closes an open place (R-132, R-139), and the

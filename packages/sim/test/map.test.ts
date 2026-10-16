@@ -13,6 +13,7 @@ import {
   createCampaign, createLiveSave, DEFAULT_MATERIALS, DEFAULT_FLOOR, swatchOf,
   MAP_PATCH, MAP_MAX_HEIGHT, ORIGIN, MAP_BRUSH_CELLS, brushById, brushPatch,
   blockAt, mapFromJSON,
+  EMPTY_LIBRARY,
 } from '@tt/domain';
 import { IntentSchema } from '@tt/protocol';
 
@@ -33,7 +34,7 @@ function seeded() {
     campaigns: [{ id: campaign.id, name: campaign.name }],
     active: campaign,
     activeSave: createLiveSave(campaign, NOW),
-    history: emptyHistory(),
+    history: emptyHistory(), library: EMPTY_LIBRARY,
   };
   state = run(state, { kind: 'setChunkKnown', cx: ORIGIN.cx, cz: ORIGIN.cz, known: true }).state;
   state = run(state, { kind: 'addPlace', cell: cell(5, 6), name: 'Casilda' }).state;
@@ -74,7 +75,7 @@ describe('a point of interest arrives with its map (D-187)', () => {
       })),
     };
     const opened = openedWith(
-      { campaigns: [], active: null, activeSave: null, history: emptyHistory() },
+      { campaigns: [], active: null, activeSave: null, history: emptyHistory(), library: EMPTY_LIBRARY },
       mapless,
       null,
       NOW,

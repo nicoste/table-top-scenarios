@@ -5,7 +5,7 @@ import { describe, it, expect } from 'vitest';
 import { apply, emptyHistory } from '@tt/sim';
 import { viewFor, decodeWorld } from '@tt/protocol';
 import type { HostState, Intent } from '@tt/protocol';
-import { createCampaign, createLiveSave, ORIGIN, chunkAt } from '@tt/domain';
+import { createCampaign, createLiveSave, ORIGIN, chunkAt, EMPTY_LIBRARY } from '@tt/domain';
 
 const NOW = '2026-01-01T00:00:00.000Z';
 const run = (s: HostState, i: Intent, role: 'gm' | 'table' = 'gm') => apply(s, role, i, NOW);
@@ -18,7 +18,7 @@ function open(): HostState {
     campaigns: [{ id: campaign.id, name: campaign.name }],
     active: campaign,
     activeSave: live,
-    history: emptyHistory(),
+    history: emptyHistory(), library: EMPTY_LIBRARY,
   };
 }
 

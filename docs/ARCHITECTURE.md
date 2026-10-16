@@ -676,6 +676,10 @@ most time in, so it gets specified rather than improvised.
 > **After an action that creates something, the app returns to `select` with the
 > new thing selected.** Staying in the creating tool arms the next click to
 > create again, which is what makes an editor feel hostile.
+>
+> **One named exception: Spawn** (R-206). A place wants a name next, so
+> creating one hands it to the inspector; a silver token is named for it, and
+> five goblins should be five clicks. Spawn stays in hand.
 
 > **R-87b.** ~~Clicking a place marker selects it **whatever the tool is**.~~
 > **Superseded by R-87c (D-162).** The half that survives: selecting a place does
@@ -3645,6 +3649,44 @@ apps/host/src/
 > **Only the result is kept.** The original never leaves the browser, so
 > framing it again means choosing the file again — keeping originals would be
 > keeping files nothing shows.
+
+> **R-206.** **Everyone who is not the party is a silver token, placed from the
+> Tokens Library** (D-307, D-310).
+>
+> **The Tokens Library** holds the entries — *a goblin*, *the bartender* — with
+> a name, free tags and an optional picture (grey without one). It is **shared
+> by every campaign**, kept beside them on disk, and outside campaign undo.
+> Searching matches every word against names and tags, so `npc saltmarsh`
+> finds the NPCs tagged for one campaign.
+>
+> **A silver token** is one entry placed on a floor in a map, named for it
+> with a letter and a digit — *Goblin N7*, unique in that map, never with I or
+> O. The name hangs over it on both screens, because it is what a player says
+> aloud. It refers to its entry rather than copying it: a new picture reaches
+> every goblin, and **deleting the entry deletes every token of it, in every
+> campaign** — the open one at once, the rest when they next open.
+>
+> - **Play state**, in the save, so undo never touches it (R-140) and deleting
+>   one asks first. **Present in every map**, whether or not the party is in
+>   it: the GM sets out a cellar while the party is upstairs. A fresh start
+>   (D-277) forgets what the party saw and leaves the GM's people where they
+>   are.
+> - **One to a cube, gold or silver**, on a floor like the party (R-184). A
+>   brush keeps out of their cubes too (R-186).
+> - **The GM's alone** (R-136): placed with Spawn (map key 4, which stays in
+>   hand), moved with Move, renamed, hidden and removed from the *On stage*
+>   list. On the table they are drawn and never picked.
+>
+> **What the table is sent — the trust boundary.** A silver token reaches the
+> table only standing inside the band, in a cube the party sees **right now**,
+> and not hidden by the GM. *Explored* is not enough: remembering a room says
+> nothing about who is in it now. And it arrives as its name, its cube and its
+> picture — never its entry, its tags, or that there are others. A hidden one
+> is drawn **faint** on the console, so the GM sees what the players do not.
+>
+> **Its one leak is kept on purpose.** A member stepped into a dark cube where
+> an unseen goblin stands is refused, which tells the players something is
+> there. Bumping into something in the dark is the fiction.
 
 > **R-188.** **Move: pick a token, aim at a floor, confirm** — the world's
 > travel sequence one surface down (R-132), on both screens.

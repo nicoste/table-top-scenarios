@@ -12,7 +12,7 @@ import {
   packRuns, unpackRuns,
   placementToJSON, placementFromJSON, tokensToJSON, tokensFromJSON,
   DAYLIGHT, OPEN_SKY, clampLighting, clampAmbience, cellsToJSON, cellsFromJSON,
-  GROUND_FROM_TERRAIN, OPEN_WATER, ON_FOOT, asFacing, isImageId,
+  GROUND_FROM_TERRAIN, OPEN_WATER, ON_FOOT, asFacing, isImageId, silverToJSON, silverFromJSON,
 } from '@tt/domain';
 
 /** The light inside one place (R-182). */
@@ -301,6 +301,28 @@ export const CellsWireSchema = z.object({
 });
 export type CellsWire = z.infer<typeof CellsWireSchema>;
 
+/** One silver token on the wire and on disk (D-307). */
+export const SilverTokenWireSchema = z.object({
+  id: z.string(),
+  templateId: z.string(),
+  name: z.string(),
+  at: z.object({ x: z.number().int(), y: z.number().int(), z: z.number().int() }),
+  hidden: z.boolean().optional(),
+});
+export type SilverTokenWire = z.infer<typeof SilverTokenWireSchema>;
+
+/**
+ * The Tokens Library as the GM's console receives it (D-307). Read with the
+ * domain's own lenient reader on disk; this is the shape it is sent in.
+ */
+export const TokenTemplateWireSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  tags: z.array(z.string()),
+  image: z.string().nullable(),
+});
+export type TokenTemplateWire = z.infer<typeof TokenTemplateWireSchema>;
+
 export const SaveWireSchema = z.object({
   id: z.string(),
   campaignId: z.string(),
@@ -353,6 +375,12 @@ export const SaveWireSchema = z.object({
    * meant — the absence says it itself, so no bump (D-187, R-144).
    */
   travelling: TravellingWireSchema.default(travellingToWire(ON_FOOT)),
+  /**
+   * Everyone in each map who is not the party (D-307), by point of
+   * interest. Absent in every save before the Tokens Library: nobody has been
+   * placed, which is what those saves meant — no bump (D-187).
+   */
+  silver: z.record(z.string(), z.array(SilverTokenWireSchema)).default({}),
 });
 export type SaveWire = z.infer<typeof SaveWireSchema>;
 
@@ -530,6 +558,9 @@ export function encodeSave(save: Save): SaveWire {
     ),
     lighting: { ...save.lighting, ambience: { ...save.lighting.ambience } },
     travelling: travellingToWire(save.travelling),
+    silver: Object.fromEntries(
+      [...save.silver.keys()].sort().map((poiId) => [poiId, silverToJSON(save.silver.get(poiId)!)]),
+    ),
   };
 }
 
@@ -599,6 +630,12 @@ export function decodeSave(wire: SaveWire): Save {
     // Clamped on the way in: a save file is as much an input as a socket is.
     lighting: clampLighting(wire.lighting),
     travelling: travellingFromWire(wire.travelling),
+    // A map whose list arrived empty is a map nobody stands in (`withSilver`).
+    silver: new Map(
+      Object.entries(wire.silver)
+        .filter(([, silver]) => silver.length > 0)
+        .map(([poiId, silver]) => [poiId, silverFromJSON(silver)]),
+    ),
   };
 }
 

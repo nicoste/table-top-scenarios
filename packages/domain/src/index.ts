@@ -7,7 +7,7 @@ export {
 } from './ids/index.js';
 export type {
   CampaignId, SaveId, MemberId, PlaceId, CoverId, NoteId, PoiId, PlaneId, MarkerId, MaterialId,
-  SwatchId,
+  SwatchId, TemplateId, SilverId,
 } from './ids/index.js';
 
 
@@ -106,7 +106,22 @@ export {
   pruneInside, pruneRanges, settleRanges,
   tokensFor, tokensIn, withTokens, settleTokens, pruneTokens,
   exploredIn, withExplored, pruneExplored, lookAround, forgetMap,
+  silverIn, withSilver, withoutStrays,
 } from './save/index.js';
+
+export type { TokenTemplate, TokensLibrary, TokenTemplateJSON } from './library/index.js';
+export {
+  EMPTY_LIBRARY, MAX_TEMPLATE_NAME, MAX_TAG, MAX_TAGS,
+  cleanTags, tagsFromText, templateById, addTemplate, editTemplate, removeTemplate, searchLibrary,
+  libraryToJSON, libraryFromJSON,
+} from './library/index.js';
+
+export type { SilverToken, SilverTokens, SilverTokenJSON } from './silver/index.js';
+export {
+  NO_SILVER, MAX_SILVER_NAME, SUFFIX_LETTERS,
+  silverAt, silverCubes, nameFor, whyNotPlace, spawnSilver, moveSilver, renameSilver, hideSilver,
+  removeSilver, onLibrary, settledSilver, silverInBand, silverToJSON, silverFromJSON,
+} from './silver/index.js';
 
 export type { Tokens, TokensJSON, Footing } from './tokens/index.js';
 export {

@@ -4,7 +4,7 @@ import { createServer } from 'node:http';
 import { networkInterfaces } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { fileCampaignStore, fileImageStore, fileSaveStore } from '@tt/persistence';
+import { fileCampaignStore, fileImageStore, fileLibraryStore, fileSaveStore } from '@tt/persistence';
 import { createSession } from './session/index.js';
 import { serveSockets } from './transport/index.js';
 import { serveStatic } from './static/index.js';
@@ -28,7 +28,10 @@ function lanUrls(port: number): readonly string[] {
 
 const store = fileCampaignStore(join(DATA, 'campaigns'));
 const saves = fileSaveStore(join(DATA, 'saves'));
-const session = createSession(store, saves, () => lanUrls(PORT));
+// The Tokens Library is one file beside the campaigns: it belongs to all of
+// them (D-307).
+const library = fileLibraryStore(join(DATA, 'library.json'));
+const session = createSession(store, saves, () => lanUrls(PORT), undefined, library);
 
 // Pictures beside the campaigns, not in one: the Tokens Library is shared
 // across campaigns (D-307), and a portrait is the same kind of thing (R-204).

@@ -8,7 +8,7 @@ import { describe, it, expect } from 'vitest';
 import { apply, emptyHistory, openedWith } from '@tt/sim';
 import { viewFor } from '@tt/protocol';
 import type { HostState, Intent, TableView } from '@tt/protocol';
-import { createCampaign, createLiveSave, upgradedCampaign, SCHEMA_VERSION, ORIGIN } from '@tt/domain';
+import { createCampaign, createLiveSave, upgradedCampaign, SCHEMA_VERSION, ORIGIN, EMPTY_LIBRARY } from '@tt/domain';
 
 const NOW = '2026-01-01T00:00:00.000Z';
 const run = (s: HostState, i: Intent, role: 'gm' | 'table' = 'gm') => apply(s, role, i, NOW);
@@ -21,7 +21,7 @@ function seeded() {
     campaigns: [{ id: campaign.id, name: campaign.name }],
     active: campaign,
     activeSave: createLiveSave(campaign, NOW),
-    history: emptyHistory(),
+    history: emptyHistory(), library: EMPTY_LIBRARY,
   };
   state = run(state, { kind: 'setChunkKnown', cx: ORIGIN.cx, cz: ORIGIN.cz, known: true }).state;
   state = run(state, { kind: 'addPlace', cell: at(5, 6), name: 'Ashfall Keep' }).state;
@@ -150,7 +150,7 @@ describe('an older campaign (R-137)', () => {
     const campaign = createCampaign('Ashfall');
     const stale = { ...campaign, schemaVersion: 2 };
     const opened = openedWith(
-      { campaigns: [], active: null, activeSave: null, history: emptyHistory() },
+      { campaigns: [], active: null, activeSave: null, history: emptyHistory(), library: EMPTY_LIBRARY },
       stale,
       null,
       NOW,

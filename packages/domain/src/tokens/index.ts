@@ -12,7 +12,7 @@
 
 import type { MemberId } from '../ids/index.js';
 import type { BlockCoord, EncounterMap } from '../map/index.js';
-import { blockAt, inMap, MAP_MIN_DEPTH } from '../map/index.js';
+import { blockAt, blockKey, inMap, MAP_MIN_DEPTH } from '../map/index.js';
 import type { LevelRange } from '../planes/index.js';
 import { inRange } from '../planes/index.js';
 
@@ -61,14 +61,22 @@ export function whyNotStand(
   tokens: Tokens,
   memberId: MemberId,
   at: BlockCoord,
+  /**
+   * Cubes somebody who is not the party stands in, by `blockKey` — silver
+   * tokens (D-307). One to a cube, gold or silver.
+   */
+  others: ReadonlySet<string> = NO_CUBES,
 ): Footing | null {
   if (!inMap(map, at)) return 'outside';
   if (blockAt(map, at)) return 'solid';
   if (!blockAt(map, { x: at.x, y: at.y - 1, z: at.z })) return 'unsupported';
   const standing = standingAt(tokens, at);
   if (standing !== null && standing !== memberId) return 'taken';
+  if (others.has(blockKey(at))) return 'taken';
   return null;
 }
+
+const NO_CUBES: ReadonlySet<string> = new Set();
 
 /**
  * Puts a member in a cube: the first placement and every move after it are
@@ -84,8 +92,9 @@ export function placeToken(
   tokens: Tokens,
   memberId: MemberId,
   at: BlockCoord,
+  others: ReadonlySet<string> = NO_CUBES,
 ): Tokens {
-  if (whyNotStand(map, tokens, memberId, at) !== null) return tokens;
+  if (whyNotStand(map, tokens, memberId, at, others) !== null) return tokens;
   const current = tokens.get(memberId);
   if (current && sameCube(current, at)) return tokens;
   const next = new Map(tokens);
@@ -176,8 +185,15 @@ export function clearOfTokens(
  *
  * Identity-preserving (R-165).
  */
-export function settled(map: EncounterMap, tokens: Tokens): Tokens {
-  const keep = [...tokens].filter(([, at]) => inMap(map, at) && !blockAt(map, at));
+export function settled(map: EncounterMap, tokens: Tokens, others: ReadonlySet<string> = NO_CUBES): Tokens {
+  /*
+   * And not where somebody else now stands. A goblin placed while the party
+   * was elsewhere can be on the cube a member was last remembered in — the
+   * memory is no presence, so nothing refused it (D-307). The member is
+   * placed again, as for a cube built over.
+   */
+  const keep = [...tokens].filter(([, at]) =>
+    inMap(map, at) && !blockAt(map, at) && !others.has(blockKey(at)));
   return keep.length === tokens.size ? tokens : new Map(keep);
 }
 

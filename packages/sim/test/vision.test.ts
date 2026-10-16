@@ -9,6 +9,7 @@ import type { HostState, Intent, TableView } from '@tt/protocol';
 import {
   createCampaign, createLiveSave, exploredIn, withExplored, blockKey, DEFAULT_MATERIALS, swatchOf, ORIGIN,
   NO_CELLS, tokensFor, mapFromJSON,
+  EMPTY_LIBRARY,
 } from '@tt/domain';
 import type { BlockCoord, PlaceId } from '@tt/domain';
 
@@ -25,7 +26,7 @@ function inTavern() {
     campaigns: [{ id: campaign.id, name: campaign.name }],
     active: campaign,
     activeSave: createLiveSave(campaign, NOW),
-    history: emptyHistory(),
+    history: emptyHistory(), library: EMPTY_LIBRARY,
   };
   state = run(state, { kind: 'addMember', name: 'Brann' }).state;
   state = run(state, { kind: 'setChunkKnown', cx: ORIGIN.cx, cz: ORIGIN.cz, known: true }).state;

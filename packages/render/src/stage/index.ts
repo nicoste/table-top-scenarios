@@ -31,6 +31,8 @@ import { surfaceAt } from '../world/index.js';
 import type { ColumnAddress, WorldMeshes } from '../world/index.js';
 import { routePatches, ROUTE_LIFT } from '../route/index.js';
 import type { Pictures } from '../standee/index.js';
+import type { SilverTokens3D } from '../silver/index.js';
+import { buildSilverTokens } from '../silver/index.js';
 import type { CoverField } from '../covers/index.js';
 import { buildCovers } from '../covers/index.js';
 import { buildWorldMeshes, columnCentre, worldCentre, HEIGHT_SCALE } from '../world/index.js';
@@ -51,6 +53,19 @@ export interface Standing {
   /** The picture on their card, by name, or `null` for the colour (R-204). */
   readonly picture: string | null;
   readonly at: BlockCoord;
+}
+
+/**
+ * One silver token in the open map, as an app hands it over (R-206). The
+ * table is only ever sent ones the party can see, so `hidden` is the
+ * console's to set.
+ */
+export interface Present {
+  readonly id: string;
+  readonly name: string;
+  readonly at: BlockCoord;
+  readonly picture: string | null;
+  readonly hidden: boolean;
 }
 
 /**
@@ -90,6 +105,8 @@ export interface Picked {
    * behind a token, Move wants the token.
    */
   readonly token: TokenRef | null;
+  /** The silver token under the pointer, when a map is open (R-206), by id. */
+  readonly silver: string | null;
   readonly pawn: PawnRef | null;
   readonly placeId: string | null;
   /** The cell, whatever is standing on it. */
@@ -331,6 +348,11 @@ export class Stage {
   private standing: readonly Standing[] = [];
   /** Where the move ghost is, so a rebuild under it can put it back. */
   private aimed: { at: BlockCoord; colour: string | undefined } | null = null;
+  /** Everyone in the open map who is not the party (R-206). */
+  private silver: SilverTokens3D | null = null;
+  private present: readonly Present[] = [];
+  /** Where the silver ghost is, for the same reason as `aimed`. */
+  private silverAimed: BlockCoord | null = null;
   /** The party's fog, kept so a rebuilt body is drawn under it too (R-69). */
   private partyFog: StageFog | null = null;
   /**
@@ -681,6 +703,7 @@ export class Stage {
     if (this.grid) this.grid.visible = worldVisible;
     // The other way round: tokens stand in a map and nowhere else (R-148).
     if (this.tokens) this.tokens.group.visible = !worldVisible;
+    if (this.silver) this.silver.group.visible = !worldVisible;
     // Always off: the next pointer move puts it back where it belongs, and an
     // outline left over from the surface before is worse than none.
     this.blockGhost.visible = false;
@@ -733,6 +756,40 @@ export class Stage {
     this.invalidate();
     this.standing = standing ?? [];
     this.rebuildTokens();
+  }
+
+  /**
+   * Everyone in the open map who is not the party (R-206), or nobody. Its own
+   * method for `setTokens`'s reason: they move far more often than the map
+   * changes, and moving one owes the screen a frame and the shadows nothing.
+   */
+  setSilver(present: readonly Present[] | null): void {
+    this.invalidate();
+    this.present = present ?? [];
+    this.rebuildSilver();
+  }
+
+  /** Puts the silver ghost where one would be placed or moved, or takes it off. */
+  aimSilver(at: BlockCoord | null): void {
+    this.invalidate();
+    this.silverAimed = at;
+    this.silver?.aimAt(at);
+  }
+
+  private rebuildSilver(): void {
+    if (this.silver) {
+      this.scene.remove(this.silver.group);
+      this.silver.dispose();
+      this.silver = null;
+    }
+    const map = this.shownMap;
+    if (!map) return;
+    this.silver = buildSilverTokens(this.present.map((token) => ({
+      ...token, drop: dropBelow(map, token.at),
+    })), this.pictures ?? undefined);
+    this.scene.add(this.silver.group);
+    if (this.silverAimed) this.silver.aimAt(this.silverAimed);
+    this.applySurface();
   }
 
   /** Puts the move ghost on a cube, in the mover's colour, or takes it off. */
@@ -842,6 +899,7 @@ export class Stage {
     this.shownMap = map;
     this.shownMaterials = materials;
     this.rebuildTokens();
+    this.rebuildSilver();
     this.applySurface();
 
     if (move === 'frame' && map) {
@@ -1136,7 +1194,15 @@ export class Stage {
           if (token) break;
         }
       }
-      return { face, token, pawn: null, placeId: null, column: null, slot: null };
+      // Silver tokens the same way, and through walls too (R-206).
+      let silver: string | null = null;
+      if (this.silver) {
+        for (const hit of this.raycaster.intersectObjects([...this.silver.proxies], false)) {
+          silver = this.silver.silverAt(hit.object);
+          if (silver) break;
+        }
+      }
+      return { face, token, silver, pawn: null, placeId: null, column: null, slot: null };
     }
 
     // Against the pick volumes, as a map's tokens are, and for the same
@@ -1183,7 +1249,7 @@ export class Stage {
       }
     }
 
-    return { face: null, token: null, pawn, placeId, column, slot };
+    return { face: null, token: null, silver: null, pawn, placeId, column, slot };
   }
 
   /**
@@ -1272,6 +1338,7 @@ export class Stage {
     this.invalidate();
     this.rebuildPawns();
     this.rebuildTokens();
+    this.rebuildSilver();
   }
 
   /** Leaves one place faint at home while it is carried, or none (R-203). */
@@ -1481,6 +1548,7 @@ export class Stage {
     // pawns are the same standee on a bigger cell, and turn with it (D-303).
     const bearing = MathUtils.degToRad(this.live.yawDeg);
     this.tokens?.turnTo(bearing);
+    this.silver?.turnTo(bearing);
     this.pawns?.turnTo(bearing);
     // Markers and their names share one threshold and toggle together (R-83),
     // and neither belongs to a map's surface at all (R-148). This line used to
@@ -1542,6 +1610,7 @@ export class Stage {
     this.setFogChunks([]);
     this.blocks?.dispose();
     this.tokens?.dispose();
+    this.silver?.dispose();
     this.pawns?.dispose();
     this.places?.dispose();
     this.markerGhost?.dispose();

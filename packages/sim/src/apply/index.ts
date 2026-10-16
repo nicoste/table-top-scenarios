@@ -5,6 +5,7 @@
 import type { Campaign, ChunkCoord, WorldCell } from '@tt/domain';
 import type {
   PartyMember, PlaceId, NoteId, PoiId, PlaneId, MemberId, SwatchId, Save, Place, Footing, Tokens,
+  TokensLibrary, ImageId,
 } from '@tt/domain';
 import {
   createCampaign, duplicateCampaign, uniqueCampaignName, createMember, editMember, removeMember,
@@ -30,6 +31,9 @@ import {
   NO_TOKENS, tokensFor, withTokens, settleTokens, pruneTokens, onRoster, whyNotStand, placeToken,
   standsInBand, clearOfTokens,
   exploredIn, pruneExplored, lookAround, blockKey, forgetMap,
+  addTemplate, editTemplate, removeTemplate, templateById,
+  silverIn, withSilver, withoutStrays, onLibrary, silverCubes, whyNotPlace,
+  spawnSilver, moveSilver, renameSilver, hideSilver, removeSilver,
 } from '@tt/domain';
 import type { HostState, Intent, Role } from '@tt/protocol';
 import { parseGround, parseCover, parseMarkerId, travellingFromWire } from '@tt/protocol';
@@ -40,7 +44,9 @@ export type Effect =
   | { readonly kind: 'saveCampaign'; readonly campaign: Campaign }
   | { readonly kind: 'loadCampaign'; readonly id: string }
   | { readonly kind: 'removeCampaign'; readonly id: string }
-  | { readonly kind: 'saveSave'; readonly save: Save };
+  | { readonly kind: 'saveSave'; readonly save: Save }
+  /** The Tokens Library changed (D-307). It lives beside the campaigns. */
+  | { readonly kind: 'saveLibrary'; readonly library: TokensLibrary };
 
 export interface Applied {
   readonly state: HostState;
@@ -152,10 +158,17 @@ export function openedWith(
     // a correction (`onRoster`).
     poiIds, memberIds))
     : createLiveSave(campaign, savedAt);
+  /*
+   * Silver tokens of library entries deleted while this campaign was closed,
+   * and of maps that are gone (D-307): deleting an entry takes its tokens in
+   * every campaign, and this is where the ones not open at the time catch up.
+   */
+  const live = new Set(state.library.map((template) => template.id as string));
+  const tidied = withoutStrays(save, poiIds, live);
   // What was seen of maps that are gone, and then a look around: a save from
   // before vision has seen nothing, and the party standing in a map should
   // see it the moment the campaign opens (D-273).
-  const seen = lookAround(pruneExplored(save, poiIds), campaign);
+  const seen = lookAround(pruneExplored(tidied, poiIds), campaign);
   return {
     state: { ...state, active: campaign, activeSave: seen },
     toPersist: seen !== usable ? seen : null,
@@ -328,8 +341,72 @@ function applyIntent(state: HostState, role: Role, intent: Intent, now: string):
       );
     }
 
+    case 'addTemplate':
+    case 'editTemplate':
+    case 'removeTemplate':
+      return applyToLibrary(state, intent, now);
+
     default:
       return applyToCampaign(state, role, intent, now);
+  }
+}
+
+// -- the Tokens Library -------------------------------------------------------
+
+/**
+ * The library shared by every campaign (D-307). Needs no campaign open, and
+ * writes no campaign history: campaign undo cannot reach something that is
+ * not in the campaign, and the GM did not want undo for menu construction.
+ *
+ * **Removing an entry removes every token placed from it** (D-307): here for
+ * the campaign that is open, and on opening for the rest (`withoutStrays`).
+ */
+function applyToLibrary(
+  state: HostState,
+  intent: Extract<Intent, { kind: 'addTemplate' | 'editTemplate' | 'removeTemplate' }>,
+  now: string,
+): Applied {
+  const library = state.library;
+  const commitLibrary = (next: TokensLibrary, also: readonly Effect[] = []): Applied => (next === library
+    ? ok(state)
+    : ok({ ...state, library: next }, [{ kind: 'saveLibrary', library: next }, ...also]));
+
+  switch (intent.kind) {
+    case 'addTemplate':
+      return commitLibrary(addTemplate(library, {
+        ...(intent.name !== undefined ? { name: intent.name } : {}),
+        ...(intent.tags !== undefined ? { tags: intent.tags } : {}),
+        ...(intent.image !== undefined ? { image: intent.image as ImageId | null } : {}),
+      }));
+
+    case 'editTemplate': {
+      if (!templateById(library, intent.id)) return reject(state, 'no such token in the library');
+      return commitLibrary(editTemplate(library, intent.id, {
+        ...(intent.name !== undefined ? { name: intent.name } : {}),
+        ...(intent.tags !== undefined ? { tags: intent.tags } : {}),
+        ...(intent.image !== undefined ? { image: intent.image as ImageId | null } : {}),
+      }));
+    }
+
+    case 'removeTemplate': {
+      if (!templateById(library, intent.id)) return reject(state, 'no such token in the library');
+      const next = removeTemplate(library, intent.id);
+      const save = state.activeSave;
+      if (!save) return commitLibrary(next);
+      // The open campaign's tokens go now; the others' when they next open.
+      const live = new Set(next.map((template) => template.id as string));
+      let swept = save;
+      for (const [poiId, silver] of save.silver) swept = withSilver(swept, poiId, onLibrary(silver, live));
+      if (swept === save) return commitLibrary(next);
+      const stamped = touch(swept, now);
+      return ok(
+        { ...state, library: next, activeSave: stamped },
+        [{ kind: 'saveLibrary', library: next }, { kind: 'saveSave', save: stamped }],
+      );
+    }
+
+    default:
+      return ok(state);
   }
 }
 
@@ -427,6 +504,13 @@ function applyToCampaign(state: HostState, role: Role, intent: Intent, now: stri
     case 'moveToken':
       return applyToTokens(state, campaign, role, intent, now);
 
+    case 'spawnSilver':
+    case 'moveSilver':
+    case 'renameSilver':
+    case 'hideSilver':
+    case 'removeSilver':
+      return applyToSilver(state, campaign, intent, now);
+
     case 'forgetMap': {
       // A fresh start (D-277). Not undoable, like everything else about play
       // state (R-140): the console asks first instead (R-151).
@@ -508,11 +592,73 @@ function applyToTokens(
   // Through the roster: a member who has left it stands nowhere, and must not
   // stand in anybody's way either (`onRoster`).
   const standing = onRoster(tokensFor(save, poi.id), campaign.party);
-  const why = whyNotStand(poi.map, standing, memberId, intent.at);
+  /*
+   * One to a cube, gold or silver (D-307). From the table this can refuse a
+   * cube where a goblin the party cannot see is standing — which tells them
+   * something is there. Accepted on purpose: bumping into something in the
+   * dark is the fiction.
+   */
+  const others = silverCubes(silverIn(save, poi.id));
+  const why = whyNotStand(poi.map, standing, memberId, intent.at, others);
   if (why) return reject(state, FOOTING[why]);
   return commitSave(
-    state, save, withTokens(save, poi.id, placeToken(poi.map, standing, memberId, intent.at)), now,
+    state, save, withTokens(save, poi.id, placeToken(poi.map, standing, memberId, intent.at, others)), now,
   );
+}
+
+/**
+ * Everyone in a map who is not the party (R-206): placed from the Tokens
+ * Library, moved, renamed, kept off the table, and taken away. All GM-only —
+ * they are the world's (R-136) — and all play state, so none of it is under
+ * undo (R-140).
+ *
+ * **Any map, not only the party's.** The GM lays out a cellar while the party
+ * is upstairs. What stands in the way of a silver token is the party *present*
+ * in the map (a member remembered in a map they left is nobody's obstacle,
+ * and is placed again if a goblin takes the cube — D-256) and the other
+ * silver tokens.
+ */
+function applyToSilver(
+  state: HostState,
+  campaign: Campaign,
+  intent: Extract<Intent, { kind: 'spawnSilver' | 'moveSilver' | 'renameSilver' | 'hideSilver' | 'removeSilver' }>,
+  now: string,
+): Applied {
+  const save = state.activeSave;
+  if (!save) return reject(state, 'no save is open');
+  const place = placeById(campaign.places, intent.placeId as PlaceId);
+  if (!place) return reject(state, 'no such place');
+  const poi = poiOfPlace(place, intent.poiId as PoiId);
+  if (!poi) return reject(state, 'no such point of interest');
+  if (!poi.map) return reject(state, 'that point of interest has no map');
+  const map = poi.map;
+  const silver = silverIn(save, poi.id);
+  const party = presentIn(state, campaign, place.id, poi.id);
+  const commitSilver = (next: typeof silver): Applied =>
+    commitSave(state, save, withSilver(save, poi.id, next), now);
+
+  if (intent.kind === 'spawnSilver') {
+    const template = templateById(state.library, intent.templateId);
+    if (!template) return reject(state, 'no such token in the library');
+    const why = whyNotPlace(map, party, silver, intent.at);
+    if (why) return reject(state, FOOTING[why]);
+    return commitSilver(spawnSilver(map, party, silver, template, intent.at));
+  }
+
+  if (!silver.some((token) => token.id === intent.id)) return reject(state, 'no such token in this map');
+  switch (intent.kind) {
+    case 'moveSilver': {
+      const why = whyNotPlace(map, party, silver, intent.at, intent.id);
+      if (why) return reject(state, FOOTING[why]);
+      return commitSilver(moveSilver(map, party, silver, intent.id, intent.at));
+    }
+    case 'renameSilver':
+      return commitSilver(renameSilver(silver, intent.id, intent.name));
+    case 'hideSilver':
+      return commitSilver(hideSilver(silver, intent.id, intent.hidden));
+    default:
+      return commitSilver(removeSilver(silver, intent.id));
+  }
 }
 
 /**
@@ -657,6 +803,7 @@ function applyToPois(
       return applyToMap(
         campaign, intent, withPlaces, reject_,
         presentIn(state, campaign, intent.placeId, intent.poiId),
+        state.activeSave ? silverCubes(silverIn(state.activeSave, intent.poiId)) : new Set(),
       );
 
     case 'addPlane':
@@ -871,6 +1018,8 @@ function applyToMap(
   reject_: (reason: string) => Applied,
   /** The party, if they are standing in this map — a brush keeps out of their cubes (R-186). */
   present: Tokens,
+  /** Silver tokens' cubes, in any map — a brush keeps out of those too (D-307). */
+  silverAt: ReadonlySet<string>,
 ): Applied {
   const placeId = intent.placeId as PlaceId;
   const place = placeById(campaign.places, placeId);
@@ -945,7 +1094,8 @@ function applyToMap(
      * way it clips around blocks already standing (R-162) — it lands where it
      * can — and refuses only when a standing token's cube was all it had left.
      */
-    const clear = clearOfTokens(cells, present);
+    const unsilvered = silverAt.size === 0 ? cells : cells.filter((at) => !silverAt.has(blockKey(at)));
+    const clear = clearOfTokens(unsilvered, present);
     if (!clear.some(empty)) return reject_('somebody is standing there');
     return withPlaces(setMapBlocks(campaign.places, placeId, poiId, clear, swatch));
   }

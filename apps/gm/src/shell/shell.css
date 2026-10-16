@@ -533,3 +533,27 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
   border: 1px solid var(--edge); border-radius: 4px;
 }
 .crop-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+
+/* The Tokens Library and who is on stage (D-307, R-206). */
+.library input { width: 100%; margin: 2px 0 8px; }
+.library .lbl { display: block; }
+.library-search { margin-bottom: 8px; }
+.library-list, .stage-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; max-height: 320px; overflow-y: auto; }
+.library-list li { display: flex; align-items: center; gap: 4px; border-radius: 6px; }
+.library-list li.on { background: #6ea8fe22; outline: 1px solid var(--accent); }
+.library-entry { display: flex; align-items: center; gap: 8px; flex: 1 1 auto; min-width: 0; text-align: left; padding: 4px; }
+.library-card {
+  width: 20px; height: 28px; flex: none; border-radius: 3px; border: 1px solid var(--edge);
+  background-size: cover; background-position: center;
+}
+.library-words { display: flex; flex-direction: column; min-width: 0; }
+.library-words .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.library-words .tags { color: var(--dim); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.library-picture { display: flex; align-items: center; gap: 8px; margin: 2px 0 8px; }
+.library-picture .grow { flex: 1 1 auto; margin: 0; font-size: 11px; }
+.library-delete p { margin: 0 0 8px; }
+.stage-list li { display: flex; align-items: center; gap: 6px; }
+.stage-list li input { flex: 1 1 auto; min-width: 0; }
+.stage-list li.hidden .library-card, .stage-list li.hidden input { opacity: 0.55; }
+.stage-list .eye { font-size: 14px; padding: 2px 6px; }
+.stage-list .eye.off { color: var(--dim); }

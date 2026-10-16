@@ -26,6 +26,12 @@ export type { Stride, Headroom, TokenAction } from './tokens/index.js';
 export {
   emptyHanded, pickUp, turnCarried, canSetDown, setDownIntent, placesPrompt,
 } from './places/index.js';
+
+export {
+  noSilverMove, grabSilver, aimSilverMove, silverMoveGhost, silverVerdict, silverMoveIntent,
+  spawnIntent, silverMovePrompt, spawnPrompt,
+} from './silver/index.js';
+export type { SilverMove } from './silver/index.js';
 export type { Carry } from './places/index.js';
 
 export {

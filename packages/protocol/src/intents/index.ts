@@ -8,7 +8,9 @@ import {
 import {
   CellIndex, GroundSchema, MarkerIdSchema, PlaceCellSchema, WorldCellSchema, CubeWireSchema,
 } from '../wire/index.js';
-import { MAX_HEIGHT, MAX_BRUSH, MAP_BRUSH_CELLS } from '@tt/domain';
+import {
+  MAX_HEIGHT, MAX_BRUSH, MAP_BRUSH_CELLS, MAX_TEMPLATE_NAME, MAX_TAG, MAX_TAGS, MAX_SILVER_NAME,
+} from '@tt/domain';
 
 const cell = { cx: z.number().int(), cz: z.number().int(), x: CellIndex, z: CellIndex };
 /** Brush footprint in cells per side. One intent per stroke, not one per cell. */
@@ -168,6 +170,53 @@ export const IntentSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('leaveMap') }),
   z.object({ kind: z.literal('setRange'), placeId: z.string().min(1), poiId: z.string().min(1), lower: z.number().int(), upper: z.number().int() }),
   z.object({ kind: z.literal('growMap'), placeId: z.string().min(1), poiId: z.string().min(1), towards: z.enum(['northeast', 'southeast', 'southwest', 'northwest']) }),
+
+  /*
+   * The Tokens Library (D-307): shared across campaigns, so these work with
+   * no campaign open, and campaign undo does not reach them. GM only.
+   */
+  z.object({
+    kind: z.literal('addTemplate'),
+    name: z.string().max(MAX_TEMPLATE_NAME).optional(),
+    tags: z.array(z.string().max(MAX_TAG)).max(MAX_TAGS).optional(),
+    image: ImageIdSchema.nullable().optional(),
+  }),
+  z.object({
+    kind: z.literal('editTemplate'),
+    id: z.string().min(1),
+    name: z.string().max(MAX_TEMPLATE_NAME).optional(),
+    tags: z.array(z.string().max(MAX_TAG)).max(MAX_TAGS).optional(),
+    image: ImageIdSchema.nullable().optional(),
+  }),
+  /** Takes every token placed from it, in every campaign, with it (D-307). */
+  z.object({ kind: z.literal('removeTemplate'), id: z.string().min(1) }),
+
+  /*
+   * Silver tokens in a map (R-206). The world's, not the party's, so GM only
+   * (R-136) — and play state, so not under undo (R-140). Each names its map,
+   * like `moveToken`, so an edit aimed at one map never lands in another.
+   */
+  z.object({
+    kind: z.literal('spawnSilver'),
+    placeId: z.string().min(1), poiId: z.string().min(1), templateId: z.string().min(1), at: CubeWireSchema,
+  }),
+  z.object({
+    kind: z.literal('moveSilver'),
+    placeId: z.string().min(1), poiId: z.string().min(1), id: z.string().min(1), at: CubeWireSchema,
+  }),
+  z.object({
+    kind: z.literal('renameSilver'),
+    placeId: z.string().min(1), poiId: z.string().min(1), id: z.string().min(1),
+    name: z.string().max(MAX_SILVER_NAME),
+  }),
+  z.object({
+    kind: z.literal('hideSilver'),
+    placeId: z.string().min(1), poiId: z.string().min(1), id: z.string().min(1), hidden: z.boolean(),
+  }),
+  z.object({
+    kind: z.literal('removeSilver'),
+    placeId: z.string().min(1), poiId: z.string().min(1), id: z.string().min(1),
+  }),
 
   // Undo and redo over authored content (D-169). GM only: the campaign is the
   // GM's, and a shared history under one person's keyboard is a worse feature.

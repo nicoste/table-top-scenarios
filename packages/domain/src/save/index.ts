@@ -13,6 +13,8 @@ import type { Placement } from '../placement/index.js';
 import { emptyPlacement, prunePlacement } from '../placement/index.js';
 import type { Travelling } from '../travel/index.js';
 import { ON_FOOT } from '../travel/index.js';
+import type { SilverTokens } from '../silver/index.js';
+import { NO_SILVER, onLibrary, settledSilver, silverCubes } from '../silver/index.js';
 import type { Campaign } from '../campaign/index.js';
 import type { CuttingPlane, LevelRange } from '../planes/index.js';
 import { sameRange, settleRange } from '../planes/index.js';
@@ -132,6 +134,15 @@ export interface Save {
    * which is why `setTravelling` is not open to the table (R-136).
    */
   readonly travelling: Travelling;
+  /**
+   * Everyone in each map who is not the party, by point of interest (D-307).
+   *
+   * Play state, beside `tokens` and in the same shape — but **present in every
+   * map**, not only the one the party is in: the GM sets out a cellar's
+   * goblins while the party is still upstairs. A map with nobody in it
+   * carries no entry.
+   */
+  readonly silver: ReadonlyMap<string, SilverTokens>;
 }
 
 /** Which map the party has gone into. Where they are, and nothing else. */
@@ -167,6 +178,7 @@ export function createLiveSave(campaign: Campaign, savedAt: string): Save {
     explored: new Map(),
     lighting: DAYLIGHT,
     travelling: ON_FOOT,
+    silver: new Map(),
   };
 }
 
@@ -297,7 +309,11 @@ export function withTokens(save: Save, poiId: PoiId | string, tokens: Tokens): S
  * boundary from what the blocks say, R-157's instinct.
  */
 export function settleTokens(save: Save, poiId: PoiId | string, map: EncounterMap): Save {
-  return withTokens(save, poiId, settled(map, tokensFor(save, poiId)));
+  // Silver first: a goblin built into a wall is gone, and then a member
+  // remembered where a goblin now stands is placed again (D-307).
+  const silver = settledSilver(map, silverIn(save, poiId));
+  const kept = withSilver(save, poiId, silver);
+  return withTokens(kept, poiId, settled(map, tokensFor(kept, poiId), silverCubes(silver)));
 }
 
 /**
@@ -477,3 +493,43 @@ export function withTravelling(save: Save, travelling: Travelling): Save {
     && now.air === travelling.air;
   return same ? save : { ...save, travelling };
 }
+
+/** One map's silver tokens — nobody, unless the GM has placed some (D-307). */
+export function silverIn(save: Save, poiId: PoiId | string): SilverTokens {
+  return save.silver.get(poiId as string) ?? NO_SILVER;
+}
+
+/**
+ * Replaces one map's silver tokens. Identity-preserving (R-165), and a map
+ * left with nobody in it loses its entry rather than keeping an empty one.
+ */
+export function withSilver(save: Save, poiId: PoiId | string, silver: SilverTokens): Save {
+  if (silverIn(save, poiId) === silver) return save;
+  const next = new Map(save.silver);
+  if (silver.length === 0) next.delete(poiId as string);
+  else next.set(poiId as string, silver);
+  return { ...save, silver: next };
+}
+
+/**
+ * Drops silver tokens whose library entry is gone, and those of maps that
+ * are gone. Deleting an entry takes its tokens in **every** campaign (D-307);
+ * the ones that were not open are tidied here, when they next open — the
+ * tolerance `pruneMembers` gives a member who left the roster.
+ */
+export function withoutStrays(
+  save: Save,
+  livePoiIds: ReadonlySet<string>,
+  liveTemplates: ReadonlySet<string>,
+): Save {
+  let touched = false;
+  const next = new Map<string, SilverTokens>();
+  for (const [poiId, silver] of save.silver) {
+    if (!livePoiIds.has(poiId)) { touched = true; continue; }
+    const kept = onLibrary(silver, liveTemplates);
+    if (kept !== silver) touched = true;
+    if (kept.length > 0) next.set(poiId, kept);
+  }
+  return touched ? { ...save, silver: next } : save;
+}
+

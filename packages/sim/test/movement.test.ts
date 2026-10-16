@@ -6,7 +6,7 @@ import { describe, it, expect } from 'vitest';
 import { apply, emptyHistory } from '@tt/sim';
 import { viewFor, IntentSchema } from '@tt/protocol';
 import type { HostState, Intent, TableView } from '@tt/protocol';
-import { createCampaign, createLiveSave, ORIGIN } from '@tt/domain';
+import { createCampaign, createLiveSave, ORIGIN, EMPTY_LIBRARY } from '@tt/domain';
 
 const NOW = '2026-01-01T00:00:00.000Z';
 const run = (s: HostState, i: Intent, role: 'gm' | 'table' | 'spectator' = 'gm') =>
@@ -19,7 +19,7 @@ function open(): HostState {
     campaigns: [{ id: campaign.id, name: campaign.name }],
     active: campaign,
     activeSave: createLiveSave(campaign, NOW),
-    history: emptyHistory(),
+    history: emptyHistory(), library: EMPTY_LIBRARY,
   };
 }
 
@@ -234,23 +234,25 @@ describe('the permission line (R-136)', () => {
 });
 
 describe('what the table is told', () => {
-  it('receives the party position, the hour, where the party stands in a map, what it has seen there and what it travels by, and nothing else', () => {
+  it('receives the party position, the hour, where the party stands in a map, what it has seen there, what it travels by and whom it can see, and nothing else', () => {
     // The guard on the trust boundary (R-85). It is meant to fail whenever the
     // table is sent something new, so that adding a field is a decision rather
     // than a diff — which is how `lighting` came to be argued for in D-250,
-    // `tokens` in D-259, `fog` in D-273 and `travelling` in D-304.
+    // `tokens` in D-259, `fog` in D-273, `travelling` in D-304 and `silver`
+    // in D-310.
     let state = revealed();
     state = run(state, { kind: 'moveParty', cell: at(4, 4) }).state;
     const view = tableView(state);
 
     expect(view.role).toBe('table');
     expect(Object.keys(view).sort())
-      .toEqual(['campaign', 'fog', 'lighting', 'placement', 'role', 'tokens', 'travelling']);
+      .toEqual(['campaign', 'fog', 'lighting', 'placement', 'role', 'silver', 'tokens', 'travelling']);
     expect(view.placement).toMatchObject({ together: true, at: at(4, 4) });
     // Out on the world there is no map to stand in or to see, so there is
     // nothing to send.
     expect(view.tokens).toBeNull();
     expect(view.fog).toBeNull();
+    expect(view.silver).toBeNull();
   });
 
   it('never sends discovery or the bands, whatever else it sends', () => {
@@ -310,7 +312,7 @@ describe('what the table is told', () => {
   it('sends on foot when there is no save to read it from', () => {
     // A default the table can always route with, rather than a null it would
     // have to decide about (R-138).
-    const empty = { campaigns: [], active: null, activeSave: null, history: emptyHistory() };
+    const empty = { campaigns: [], active: null, activeSave: null, history: emptyHistory(), library: EMPTY_LIBRARY };
     expect(tableView(empty).travelling).toEqual({ land: 'travel:foot', water: null, air: null });
   });
 
@@ -339,7 +341,7 @@ describe('what the table is told', () => {
   });
 
   it('sends no pawns when no campaign is on the table', () => {
-    expect(tableView({ campaigns: [], active: null, activeSave: null, history: emptyHistory() }).placement).toBeNull();
+    expect(tableView({ campaigns: [], active: null, activeSave: null, history: emptyHistory(), library: EMPTY_LIBRARY }).placement).toBeNull();
   });
 });
 
