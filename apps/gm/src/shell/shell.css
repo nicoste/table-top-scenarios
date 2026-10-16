@@ -539,8 +539,23 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
 .library .lbl { display: block; }
 .library-search { margin-bottom: 8px; }
 .library-list, .stage-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; max-height: 320px; overflow-y: auto; }
-.library-list li { display: flex; align-items: center; gap: 4px; border-radius: 6px; }
-.library-list li.on { background: #6ea8fe22; outline: 1px solid var(--accent); }
+/*
+ * The row is the box, not the buttons in it: the entry and its pencil sit on
+ * one border, so the chosen row is outlined whole. It was an outline on the
+ * row with the entry button's own border and background painted over it —
+ * blue showed only at the corners — and the scrolling list clipped the rest.
+ */
+.library-list li {
+  display: flex; align-items: center; gap: 2px;
+  border: 1px solid var(--edge); border-radius: 6px; background: var(--panel);
+}
+.library-list li:hover { background: #2a323f; }
+.library-list li.on { border-color: var(--accent); background: #6ea8fe26; }
+.library-list li.on:hover { background: #6ea8fe33; }
+.library-list li button { background: transparent; border-color: transparent; }
+.library-list li button:hover:not(:disabled) { background: transparent; }
+/* The pencil edits; it must not take the red that a quiet button means for delete. */
+.library-list li button.quiet:hover { background: #ffffff14; color: var(--ink); }
 .library-entry { display: flex; align-items: center; gap: 8px; flex: 1 1 auto; min-width: 0; text-align: left; padding: 4px; }
 .library-card {
   width: 20px; height: 28px; flex: none; border-radius: 3px; border: 1px solid var(--edge);
