@@ -18,3 +18,6 @@ export type { MetricsProps, Reading } from './metrics/index.js';
 
 export { Compass } from './compass/index.js';
 export type { CompassProps } from './compass/index.js';
+
+export { PictureInput } from './picture-input/index.js';
+export type { PictureInputProps } from './picture-input/index.js';

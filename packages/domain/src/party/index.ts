@@ -3,6 +3,7 @@
 
 import type { MemberId } from '../ids/index.js';
 import { freshId } from '../ids/index.js';
+import type { ImageId } from '../images/index.js';
 
 /** Default sight radius in cells: 60 ft at a 5 ft cell (R-46a). */
 export const DEFAULT_VISION_RANGE = 12;
@@ -10,9 +11,17 @@ export const DEFAULT_VISION_RANGE = 12;
 export interface PartyMember {
   readonly id: MemberId;
   readonly name: string;
-  /** Rendered as a chess pawn in this colour (D-083). */
+  /**
+   * Their colour (D-083): the card's face when there is no picture, and the
+   * member's colour everywhere else — the roster dot, the route, the ghost.
+   */
   readonly colour: string;
   readonly visionRange: number;
+  /**
+   * The picture on their card, or `null` for the colour (R-204). Optional
+   * for the party by the GM's rule: a card in a colour is a finished card.
+   */
+  readonly image: ImageId | null;
 }
 
 const PAWN_COLOURS = ['#57d9a3', '#4db8ff', '#ffc857', '#ff6b6b', '#b58cff', '#ff9f43'] as const;
@@ -28,6 +37,7 @@ export function createMember(existing: readonly PartyMember[], name?: string): P
     name: name?.trim() || `player ${existing.length + 1}`,
     colour: nextPawnColour(existing),
     visionRange: DEFAULT_VISION_RANGE,
+    image: null,
   };
 }
 
@@ -39,6 +49,7 @@ export function startingParty(): readonly PartyMember[] {
       name: 'player',
       colour: PAWN_COLOURS[0],
       visionRange: DEFAULT_VISION_RANGE,
+      image: null,
     },
   ];
 }

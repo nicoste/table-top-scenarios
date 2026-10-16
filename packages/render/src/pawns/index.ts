@@ -18,6 +18,7 @@ import { CHUNK_SIZE, pawns as pawnsOf } from '@tt/domain';
 import { surfaceAt } from '../world/index.js';
 import type { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { caption, dropCaption } from '../captions/index.js';
+import type { Pictures } from '../standee/index.js';
 import { STANDEE_HEIGHT, standees } from '../standee/index.js';
 
 /** Which pawn was picked: a member, or the whole party travelling together. */
@@ -64,20 +65,26 @@ const centre = (cell: WorldCell) => ({
   z: cell.cz * CHUNK_SIZE + cell.z + 0.5,
 });
 
-export function buildPartyPawns(campaign: Campaign, placement: Placement): PartyPawns {
+export function buildPartyPawns(
+  campaign: Campaign,
+  placement: Placement,
+  pictures?: Pictures,
+): PartyPawns {
   const group = new Group();
   const owners = new Map<object, PawnRef>();
   const proxies: Mesh[] = [];
   const turning: Group[] = [];
   const captions: CSS2DObject[] = [];
-  const shop = standees();
+  const shop = standees(pictures);
 
   const byId = new Map<string, PartyMember>(campaign.party.map((m) => [m.id, m]));
 
-  function addPawn(cell: WorldCell, ref: PawnRef, hex: string, name: string | null): void {
+  function addPawn(
+    cell: WorldCell, ref: PawnRef, hex: string, name: string | null, picture: string | null,
+  ): void {
     const { x, z } = centre(cell);
     const y = surfaceAt(campaign, cell);
-    const { root, turner, proxy } = shop.make(hex);
+    const { root, turner, proxy } = shop.make(hex, picture);
     root.position.set(x, y, z);
     proxy.position.set(x, y, z);
     turning.push(turner);
@@ -105,6 +112,8 @@ export function buildPartyPawns(campaign: Campaign, placement: Placement): Party
       { memberId: pawn.memberId },
       member?.colour ?? TOGETHER,
       member ? member.name : null,
+      // The party together is nobody in particular, so no one's face (O-022).
+      member?.image ?? null,
     );
   }
 

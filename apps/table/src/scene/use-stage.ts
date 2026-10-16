@@ -9,6 +9,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Stage, FRAME_BUDGET_MS, FRAME_SLOP_MS, IDLE_HEARTBEAT_MS } from '@tt/render';
 import { keepRecent } from '@tt/client-core';
+import { imageUrl } from '@tt/protocol';
 
 export function useStage(): {
   setCanvas: (canvas: HTMLCanvasElement | null) => void;
@@ -49,6 +50,8 @@ export function useStage(): {
   useEffect(() => {
     if (!canvas) return;
     const created = new Stage(canvas);
+    // Where cards' pictures come from: the host that served this page (R-204).
+    created.setPictureSource(imageUrl);
     setStage(created);
 
     let raf = 0;

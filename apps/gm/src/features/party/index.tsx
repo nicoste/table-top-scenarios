@@ -5,9 +5,12 @@
 // poi cell (R-46a) — and beside a 1.5 km world cell it reads as 18 km of
 // sight. It stays in the model, unrendered, until pois exist (R-135).
 
+import { useState } from 'react';
 import type { Intent, PlacementWire } from '@tt/protocol';
 import type { CampaignWire } from '@tt/protocol';
-import { ColourInput, DraftInput, Tooltip } from '@tt/ui';
+import { imageUrl } from '@tt/protocol';
+import { cardPicture, uploadPicture } from '@tt/client-core';
+import { ColourInput, DraftInput, PictureInput, Tooltip } from '@tt/ui';
 
 interface Props {
   campaign: CampaignWire;
@@ -18,6 +21,27 @@ interface Props {
 }
 
 export function PartyPanel({ campaign, placement, canPlace, dispatch }: Props) {
+  /** Whose picture is being prepared and stored, if anyone's. */
+  const [busy, setBusy] = useState<string | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
+
+  /**
+   * A chosen file onto a member's card (R-204): cut to the card's shape and
+   * made small here, stored by the host under its own name, and only then
+   * named in an edit — so the edit is the one thing that changes the card.
+   */
+  const choose = async (memberId: string, file: File) => {
+    setBusy(memberId);
+    setProblem(null);
+    try {
+      const image = await uploadPicture(await cardPicture(file));
+      dispatch({ kind: 'editMember', id: memberId, image });
+    } catch {
+      setProblem('That picture could not be used. Try a PNG, JPEG or WebP.');
+    } finally {
+      setBusy(null);
+    }
+  };
   const together = placement?.together ?? true;
   const placed = Boolean(placement && (placement.at || Object.keys(placement.members).length > 0));
 
@@ -74,16 +98,33 @@ export function PartyPanel({ campaign, placement, canPlace, dispatch }: Props) {
             </button>
           </div>
           <div className="grid">
-            <label htmlFor={`c-${m.id}`}>colour</label>
-            {/* One edit per choice, not one per frame of the drag (R-163). */}
-            <ColourInput
-              id={`c-${m.id}`}
-              value={m.colour}
-              onCommit={(colour) => dispatch({ kind: 'editMember', id: m.id, colour })}
-            />
+            {/*
+              One row for how their card looks: its colour, and the picture
+              that covers it when there is one (R-204). Two rows pushed the
+              roster under the address box at six members.
+            */}
+            <label htmlFor={`c-${m.id}`}>card</label>
+            <div className="card-look">
+              {/* One edit per choice, not one per frame of the drag (R-163). */}
+              <ColourInput
+                id={`c-${m.id}`}
+                value={m.colour}
+                onCommit={(colour) => dispatch({ kind: 'editMember', id: m.id, colour })}
+              />
+              {/* Optional: without one the card is their colour. */}
+              <PictureInput
+                src={m.image ? imageUrl(m.image) : null}
+                fallback={m.colour}
+                busy={busy === m.id}
+                label={`Picture for ${m.name}`}
+                onPick={(file) => { void choose(m.id, file); }}
+                onClear={() => dispatch({ kind: 'editMember', id: m.id, image: null })}
+              />
+            </div>
           </div>
         </div>
       ))}
+      {problem && <p className="warn">{problem}</p>}
       <div className="row" style={{ marginTop: 10 }}>
         <button onClick={() => dispatch({ kind: 'addMember' })}>+ member</button>
       </div>

@@ -27,6 +27,8 @@ export type { StageCost } from './stage/index.js';
 export type { Picked, SlotAddress, Standing, StageFog } from './stage/index.js';
 
 export { buildPartyTokens } from './tokens/index.js';
+export { CARD_ASPECT } from './standee/index.js';
+export type { Pictures } from './standee/index.js';
 export type { PartyTokens, TokenRef, TokenSpec } from './tokens/index.js';
 
 export { intendedCell } from './picking/index.js';

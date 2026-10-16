@@ -7552,10 +7552,52 @@ proves the pipeline. 2 — the library, the spawner, silver tokens, names,
 deletion and the sight rule, together, because the sight rule is what makes
 it safe to send a goblin anywhere. 3 — the ordered list and the notes.
 
-### O-033 — What to call the shared library · `open`
+### O-033 — What to call the shared library · `resolved by D-308`
 "Bestiary" says monsters, and it will hold a bartender (D-307). Proposed:
 **the Cast** — everyone on stage who is not the party; one entry is a *cast
 member*, and one placed on a map is a token. It sits with the GM's own
 words, *on stage* and *scene*, and as a heading it does not read as casting
 a spell. The plainer alternative is **Library**. Needed before round 2,
 which names the panel, the tool and the folder on disk.
+
+### D-308 — Pictures on cards, the party first · `agreed`
+Round 1 of D-307. R-204 is the rule.
+
+**The library is the Tokens Library.** The GM's name for O-033, over my
+*Cast* and *Library*. It says what is in it and what it is for, and it does
+not say *monsters*. O-033 is closed.
+
+**HTTP for the bytes, the socket for the choice.** A picture is bytes and the
+socket is JSON views and JSON intents; stuffing a portrait into an intent
+would have put a binary through the schema and the permission gate to store
+something that changes nothing on any screen. So the console stores it first
+and then sends an `editMember` naming it — R-3 still holds, because the
+naming is the change.
+
+**Resized in the browser, so the host stays plain.** The alternative was a
+native image library on the host (`sharp`), a compiled dependency for one
+feature, on a machine the GM sets up themselves. A canvas does it in the
+console instead, and the host only ever receives a small card-shaped WebP —
+the first test picture, 1200 × 800 PNG, arrived as 2.8 KB.
+
+**Named by content.** Two members with the same portrait share one file; a
+name is a fact about bytes rather than a counter; and a name that passes
+`isImageId` is hex, one dot and an extension, so it cannot climb out of the
+directory it is looked up in. The host also checks a file's first bytes, so
+nothing is served as `image/png` that is not one.
+
+**Two things caught on screen.** The first panel put the picture on its own
+row, and six members pushed the roster under the address box — it is folded
+into one *card* row now, colour and picture together. And the first test
+picture was left-right symmetric, which could not have shown a mirrored
+card; a second one reading **R7** with a stripe down its left edge did, and
+it reads the right way round on both screens and after a camera turn.
+
+**Verified on the GM's campaign and put back.** Roster and placement were
+snapshotted first; Aldra wore two test pictures, on the console and the
+table; then the party was regathered and the picture taken off. Both compare
+identical to the snapshot, and the two test files — mine, referenced by
+nothing — were removed from `data/images`.
+
+R-204 is new. O-033 is closed.
+

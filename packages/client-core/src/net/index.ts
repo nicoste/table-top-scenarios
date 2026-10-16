@@ -2,6 +2,9 @@
 // never touch the network.
 
 import type { Intent, OutboundMessage, Role, View } from '@tt/protocol';
+import { IMAGE_PATH } from '@tt/protocol';
+import type { ImageId } from '@tt/domain';
+import { isImageId } from '@tt/domain';
 import { keepUnchanged } from '../store/index.js';
 
 export interface Connection {
@@ -92,3 +95,24 @@ export function connect(role: 'gm' | 'table', handlers: Handlers): Connection {
     },
   };
 }
+
+/**
+ * Stores a picture on the host and answers its name (R-204).
+ *
+ * Over HTTP rather than the socket, because a picture is bytes and the socket
+ * carries JSON. It changes nothing on any screen by itself: the intent that
+ * names it — `editMember` with an `image` — is what puts it on a card, and
+ * that still goes the one way every change goes (R-3).
+ */
+export async function uploadPicture(picture: Blob): Promise<ImageId> {
+  const response = await fetch(IMAGE_PATH, {
+    method: 'POST',
+    headers: { 'Content-Type': picture.type || 'image/webp' },
+    body: picture,
+  });
+  if (!response.ok) throw new Error(`the host refused the picture (${response.status})`);
+  const { id } = await response.json() as { id: unknown };
+  if (!isImageId(id)) throw new Error('the host answered with something that is not a picture');
+  return id;
+}
+

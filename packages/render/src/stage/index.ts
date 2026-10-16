@@ -30,6 +30,7 @@ import { surfaceMove, showWorldMarkers } from '../surface/index.js';
 import { surfaceAt } from '../world/index.js';
 import type { ColumnAddress, WorldMeshes } from '../world/index.js';
 import { routePatches, ROUTE_LIFT } from '../route/index.js';
+import type { Pictures } from '../standee/index.js';
 import type { CoverField } from '../covers/index.js';
 import { buildCovers } from '../covers/index.js';
 import { buildWorldMeshes, columnCentre, worldCentre, HEIGHT_SCALE } from '../world/index.js';
@@ -47,6 +48,8 @@ import { intendedCell } from '../picking/index.js';
 export interface Standing {
   readonly memberId: string;
   readonly colour: string;
+  /** The picture on their card, by name, or `null` for the colour (R-204). */
+  readonly picture: string | null;
   readonly at: BlockCoord;
 }
 
@@ -300,6 +303,8 @@ export class Stage {
   private dimmed: string | null = null;
   /** Where a place would go: built per marker, moved and turned per aim. */
   private markerGhost: MarkerGhost | null = null;
+  /** Where pictures come from, once the app has said (R-204). */
+  private pictures: Pictures | null = null;
   private pawns: PartyPawns | null = null;
   /** Held because pawns are rebuilt on their own schedule, not the world's. */
   private campaign: Campaign | null = null;
@@ -693,7 +698,7 @@ export class Stage {
   private rebuildPawns(): void {
     this.dropPawns();
     if (!this.campaign || !this.placement) return;
-    this.pawns = buildPartyPawns(this.campaign, this.placement);
+    this.pawns = buildPartyPawns(this.campaign, this.placement, this.pictures ?? undefined);
     this.scene.add(this.pawns.group);
     this.applySurface();
   }
@@ -757,7 +762,7 @@ export class Stage {
     this.tokens = buildPartyTokens(this.standing.map((token) => ({
       ...token,
       drop: dropBelow(map, token.at),
-    })));
+    })), this.pictures ?? undefined);
     this.scene.add(this.tokens.group);
     // A rebuild under a ghost that is mid-aim must not drop it: the pointer has
     // not moved, and the next pointer event may be a while coming.
@@ -1253,6 +1258,20 @@ export class Stage {
     );
     group.rotation.y = facingAngle(facing);
     group.visible = true;
+  }
+
+  /**
+   * Says where pictures are fetched from, by name (R-204).
+   *
+   * The app's to say, because `render` may not know the host's addresses
+   * (R-5). Rebuilds the party, gold tokens and pawns both, so cards already
+   * on screen pick their pictures up.
+   */
+  setPictureSource(url: ((id: string) => string) | null): void {
+    this.pictures = url ? { url, redraw: () => this.invalidate() } : null;
+    this.invalidate();
+    this.rebuildPawns();
+    this.rebuildTokens();
   }
 
   /** Leaves one place faint at home while it is carried, or none (R-203). */

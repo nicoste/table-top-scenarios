@@ -2,7 +2,9 @@
 // edge with Zod (R-17); trusted everywhere inside.
 
 import { z } from 'zod';
-import { LightingWireSchema, AmbienceWireSchema, TravellingWireSchema } from '../wire/index.js';
+import {
+  LightingWireSchema, AmbienceWireSchema, TravellingWireSchema, ImageIdSchema,
+} from '../wire/index.js';
 import {
   CellIndex, GroundSchema, MarkerIdSchema, PlaceCellSchema, WorldCellSchema, CubeWireSchema,
 } from '../wire/index.js';
@@ -58,6 +60,12 @@ export const IntentSchema = z.discriminatedUnion('kind', [
     name: z.string().max(40).optional(),
     colour: z.string().max(32).optional(),
     visionRange: z.number().int().min(0).max(200).optional(),
+    /**
+     * The picture on their card, by its name (R-204), or `null` to take it
+     * off. The bytes are not here: they were stored first, by content, and
+     * this only says which stored picture is theirs.
+     */
+    image: ImageIdSchema.nullable().optional(),
   }),
   z.object({ kind: z.literal('removeMember'), id: z.string().min(1) }),
 

@@ -27,6 +27,10 @@ export {
 export { packRuns, unpackRuns } from './runs/index.js';
 
 export type { PartyMember } from './party/index.js';
+export type { ImageId, ImageExtension } from './images/index.js';
+export {
+  IMAGE_TYPES, MAX_IMAGE_BYTES, isImageId, imageExtension, imageType,
+} from './images/index.js';
 export {
   DEFAULT_VISION_RANGE, nextPawnColour, createMember, startingParty, editMember, removeMember,
 } from './party/index.js';

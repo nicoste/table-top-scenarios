@@ -4,10 +4,11 @@ import { createServer } from 'node:http';
 import { networkInterfaces } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { fileCampaignStore, fileSaveStore } from '@tt/persistence';
+import { fileCampaignStore, fileImageStore, fileSaveStore } from '@tt/persistence';
 import { createSession } from './session/index.js';
 import { serveSockets } from './transport/index.js';
 import { serveStatic } from './static/index.js';
+import { serveImages } from './images/index.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..', '..', '..');
@@ -29,10 +30,16 @@ const store = fileCampaignStore(join(DATA, 'campaigns'));
 const saves = fileSaveStore(join(DATA, 'saves'));
 const session = createSession(store, saves, () => lanUrls(PORT));
 
-const server = createServer(serveStatic({
+// Pictures beside the campaigns, not in one: the Tokens Library is shared
+// across campaigns (D-307), and a portrait is the same kind of thing (R-204).
+const images = serveImages(fileImageStore(join(DATA, 'images')));
+const apps = serveStatic({
   gm: join(ROOT, 'apps', 'gm', 'dist'),
   table: join(ROOT, 'apps', 'table', 'dist'),
-}));
+});
+const server = createServer((req, res) => {
+  if (!images(req, res)) apps(req, res);
+});
 
 serveSockets(server, session);
 

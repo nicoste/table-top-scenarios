@@ -9,6 +9,7 @@
 import { BufferGeometry, Float32BufferAttribute, Group, LineBasicMaterial, LineSegments } from 'three';
 import type { Material, Mesh } from 'three';
 import type { BlockCoord } from '@tt/domain';
+import type { Pictures } from '../standee/index.js';
 import { GOLD, standees } from '../standee/index.js';
 
 /** Which token was picked: a member of the party (silver tokens are later, D-255). */
@@ -20,6 +21,8 @@ export interface TokenRef {
 export interface TokenSpec {
   readonly memberId: string;
   readonly colour: string;
+  /** The picture on their card, by name, or `null` for the colour (R-204). */
+  readonly picture: string | null;
   readonly at: BlockCoord;
   /**
    * How far down the first block is: zero when standing on one (R-34). The
@@ -55,18 +58,18 @@ export interface PartyTokens {
 
 const centre = (at: BlockCoord) => ({ x: at.x + 0.5, y: at.y, z: at.z + 0.5 });
 
-export function buildPartyTokens(tokens: readonly TokenSpec[]): PartyTokens {
+export function buildPartyTokens(tokens: readonly TokenSpec[], pictures?: Pictures): PartyTokens {
   const group = new Group();
   const owners = new Map<object, TokenRef>();
   const proxies: Mesh[] = [];
   const turning: Group[] = [];
-  const shop = standees();
+  const shop = standees(pictures);
   const stalks: BufferGeometry[] = [];
   const stalkMaterial: Material = new LineBasicMaterial({ color: GOLD });
 
   for (const token of tokens) {
     const { x, y, z } = centre(token.at);
-    const { root, turner, proxy } = shop.make(token.colour);
+    const { root, turner, proxy } = shop.make(token.colour, token.picture);
     root.position.set(x, y, z);
     proxy.position.set(x, y, z);
     turning.push(turner);

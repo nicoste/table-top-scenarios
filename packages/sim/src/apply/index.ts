@@ -409,6 +409,10 @@ function applyToCampaign(state: HostState, role: Role, intent: Intent, now: stri
       if (intent.name !== undefined) patch.name = intent.name;
       if (intent.colour !== undefined) patch.colour = intent.colour;
       if (intent.visionRange !== undefined) patch.visionRange = intent.visionRange;
+      // Not checked against the store: `sim` has no I/O (R-97), and a name
+      // with no picture behind it draws as the colour, which is the answer
+      // the GM would get anyway.
+      if (intent.image !== undefined) patch.image = intent.image;
       return commit({ ...campaign, party: editMember(campaign.party, id, patch) });
     }
 

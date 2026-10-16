@@ -3591,6 +3591,44 @@ apps/host/src/
 > does not stand in the way of picking them — R-36's "through a wall", with no
 > fade needed.
 
+> **R-204.** **A card may carry a picture.** Optional for the party — a card in
+> the member's colour is a finished card — and the same for everyone else when
+> the Tokens Library arrives, whose cards are **grey** without one (D-307).
+>
+> **A picture is named by its content**: the SHA-256 of its bytes and its kind
+> (`<64 hex>.webp`). Stored once however often it is chosen, never able to
+> come to mean another picture, and safe on a path by construction. Pictures
+> live **beside the campaigns**, not in one, because the Tokens Library is
+> shared across campaigns and a portrait is the same kind of thing.
+>
+> **The bytes go one way and the choice another.** The console `POST`s the
+> picture to `/images` and gets its name back; an `editMember` naming it is
+> what puts it on the card. Storing changes nothing any screen shows, so every
+> change still goes through an intent (R-3) — and the socket stays JSON.
+>
+> **Made small in the browser, before it is sent.** Cut to 5:7 so it covers
+> the card without stretching, keeping more of the top of a tall picture
+> (faces are high in a portrait), scaled to 256 × 358, laid on card stock so a
+> cut-out portrait is not on black, and written as WebP — tens of kilobytes.
+> The host resizes nothing and needs no image library to do it.
+>
+> **The host takes WebP, PNG and JPEG up to 512 KB**, checks the first bytes
+> are what the request claims, and serves a picture with a year's cache and
+> `nosniff`. A name is checked before it touches a path. Uploading needs no
+> seat: the GM seat is open to any claimant by design (R-127), so a check
+> here would guard nothing.
+>
+> **The table only learns a picture's name from a view**, and a view only
+> carries the cards it is sent. For the party that is always; for everyone
+> else it will be only while the party can see them (D-307).
+>
+> **Drawn in the scene's light**, like the coloured card (R-187), on both
+> screens and on both kinds of map (R-201). It shows the colour until the
+> picture has arrived — never a black card — and a picture is loaded **once
+> per page**, not per rebuild, or every step a token took would blink it back
+> to its colour. The party standing together has no face: it is nobody in
+> particular (O-022).
+
 > **R-188.** **Move: pick a token, aim at a floor, confirm** — the world's
 > travel sequence one surface down (R-132), on both screens.
 >

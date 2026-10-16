@@ -36,7 +36,7 @@ function wall(at: number, high: number, swatch: SwatchId = STONE, size = 24): [B
 }
 
 const member = (id: string, visionRange = DEFAULT_VISION_RANGE): PartyMember => ({
-  id: id as MemberId, name: id, colour: '#ffffff', visionRange,
+  id: id as MemberId, name: id, colour: '#ffffff', visionRange, image: null,
 });
 
 describe('one eye height, and the rule of thumb it buys (R-43)', () => {

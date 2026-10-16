@@ -3,6 +3,7 @@ import { apply, emptyHistory } from '@tt/sim';
 import { parseIntent, viewFor, IntentSchema } from '@tt/protocol';
 import type { HostState, Intent } from '@tt/protocol';
 import { chunkAt, columnAt, createCampaign, createLiveSave, liveSaveId, ORIGIN } from '@tt/domain';
+import type { ImageId } from '@tt/domain';
 
 const NOW = '2026-01-01T00:00:00.000Z';
 const empty: HostState = { campaigns: [], active: null, activeSave: null, history: emptyHistory() };
@@ -202,6 +203,29 @@ describe('the party roster', () => {
   it('rejects an unknown member id', () => {
     const state = withCampaign();
     expect(run(state, { kind: 'editMember', id: 'ghost', name: 'x' }).rejected).toBeTruthy();
+  });
+
+  it('puts a picture on a card and takes it off again (R-204)', () => {
+    const picture = `${'d'.repeat(64)}.webp` as ImageId;
+    let state = withCampaign();
+    const id = state.active!.party[0]!.id;
+    expect(state.active!.party[0]!.image).toBeNull();
+    state = run(state, { kind: 'editMember', id, image: picture }).state;
+    expect(state.active!.party[0]!.image).toBe(picture);
+    // Changing something else leaves the picture where it is.
+    state = run(state, { kind: 'editMember', id, name: 'Vex' }).state;
+    expect(state.active!.party[0]!.image).toBe(picture);
+    state = run(state, { kind: 'editMember', id, image: null }).state;
+    expect(state.active!.party[0]!.image).toBeNull();
+  });
+
+  it('will not let the table put a picture on a card', () => {
+    // The roster is the campaign's, and the campaign is the GM's (R-136).
+    const state = withCampaign();
+    const id = state.active!.party[0]!.id;
+    const picture = `${'d'.repeat(64)}.webp` as ImageId;
+    expect(run(state, { kind: 'editMember', id, image: picture }, 'table').rejected)
+      .toBe('only the GM can do that');
   });
 });
 

@@ -252,6 +252,7 @@ export function App({ view, status, rejection, dispatch }: Props) {
     if (!stage) return;
     const tokens: Standing[] = [...standing].map(([memberId, at]) => ({
       memberId, at, colour: colourOf(memberId),
+      picture: campaign?.party.find((m) => m.id === memberId)?.image ?? null,
     }));
     stage.setTokens(tokens);
   }, [stage, standing, campaign?.party]);

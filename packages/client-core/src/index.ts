@@ -1,6 +1,9 @@
 // @tt/client-core — what both browser apps need. Role-neutral by rule.
 
-export { connect } from './net/index.js';
+export { connect, uploadPicture } from './net/index.js';
+export {
+  CARD_PICTURE_WIDTH, CARD_PICTURE_HEIGHT, coverCrop, cardPicture,
+} from './images/index.js';
 export type { Connection, Handlers } from './net/index.js';
 
 export { initialServerState, initialViewState, keepUnchanged } from './store/index.js';

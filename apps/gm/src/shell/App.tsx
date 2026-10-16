@@ -344,6 +344,8 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   );
   const nextToPlace = waiting[0] ?? null;
   const memberColour = (id: string) => roster?.find((member) => member.id === id)?.colour ?? '#ffffff';
+  /** Their card's picture, or `null` for the colour (R-204). */
+  const memberPicture = (id: string) => roster?.find((member) => member.id === id)?.image ?? null;
 
   const cellKey = (c: { cx: number; cz: number; x: number; z: number }) => `${c.cx}:${c.cz}:${c.x}:${c.z}`;
   const memberName = (id: string) => campaign?.party.find((m) => m.id === id)?.name ?? null;
@@ -558,7 +560,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     if (!stage) return;
     const shown = banded && openRange ? tokensInBand(present, openRange) : present;
     const standing: Standing[] = [...shown].map(([memberId, at]) => ({
-      memberId, at, colour: memberColour(memberId),
+      memberId, at, colour: memberColour(memberId), picture: memberPicture(memberId),
     }));
     stage.setTokens(standing);
   }, [stage, present, banded, openRange?.lower, openRange?.upper, roster]);

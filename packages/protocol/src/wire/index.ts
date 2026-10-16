@@ -4,7 +4,7 @@
 import { z } from 'zod';
 import type {
   Campaign, Chunk, Column, World, PartyMember, SwatchId, CoverId, Place, PlaceNote, MarkerId, Save,
-  Placement, Inside, EncounterMap, LevelRange, Cells, Travelling, TravelModeId,
+  Placement, Inside, EncounterMap, LevelRange, Cells, Travelling, TravelModeId, ImageId,
 } from '@tt/domain';
 import {
   CHUNK_SIZE, DEFAULT_METRES_PER_LEVEL,
@@ -12,7 +12,7 @@ import {
   packRuns, unpackRuns,
   placementToJSON, placementFromJSON, tokensToJSON, tokensFromJSON,
   DAYLIGHT, OPEN_SKY, clampLighting, clampAmbience, cellsToJSON, cellsFromJSON,
-  GROUND_FROM_TERRAIN, OPEN_WATER, ON_FOOT, asFacing,
+  GROUND_FROM_TERRAIN, OPEN_WATER, ON_FOOT, asFacing, isImageId,
 } from '@tt/domain';
 
 /** The light inside one place (R-182). */
@@ -361,7 +361,29 @@ export const MemberWireSchema = z.object({
   name: z.string(),
   colour: z.string(),
   visionRange: z.number().int().min(0),
+  /**
+   * The picture on their card (R-204). Absent means none — every member
+   * before pictures — so no bump (D-187). Anything that is not a picture's
+   * name reads as none rather than refusing the campaign: a hand-edited file
+   * must not lock the GM out over one portrait (R-137a).
+   */
+  image: z.unknown().optional().transform((value) => (isImageId(value) ? value : null)),
 });
+
+/**
+ * Where pictures are stored and fetched (R-204): `POST` the bytes here, and
+ * `GET` one at `<IMAGE_PATH>/<name>`. Part of the contract between the host
+ * and the screens, so it is said once, here.
+ */
+export const IMAGE_PATH = '/images';
+
+/** The address of one picture, by its name. */
+export function imageUrl(id: string): string {
+  return `${IMAGE_PATH}/${id}`;
+}
+
+/** A picture's name at the edge, where intents are strict (R-17). */
+export const ImageIdSchema = z.string().refine(isImageId, 'not a picture').transform((v) => v as ImageId);
 
 export const WorldWireSchema = z.object({
   bounds: z.object({ x: z.number().int(), z: z.number().int() }),
@@ -451,7 +473,7 @@ export function encodeCampaign(campaign: Campaign): CampaignWire {
     name: campaign.name,
     world: encodeWorld(campaign.world),
     party: campaign.party.map((m) => ({
-      id: m.id, name: m.name, colour: m.colour, visionRange: m.visionRange,
+      id: m.id, name: m.name, colour: m.colour, visionRange: m.visionRange, image: m.image,
     })),
     // Always the current palette, never whatever the file was written with.
     places: campaign.places.map(encodePoi),
@@ -761,6 +783,7 @@ export function decodeCampaign(wire: CampaignWire): Campaign {
       name: m.name,
       colour: m.colour,
       visionRange: m.visionRange,
+      image: m.image,
     })),
     places: wire.places.map(decodePoi),
   };

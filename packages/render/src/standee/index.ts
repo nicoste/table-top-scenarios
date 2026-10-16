@@ -17,9 +17,9 @@
 
 import {
   BoxGeometry, CylinderGeometry, DoubleSide, Group, Mesh, MeshBasicMaterial,
-  MeshStandardMaterial, PlaneGeometry,
+  MeshStandardMaterial, PlaneGeometry, SRGBColorSpace, TextureLoader,
 } from 'three';
-import type { BufferGeometry, Material } from 'three';
+import type { BufferGeometry, Material, Texture } from 'three';
 
 /**
  * Gold for the party (D-254). Silver, for everything else, comes with silver
@@ -47,6 +47,76 @@ const CARD_FOOT = BASE_HEIGHT + CLIP.height - GRIP;
 const CARD_HEIGHT = 1 - CARD_FOOT;
 const CARD = { width: CARD_HEIGHT * (5 / 7), height: CARD_HEIGHT } as const;
 
+/**
+ * A card's width over its height: a poker card's 5:7 (D-269). Exported for
+ * whoever prepares a picture for one, so the picture is cut to the shape it
+ * will be shown in and nothing is stretched (R-204).
+ */
+export const CARD_ASPECT = 5 / 7;
+
+/**
+ * Where pictures come from, and how to ask for a frame when one arrives.
+ *
+ * Handed in rather than known: `render` may not know the host's addresses
+ * (R-5), and it draws on change rather than every frame (R-170), so a picture
+ * that finishes loading has to say so.
+ */
+export interface Pictures {
+  /** The address a picture is fetched from, by its name (R-204). */
+  readonly url: (id: string) => string;
+  /** Asks for one frame — a picture has arrived. */
+  readonly redraw: () => void;
+}
+
+/**
+ * Every picture loaded, by address, for as long as the page lives.
+ *
+ * Kept **outside** any one set of standees on purpose. Standees are rebuilt
+ * whenever somebody moves (R-19a), and a picture loaded per rebuild would
+ * show the plain card for a frame or two every step — a card that blinks
+ * back to its colour as the token walks. A picture is the same picture after
+ * a step, so it is loaded once. Pictures are small (R-204) and few: the
+ * party, and the Tokens Library's entries in use (D-307).
+ */
+const loaded = new Map<string, {
+  readonly texture: Texture;
+  ready: boolean;
+  readonly waiting: Set<() => void>;
+}>();
+const loader = new TextureLoader();
+
+/**
+ * The picture at this address if it has arrived; otherwise `null`, and
+ * `onReady` is called once when it does. A picture that fails to load never
+ * calls — the card keeps its colour, which is the answer the GM would get
+ * with no picture at all.
+ */
+function pictureAt(url: string, onReady: () => void): Texture | null {
+  let entry = loaded.get(url);
+  if (!entry) {
+    const waiting = new Set<() => void>();
+    const texture = loader.load(
+      url,
+      () => {
+        const done = loaded.get(url);
+        if (!done) return;
+        done.ready = true;
+        for (const call of done.waiting) call();
+        done.waiting.clear();
+      },
+      undefined,
+      () => { loaded.get(url)?.waiting.clear(); },
+    );
+    // Pictures are made in sRGB, like every swatch colour (D-238).
+    texture.colorSpace = SRGBColorSpace;
+    entry = { texture, ready: false, waiting };
+    loaded.set(url, entry);
+  }
+  if (entry.ready) return entry.texture;
+  entry.waiting.add(onReady);
+  return null;
+}
+
 /** The whole token is one cell tall, which is where a caption hangs from. */
 export const STANDEE_HEIGHT = 1;
 /**
@@ -72,7 +142,12 @@ export interface Standees {
    * separate so a pick never depends on which way the last drawn frame left
    * the card (R-36a).
    */
-  make(colour: string): { root: Group; turner: Group; proxy: Mesh };
+  /**
+   * `picture` is the name of the picture on the card, if it has one (R-204).
+   * The card shows the colour until the picture has arrived, then the picture
+   * — never a black card while it loads.
+   */
+  make(colour: string, picture?: string | null): { root: Group; turner: Group; proxy: Mesh };
   /**
    * The same thing, translucent, for a move that has not happened yet. Its
    * card material comes back with it: a ghost is recoloured on every aim and
@@ -82,9 +157,11 @@ export interface Standees {
   dispose(): void;
 }
 
-export function standees(): Standees {
+export function standees(pictures?: Pictures): Standees {
   const geometries: BufferGeometry[] = [];
   const materials: Material[] = [];
+  /** Set by `dispose`, so a picture arriving afterwards touches nothing. */
+  let disposed = false;
 
   const base = new BoxGeometry(BASE, BASE_HEIGHT, BASE).translate(0, BASE_HEIGHT / 2, 0);
   const clip = new BoxGeometry(CLIP.width, CLIP.height, CLIP.depth)
@@ -105,6 +182,23 @@ export function standees(): Standees {
         color: colour, roughness: 0.85, metalness: 0, side: DoubleSide,
       });
       cards.set(colour, material);
+      materials.push(material);
+    }
+    return material;
+  };
+  /*
+   * A card with a picture on it: lit like the coloured card, so dusk tints a
+   * portrait the way it tints the cubes (R-187). One material per picture per
+   * set of standees; the picture itself is shared across every set.
+   */
+  const faces = new Map<string, MeshStandardMaterial>();
+  const faceOf = (texture: Texture) => {
+    let material = faces.get(texture.uuid);
+    if (!material) {
+      material = new MeshStandardMaterial({
+        map: texture, roughness: 0.85, metalness: 0, side: DoubleSide,
+      });
+      faces.set(texture.uuid, material);
       materials.push(material);
     }
     return material;
@@ -133,13 +227,26 @@ export function standees(): Standees {
   };
 
   return {
-    make(colour) {
+    make(colour, picture) {
       const root = new Group();
       // The clip and the card turn; the base stays square to the grid.
       const turner = new Group();
-      turner.add(part(clip, gold), part(card, cardOf(colour)));
+      const face = part(card, cardOf(colour));
+      turner.add(part(clip, gold), face);
       root.add(part(base, gold), turner);
       const proxy = new Mesh(proxyShape, unseen);
+      if (picture && pictures) {
+        const url = pictures.url(picture);
+        const arrived = pictureAt(url, () => {
+          if (disposed) return;
+          const texture = loaded.get(url)?.texture;
+          if (!texture) return;
+          face.material = faceOf(texture);
+          pictures.redraw();
+        });
+        // Already here: no frame to ask for, it is being built into one.
+        if (arrived) face.material = faceOf(arrived);
+      }
       return { root, turner, proxy };
     },
     ghost() {
@@ -163,7 +270,9 @@ export function standees(): Standees {
       return { root, turner, card: ghostCard };
     },
     dispose() {
+      disposed = true;
       for (const geometry of geometries) geometry.dispose();
+      // The pictures stay: they are shared by every set of standees (`loaded`).
       for (const material of materials) material.dispose();
     },
   };
