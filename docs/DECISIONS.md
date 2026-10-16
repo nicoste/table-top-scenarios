@@ -1213,7 +1213,7 @@ Consequences worth stating:
 
 ## Open
 
-### O-017 — The world may be too small · `open`
+### O-017 — The world may be too small · `resolved by D-098`
 Falling out of putting real numbers in, and only visible once travel had units:
 
 - the world is 20 chunks × 20 cells × 200 m = **80 × 80 km**
@@ -7382,3 +7382,25 @@ changing either one is a change to what a click does rather than to what a
 screen shows. Whichever way it goes, R-197 or the console needs editing — it
 is currently a rule the product contradicts, which is the thing this file
 exists to stop.
+
+### D-305 — Travel time is information, not simulation; and O-017 was already answered · `agreed`
+Two answers to two items on the "what are we missing" list.
+
+**Time does not pass in the tool.** Proposed: a journey's days could advance a
+calendar or the hour, or land in a travel log. The GM's answer, which settles
+it: *"I like that time to be just informative. Players may say 'it's 2 days of
+travel that we can do keeping one guard and travel non-stop' or 'it's 2 days of
+travel but we will stop 2 times doing 8h rests'."*
+
+That is R-1 exactly. How a party spends two days on the road is something the
+people at the table decide faster than they could type it, and enjoy deciding.
+The tool's job ends at **how far it is and how long it takes at this pace**
+(R-199); what they do with the number is theirs. So no clock, no calendar, no
+log — and the hour stays a slider the GM sets for the scene (R-181), because
+it is scene-setting and not bookkeeping.
+
+**O-017 was closed by D-098 and never marked.** It asked whether an 80 × 80 km
+world was too small for a campaign. D-098 moved a cell from 200 m to 1.5 km a
+few rounds later, for its own reasons, and that answered this: 30 chunks of 30
+cells at 1.5 km is **1350 km across, about five weeks on foot**. A kingdom,
+not a duchy. Marked resolved.
