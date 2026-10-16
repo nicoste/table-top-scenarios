@@ -83,7 +83,7 @@ export function PartyPanel({ campaign, placement, canPlace, dispatch }: Props) {
       {campaign.party.map((m) => (
         <div className="member" key={m.id}>
           <div className="top">
-            <span className="dot" style={{ background: m.colour }} />
+            {/* No colour dot: the row below shows the colour and the card both. */}
             <DraftInput
               value={m.name}
               valid={(name) => name.trim().length > 0}
@@ -103,7 +103,7 @@ export function PartyPanel({ campaign, placement, canPlace, dispatch }: Props) {
               that covers it when there is one (R-204). Two rows pushed the
               roster under the address box at six members.
             */}
-            <label htmlFor={`c-${m.id}`}>card</label>
+            <label htmlFor={`c-${m.id}`}>Base color &amp; card</label>
             <div className="card-look">
               {/* One edit per choice, not one per frame of the drag (R-163). */}
               <ColourInput
