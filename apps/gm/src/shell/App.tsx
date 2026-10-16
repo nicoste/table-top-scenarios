@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { decodeCampaign, decodePlacement, cellsFromWire, travellingToWire } from '@tt/protocol';
 import {
   MAX_HEIGHT, WHOLE_MAP, rangeIn, stepBrush, WORLD_BRUSHES, BRUSHES, DEFAULT_BRUSH, brushById,
-  routeAcross, toGlobal, DEFAULT_TRAVEL_MODES, discoveryFromJSON,
+  routeAcross, toGlobal, DEFAULT_TRAVEL_MODES, discoveryFromJSON, asFacing, turned,
   chunkAt, columnAt,
   creatableSlots, sameWorldCell,
   DEFAULT_MATERIALS, DEFAULT_FLOOR, mapFromJSON, fillRegion, sliceOf, inRange, inMap, blockAt,
@@ -15,13 +15,14 @@ import {
 } from '@tt/domain';
 import type {
   SwatchId, CoverId, Lighting, Ambience, MemberId, Tokens, BlockCoord, Route, Travelling,
-  TravelModeId,
+  TravelModeId, Facing,
 } from '@tt/domain';
 import type { GmView, Intent } from '@tt/protocol';
 import { defaultTarget, worldCentre } from '@tt/render';
 import type { Standing, StageFog } from '@tt/render';
-import type { Stride, Tool, Travel } from '@tt/client-core';
+import type { Carry, Stride, Tool, Travel } from '@tt/client-core';
 import {
+  emptyHanded, pickUp, turnCarried, canSetDown, setDownIntent, placesPrompt,
   idle, pick, armed, aim, choose, ghostCell, aimedAt, travelIntent, travelPrompt,
   clickAction, holdsSelection, mapAction, mapHover, mapDrags, mapAllowed,
   cameraAction, wheelZoom, CAMERA_HINT,
@@ -64,6 +65,19 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   const [hoverLabel, setHoverLabel] = useState<string | null>(null);
   const [brush, setBrush] = useState(1);
   const [markerId, setMarkerId] = useState('marker:village');
+  /**
+   * Which way the next place will face (R-203): turned with Z / X before the
+   * click, and kept between placements the way the brush size is.
+   */
+  const [facing, setFacing] = useState<Facing>(0);
+  /** A place being moved, if one is in hand. Local until set down (R-64). */
+  const [hands, setHands] = useState<Carry>(emptyHanded);
+  /**
+   * The cell under the pointer while the Places tool is out, so the ghost can
+   * be redrawn by a key press as well as by a pointer move. Replaced only when
+   * the pointer crosses into another cell (R-165).
+   */
+  const [placeAim, setPlaceAim] = useState<{ cx: number; cz: number; x: number; z: number } | null>(null);
   const [selectedPlace, setSelectedPlace] = useState<string | null>(null);
   const [selectedChunk, setSelectedChunk] = useState<{ cx: number; cz: number } | null>(null);
   const [travel, setTravel] = useState<Travel>(idle);
@@ -333,9 +347,12 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
 
   const cellKey = (c: { cx: number; cz: number; x: number; z: number }) => `${c.cx}:${c.cz}:${c.x}:${c.z}`;
   const memberName = (id: string) => campaign?.party.find((m) => m.id === id)?.name ?? null;
-  /** One place per cell (R-119), checked on the wire form the app actually holds. */
-  const occupied = (cell: { cx: number; cz: number; x: number; z: number }) =>
-    (campaign?.places ?? []).some((place) => sameWorldCell(place.cell, cell));
+  /**
+   * The place on a cell, if any — one per cell (R-119) — read from the wire
+   * form the app actually holds.
+   */
+  const placeOn = (cell: { cx: number; cz: number; x: number; z: number } | null) =>
+    (cell ? (campaign?.places ?? []).find((place) => sameWorldCell(place.cell, cell)) : null) ?? null;
   /**
    * Can the party stand here? The GM console draws unknown chunks too, with fog
    * over them, so the ground under the dark is real geometry and aims fine —
@@ -578,6 +595,15 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     setTravel((current) => armed(current, tool === 'travel', partyPlaced));
   }, [tool, partyPlaced]);
 
+  // Putting the Places tool down, or opening a map, puts a carried place back:
+  // it was never sent, so there is nothing else to undo (R-203).
+  useEffect(() => {
+    setHands(emptyHanded);
+    // And forgets where it was aiming, so coming back does not show a ghost
+    // on a cell the pointer left a tool ago.
+    setPlaceAim(null);
+  }, [tool, openMap]);
+
   // An inspector open under Paint describes something that tool cannot act on
   // (D-168). Only the neutral tool holds a selection.
   useEffect(() => {
@@ -654,6 +680,52 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       })(),
     };
   }, [decoded, campaign]);
+
+  /**
+   * Where a place would go, and the faint copy of the one in hand (R-203).
+   *
+   * From state rather than from the pointer handler, so that Z / X — which
+   * move no pointer — turn the ghost where it stands. The ghost shows only
+   * where the click would actually land something: bare ground, or the
+   * carried place's own cell. Over another place the readout says why not.
+   */
+  useEffect(() => {
+    if (!stage) return;
+    if (tool !== 'places' || openMap) {
+      stage.showPlaceGhost(null);
+      stage.dimPlace(null);
+      return;
+    }
+    const carried = hands.step === 'carrying'
+      ? campaign?.places.find((place) => place.id === hands.placeId) ?? null
+      : null;
+    stage.dimPlace(carried?.id ?? null);
+    const occupant = placeAim
+      ? (campaign?.places ?? []).find((place) => sameWorldCell(place.cell, placeAim))?.id ?? null
+      : null;
+    const lands = hands.step === 'carrying'
+      ? canSetDown(hands, occupant)
+      : occupant === null;
+    stage.showPlaceGhost(
+      lands ? placeAim : null,
+      carried ? carried.markerId : markerId,
+      hands.step === 'carrying' ? hands.facing : facing,
+    );
+    /*
+     * The readout, from the same state and for the same reason: it says what
+     * the click will do *before* it is made, including when it will do
+     * nothing (R-18) — and it has to be right the moment a place is picked
+     * up or set down, not on the next pointer move. It was, for one build,
+     * still offering to set down a place that had just been set down.
+     */
+    const here = placeAim
+      ? (campaign?.places ?? []).find((place) => sameWorldCell(place.cell, placeAim)) ?? null
+      : null;
+    const prompt = placesPrompt(hands, here, carried?.name ?? null);
+    if (prompt) { setHoverLabel(prompt); return; }
+    const info = placeAim ? columnInfo(placeAim) : null;
+    setHoverLabel(info ? `${info.terrain}, height ${info.height}` : null);
+  }, [stage, tool, openMap, hands, placeAim, facing, markerId, campaign?.places, columnInfo]);
 
   useEffect(() => {
     const waiting = pendingPlaceCell.current;
@@ -770,6 +842,12 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
         setStride(still);
         return;
       }
+      // A place in hand goes back where it came from — nothing was sent, so
+      // there is nothing to undo (R-203).
+      if (!openMap && hands.step === 'carrying') {
+        setHands(emptyHanded);
+        return;
+      }
       panning.current = { x: e.clientX, y: e.clientY };
       return;
     }
@@ -808,6 +886,19 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       return;
     }
 
+    /*
+     * A place in hand: the click sets it down (R-203). On bare ground or its
+     * own cell it lands and the hands are empty; on another place, or off the
+     * world, it stays in hand — a misclick should not undo the turning.
+     */
+    if (hands.step === 'carrying') {
+      const occupant = placeOn(picked.column)?.id ?? null;
+      const intent = setDownIntent(hands, picked.column, occupant);
+      if (intent) dispatch(intent);
+      if (picked.column && canSetDown(hands, occupant)) setHands(emptyHanded);
+      return;
+    }
+
     // Mid-sequence, the click means confirm or cancel and nothing else (R-132).
     if (travel.step === 'aiming') {
       /*
@@ -833,7 +924,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       placeId: picked.placeId,
       cell: picked.column,
       slot: picked.slot,
-    }, { occupied });
+    }, { placeAt: (cell) => placeOn(cell)?.id ?? null });
 
     switch (action.kind) {
       case 'createChunk':
@@ -857,7 +948,13 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       case 'placePoi': {
         const { cx, cz, x, z } = action.cell;
         pendingPlaceCell.current = cellKey(action.cell);
-        dispatch({ kind: 'addPlace', cell: { cx, cz, x, z }, markerId });
+        dispatch({ kind: 'addPlace', cell: { cx, cz, x, z }, markerId, facing });
+        return;
+      }
+
+      case 'pickPlace': {
+        const place = campaign.places.find((candidate) => candidate.id === action.placeId);
+        if (place) setHands(pickUp(place.id, place.cell, asFacing(place.facing)));
         return;
       }
 
@@ -966,14 +1063,13 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     if (tool === 'places') {
       const picked = stage.pick(e.clientX, e.clientY);
       stage.showHighlight(picked.column, picked.column ? heightAt(picked.column) : 0, 1);
-      // Says the cell is taken *before* the click that would do nothing, so a
-      // dropped click reads as a rule rather than as a dead button (R-18).
-      if (picked.column && occupied(picked.column)) {
-        setHoverLabel('Already a place here');
-        return;
-      }
-      const info = picked.column ? columnInfo(picked.column) : null;
-      setHoverLabel(info ? `${info.terrain}, height ${info.height}` : null);
+      const column = picked.column;
+      // The ghost and the readout are drawn by an effect from this, so a
+      // Z / X or a set-down with the pointer still updates both; replaced
+      // only on crossing into a new cell.
+      setPlaceAim((current) => (
+        current === column || (current && column && sameWorldCell(current, column)) ? current : column
+      ));
       return;
     }
 
@@ -1127,12 +1223,28 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
           default: break;
         }
 
+        /*
+         * Z / X turn a place a quarter — Z anticlockwise, X clockwise, seen
+         * from above (R-203). The one in hand if there is one, otherwise the
+         * next one to be placed. Not Q / E: those turn the camera, and a GM
+         * carrying a castle wants to turn the view to see where its gate
+         * points. Plain Z only — cmd+Z was claimed above, for undo.
+         */
+        if (tool === 'places' && (e.code === 'KeyZ' || e.code === 'KeyX')) {
+          const step = e.code === 'KeyX' ? 1 : -1;
+          if (hands.step === 'carrying') setHands((carry) => turnCarried(carry, step));
+          else setFacing((now) => turned(now, step));
+          return;
+        }
+
         switch (e.code) {
           // A step through the listed sizes, not arithmetic on the number:
           // they are 1, 3 and 5 now, so n ± 1 would land between them (D-291).
           case 'BracketLeft': setBrush((n) => stepBrush(n, -1)); return;
           case 'BracketRight': setBrush((n) => stepBrush(n, 1)); return;
           case 'Escape':
+            // A place in hand goes back where it came from, like a right-click.
+            setHands(emptyHanded);
             setTravel(idle);
             stage.showHighlight(null, 0);
             setSelectedPlace(null);
@@ -1160,7 +1272,8 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     // branch: 1/2 never switched Build/Erase, Escape never left, and both
     // quietly changed the world tool behind the map instead. `stride.step`
     // for the same reason: Escape has to know whether a move is in progress.
-  }, [stage, openMap, stride.step]);
+    // `tool` and `hands.step` so Z / X know whether they turn a place in hand.
+  }, [stage, openMap, stride.step, tool, hands.step]);
 
   return (
     <>

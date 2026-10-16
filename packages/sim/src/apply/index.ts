@@ -11,6 +11,7 @@ import {
   addChunk, chunkAt, isCreatableSlot, isKnownCover,
   toGlobal, paintArea, coverArea, setHeightArea, raiseArea,
   addPlace, renamePlace, setPlaceMarker, movePlace, removePlace, placeById, placeAt, isValidPlaceCell,
+  asFacing,
   addNote, editNote, setNoteVisible, removeNote, moveNote, isKnownMarker,
   addPoi, renamePoi, setPoiVisible, removePoi, movePoi,
   setMapBlocks, paintMapBlocks, clearMapBlocks, fillPoiMaterial, growPoiMap,
@@ -551,7 +552,9 @@ function applyToPois(
         return reject_(`unknown marker: ${intent.markerId}`);
       }
       const marker = intent.markerId ? parseMarkerId(intent.markerId) : undefined;
-      return withPlaces(addPlace(campaign.places, intent.cell, intent.name, marker));
+      return withPlaces(addPlace(
+        campaign.places, intent.cell, intent.name, marker, asFacing(intent.facing ?? 0),
+      ));
     }
 
     case 'renamePlace': {
@@ -577,7 +580,10 @@ function applyToPois(
       }
       const occupant = placeAt(campaign.places, intent.cell);
       if (occupant && occupant.id !== id) return reject_('there is already a place there');
-      return withPlaces(movePlace(campaign.places, id, intent.cell));
+      return withPlaces(movePlace(
+        campaign.places, id, intent.cell,
+        intent.facing === undefined ? undefined : asFacing(intent.facing),
+      ));
     }
 
     case 'removePlace': {

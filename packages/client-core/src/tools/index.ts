@@ -30,6 +30,7 @@ export type ClickAction =
   | { readonly kind: 'selectChunk'; readonly coord: Slot }
   | { readonly kind: 'pickPawn'; readonly pawn: { readonly memberId: string | null } }
   | { readonly kind: 'placePoi'; readonly cell: Cell }
+  | { readonly kind: 'pickPlace'; readonly placeId: string }
   | { readonly kind: 'paint'; readonly cell: Cell }
   | { readonly kind: 'cover'; readonly cell: Cell }
   | { readonly kind: 'raise'; readonly cell: Cell };
@@ -37,8 +38,8 @@ export type ClickAction =
 const nothing: ClickAction = { kind: 'nothing' };
 
 export interface Context {
-  /** Does this cell already hold a place? One per cell (R-119). */
-  readonly occupied: (cell: Cell) => boolean;
+  /** The place on this cell, if there is one. One per cell (R-119). */
+  readonly placeAt: (cell: Cell) => string | null;
 }
 
 /**
@@ -79,11 +80,18 @@ export function clickAction(tool: Tool, pointed: Pointed, context: Context): Cli
         ? { kind: 'selectChunk', coord: { cx: pointed.cell.cx, cz: pointed.cell.cz } }
         : nothing;
 
-    case 'places':
-      if (!pointed.cell) return nothing;
-      // Dropped rather than dispatched: obeying R-119 is not a mistake and does
-      // not deserve a rejection toast. The hover readout says so beforehand.
-      return context.occupied(pointed.cell) ? nothing : { kind: 'placePoi', cell: pointed.cell };
+    case 'places': {
+      /*
+       * A place under the pointer is **picked up** (R-203): its marker, its
+       * name, or the cell it stands on. This click used to do nothing at all
+       * — R-119 refused a second place there and nothing else was asked of
+       * it — so the gesture was free. Inspecting is the Select tool's, and
+       * stays there (D-168).
+       */
+      const here = pointed.placeId ?? (pointed.cell ? context.placeAt(pointed.cell) : null);
+      if (here) return { kind: 'pickPlace', placeId: here };
+      return pointed.cell ? { kind: 'placePoi', cell: pointed.cell } : nothing;
+    }
 
     case 'paint':
       return pointed.cell ? { kind: 'paint', cell: pointed.cell } : nothing;

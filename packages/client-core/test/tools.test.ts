@@ -13,8 +13,8 @@ import type { Tool } from '@tt/client-core';
 
 const cell = (x: number, z: number): Cell => ({ cx: 15, cz: 15, x, z });
 const EMPTY: Pointed = { pawn: null, placeId: null, cell: null, slot: null };
-const free = { occupied: () => false };
-const taken = { occupied: () => true };
+const free = { placeAt: () => null };
+const taken = { placeAt: () => 'place_inn' };
 
 const ALL_TOOLS: Tool[] = ['select', 'paint', 'height', 'places', 'travel'];
 
@@ -65,16 +65,23 @@ describe('places', () => {
       .toEqual({ kind: 'placePoi', cell: cell(2, 2) });
   });
 
-  it('drops the click on a taken cell rather than asking to be refused', () => {
+  it('picks up the place on a taken cell (R-203)', () => {
+    // This click used to be dropped — R-119 refused a second place and that
+    // was all it did. A click on a place now takes hold of it.
     expect(clickAction('places', { ...EMPTY, cell: cell(2, 2) }, taken))
-      .toEqual({ kind: 'nothing' });
+      .toEqual({ kind: 'pickPlace', placeId: 'place_inn' });
   });
 
-  it('ignores a marker under the pointer and looks at the cell', () => {
-    // The marker's own cell is what `render` reports (D-163), so this is the
-    // occupied case and the click is dropped.
+  it('picks up the marker under the pointer, by its own id', () => {
+    // A name caption can sit over a different cell than its marker; the place
+    // that was pointed at wins over whatever is on the cell under the ray.
     expect(clickAction('places', { ...EMPTY, placeId: 'poi_keep', cell: cell(5, 5) }, taken))
-      .toEqual({ kind: 'nothing' });
+      .toEqual({ kind: 'pickPlace', placeId: 'poi_keep' });
+  });
+
+  it('still creates on bare ground beside a place', () => {
+    expect(clickAction('places', { ...EMPTY, cell: cell(6, 5) }, free))
+      .toEqual({ kind: 'placePoi', cell: cell(6, 5) });
   });
 });
 

@@ -16,6 +16,8 @@ const size = z.number().int().min(1).max(MAX_BRUSH).optional();
  * (D-170). Opaque to the host — it only ever compares it to the previous one.
  */
 const stroke = z.string().min(1).max(64).optional();
+/** Quarter turns clockwise from above (R-203). */
+const facing = z.number().int().min(0).max(3).optional();
 /**
  * The cells one block edit touches: a brush's patch, or a single cube (R-162).
  *
@@ -60,10 +62,18 @@ export const IntentSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('removeMember'), id: z.string().min(1) }),
 
   // Points of interest
-  z.object({ kind: z.literal('addPlace'), cell: PlaceCellSchema, name: z.string().max(60).optional(), markerId: MarkerIdSchema.optional() }),
+  /**
+   * `facing` is quarter turns clockwise from above (R-203), strict here as
+   * every intent is at the edge (R-17): 0 to 3, and absent means 0.
+   */
+  z.object({ kind: z.literal('addPlace'), cell: PlaceCellSchema, name: z.string().max(60).optional(), markerId: MarkerIdSchema.optional(), facing }),
   z.object({ kind: z.literal('renamePlace'), id: z.string().min(1), name: z.string().max(60) }),
   z.object({ kind: z.literal('setPlaceMarker'), id: z.string().min(1), markerId: MarkerIdSchema }),
-  z.object({ kind: z.literal('movePlace'), id: z.string().min(1), cell: PlaceCellSchema }),
+  /**
+   * Moves a place and, when `facing` is given, turns it — one gesture, one
+   * undo (R-203). Its own cell is a valid destination: that is a turn.
+   */
+  z.object({ kind: z.literal('movePlace'), id: z.string().min(1), cell: PlaceCellSchema, facing }),
   z.object({ kind: z.literal('removePlace'), id: z.string().min(1) }),
 
   // Notes on a place

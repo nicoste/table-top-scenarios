@@ -12,7 +12,7 @@ import {
   packRuns, unpackRuns,
   placementToJSON, placementFromJSON, tokensToJSON, tokensFromJSON,
   DAYLIGHT, OPEN_SKY, clampLighting, clampAmbience, cellsToJSON, cellsFromJSON,
-  GROUND_FROM_TERRAIN, OPEN_WATER, ON_FOOT,
+  GROUND_FROM_TERRAIN, OPEN_WATER, ON_FOOT, asFacing,
 } from '@tt/domain';
 
 /** The light inside one place (R-182). */
@@ -253,6 +253,13 @@ export const PlaceWireSchema = z.object({
   name: z.string(),
   cell: PlaceCellSchema,
   markerId: MarkerIdSchema,
+  /**
+   * Quarter turns clockwise from above (R-203). Absent means as the marker is
+   * written, which is how every place before this was drawn — no bump (D-187).
+   * Any whole number is read and brought back into one turn rather than
+   * refused: a campaign must not fail to open over which way a hut faces.
+   */
+  facing: z.number().int().default(0),
   pois: z.array(PoiFromWire).default([]),
   notes: z.array(PlaceNoteWireSchema),
 });
@@ -634,6 +641,7 @@ export function encodePoi(place: Place): PlaceWire {
     name: place.name,
     cell: place.cell,
     markerId: place.markerId as string,
+    facing: place.facing,
     pois: place.pois.map((e) => ({
       id: e.id as string,
       name: e.name,
@@ -651,6 +659,7 @@ export function decodePoi(wire: PlaceWire): Place {
     name: wire.name,
     cell: wire.cell,
     markerId: parseMarkerId(wire.markerId),
+    facing: asFacing(wire.facing),
     pois: wire.pois.map((e) => ({
       id: e.id as Place['pois'][number]['id'],
       name: e.name,

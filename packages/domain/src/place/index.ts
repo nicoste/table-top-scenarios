@@ -75,11 +75,41 @@ export interface Poi {
   readonly map: EncounterMap | null;
 }
 
+/**
+ * Which way a place's marker faces: **quarter turns clockwise, seen from
+ * above**, from the marker as its parts are written (R-203).
+ *
+ * Quarter turns and not degrees, because a marker stands on a square cell and
+ * a castle at 37° has a gate that faces no road. An integer cannot be off the
+ * grid; a number of degrees can.
+ *
+ * **Relative to the grid, never the camera.** A gate that faces north faces
+ * north whichever way the GM is looking, like the standee's plate (R-187).
+ */
+export type Facing = 0 | 1 | 2 | 3;
+
+/** Any whole number of quarter turns, brought back into one turn. */
+export function asFacing(turns: number): Facing {
+  const whole = Number.isFinite(turns) ? Math.round(turns) : 0;
+  return (((whole % 4) + 4) % 4) as Facing;
+}
+
+/** A facing turned by some quarter turns: positive is clockwise. */
+export function turned(facing: Facing, steps: number): Facing {
+  return asFacing(facing + steps);
+}
+
 export interface Place {
   readonly id: PlaceId;
   readonly name: string;
   readonly cell: PlaceCell;
   readonly markerId: MarkerId;
+  /**
+   * Which way the marker faces (R-203). **Look only**: it turns the marker on
+   * the world map and nothing else — a place's maps keep their own north, and
+   * nothing about travel or sight reads it.
+   */
+  readonly facing: Facing;
   /** ORDERED, the GM sorts them. A place owns many maps (R-49). */
   readonly pois: readonly Poi[];
   readonly notes: readonly PlaceNote[];
@@ -132,6 +162,7 @@ export function addPlace(
   cell: PlaceCell,
   name?: string,
   markerId: MarkerId = DEFAULT_MARKER,
+  facing: Facing = 0,
 ): readonly Place[] {
   if (!isValidPlaceCell(cell) || placeAt(places, cell)) return places;
   const place: Place = {
@@ -139,6 +170,7 @@ export function addPlace(
     name: cleanName(name, 'New place'),
     cell,
     markerId: isKnownMarker(markerId) ? markerId : DEFAULT_MARKER,
+    facing: asFacing(facing),
     pois: [],
     notes: [],
   };
@@ -168,12 +200,29 @@ export function setPlaceMarker(places: readonly Place[], id: PlaceId, markerId: 
   return mapPlace(places, id, (place) => (place.markerId === markerId ? place : { ...place, markerId }));
 }
 
-/** Moves a place, unless the destination is invalid or already occupied. */
-export function movePlace(places: readonly Place[], id: PlaceId, cell: PlaceCell): readonly Place[] {
+/**
+ * Moves a place, and turns it when a facing is given — one edit, because it
+ * is one gesture and one undo (R-203). Unless the destination is invalid or
+ * already holds a different place; its own cell is fine, which is how a place
+ * is turned without being moved.
+ *
+ * Everything else about it is kept: its name, notes, maps and whether the
+ * party has been shown it. It is the same place on a new cell.
+ */
+export function movePlace(
+  places: readonly Place[],
+  id: PlaceId,
+  cell: PlaceCell,
+  facing?: Facing,
+): readonly Place[] {
   if (!isValidPlaceCell(cell)) return places;
   const occupant = placeAt(places, cell);
   if (occupant && occupant.id !== id) return places;
-  return mapPlace(places, id, (place) => (sameCell(place.cell, cell) ? place : { ...place, cell }));
+  return mapPlace(places, id, (place) => {
+    const nextFacing = facing === undefined ? place.facing : asFacing(facing);
+    if (sameCell(place.cell, cell) && place.facing === nextFacing) return place;
+    return { ...place, cell, facing: nextFacing };
+  });
 }
 
 export function removePlace(places: readonly Place[], id: PlaceId): readonly Place[] {

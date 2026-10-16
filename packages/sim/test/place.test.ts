@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { apply, emptyHistory } from '@tt/sim';
-import { viewFor, encodeCampaign } from '@tt/protocol';
+import { viewFor, encodeCampaign, IntentSchema } from '@tt/protocol';
 import type { HostState, Intent } from '@tt/protocol';
 import { createCampaign, createLiveSave, ORIGIN } from '@tt/domain';
 
@@ -49,6 +49,45 @@ describe('placing a place', () => {
   it('asks the host to save', () => {
     const result = run(open(), { kind: 'addPlace', cell: at(2, 2) });
     expect(result.effects.map((e) => e.kind)).toEqual(['saveCampaign']);
+  });
+});
+
+describe('moving and turning a place (R-203)', () => {
+  it('places one already turned', () => {
+    const state = run(open(), { kind: 'addPlace', cell: at(2, 2), facing: 3 }).state;
+    expect(state.active!.places[0]!.facing).toBe(3);
+  });
+
+  it('moves and turns in one edit, under one undo', () => {
+    const { state, id } = withPlace();
+    const moved = run(state, { kind: 'movePlace', id, cell: at(8, 8), facing: 1 }).state;
+    expect(moved.active!.places[0]!.facing).toBe(1);
+    expect(moved.active!.places[0]!.cell).toEqual(at(8, 8));
+    // One step back undoes both, because they were one gesture.
+    const undone = run(moved, { kind: 'undo' }).state;
+    expect(undone.active!.places[0]!.cell).toEqual(at(5, 6));
+    expect(undone.active!.places[0]!.facing).toBe(0);
+  });
+
+  it('turns on its own cell', () => {
+    const { state, id } = withPlace();
+    const turnedState = run(state, { kind: 'movePlace', id, cell: at(5, 6), facing: 2 });
+    expect(turnedState.rejected).toBeUndefined();
+    expect(turnedState.state.active!.places[0]!.facing).toBe(2);
+  });
+
+  it('refuses a facing that is not a quarter turn', () => {
+    // Strict at the edge (R-17), even though the file reader is lenient.
+    const { id } = withPlace();
+    const bad = IntentSchema.safeParse({ kind: 'movePlace', id, cell: at(8, 8), facing: 4 });
+    expect(bad.success).toBe(false);
+  });
+
+  it('sends the table the facing with the place', () => {
+    // Look only, and the table draws the marker too — so it has to know.
+    const { state, id } = withPlace();
+    const moved = run(state, { kind: 'movePlace', id, cell: at(5, 6), facing: 1 }).state;
+    expect(encodeCampaign(moved.active!).places[0]!.facing).toBe(1);
   });
 });
 

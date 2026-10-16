@@ -19,6 +19,11 @@ export {
 export type { Stride, Headroom, TokenAction } from './tokens/index.js';
 
 export {
+  emptyHanded, pickUp, turnCarried, canSetDown, setDownIntent, placesPrompt,
+} from './places/index.js';
+export type { Carry } from './places/index.js';
+
+export {
   clickAction, holdsSelection, tableAction, mapAction, mapHover, mapDrags, mapAllowed,
 } from './tools/index.js';
 

@@ -39,7 +39,7 @@ export {
 export type { Marker, MarkerPart, PartShape } from './markers/index.js';
 export { DEFAULT_MARKERS, DEFAULT_MARKER, markerById, isKnownMarker } from './markers/index.js';
 
-export type { Place, PlaceNote, PlaceCell, Poi } from './place/index.js';
+export type { Place, PlaceNote, PlaceCell, Poi, Facing } from './place/index.js';
 export type { Lighting, Ambience } from './light/index.js';
 export {
   DAYLIGHT, OPEN_SKY, MIN_ANGLE, MAX_ANGLE, MIN_SUN, MAX_SUN, MIN_FILL, MAX_FILL,
@@ -77,7 +77,7 @@ export {
 export {
   MAX_PLACE_NAME, MAX_NOTE_TEXT, sameCell, placeGlobal, placeCellFromGlobal, isValidPlaceCell,
   placeAt, placeById, placesInChunk,
-  addPlace, renamePlace, setPlaceMarker, movePlace, removePlace,
+  addPlace, renamePlace, setPlaceMarker, movePlace, removePlace, asFacing, turned,
   addNote, editNote, setNoteVisible, removeNote, moveNote, partyVisibleNotes,
   MAX_POI_NAME, moveWithin,
   addPoi, renamePoi, setPoiVisible, removePoi, movePoi,

@@ -97,7 +97,7 @@ export function BuildWorldPanel({
                   ? <>Drag a cell up or down. Each step is 150&nbsp;m.</>
                   : tool === 'travel'
                     ? <>Click a pawn, aim, then click to confirm. Escape or right-click cancels.</>
-                    : <>Click an empty cell to place a new one.</>}
+                    : <>Click an empty cell to place one, or a place to pick it up and move it. <b>Z / X</b> turn it; right-click puts it back.</>}
         </p>
 
         {BRUSHED.includes(tool) && (

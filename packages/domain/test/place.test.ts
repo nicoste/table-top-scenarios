@@ -96,6 +96,41 @@ describe('editing places', () => {
     expect(movePlace(places, idOf(places), cell(3, 4, 5, 6))).toBe(places);
   });
 
+  it('starts facing the way its marker is written, unless told otherwise (R-203)', () => {
+    expect(one()[0]!.facing).toBe(0);
+    expect(addPlace([], cell(0, 0, 0, 0), 'Gate', undefined, 3)[0]!.facing).toBe(3);
+  });
+
+  it('turns on its own cell, which is a move to where it already is', () => {
+    const places = one();
+    const turnedPlace = movePlace(places, idOf(places), cell(3, 4, 5, 6), 1);
+    expect(turnedPlace).not.toBe(places);
+    expect(turnedPlace[0]!.facing).toBe(1);
+    expect(sameCell(turnedPlace[0]!.cell, cell(3, 4, 5, 6))).toBe(true);
+  });
+
+  it('moves and turns in one edit, keeping everything else about it', () => {
+    const places = one();
+    const before = places[0]!;
+    const after = movePlace(places, idOf(places), cell(3, 4, 9, 9), 2)[0]!;
+    expect(after.facing).toBe(2);
+    expect(sameCell(after.cell, cell(3, 4, 9, 9))).toBe(true);
+    // The same place on a new cell: same id, same name, same everything.
+    expect({ ...after, cell: before.cell, facing: before.facing }).toEqual(before);
+  });
+
+  it('keeps its facing when moved without one', () => {
+    const start = one();
+    const places = movePlace(start, idOf(start), cell(3, 4, 5, 6), 3);
+    expect(movePlace(places, idOf(places), cell(3, 4, 1, 1))[0]!.facing).toBe(3);
+  });
+
+  it('is the same list when moved to where it is, facing the way it faces', () => {
+    const start = one();
+    const places = movePlace(start, idOf(start), cell(3, 4, 5, 6), 2);
+    expect(movePlace(places, idOf(places), cell(3, 4, 5, 6), 2)).toBe(places);
+  });
+
   it('removes, and is a no-op for an unknown id', () => {
     const places = one();
     expect(removePlace(places, idOf(places))).toEqual([]);

@@ -7404,3 +7404,56 @@ world was too small for a campaign. D-098 moved a cell from 200 m to 1.5 km a
 few rounds later, for its own reasons, and that answered this: 30 chunks of 30
 cells at 1.5 km is **1350 km across, about five weeks on foot**. A kingdom,
 not a duchy. Marked resolved.
+
+### D-306 — Places move and turn · `agreed`
+*"The GM should be able to move and rotate places. While the Places tool is
+selected, the highlighted cell should show the place token right on top of it.
+1 or 2 keys to rotate it 90 degrees per tap. If a user taps on an already
+created place, allow him to move and rotate it. The info should be kept; a
+right click returns it to the original position."*
+
+Reviewed together before building; R-203 is the result.
+
+**Z / X, the GM's call**, after I argued against Q / E: those turn the camera,
+and taking the camera away mid-placement is exactly when it is wanted.
+
+**`movePlace` already existed** — domain, intent and host handler, refusing
+another place's cell and accepting its own — and nothing on screen had ever
+called it. The work was the gesture and the facing, not the move.
+
+**A click that did nothing is what made room for it.** Under the Places tool a
+click on an existing place was dropped (R-119 refused a second place there,
+and that was all it did). So picking up took no gesture from anything. The
+panel's hint had been claiming that click would *edit* the place, which it
+never did — editing is Select's (D-168). The hint now says what happens and
+lives in the tool card, beside every other tool's.
+
+**Facing is a new field, `0`–`3`, absent meaning 0.** No schema bump: every
+place before this was drawn as its parts are written, which is facing 0
+(D-187). Intents are strict about the range (R-17); the file reader is
+lenient and brings any whole number back into one turn, because a campaign
+must not fail to open over which way a hut points. Every place is now written
+with its facing, so the GM's campaign file gained `"facing": 0` on each place
+the first time it was saved — the same places, said explicitly.
+
+**The home copy is faint, the carried copy a ghost.** Travel and tokens leave
+the original solid and ghost the destination. Here the original fades, because
+what is being moved is the thing itself, not a party that is still standing
+where it was until the confirm — and because "where does a right-click put it"
+is the question the faint copy answers.
+
+**A readout bug, caught on screen.** The first build worked the readout out in
+the pointer handler, so after a set-down it kept offering to set down a place
+that had just landed, until the pointer moved. The readout and the ghost are
+now drawn from the same state by one effect, which is the reason Z / X turn
+the ghost with the pointer still, too.
+
+**Verified on the GM's own campaign without leaving a trace.** I snapshotted
+the three places first. Pick-up, Z / X, right-click: file not even rewritten.
+Then a real move and a turn in place, both seen on the table display as well,
+then two undos — after which Undo went grey, which is the proof that only my
+two edits had been in the history. The places compare identical to the
+snapshot.
+
+R-203 is new.
+

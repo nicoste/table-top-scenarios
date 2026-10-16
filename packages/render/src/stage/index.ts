@@ -33,8 +33,8 @@ import { routePatches, ROUTE_LIFT } from '../route/index.js';
 import type { CoverField } from '../covers/index.js';
 import { buildCovers } from '../covers/index.js';
 import { buildWorldMeshes, columnCentre, worldCentre, HEIGHT_SCALE } from '../world/index.js';
-import type { PlaceMarkers } from '../places/index.js';
-import { buildPlaceMarkers, MARKER_ZOOM } from '../places/index.js';
+import type { MarkerGhost, PlaceMarkers } from '../places/index.js';
+import { buildMarkerGhost, buildPlaceMarkers, facingAngle, MARKER_ZOOM } from '../places/index.js';
 import type { PartyPawns, PawnRef } from '../pawns/index.js';
 import { buildPartyPawns } from '../pawns/index.js';
 import type { BlockBody, FacePick } from '../blocks/index.js';
@@ -292,6 +292,14 @@ export class Stage {
     }),
   );
   private places: PlaceMarkers | null = null;
+  /**
+   * The place in the GM's hand, left faint at home (R-203). Held here because
+   * markers are rebuilt on their own schedule, and a rebuild mid-carry must
+   * not bring the home copy back to full strength.
+   */
+  private dimmed: string | null = null;
+  /** Where a place would go: built per marker, moved and turned per aim. */
+  private markerGhost: MarkerGhost | null = null;
   private pawns: PartyPawns | null = null;
   /** Held because pawns are rebuilt on their own schedule, not the world's. */
   private campaign: Campaign | null = null;
@@ -622,6 +630,7 @@ export class Stage {
 
     if (!this.places) {
       this.places = buildPlaceMarkers(campaign);
+      this.places.dim(this.dimmed);
       this.scene.add(this.places.group);
     }
 
@@ -670,6 +679,8 @@ export class Stage {
     // Always off: the next pointer move puts it back where it belongs, and an
     // outline left over from the surface before is worse than none.
     this.blockGhost.visible = false;
+    // A place is a world thing (R-148), and so is the ghost of one.
+    if (this.markerGhost && !worldVisible) this.markerGhost.group.visible = false;
   }
 
   private dropPawns(): void {
@@ -1213,6 +1224,45 @@ export class Stage {
     this.routeMesh.visible = !this.showingMap;
   }
 
+  /**
+   * Shows where a place would go, or nothing (R-203): this marker, on this
+   * cell, turned this many quarters clockwise.
+   *
+   * Called on every pointer move under the Places tool and on every Z / X,
+   * so it moves and turns one group and builds only when the marker changes.
+   */
+  showPlaceGhost(cell: WorldCell | null, markerId?: string, facing = 0): void {
+    this.invalidate();
+    if (!cell || !markerId || !this.campaign || this.showingMap) {
+      if (this.markerGhost) this.markerGhost.group.visible = false;
+      return;
+    }
+    if (!this.markerGhost || this.markerGhost.markerId !== markerId) {
+      if (this.markerGhost) {
+        this.scene.remove(this.markerGhost.group);
+        this.markerGhost.dispose();
+      }
+      this.markerGhost = buildMarkerGhost(markerId);
+      this.scene.add(this.markerGhost.group);
+    }
+    const group = this.markerGhost.group;
+    group.position.set(
+      cell.cx * CHUNK_SIZE + cell.x + 0.5,
+      surfaceAt(this.campaign, cell),
+      cell.cz * CHUNK_SIZE + cell.z + 0.5,
+    );
+    group.rotation.y = facingAngle(facing);
+    group.visible = true;
+  }
+
+  /** Leaves one place faint at home while it is carried, or none (R-203). */
+  dimPlace(placeId: string | null): void {
+    if (this.dimmed === placeId) return;
+    this.invalidate();
+    this.dimmed = placeId;
+    this.places?.dim(placeId);
+  }
+
   showHighlight(address: ColumnAddress | null, height: number, size = 1): void {
     this.invalidate();
     if (!address) { this.highlight.visible = false; return; }
@@ -1475,6 +1525,7 @@ export class Stage {
     this.tokens?.dispose();
     this.pawns?.dispose();
     this.places?.dispose();
+    this.markerGhost?.dispose();
     this.world?.dispose();
     this.routeMesh.geometry.dispose();
     (this.routeMesh.material as MeshBasicMaterial).dispose();

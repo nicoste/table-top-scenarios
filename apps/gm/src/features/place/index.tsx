@@ -33,7 +33,9 @@ export function PlacesPanel({ markerId, onMarker }: ToolProps) {
           </li>
         ))}
       </ul>
-      <p className="hint">Click an empty cell to place. Click a marker to edit it.</p>
+      {/* No hint here: the tool card above says what the Places tool's clicks
+          do, as it does for every tool. This one said "click a marker to edit
+          it", which that click never did — editing is Select's (D-168). */}
     </div>
   );
 }

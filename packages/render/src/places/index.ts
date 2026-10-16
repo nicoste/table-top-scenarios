@@ -52,8 +52,26 @@ export interface PlaceMarkers {
    * at most.
    */
   captionAt(clientX: number, clientY: number): string | null;
+  /**
+   * Fades one place to a faint copy, or none (R-203).
+   *
+   * The place in the GM's hand: it is still where it was until it is set
+   * down, and the faint copy is where a right-click would put it back. A
+   * material write, not a rebuild, since it changes on every pick-up.
+   */
+  dim(placeId: string | null): void;
   dispose(): void;
 }
+
+/** Quarter turns clockwise from above, as an angle about the vertical. */
+export function facingAngle(facing: number): number {
+  // three.js turns anticlockwise for a positive angle seen from above, and a
+  // facing turns clockwise — so the sign is flipped here and nowhere else.
+  return -facing * (Math.PI / 2);
+}
+
+/** How faint the place in the GM's hand is left at home. */
+const HOME_OPACITY = 0.28;
 
 /**
  * Everything a marker is drawn from, as one string (D-290).
@@ -64,7 +82,7 @@ export interface PlaceMarkers {
  */
 export function markerSignature(campaign: Campaign): string {
   return campaign.places.map((place) => [
-    place.id, place.name, place.markerId,
+    place.id, place.name, place.markerId, place.facing,
     place.cell.cx, place.cell.cz, place.cell.x, place.cell.z,
     surfaceAt(campaign, place.cell),
   ].join(':')).join('|');
@@ -87,6 +105,7 @@ export function buildPlaceMarkers(campaign: Campaign): PlaceMarkers {
   const captions: { readonly object: CSS2DObject; readonly placeId: string }[] = [];
   const geometries: BufferGeometry[] = [];
   const materials: Material[] = [];
+  const byPlace = new Map<string, { readonly materials: MeshLambertMaterial[]; readonly name: CSS2DObject }>();
   const colour = new Color();
 
   for (const place of campaign.places) {
@@ -97,7 +116,11 @@ export function buildPlaceMarkers(campaign: Campaign): PlaceMarkers {
 
     const pin = new Group();
     pin.position.set(x, base, z);
+    // The whole marker turns about its cell's centre; the caption hangs on
+    // that axis, so it does not move (R-203).
+    pin.rotation.y = facingAngle(place.facing);
     let tallest = 0.5;
+    const own: MeshLambertMaterial[] = [];
 
     for (const part of marker?.parts ?? []) {
       const geometry = geometryFor(part);
@@ -109,6 +132,7 @@ export function buildPlaceMarkers(campaign: Campaign): PlaceMarkers {
       owners.set(mesh, place.id);
       geometries.push(geometry);
       materials.push(material);
+      own.push(material);
       tallest = Math.max(tallest, part.at[1] + part.size[1] / 2);
     }
 
@@ -122,6 +146,7 @@ export function buildPlaceMarkers(campaign: Campaign): PlaceMarkers {
     name.position.set(0, tallest, 0);
     pin.add(name);
     captions.push({ object: name, placeId: place.id });
+    byPlace.set(place.id, { materials: own, name });
 
     group.add(pin);
   }
@@ -144,12 +169,67 @@ export function buildPlaceMarkers(campaign: Campaign): PlaceMarkers {
       }
       return null;
     },
+    dim(placeId) {
+      for (const [id, { materials: parts, name }] of byPlace) {
+        const faint = id === placeId;
+        for (const material of parts) {
+          if (material.transparent === faint) continue;
+          material.transparent = faint;
+          material.opacity = faint ? HOME_OPACITY : 1;
+          // A faint copy must not hide the ghost standing on its own cell.
+          material.depthWrite = !faint;
+          material.needsUpdate = true;
+        }
+        (name.element as HTMLElement).style.opacity = faint ? String(HOME_OPACITY + 0.2) : '';
+      }
+    },
     dispose() {
       for (const g of geometries) g.dispose();
       for (const m of materials) m.dispose();
       // Each caption by hand: removing the group from the scene says nothing
       // to the nodes hanging under it (D-289).
       for (const { object } of captions) dropCaption(object);
+    },
+  };
+}
+
+/**
+ * A translucent copy of one marker, for where a place would go (R-203): the
+ * marker picked in the panel on the cell under the pointer, or the place in
+ * the GM's hand.
+ *
+ * Built per marker and kept by the caller, because aiming moves it on every
+ * pointer move and turning it is a rotation, not a rebuild.
+ */
+export interface MarkerGhost {
+  readonly group: Group;
+  readonly markerId: string;
+  dispose(): void;
+}
+
+export function buildMarkerGhost(markerId: string): MarkerGhost {
+  const group = new Group();
+  const geometries: BufferGeometry[] = [];
+  const materials: Material[] = [];
+  const marker = markerById(DEFAULT_MARKERS, markerId as Marker['id']);
+  for (const part of marker?.parts ?? []) {
+    const geometry = geometryFor(part);
+    const material = new MeshLambertMaterial({
+      color: part.colour, transparent: true, opacity: 0.55, depthWrite: false,
+    });
+    const mesh = new Mesh(geometry, material);
+    mesh.position.set(part.at[0], part.at[1], part.at[2]);
+    mesh.renderOrder = 5;
+    group.add(mesh);
+    geometries.push(geometry);
+    materials.push(material);
+  }
+  return {
+    group,
+    markerId,
+    dispose() {
+      for (const g of geometries) g.dispose();
+      for (const m of materials) m.dispose();
     },
   };
 }

@@ -612,6 +612,49 @@ cube and a short far cube can land on the same pixels. These are not polish.
 > | Tap a cell | create/edit menu for that cell | travel here |
 > | Tap a place | create/edit menu for that place | info panel: name + visible notes, and enter or travel (R-81) |
 
+> **R-203.** **A place can be picked up, carried, turned and set down** — on
+> the console, under the Places tool (D-306).
+>
+> The gesture is the house one, pick, aim, set down (R-132, R-188), for the
+> thing the GM builds rather than the people who walk through it:
+>
+> - **Hovering an empty cell** shows the marker chosen in the panel, translucent,
+>   where the click would put it.
+> - **Clicking a place** — its marker, its name or its cell — picks it up. The
+>   original stays where it was, **faint**: that is where a right-click puts it
+>   back. A ghost follows the pointer.
+> - **Z / X turn it a quarter**, anticlockwise and clockwise seen from above:
+>   the place in hand, or the next one to be placed. Not Q / E, which turn the
+>   camera; a GM carrying a castle wants to turn the view to see where its gate
+>   points.
+> - **Clicking bare ground sets it down there.** Clicking its own cell sets it
+>   down where it was, which is how a place is turned without being moved. A
+>   click on another place does nothing and the readout says why (R-119); the
+>   place stays in hand, because a misclick should not undo the turning.
+> - **Right-click or Escape puts it back.** Nothing was sent, so there is
+>   nothing to undo (R-64). Putting the tool down does the same.
+>
+> **It is the same place on a new cell.** Name, notes, maps, whether it is
+> revealed — all kept. A move and a turn are **one edit and one undo**.
+> Setting it down exactly as it was sends nothing, so a pick-up-and-put-back
+> leaves no empty entry in the history.
+>
+> **Facing is quarter turns, relative to the grid, and look only.** A marker
+> stands on a square cell; a castle at 37° has a gate that faces no road. It
+> turns the marker on both screens and nothing else: a place's maps keep their
+> own north, and neither travel nor sight reads it.
+>
+> **What does not come along:** the party. If they are standing on the cell a
+> place is moved off, they stay on that cell — the GM is fixing the map, not
+> moving them, and authored edits do not move play state (R-140). And a
+> revealed place moved into an Unknown chunk leaves the table, because a place
+> is shown only where the party knows the ground (D-132). That is discovery
+> working, not a bug.
+>
+> **Moving does not return to `select`.** Placing a new place does (R-87a) —
+> it wants a name next. Moving one is the edit itself, and the GM is likely to
+> move another.
+
 ---
 
 ## 6c4. The world ground builder
