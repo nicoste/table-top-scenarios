@@ -7457,3 +7457,105 @@ snapshot.
 
 R-203 is new.
 
+
+### D-307 — Everyone who is not the party: the design, agreed before building · `agreed`
+The silver tokens D-255 parked with *"Later."* Its stated blocker — no fog
+to gate an enemy's way to the table — went away with D-273. Talked through
+with the GM over two rounds before any code; this is what was settled, for
+the three rounds that build it.
+
+**The shape.** A **shared library** of entries — *a goblin*, *a hobgoblin*,
+*the bartender* — made once from a menu. A new map tool spawns one onto a
+floor; each spawn is its own token with its own name, *"goblin N7"*. Gold
+tokens are the party; silver tokens are everyone else (D-254).
+
+**The library is shared across campaigns** — the GM's call, and the reason
+behind most of what follows. *"A GM will love to have his bestiary on a
+common folder so he can speed up the creation of a new campaign, do a random
+encounter with already created monsters."* It lives with the host, beside
+the campaigns, not inside any of them.
+
+**Not "bestiary".** The GM flagged that the word says *monsters*, and the
+library will hold a bartender and a gate guard as readily as a goblin. Named
+in O-033.
+
+**Tags, not folders.** Free tags per entry; one search box over names and
+tags, and several words narrow it — `npc saltmarsh` finds what carries both.
+The GM's own Owlbear habit is the case: some NPCs are shared between
+campaigns and some are not, so they are tagged by campaign as well as by
+kind. Tags give that for nothing; folders cannot, because an entry lives in
+one folder.
+
+**Images, optional, one pipeline for gold and silver.** Uploaded on the
+console, made small, stored by the host, and sent to the table **only for a
+token the table is currently sent** — nobody sees the dragon's portrait
+before meeting the dragon. With no image, a gold card is the member's colour
+(as now) and a silver card is **plain grey**: *"no extra work, like we do
+with colors for the party, but here is always gray."* Members' images show
+on the world map's standee too, since it is the same standee (R-201).
+
+**An entry is referenced, not copied.** Change the goblin's image and every
+goblin on stage changes; names stay per token. **Deleting an entry deletes
+every token of it** — the GM's rule, and with a shared library that reaches
+campaigns that are not open: their tokens are dropped when each next opens,
+the same tolerance `pruneMembers` gives a member who left the roster. The
+confirmation has to say so in those words.
+
+**No undo anywhere in this.** The library is outside every campaign, so
+campaign undo (D-169) cannot reach it, and the GM sees no value in it for
+menu construction anyway. Spawned tokens are play state, which undo never
+touches (R-140). The confirmations carry the weight — deleting a token,
+deleting an entry.
+
+**What the table sees: the trust boundary.** A silver token is sent only
+while it stands where the party sees **right now** — not merely where they
+have been, because remembering a room says nothing about who is in it now
+(R-85: not sent, rather than not drawn). A GM toggle can hide one more (an
+invisible stalker in plain sight); it can never show one the party cannot
+see. Gold tokens are always sent; they are the players'.
+
+**Identity is the name, shown.** Over the token on both screens, because
+*"goblin N7"* is what a player says aloud. The suffix is one letter and one
+digit, unique within that map, skipping I and O, which read as 1 and 0.
+The GM may rename. **No highlight-on-select** — the GM's call: the visible
+name is what identifies, and a second way to do it is noise.
+
+**One token per cube, gold or silver.** Its one leak is accepted on purpose:
+a member stepped into a dark cube where an unseen goblin stands is refused,
+which tells the players something is there. Bumping into something in the
+dark is the fiction.
+
+**GM only.** Silver tokens are the world's, not the party's (R-136): every
+intent about them is GM-only, and on the table they are drawn but not
+picked.
+
+**A GM-only note per token** — *"wounded, fleeing"* — never sent. No HP
+field: damage stays out of scope (R-1), and a note covers it. Answers O-015,
+which had waited for exactly this.
+
+**Maps only, one cube each, for now.** An army on the world map, or an ogre
+taking 2×2, are real and later.
+
+**The list orders.** The map's party list becomes everyone on stage, gold
+and silver, with a number the GM types, sorted high-first with blanks last,
+per map. Section 1 lists *initiative order* as permanently out of scope; this
+is not that. It is state the GM sets (R-1), and the tool never rolls, never
+tracks whose turn it is, never has a "next turn". Section 1 is amended to
+say exactly that in the round that builds it.
+
+**The spawner stays armed.** A named exception to R-87a: creating a place
+returns to Select because a place wants a name next, but a goblin is named
+for you, and five goblins should be five clicks.
+
+**Three rounds.** 1 — images, on the party first: the smaller case, and it
+proves the pipeline. 2 — the library, the spawner, silver tokens, names,
+deletion and the sight rule, together, because the sight rule is what makes
+it safe to send a goblin anywhere. 3 — the ordered list and the notes.
+
+### O-033 — What to call the shared library · `open`
+"Bestiary" says monsters, and it will hold a bartender (D-307). Proposed:
+**the Cast** — everyone on stage who is not the party; one entry is a *cast
+member*, and one placed on a map is a token. It sits with the GM's own
+words, *on stage* and *scene*, and as a heading it does not read as casting
+a spell. The plainer alternative is **Library**. Needed before round 2,
+which names the panel, the tool and the folder on disk.
