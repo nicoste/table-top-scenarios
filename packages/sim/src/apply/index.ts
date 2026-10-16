@@ -33,7 +33,8 @@ import {
   exploredIn, pruneExplored, lookAround, blockKey, forgetMap,
   addTemplate, editTemplate, removeTemplate, templateById,
   silverIn, withSilver, withoutStrays, onLibrary, silverCubes, whyNotPlace,
-  spawnSilver, moveSilver, renameSilver, hideSilver, removeSilver,
+  spawnSilver, moveSilver, renameSilver, hideSilver, removeSilver, noteSilver,
+  withStageOrder, tidyOrder,
 } from '@tt/domain';
 import type { HostState, Intent, Role } from '@tt/protocol';
 import { parseGround, parseCover, parseMarkerId, travellingFromWire } from '@tt/protocol';
@@ -164,7 +165,8 @@ export function openedWith(
    * every campaign, and this is where the ones not open at the time catch up.
    */
   const live = new Set(state.library.map((template) => template.id as string));
-  const tidied = withoutStrays(save, poiIds, live);
+  // Then the numbers of anybody no longer on stage there (R-208).
+  const tidied = tidyOrder(withoutStrays(save, poiIds, live), poiIds, memberIds as ReadonlySet<string>);
   // What was seen of maps that are gone, and then a look around: a save from
   // before vision has seen nothing, and the party standing in a map should
   // see it the moment the campaign opens (D-273).
@@ -509,7 +511,23 @@ function applyToCampaign(state: HostState, role: Role, intent: Intent, now: stri
     case 'renameSilver':
     case 'hideSilver':
     case 'removeSilver':
+    case 'noteSilver':
       return applyToSilver(state, campaign, intent, now);
+
+    case 'setOrder': {
+      // Anybody on stage in that map: a member of the roster, or one of its
+      // silver tokens (R-208). Any map — the GM may line a fight up early.
+      const save = state.activeSave;
+      if (!save) return reject(state, 'no save is open');
+      const place = placeById(campaign.places, intent.placeId as PlaceId);
+      if (!place) return reject(state, 'no such place');
+      const poi = poiOfPlace(place, intent.poiId as PoiId);
+      if (!poi) return reject(state, 'no such point of interest');
+      const known = campaign.party.some((member) => member.id === intent.id)
+        || silverIn(save, poi.id).some((token) => token.id === intent.id);
+      if (!known) return reject(state, 'nobody by that id is on stage there');
+      return commitSave(state, save, withStageOrder(save, poi.id, intent.id, intent.order), now);
+    }
 
     case 'forgetMap': {
       // A fresh start (D-277). Not undoable, like everything else about play
@@ -621,7 +639,9 @@ function applyToTokens(
 function applyToSilver(
   state: HostState,
   campaign: Campaign,
-  intent: Extract<Intent, { kind: 'spawnSilver' | 'moveSilver' | 'renameSilver' | 'hideSilver' | 'removeSilver' }>,
+  intent: Extract<Intent, {
+    kind: 'spawnSilver' | 'moveSilver' | 'renameSilver' | 'hideSilver' | 'removeSilver' | 'noteSilver';
+  }>,
   now: string,
 ): Applied {
   const save = state.activeSave;
@@ -656,6 +676,8 @@ function applyToSilver(
       return commitSilver(renameSilver(silver, intent.id, intent.name));
     case 'hideSilver':
       return commitSilver(hideSilver(silver, intent.id, intent.hidden));
+    case 'noteSilver':
+      return commitSilver(noteSilver(silver, intent.id, intent.note));
     default:
       return commitSilver(removeSilver(silver, intent.id));
   }

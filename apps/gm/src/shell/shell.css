@@ -8,7 +8,8 @@ body {
   background: var(--bg); color: var(--ink); overflow: hidden;
   font: 13px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
-button, input, select {
+/* Textareas too: left out, one fell back to the browser's monospace (D-312). */
+button, input, select, textarea {
   font: inherit; color: var(--ink); background: #212733;
   border: 1px solid var(--edge); border-radius: 6px; padding: 5px 9px;
 }
@@ -56,6 +57,12 @@ button.quiet:hover { background: #3a2222; color: #ffc9c9; border-color: transpar
   max-height: calc(100vh - 24px);
 }
 .dock-right { left: auto; right: 12px; max-height: calc(100vh - 84px); }
+/*
+ * Inside a map the right dock holds the On stage list (R-208), whose silver
+ * rows carry a number, a card, a name, an eye and a ×. At 228 px the name
+ * was down to "Bartende"; this is the width that keeps "Bartender Y2" whole.
+ */
+.dock-right.dock-wide { width: 264px; }
 .dock > * { flex: none; }
 .card {
   background: #171b22ee; border: 1px solid var(--edge); border-radius: 10px;
@@ -332,26 +339,6 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
    browser's default 16px and read as body text in someone else's font. */
 .lbl { color: var(--dim); font-size: 11px; letter-spacing: .02em; }
 
-/*
-  Who stands where inside a map (R-184). The chip is the card — the member's
-  colour and nothing else (D-257) — so it is square, where the world's member
-  dot is round like the pawn it stands for.
-*/
-.tokens { list-style: none; margin: 0 0 4px; padding: 0; display: flex; flex-direction: column; gap: 2px; }
-.tokens button {
-  width: 100%; display: flex; align-items: center; gap: 8px;
-  padding: 3px 7px; text-align: left; background: transparent; border-color: transparent;
-}
-.tokens button:hover { background: #212733; }
-.tokens .chip {
-  width: 12px; height: 12px; border-radius: 2px; flex: none;
-  border: 1px solid #0006; box-shadow: inset 0 0 0 1px #ffffff22;
-}
-.tokens .nm { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tokens .where { flex: none; font-size: 11px; color: var(--dim); white-space: nowrap; }
-.tokens li { display: flex; align-items: center; gap: 4px; }
-.tokens li > button { flex: 1 1 auto; min-width: 0; }
-.tokens input.sight { width: 34px; flex: none; padding: 2px 4px; text-align: right; font-size: 11.5px; }
 .row.forget { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin-top: 8px; }
 .row.forget .grow { flex: 1 1 auto; margin: 0; }
 
@@ -567,9 +554,41 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
 .library-picture { display: flex; align-items: center; gap: 8px; margin: 2px 0 8px; }
 .library-picture .grow { flex: 1 1 auto; margin: 0; font-size: 11px; }
 .library-delete p { margin: 0 0 8px; }
-.stage-list li { display: flex; align-items: center; gap: 6px; }
-.stage-list li input { flex: 1 1 auto; min-width: 0; }
-.stage-list li.hidden .library-card, .stage-list li.hidden input { opacity: 0.55; }
+/*
+ * Everyone on stage, in the GM's order (R-208): a number, the card, the name,
+ * and what that kind of token can be asked to do. A silver token's note sits
+ * under its row.
+ */
+.stage-list { max-height: 420px; }
+.stage-list li { display: flex; flex-direction: column; gap: 2px; }
+.stage-row { display: flex; align-items: center; gap: 6px; }
+.stage-row > input, .stage-row > .stage-name { flex: 1 1 auto; min-width: 0; }
+.stage-list input.stage-order {
+  width: 34px; flex: none; padding: 2px 4px; text-align: center; font-weight: 600;
+}
+.stage-list input.stage-order::placeholder { color: var(--dim); font-weight: 400; }
+.stage-name {
+  display: flex; align-items: baseline; gap: 6px; text-align: left; padding: 4px 6px;
+  background: transparent; border-color: transparent;
+}
+.stage-name .nm { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stage-name .where { flex: none; font-size: 11px; color: var(--dim); white-space: nowrap; }
+.stage-sight { display: flex; align-items: center; gap: 3px; flex: none; }
+.stage-sight .lbl { font-size: 11px; color: var(--dim); }
+.stage-sight input.sight { width: 34px; padding: 2px 4px; text-align: right; font-size: 11.5px; }
+/* The card is a button here: it opens the note. A dot says there is one. */
+.note-card { position: relative; padding: 0; cursor: pointer; }
+.note-card.noted::after {
+  content: ''; position: absolute; right: -3px; top: -3px; width: 7px; height: 7px;
+  border-radius: 50%; background: var(--accent); border: 1px solid var(--panel);
+}
+.stage-note { width: 100%; margin: 0 0 4px; font-size: 12px; resize: vertical; }
+.stage-note-line {
+  margin: 0 0 4px 40px; padding: 0; text-align: left; font-size: 11.5px; color: var(--dim);
+  background: transparent; border-color: transparent;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; max-width: calc(100% - 40px);
+}
+.stage-list li.hidden .library-card, .stage-list li.hidden .stage-row > input { opacity: 0.55; }
 /* A fixed width, so showing and hiding never moves the name field beside it. */
 .stage-list .eye {
   width: 28px; height: 26px; flex: none; padding: 0;

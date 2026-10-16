@@ -14,6 +14,8 @@ import { emptyPlacement, prunePlacement } from '../placement/index.js';
 import type { Travelling } from '../travel/index.js';
 import { ON_FOOT } from '../travel/index.js';
 import type { SilverTokens } from '../silver/index.js';
+import type { StageOrder } from '../order/index.js';
+import { NO_ORDER, onStage, withOrder } from '../order/index.js';
 import { NO_SILVER, onLibrary, settledSilver, silverCubes } from '../silver/index.js';
 import type { Campaign } from '../campaign/index.js';
 import type { CuttingPlane, LevelRange } from '../planes/index.js';
@@ -143,6 +145,13 @@ export interface Save {
    * carries no entry.
    */
   readonly silver: ReadonlyMap<string, SilverTokens>;
+  /**
+   * The number the GM gave each token on stage, by point of interest (R-208)
+   * — party members and silver tokens alike, keyed by their ids. Play state,
+   * per map: the tavern brawl's order is not the cellar's. A map with no
+   * numbers carries no entry.
+   */
+  readonly order: ReadonlyMap<string, StageOrder>;
 }
 
 /** Which map the party has gone into. Where they are, and nothing else. */
@@ -179,6 +188,7 @@ export function createLiveSave(campaign: Campaign, savedAt: string): Save {
     lighting: DAYLIGHT,
     travelling: ON_FOOT,
     silver: new Map(),
+    order: new Map(),
   };
 }
 
@@ -531,5 +541,43 @@ export function withoutStrays(
     if (kept.length > 0) next.set(poiId, kept);
   }
   return touched ? { ...save, silver: next } : save;
+}
+
+/** One map's order — no numbers, unless the GM gave some (R-208). */
+export function orderIn(save: Save, poiId: PoiId | string): StageOrder {
+  return save.order.get(poiId as string) ?? NO_ORDER;
+}
+
+/**
+ * Gives one token in one map a number, or takes it away. Identity-preserving
+ * (R-165); a map left without numbers loses its entry.
+ */
+export function withStageOrder(save: Save, poiId: PoiId | string, id: string, value: number | null): Save {
+  const now = orderIn(save, poiId);
+  const next = withOrder(now, id, value);
+  if (next === now) return save;
+  const all = new Map(save.order);
+  if (next.size === 0) all.delete(poiId as string);
+  else all.set(poiId as string, next);
+  return { ...save, order: all };
+}
+
+/**
+ * Drops the numbers of maps that are gone and of tokens no longer on stage
+ * there — a member who left the roster, a goblin removed — on the way in.
+ * Read through until then, so a stale number is in nobody's way (`inOrder`
+ * only sorts the rows it is handed).
+ */
+export function tidyOrder(save: Save, livePoiIds: ReadonlySet<string>, memberIds: ReadonlySet<string>): Save {
+  let touched = false;
+  const next = new Map<string, StageOrder>();
+  for (const [poiId, order] of save.order) {
+    if (!livePoiIds.has(poiId)) { touched = true; continue; }
+    const live = new Set([...memberIds, ...silverIn(save, poiId).map((token) => token.id as string)]);
+    const kept = onStage(order, live);
+    if (kept !== order) touched = true;
+    if (kept.size > 0) next.set(poiId, kept);
+  }
+  return touched ? { ...save, order: next } : save;
 }
 

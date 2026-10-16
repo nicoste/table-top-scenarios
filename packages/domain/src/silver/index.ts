@@ -32,6 +32,12 @@ export interface SilverToken {
    * party cannot see (R-206).
    */
   readonly hidden: boolean;
+  /**
+   * The GM's note on this one — *"wounded, fleeing"* (R-208). Never sent to
+   * the table. Free text, not hit points: damage stays the table's (R-1).
+   * Empty when there is none.
+   */
+  readonly note: string;
 }
 
 /** One map's silver tokens, in the order they were placed. */
@@ -40,6 +46,7 @@ export type SilverTokens = readonly SilverToken[];
 export const NO_SILVER: SilverTokens = [];
 
 export const MAX_SILVER_NAME = 48;
+export const MAX_SILVER_NOTE = 500;
 
 /**
  * The letters a name's suffix is drawn from: A to Z without **I** and **O**,
@@ -132,6 +139,7 @@ export function spawnSilver(
     name: nameFor(template.name, silver.map((other) => other.name), random),
     at: { x: at.x, y: at.y, z: at.z },
     hidden: false,
+    note: '',
   };
   return [...silver, token];
 }
@@ -169,6 +177,12 @@ export function moveSilver(
 export function renameSilver(silver: SilverTokens, id: SilverId | string, name: string): SilverTokens {
   const clean = name.replace(/\s+/g, ' ').trim().slice(0, MAX_SILVER_NAME);
   return mapToken(silver, id, (token) => (!clean || clean === token.name ? token : { ...token, name: clean }));
+}
+
+/** Writes the GM's note on one (R-208). Trimmed; empty clears it. */
+export function noteSilver(silver: SilverTokens, id: SilverId | string, note: string): SilverTokens {
+  const clean = note.trim().slice(0, MAX_SILVER_NOTE);
+  return mapToken(silver, id, (token) => (clean === token.note ? token : { ...token, note: clean }));
 }
 
 /** Keeps one off the table, or lets the party see it again (R-206). */
@@ -228,6 +242,7 @@ export interface SilverTokenJSON {
   name: string;
   at: { x: number; y: number; z: number };
   hidden?: boolean | undefined;
+  note?: string | undefined;
 }
 
 export function silverToJSON(silver: SilverTokens): SilverTokenJSON[] {
@@ -237,6 +252,7 @@ export function silverToJSON(silver: SilverTokens): SilverTokenJSON[] {
     name: token.name,
     at: { x: token.at.x, y: token.at.y, z: token.at.z },
     ...(token.hidden ? { hidden: true } : {}),
+    ...(token.note ? { note: token.note } : {}),
   }));
 }
 
@@ -248,5 +264,6 @@ export function silverFromJSON(json: readonly SilverTokenJSON[] | undefined | nu
     name: token.name,
     at: { x: token.at.x, y: token.at.y, z: token.at.z },
     hidden: token.hidden === true,
+    note: typeof token.note === 'string' ? token.note.slice(0, MAX_SILVER_NOTE) : '',
   }));
 }

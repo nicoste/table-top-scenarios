@@ -10,6 +10,7 @@ import {
 } from '../wire/index.js';
 import {
   MAX_HEIGHT, MAX_BRUSH, MAP_BRUSH_CELLS, MAX_TEMPLATE_NAME, MAX_TAG, MAX_TAGS, MAX_SILVER_NAME,
+  MAX_SILVER_NOTE, MIN_ORDER, MAX_ORDER,
 } from '@tt/domain';
 
 const cell = { cx: z.number().int(), cz: z.number().int(), x: CellIndex, z: CellIndex };
@@ -216,6 +217,22 @@ export const IntentSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('removeSilver'),
     placeId: z.string().min(1), poiId: z.string().min(1), id: z.string().min(1),
+  }),
+  /** The GM's note on one silver token (R-208); empty clears it. Never the table's. */
+  z.object({
+    kind: z.literal('noteSilver'),
+    placeId: z.string().min(1), poiId: z.string().min(1), id: z.string().min(1),
+    note: z.string().max(MAX_SILVER_NOTE),
+  }),
+  /**
+   * A number beside a token on stage, gold or silver (R-208), or `null` to
+   * take it away. The GM's: it orders the scene, and the scene is the GM's
+   * to run (R-136).
+   */
+  z.object({
+    kind: z.literal('setOrder'),
+    placeId: z.string().min(1), poiId: z.string().min(1), id: z.string().min(1),
+    order: z.number().int().min(MIN_ORDER).max(MAX_ORDER).nullable(),
   }),
 
   // Undo and redo over authored content (D-169). GM only: the campaign is the

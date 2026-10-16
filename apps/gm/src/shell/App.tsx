@@ -354,6 +354,22 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   const silverHere = useMemo(() => (silverWire ? silverFromJSON(silverWire) : NO_SILVER), [silverWire]);
   const library = view?.library ?? [];
   const silverName = (id: string) => silverHere.find((token) => token.id === id)?.name ?? null;
+  /**
+   * The roster as it stands in the open map: placed or not, inside the band
+   * the table is shown or not, and how far each sees (R-184, R-46). The party
+   * card counts from it; the On stage list draws it (R-208).
+   */
+  const partyRows = (roster ?? []).map((member) => {
+    const at = present.get(member.id as MemberId) ?? null;
+    return {
+      id: member.id,
+      name: member.name,
+      colour: member.colour,
+      standing: at !== null,
+      onTable: at !== null && (!openRange || standsInBand(openRange, at)),
+      sight: member.visionRange,
+    };
+  });
   /** Who is still waiting to be placed, in roster order (R-188). */
   const waiting = useMemo(
     () => (partyHere && roster
@@ -1463,21 +1479,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
               ) ?? silverMovePrompt(silverMove, silverName) ?? hoverLabel
               : hoverLabel}
             partyHere={partyHere}
-            party={(roster ?? []).map((member) => {
-              const at = present.get(member.id as MemberId) ?? null;
-              return {
-                id: member.id,
-                name: member.name,
-                colour: member.colour,
-                standing: at !== null,
-                onTable: at !== null && (!openRange || standsInBand(openRange, at)),
-                sight: member.visionRange,
-              };
-            })}
-            onPickMember={(memberId) => {
-              setMapTool('move');
-              setStride(grab(memberId));
-            }}
+            party={partyRows}
             partyCanSee={
               revealedPois.has(openPlace.id)
               && knownChunks.has(`${openPlace.cell.cx},${openPlace.cell.cz}`)
@@ -1515,7 +1517,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
         and everyone on stage who is not the party, always (D-307, R-206).
       */}
       {status === 'open' && seat === 'gm' && campaign && openMapWire && openPlace && openPoi && (
-        <div className="dock dock-right">
+        <div className="dock dock-right dock-wide">
           {mapToolShows(mapTool, 'library') && (
             <LibraryPanel
               library={library}
@@ -1525,11 +1527,28 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
             />
           )}
           <OnStagePanel
+            party={partyHere
+              ? partyRows.map((row) => ({
+                id: row.id,
+                name: row.name,
+                colour: row.colour,
+                picture: memberPicture(row.id),
+                status: !row.standing ? 'to place' as const : row.onTable ? 'standing' as const : 'not on the table' as const,
+                sight: row.sight,
+              }))
+              : []}
             silver={silverWire ?? []}
+            order={view?.save?.order?.[openPoi.id] ?? {}}
             library={library}
             placeId={openPlace.id}
             poiId={openPoi.id}
             dispatch={dispatch}
+            // A row picks a member up with Move — the way in for one hard to
+            // click, behind a wall or not placed yet (R-188).
+            onPickMember={(memberId) => {
+              setMapTool('move');
+              setStride(grab(memberId));
+            }}
           />
         </div>
       )}

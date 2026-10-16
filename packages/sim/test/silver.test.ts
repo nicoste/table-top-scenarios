@@ -10,7 +10,7 @@ import { viewFor } from '@tt/protocol';
 import type { GmView, HostState, Intent, TableView } from '@tt/protocol';
 import {
   createCampaign, createLiveSave, DEFAULT_MATERIALS, swatchOf, ORIGIN, blockAt, EMPTY_LIBRARY,
-  silverIn, withSilver,
+  silverIn, withSilver, orderIn,
 } from '@tt/domain';
 import type { BlockCoord, ImageId, SilverToken } from '@tt/domain';
 
@@ -249,3 +249,47 @@ describe('what the table is sent of silver tokens (R-206)', () => {
 function withSilverKept(target: HostState, source: HostState, poiId: string): HostState {
   return { ...target, activeSave: withSilver(target.activeSave!, poiId, silverIn(source.activeSave!, poiId)) };
 }
+
+describe('notes and the order of who is on stage (R-208)', () => {
+  it('keeps the GM\'s note on a token, and never sends it to the table', () => {
+    const t = tavern();
+    let state = run(t.state, spawn(t, cube(5, 1, 5))).state;
+    const id = silverOf(state, t.poiId)[0]!.id as string;
+    const note = { kind: 'noteSilver', placeId: t.placeId, poiId: t.poiId, id, note: 'wounded, fleeing' } as Intent;
+    expect(run(state, note, 'table').rejected).toBe('only the GM can do that');
+    state = run(state, note).state;
+    expect(silverOf(state, t.poiId)[0]!.note).toBe('wounded, fleeing');
+    expect(tableSilver(state)).toHaveLength(1);
+    expect(JSON.stringify(viewFor('table', state))).not.toContain('fleeing');
+  });
+
+  it('numbers a member and a silver token, the GM\'s alone, and only who is on stage', () => {
+    const t = tavern();
+    let state = run(t.state, spawn(t, cube(5, 1, 5))).state;
+    const goblin = silverOf(state, t.poiId)[0]!.id as string;
+    const at = (id: string, order: number | null): Intent => ({ kind: 'setOrder', placeId: t.placeId, poiId: t.poiId, id, order });
+    expect(run(state, at(goblin, 18), 'table').rejected).toBe('only the GM can do that');
+    expect(run(state, at('silver_nobody', 3)).rejected).toBe('nobody by that id is on stage there');
+    state = run(state, at(goblin, 18)).state;
+    state = run(state, at(t.aldra, 12)).state;
+    expect([...orderIn(state.activeSave!, t.poiId).entries()].sort()).toEqual([[goblin, 18], [t.aldra, 12]].sort());
+    // Not under undo: play state (R-140).
+    expect(state.history).toBe(t.state.history);
+    // And not the table's business.
+    expect(JSON.stringify(viewFor('table', state))).not.toContain('"order"');
+  });
+
+  it('forgets the number of a goblin taken away, on the way back in', () => {
+    const t = tavern();
+    let state = run(t.state, spawn(t, cube(5, 1, 5))).state;
+    const goblin = silverOf(state, t.poiId)[0]!.id as string;
+    state = run(state, { kind: 'setOrder', placeId: t.placeId, poiId: t.poiId, id: goblin, order: 9 }).state;
+    state = run(state, { kind: 'removeSilver', placeId: t.placeId, poiId: t.poiId, id: goblin }).state;
+    const reopened = openedWith(
+      { ...state, active: null, activeSave: null }, state.active!, state.activeSave!, NOW,
+      new Set(state.active!.places.map((p) => p.id)),
+    );
+    expect(orderIn(reopened.state.activeSave!, t.poiId).size).toBe(0);
+  });
+});
+

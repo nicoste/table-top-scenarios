@@ -34,6 +34,11 @@ the things that are genuinely hard to hold in your head.
 Explicitly out of scope, permanently: dice, initiative order, damage, conditions,
 spell effects, character sheets, rules lookup, chat, voice, accounts.
 
+**What "initiative order" means here** (D-312): the tool never *rolls* for
+an order, never knows *whose turn it is*, and has no *next turn*. A number the
+GM types beside each token, and a list that sorts by it, is state the GM set,
+not adjudication (R-1) — and that much is in scope (R-208).
+
 Explicitly in scope: 3D space, line of sight and cover, world/place navigation,
 travel time, world building, point of interest building, discovery, persistence.
 
@@ -3700,6 +3705,27 @@ apps/host/src/
 >
 > Panels that are about the surface rather than a tool — the map's levels,
 > the light, who is on stage — are not in it, and stay.
+
+> **R-208.** **Everyone on stage in a map is one list, in the GM's order**
+> (D-312). The party — while it is in that map — and every silver token there,
+> each with a number the GM types: **highest first, those without one last**,
+> and ties in the order the list hands them over, the party in roster order
+> and then everyone else as they were placed.
+>
+> **A number and a sort, nothing else** — section 1 says what that rules out.
+> Per map, so the cellar has its own order. Play state, so undo leaves it
+> alone (R-140), and the numbers of anybody no longer on stage are dropped
+> when the campaign next opens. The table is not sent them.
+>
+> **The list is where each kind is handled.** A party member's name picks
+> them up with Move (R-188), and their sight is set beside it (R-46) — the
+> party card keeps only what is about the whole party. A silver token is
+> renamed, hidden and removed here (R-206), and **its card opens a note**:
+> free text only the GM sees, *"wounded, fleeing"*, shown as a dim line under
+> its name and never sent. Not hit points — damage is the table's (R-1).
+>
+> **Notes are on silver tokens only.** Party members are the players'
+> characters, and keeping their state is not the tool's.
 
 > **R-188.** **Move: pick a token, aim at a floor, confirm** — the world's
 > travel sequence one surface down (R-132), on both screens.

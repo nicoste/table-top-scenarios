@@ -13,6 +13,7 @@ import {
   placementToJSON, placementFromJSON, tokensToJSON, tokensFromJSON,
   DAYLIGHT, OPEN_SKY, clampLighting, clampAmbience, cellsToJSON, cellsFromJSON,
   GROUND_FROM_TERRAIN, OPEN_WATER, ON_FOOT, asFacing, isImageId, silverToJSON, silverFromJSON,
+  orderToJSON, orderFromJSON,
 } from '@tt/domain';
 
 /** The light inside one place (R-182). */
@@ -308,6 +309,8 @@ export const SilverTokenWireSchema = z.object({
   name: z.string(),
   at: z.object({ x: z.number().int(), y: z.number().int(), z: z.number().int() }),
   hidden: z.boolean().optional(),
+  /** The GM's note (R-208). In the GM's view and on disk; never the table's. */
+  note: z.string().optional(),
 });
 export type SilverTokenWire = z.infer<typeof SilverTokenWireSchema>;
 
@@ -381,6 +384,12 @@ export const SaveWireSchema = z.object({
    * placed, which is what those saves meant — no bump (D-187).
    */
   silver: z.record(z.string(), z.array(SilverTokenWireSchema)).default({}),
+  /**
+   * The GM's numbers for who is on stage, by point of interest and token id
+   * (R-208). Absent before the ordered list: nobody numbered — no bump
+   * (D-187). Read leniently by the domain's own reader.
+   */
+  order: z.record(z.string(), z.record(z.string(), z.unknown())).default({}),
 });
 export type SaveWire = z.infer<typeof SaveWireSchema>;
 
@@ -561,6 +570,9 @@ export function encodeSave(save: Save): SaveWire {
     silver: Object.fromEntries(
       [...save.silver.keys()].sort().map((poiId) => [poiId, silverToJSON(save.silver.get(poiId)!)]),
     ),
+    order: Object.fromEntries(
+      [...save.order.keys()].sort().map((poiId) => [poiId, orderToJSON(save.order.get(poiId)!)]),
+    ),
   };
 }
 
@@ -635,6 +647,11 @@ export function decodeSave(wire: SaveWire): Save {
       Object.entries(wire.silver)
         .filter(([, silver]) => silver.length > 0)
         .map(([poiId, silver]) => [poiId, silverFromJSON(silver)]),
+    ),
+    order: new Map(
+      Object.entries(wire.order)
+        .map(([poiId, order]) => [poiId, orderFromJSON(order)] as const)
+        .filter(([, order]) => order.size > 0),
     ),
   };
 }

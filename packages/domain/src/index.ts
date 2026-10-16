@@ -106,8 +106,13 @@ export {
   pruneInside, pruneRanges, settleRanges,
   tokensFor, tokensIn, withTokens, settleTokens, pruneTokens,
   exploredIn, withExplored, pruneExplored, lookAround, forgetMap,
-  silverIn, withSilver, withoutStrays,
+  silverIn, withSilver, withoutStrays, orderIn, withStageOrder, tidyOrder,
 } from './save/index.js';
+
+export type { StageOrder, StageOrderJSON } from './order/index.js';
+export {
+  NO_ORDER, MIN_ORDER, MAX_ORDER, cleanOrder, withOrder, inOrder, onStage, orderToJSON, orderFromJSON,
+} from './order/index.js';
 
 export type { TokenTemplate, TokensLibrary, TokenTemplateJSON } from './library/index.js';
 export {
@@ -118,8 +123,8 @@ export {
 
 export type { SilverToken, SilverTokens, SilverTokenJSON } from './silver/index.js';
 export {
-  NO_SILVER, MAX_SILVER_NAME, SUFFIX_LETTERS,
-  silverAt, silverCubes, nameFor, whyNotPlace, spawnSilver, moveSilver, renameSilver, hideSilver,
+  NO_SILVER, MAX_SILVER_NAME, MAX_SILVER_NOTE, SUFFIX_LETTERS,
+  silverAt, silverCubes, nameFor, whyNotPlace, spawnSilver, moveSilver, renameSilver, hideSilver, noteSilver,
   removeSilver, onLibrary, settledSilver, silverInBand, silverShown, silverToJSON, silverFromJSON,
 } from './silver/index.js';
 

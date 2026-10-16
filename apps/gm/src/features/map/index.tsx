@@ -11,7 +11,7 @@ import {
   MAP_MAX_HEIGHT, MAP_MIN_DEPTH, BRUSHES, isFullRange, stepLabel,
 } from '@tt/domain';
 import type { LevelRange, Material, SwatchId } from '@tt/domain';
-import { ConfirmDelete, DraftInput, Tooltip } from '@tt/ui';
+import { ConfirmDelete, Tooltip } from '@tt/ui';
 import { LevelLadder } from '../levels/index.js';
 import { SwatchPalette } from '../swatches/index.js';
 
@@ -53,9 +53,6 @@ export interface PartyRow {
   readonly sight: number;
 }
 
-/** A range the field will take: whole cubes, none to two hundred (the intent's own bounds). */
-const isRange = (draft: string) => /^\d{1,3}$/.test(draft.trim()) && Number(draft) <= 200;
-
 interface Props {
   /** Which point of interest's map this is — for the heading. */
   readonly placeName: string;
@@ -77,8 +74,6 @@ interface Props {
   readonly partyHere: boolean;
   /** The roster, and where each of them stands in this map (R-184). */
   readonly party: readonly PartyRow[];
-  /** Picks a member up with the Move tool — the way in for one hard to click. */
-  onPickMember: (memberId: string) => void;
   /** Can they see it at all — Revealed, chunk Known, point of interest shown? */
   readonly partyCanSee: boolean;
   /** The band this map is cut to. Always present — an uncut map is its whole body. */
@@ -105,7 +100,7 @@ interface Props {
 
 export function MapPanel({
   placeName, poiName, map, blocks, dug, tool, brush, shifting, materials, swatch, hoverLabel,
-  partyHere, party, onPickMember, partyCanSee, range, levelling, onLevelling, partyView, onPartyView, seen,
+  partyHere, party, partyCanSee, range, levelling, onLevelling, partyView, onPartyView, seen,
   onTool, onBrush, onSwatch, onLeave, dispatch, placeId, poiId,
 }: Props) {
   const waiting = party.filter((member) => !member.standing).length;
@@ -132,40 +127,8 @@ export function MapPanel({
                 ? 'the whole place'
                 : `${bandName(range.lower, map.planes)} to ${bandName(range.upper, map.planes)}`}.
             </p>
-            {/*
-              Who is standing where (R-184). A row picks that member up with
-              Move, which is the way in for somebody hard to click — behind a
-              wall, or not placed yet.
-            */}
-            <ul className="tokens">
-              {party.map((member) => (
-                <li key={member.id}>
-                  <button onClick={() => onPickMember(member.id)}>
-                    <span className="chip" style={{ background: member.colour }} />
-                    <span className="nm">{member.name}</span>
-                    <span className="where">
-                      {!member.standing
-                        ? 'to place'
-                        : member.onTable ? 'standing' : 'not on the table'}
-                    </span>
-                  </button>
-                  {/* How far they see (R-46): here, inside a map, because a
-                      range of cubes means nothing on the world map (D-154). */}
-                  <Tooltip label={`How far ${member.name} sees, in cubes — 12 is 60 ft`} placement="right">
-                    <DraftInput
-                      className="sight"
-                      aria-label={`${member.name}'s sight, in cubes`}
-                      inputMode="numeric"
-                      value={String(member.sight)}
-                      valid={isRange}
-                      onCommit={(draft) => dispatch({
-                        kind: 'editMember', id: member.id, visionRange: Number(draft.trim()),
-                      })}
-                    />
-                  </Tooltip>
-                </li>
-              ))}
-            </ul>
+            {/* Who is standing where, and their sight, are in the On stage list
+                now — one list for everyone in the map, in the GM's order (R-208). */}
             <p className="hint" style={{ margin: '0 0 8px' }}>
               {waiting > 0
                 ? <>{waiting} to place — pick <b>Move</b> (key 3) and point at a floor; the next one is already in hand.</>

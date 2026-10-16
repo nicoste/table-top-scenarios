@@ -956,7 +956,7 @@ a realm or a city spanning several 200 m cells. Needs answers on what the extra
 cells *do*: are they drawn differently, are they all valid travel targets, can
 footprints overlap. Not blocking anything.
 
-### O-015 — Do token notes use the same structure? · `open`
+### O-015 — Do token notes use the same structure? · `resolved by D-312`
 `PlaceNote[]` is ordered with per-note visibility. `Token.notes` is currently a
 single GM-only string ("internal notes to record hp or whatever"). Making them the
 same shape would be consistent and would let the GM show a token's name and one
@@ -7729,4 +7729,50 @@ it is a fixed 28 px, so the name field beside it does not move when it
 changes. Measured: the field sits at the same x and width in both states.
 
 R-207 is new.
+
+### D-312 — One ordered list of everyone on stage, and a note per silver token · `agreed`
+Round 3 of D-307. R-208 is the rule; section 1 is amended as D-307 promised.
+
+**One list.** *"The list we use to have to show players on scene only, now
+should show all tokens."* The party card's member rows moved into *On stage*,
+beside the silver tokens, and the party card kept what is about the whole
+party: where they are, the Party's view, bringing them out, a fresh start.
+A member row still picks them up with Move and still sets their sight.
+
+**The number.** Whole, from −99 to 999 — any initiative a table rolls —
+typed in a box at the front of each row, blank for none. Highest first,
+blanks last, ties in the list's own order. Kept per map, in the save, by
+token id: member ids and silver ids never collide, so one record serves both
+kinds. Read through until the campaign next opens, when the numbers of
+anybody gone are dropped.
+
+**Section 1, amended rather than ignored.** It lists initiative order as
+permanently out of scope, and a numbered list sorted high-first looks like
+one. What is out is the tool *rolling*, *knowing whose turn it is*, and
+*advancing* a turn. A number the GM sets is state (R-1), and section 1 now
+says exactly that line.
+
+**Notes on silver tokens, not on the party.** The note is the GM's record of
+a goblin — wounded, fleeing, has the key. A party member's state is their
+player's, and a character sheet is out of scope. Opened from the token's own
+card in the list, since a row with a number, a card, a name, an eye and a ×
+has no room for another button; a dot on the card says one is there, and the
+note shows as a dim line under the name. Never sent: the table's view was
+checked for the note's text, and for the numbers. Answers O-015.
+
+**Checked on a copy of the GM's data**, with the real keyboard: 20 for one
+bartender, 18 for another, 12 for Galion, Turdorn left blank — the list read
+20, 18, 12, blank, and the numbers sat on the right ids in the save. A note
+typed into a card, kept on clicking away, there after a reload. Galion's
+name still picked him up with Move.
+
+**Three things seen on screen and fixed.** The silver names were cut to
+"Bartende" in the 228 px dock — inside a map the right dock is 264 px now.
+The note box used the browser's monospace, because the base control style
+listed `button, input, select` and not `textarea` (the place notes had
+styled theirs by hand). And the first pass at the numbers seemed not to
+commit — which was my scripted focus in a window without focus, not the
+list; typed for real, every number landed.
+
+R-208 is new; section 1 amended; O-015 closed.
 
