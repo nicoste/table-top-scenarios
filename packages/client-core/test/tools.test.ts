@@ -5,8 +5,7 @@ import { describe, it, expect } from 'vitest';
 import type { Cell, Pointed } from '@tt/client-core';
 import {
   clickAction, holdsSelection, tableAction, mapAction, mapHover, mapDrags, mapAllowed,
-  cameraAction, wheelZoom, CAMERA_HINT,
-} from '@tt/client-core';
+  cameraAction, wheelZoom, CAMERA_HINT, mapToolShows, worldToolShows } from '@tt/client-core';
 import type { MapAction, MapAim, MapReach } from '@tt/client-core';
 import { brushById } from '@tt/domain';
 import type { Tool } from '@tt/client-core';
@@ -630,5 +629,32 @@ describe('the dig modifier (R-160)', () => {
       mapAction('build', face, held({ alt: true, within: { lower: 1, upper: 4 } })),
       aim(),
     )).toEqual({ kind: 'stop', why: 'outside the levels you are showing' });
+  });
+});
+
+describe('the parts a tool brings with it (R-207)', () => {
+  it('shows a map tool only its own panels', () => {
+    expect(mapToolShows('build', 'material')).toBe(true);
+    expect(mapToolShows('paint', 'material')).toBe(true);
+    expect(mapToolShows('build', 'brush')).toBe(true);
+    // Spawn's library, and not the Material card it once inherited.
+    expect(mapToolShows('spawn', 'library')).toBe(true);
+    expect(mapToolShows('spawn', 'material')).toBe(false);
+    expect(mapToolShows('spawn', 'brush')).toBe(false);
+    for (const part of ['brush', 'material', 'library'] as const) expect(mapToolShows('move', part)).toBe(false);
+    expect(mapToolShows('build', 'library')).toBe(false);
+  });
+
+  it('shows a world tool only its own panels', () => {
+    expect(worldToolShows('paint', 'ground')).toBe(true);
+    expect(worldToolShows('cover', 'cover')).toBe(true);
+    expect(worldToolShows('height', 'brush')).toBe(true);
+    expect(worldToolShows('height', 'ground')).toBe(false);
+    expect(worldToolShows('places', 'markers')).toBe(true);
+    expect(worldToolShows('travel', 'travel')).toBe(true);
+    expect(worldToolShows('travel', 'brush')).toBe(false);
+    for (const part of ['brush', 'ground', 'cover', 'markers', 'travel'] as const) {
+      expect(worldToolShows('select', part), part).toBe(false);
+    }
   });
 });

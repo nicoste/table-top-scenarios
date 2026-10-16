@@ -35,6 +35,7 @@ export type { SilverMove } from './silver/index.js';
 export type { Carry } from './places/index.js';
 
 export {
+  worldToolShows, mapToolShows,
   clickAction, holdsSelection, tableAction, mapAction, mapHover, mapDrags, mapAllowed,
 } from './tools/index.js';
 
@@ -46,6 +47,6 @@ export type { Frames } from './metrics/index.js';
 export { cameraAction, wheelZoom, CAMERA_HINT } from './camera/index.js';
 export type { CameraAction } from './camera/index.js';
 export type {
-  ClickAction, TableAction, MapAction, MapHover, MapAim, MapReach, MapVerdict, FillReach,
+  ToolPart, ClickAction, TableAction, MapAction, MapHover, MapAim, MapReach, MapVerdict, FillReach,
   Pointed, Cell, Slot, Context,
 } from './tools/index.js';

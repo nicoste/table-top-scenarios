@@ -555,5 +555,9 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
 .stage-list li { display: flex; align-items: center; gap: 6px; }
 .stage-list li input { flex: 1 1 auto; min-width: 0; }
 .stage-list li.hidden .library-card, .stage-list li.hidden input { opacity: 0.55; }
-.stage-list .eye { font-size: 14px; padding: 2px 6px; }
+/* A fixed width, so showing and hiding never moves the name field beside it. */
+.stage-list .eye {
+  width: 28px; height: 26px; flex: none; padding: 0;
+  display: grid; place-items: center;
+}
 .stage-list .eye.off { color: var(--dim); }

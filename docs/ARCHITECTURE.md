@@ -3688,6 +3688,19 @@ apps/host/src/
 > an unseen goblin stands is refused, which tells the players something is
 > there. Bumping into something in the dark is the fiction.
 
+> **R-207.** **A panel that belongs to a tool is shown while that tool is in
+> hand, and never under another.** Its brush, its swatches, its markers, its
+> library: each tool names the parts it brings (`worldToolShows`,
+> `mapToolShows`), and a tool that names nothing shows nothing (D-311).
+>
+> **Listed, never excluded.** A condition written as *every tool but Move*
+> hands the next tool added a panel nobody chose for it — which is how Spawn
+> came to show a Material picker. The table is a `Record` over every tool, so
+> adding one is a compile error until somebody says what it shows.
+>
+> Panels that are about the surface rather than a tool — the map's levels,
+> the light, who is on stage — are not in it, and stay.
+
 > **R-188.** **Move: pick a token, aim at a floor, confirm** — the world's
 > travel sequence one surface down (R-132), on both screens.
 >

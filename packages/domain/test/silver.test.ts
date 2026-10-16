@@ -5,7 +5,7 @@ import {
   addTemplate, EMPTY_LIBRARY, createMap, setMapBlocks,
   NO_SILVER, NO_TOKENS, SUFFIX_LETTERS, nameFor, whyNotPlace, spawnSilver, moveSilver, renameSilver,
   hideSilver, removeSilver, onLibrary, settledSilver, silverAt, silverToJSON, silverFromJSON,
-  whyNotStand, placeToken, settled,
+  whyNotStand, placeToken, settled, silverShown, WHOLE_MAP,
 } from '@tt/domain';
 import type { BlockCoord, EncounterMap, MemberId, SilverTokens, SwatchId, Tokens } from '@tt/domain';
 
@@ -125,3 +125,28 @@ describe('placing and keeping silver tokens', () => {
     expect(silverFromJSON(JSON.parse(JSON.stringify(json)))).toEqual(list);
   });
 });
+
+describe('what the players may see (R-206)', () => {
+  const map = floor();
+  const list = (() => {
+    let tokens = spawnSilver(map, NO_TOKENS, NO_SILVER, goblin!, at(1, 1));
+    tokens = spawnSilver(map, NO_TOKENS, tokens, goblin!, at(2, 2));
+    tokens = spawnSilver(map, NO_TOKENS, tokens, goblin!, at(3, 3));
+    return hideSilver(tokens, tokens[2]!.id, true);
+  })();
+  const sight = new Set(['1,1,1', '3,1,3']);
+
+  it('is the ones in present sight and not hidden — the table and the Party\'s view alike', () => {
+    expect(silverShown(list, sight, WHOLE_MAP).map((t) => t.at)).toEqual([at(1, 1)]);
+  });
+
+  it('is nobody outside the band', () => {
+    expect(silverShown(list, sight, { lower: 4, upper: 9 })).toEqual([]);
+  });
+
+  it('is the same list when everyone may be seen', () => {
+    const open = hideSilver(list, list[2]!.id, false);
+    expect(silverShown(open, new Set(['1,1,1', '2,1,2', '3,1,3']), WHOLE_MAP)).toBe(open);
+  });
+});
+

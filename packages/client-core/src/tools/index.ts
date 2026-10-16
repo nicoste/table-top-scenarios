@@ -43,6 +43,47 @@ export interface Context {
 }
 
 /**
+ * The parts of the console a tool brings with it (R-207): its brush, its
+ * swatches, its library — shown while that tool is in hand, and never under
+ * another.
+ *
+ * **Listed, not excluded.** The Material card was written as "everything
+ * but Move", so the first tool added after it — Spawn — got a material
+ * picker it had no use for. Each tool now names what it shows, a tool that
+ * names nothing shows nothing, and `Record` makes the compiler ask about
+ * every new tool.
+ */
+export type ToolPart =
+  | 'brush' | 'ground' | 'cover' | 'markers' | 'travel'
+  | 'material' | 'library';
+
+const WORLD_PARTS: Record<Tool, readonly ToolPart[]> = {
+  select: [],
+  travel: ['travel'],
+  places: ['markers'],
+  height: ['brush'],
+  paint: ['brush', 'ground'],
+  cover: ['brush', 'cover'],
+};
+
+const MAP_PARTS: Record<MapTool, readonly ToolPart[]> = {
+  build: ['brush', 'material'],
+  paint: ['brush', 'material'],
+  move: [],
+  spawn: ['library'],
+};
+
+/** Whether this world tool brings this part with it (R-207). */
+export function worldToolShows(tool: Tool, part: ToolPart): boolean {
+  return WORLD_PARTS[tool].includes(part);
+}
+
+/** Whether this map tool brings this part with it (R-207). */
+export function mapToolShows(tool: MapTool, part: ToolPart): boolean {
+  return MAP_PARTS[tool].includes(part);
+}
+
+/**
  * Does this tool hold a selection?
  *
  * Only the neutral tool does. An inspector left open under Paint describes

@@ -7702,3 +7702,31 @@ Neither was the feature, and both would have read as one.
 
 R-206 is new; R-87a amended.
 
+### D-311 — Tools own their panels; the Party's view hides who the table cannot see · `agreed`
+Three from the GM, the first a general rule.
+
+**A tool's panels only while it is in hand.** *"While the spawn tool is
+active, the materials panel should be hidden. But this must be a general
+rule."* The cause was the shape of the condition: the Material card and the
+brush row said *not Move*, so Spawn, added after them, inherited both. The
+world's tools already named their own panels and had no such bug; the map's
+named the one tool they excluded. R-207 makes it one table for both surfaces,
+listed rather than excluded, and a `Record`, so a new tool cannot be added
+without saying what it shows. Checked on screen: Build and Paint show Material
+and Brush, Move shows neither, Spawn shows the Tokens Library alone.
+
+**The Party's view drew goblins the party cannot see.** It already promised to
+cut the picture by the rule that cuts the table's payload (D-271) — and kept
+that for blocks and fog, but drew every silver token the console held. The
+rule is now `silverShown` in `domain`, and the host's filter and the console's
+preview both call it, so they cannot disagree again. Checked: a bartender
+beside a party member inside the keep and another out on the shore; the GM's
+view shows both, the Party's view shows the one in sight.
+
+**The eye.** The visibility toggle is the eye a password field uses — open
+while the players may see the token, struck through while it is hidden — and
+it is a fixed 28 px, so the name field beside it does not move when it
+changes. Measured: the field sits at the same x and width in both states.
+
+R-207 is new.
+

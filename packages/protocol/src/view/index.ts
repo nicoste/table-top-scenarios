@@ -7,7 +7,7 @@ import {
   OPEN_SKY, sunReaches, litBy, MAP_MAX_HEIGHT,
   tokensFor, onRoster, tokensInBand, tokensToJSON,
   exploredIn, partySight, shownBy, seenPart, inRange, placeById, poiById, ON_FOOT,
-  silverIn, standsInBand, blockKey, templateById, libraryToJSON,
+  silverIn, silverShown, templateById, libraryToJSON,
 } from '@tt/domain';
 import type {
   CampaignWire, SaveWire, PlacementWire, MapWire, LightingWire, TokensWire, CellsWire,
@@ -278,8 +278,8 @@ function silverForTheTable(
   if (!shown?.poi.map) return null;
   const range = rangeFor(save, shown.poi.id);
   const sight = partySight(shown.poi.map, tokensFor(save, shown.poi.id), campaign.party);
-  return silverIn(save, shown.poi.id)
-    .filter((token) => !token.hidden && standsInBand(range, token.at) && sight.has(blockKey(token.at)))
+  // The rule the console's Party's view draws with, so the two cannot differ.
+  return silverShown(silverIn(save, shown.poi.id), sight, range)
     .map((token) => ({
       id: token.id,
       name: token.name,

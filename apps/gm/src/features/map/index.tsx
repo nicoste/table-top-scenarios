@@ -6,7 +6,7 @@
 
 import type { Intent, MapWire } from '@tt/protocol';
 import type { MapTool } from '@tt/client-core';
-import { CAMERA_HINT } from '@tt/client-core';
+import { CAMERA_HINT, mapToolShows } from '@tt/client-core';
 import {
   MAP_MAX_HEIGHT, MAP_MIN_DEPTH, BRUSHES, isFullRange, stepLabel,
 } from '@tt/domain';
@@ -304,7 +304,7 @@ export function MapPanel({
           the outline is the real label, since it takes the shape before the
           click. Not under Move, which lays nothing down (D-110's reason).
         */}
-        {tool !== 'move' && tool !== 'spawn' && (
+        {mapToolShows(tool, 'brush') && (
           <>
             <p className="lbl" style={{ margin: '8px 0 4px' }}>Brush</p>
             <div className="btn-grid brush">
@@ -366,7 +366,8 @@ export function MapPanel({
         <p className="hint">1–4 tool · 6–0 or [ ] brush · {CAMERA_HINT} · Esc leaves</p>
       </div>
 
-      {tool !== 'move' && (
+      {/* Build's and Paint's, and nobody else's (R-207). */}
+      {mapToolShows(tool, 'material') && (
         <div className="card">
           <h2>Material</h2>
           <SwatchPalette

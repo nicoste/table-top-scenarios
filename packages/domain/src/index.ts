@@ -120,7 +120,7 @@ export type { SilverToken, SilverTokens, SilverTokenJSON } from './silver/index.
 export {
   NO_SILVER, MAX_SILVER_NAME, SUFFIX_LETTERS,
   silverAt, silverCubes, nameFor, whyNotPlace, spawnSilver, moveSilver, renameSilver, hideSilver,
-  removeSilver, onLibrary, settledSilver, silverInBand, silverToJSON, silverFromJSON,
+  removeSilver, onLibrary, settledSilver, silverInBand, silverShown, silverToJSON, silverFromJSON,
 } from './silver/index.js';
 
 export type { Tokens, TokensJSON, Footing } from './tokens/index.js';

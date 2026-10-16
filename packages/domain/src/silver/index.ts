@@ -201,6 +201,21 @@ export function settledSilver(map: EncounterMap, silver: SilverTokens): SilverTo
   return next.length === silver.length ? silver : next;
 }
 
+/**
+ * The silver tokens the players may see (R-206): inside the band, in a cube
+ * the party sees **right now**, and not hidden by the GM.
+ *
+ * **One rule, two readers.** The host cuts the table's payload with it, and
+ * the console's Party's view draws with it — so the preview cannot show the
+ * GM a goblin the table will not get (D-311), which it did for one round
+ * because the console drew every token it held.
+ */
+export function silverShown(silver: SilverTokens, sight: ReadonlySet<string>, range: LevelRange): SilverTokens {
+  const next = silver.filter((token) =>
+    !token.hidden && standsInBand(range, token.at) && sight.has(blockKey(token.at)));
+  return next.length === silver.length ? silver : next;
+}
+
 /** The tokens standing inside a band (R-185). Identity-preserving. */
 export function silverInBand(silver: SilverTokens, range: LevelRange): SilverTokens {
   const next = silver.filter((token) => standsInBand(range, token.at));

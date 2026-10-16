@@ -10,6 +10,7 @@ import {
 } from '@tt/domain';
 import type { CoverId, SwatchId } from '@tt/domain';
 import type { Tool } from '@tt/client-core';
+import { worldToolShows } from '@tt/client-core';
 import { Tooltip } from '@tt/ui';
 import { SwatchPalette } from '../swatches/index.js';
 
@@ -31,8 +32,6 @@ interface Props {
 const costOf = (difficulty: number | 'impassable') =>
   (difficulty === 'impassable' ? '✕' : `×${difficulty}`);
 
-/** Which tools lay something down over an area, and so take a brush. */
-const BRUSHED: readonly Tool[] = ['paint', 'cover', 'height'];
 
 export function BuildWorldPanel({
   tool, ground, cover, brush, hoverLabel, onTool, onGround, onCover, onBrush,
@@ -100,7 +99,7 @@ export function BuildWorldPanel({
                     : <>Click an empty cell to place one, or a place to pick it up and move it. <b>Z / X</b> turn it; right-click puts it back.</>}
         </p>
 
-        {BRUSHED.includes(tool) && (
+        {worldToolShows(tool, 'brush') && (
         <div className="brush-group">
           <span className="brush-lbl">Brush</span>
           <div className="btn-grid brush">
@@ -125,7 +124,7 @@ export function BuildWorldPanel({
         pick one that the current tool will not apply is a standing invitation
         to wonder why nothing happened.
       */}
-      {tool === 'paint' && (
+      {worldToolShows(tool, 'ground') && (
         <div className="card">
           {/* The map's panel, unchanged (D-282). A world cell and a cube hold
               the same kind of value, so they are picked the same way — and
@@ -160,7 +159,7 @@ export function BuildWorldPanel({
         </div>
       )}
 
-      {tool === 'cover' && (
+      {worldToolShows(tool, 'cover') && (
         <div className="card">
           <h2>Cover</h2>
           <ul className="palette covers">

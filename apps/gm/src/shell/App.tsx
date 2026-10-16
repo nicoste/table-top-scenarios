@@ -5,7 +5,7 @@ import { decodeCampaign, decodePlacement, cellsFromWire, travellingToWire } from
 import {
   MAX_HEIGHT, WHOLE_MAP, rangeIn, stepBrush, WORLD_BRUSHES, BRUSHES, DEFAULT_BRUSH, brushById,
   routeAcross, toGlobal, DEFAULT_TRAVEL_MODES, discoveryFromJSON, asFacing, turned,
-  silverFromJSON, silverCubes, silverInBand, NO_SILVER,
+  silverFromJSON, silverCubes, silverInBand, silverShown, NO_SILVER,
   chunkAt, columnAt,
   creatableSlots, sameWorldCell,
   DEFAULT_MATERIALS, DEFAULT_FLOOR, mapFromJSON, fillRegion, sliceOf, inRange, inMap, blockAt,
@@ -24,6 +24,7 @@ import type { Present, Standing, StageFog } from '@tt/render';
 import type { Carry, SilverMove, Stride, Tool, Travel } from '@tt/client-core';
 import {
   emptyHanded, pickUp, turnCarried, canSetDown, setDownIntent, placesPrompt,
+  worldToolShows, mapToolShows,
   noSilverMove, grabSilver, aimSilverMove, silverMoveGhost, silverVerdict, silverMoveIntent,
   spawnIntent, silverMovePrompt, spawnPrompt,
   idle, pick, armed, aim, choose, ghostCell, aimedAt, travelIntent, travelPrompt,
@@ -590,13 +591,21 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    */
   useEffect(() => {
     if (!stage) return;
-    const shown = banded && openRange ? silverInBand(silverHere, openRange) : silverHere;
+    /*
+     * The Party's view draws what the table is sent, by the rule that cuts
+     * it (R-206): nobody hidden, nobody out of the party's present sight.
+     * Otherwise, while levelling, the band; otherwise everyone, hidden ones
+     * faint — the GM's own view.
+     */
+    const shown = previewing
+      ? silverShown(silverHere, sightWire ? cellsFromWire(sightWire) : NO_CELLS, openRange ?? WHOLE_MAP)
+      : banded && openRange ? silverInBand(silverHere, openRange) : silverHere;
     const pictureOf = (templateId: string) => library.find((entry) => entry.id === templateId)?.image ?? null;
     const present3d: Present[] = shown.map((token) => ({
       id: token.id, name: token.name, at: token.at, hidden: token.hidden, picture: pictureOf(token.templateId),
     }));
     stage.setSilver(present3d);
-  }, [stage, silverHere, banded, openRange?.lower, openRange?.upper, library]);
+  }, [stage, silverHere, banded, previewing, sightWire, openRange?.lower, openRange?.upper, library]);
 
   // The ghost of a silver token being moved, where it would stand.
   useEffect(() => {
@@ -1507,7 +1516,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       */}
       {status === 'open' && seat === 'gm' && campaign && openMapWire && openPlace && openPoi && (
         <div className="dock dock-right">
-          {mapTool === 'spawn' && (
+          {mapToolShows(mapTool, 'library') && (
             <LibraryPanel
               library={library}
               chosen={chosenTemplate}
@@ -1572,7 +1581,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
               onCover={setCover}
               onBrush={setBrush}
             />
-            {tool === 'places' && (
+            {worldToolShows(tool, 'markers') && (
               <PlacesPanel markerId={markerId} onMarker={setMarkerId} />
             )}
             {/*
@@ -1581,7 +1590,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
               pickers stay live through the costing step, because the route
               and the days recompute as they change.
             */}
-            {tool === 'travel' && (
+            {worldToolShows(tool, 'travel') && (
               <TravelPanel
                 modes={DEFAULT_TRAVEL_MODES}
                 travelling={travelling}

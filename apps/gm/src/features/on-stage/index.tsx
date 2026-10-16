@@ -8,6 +8,24 @@ import { ConfirmDelete, DraftInput, Tooltip } from '@tt/ui';
 
 const GREY = '#858c94';
 
+/**
+ * The eye a password field uses to show and hide what is typed (D-311): open
+ * while the players may see the token, struck through while it is hidden.
+ * Drawn here rather than borrowed — an outline and a circle, and a slash.
+ */
+function Eye({ hidden }: { readonly hidden: boolean }) {
+  return (
+    <svg
+      width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+    >
+      <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" />
+      <circle cx="12" cy="12" r="3" />
+      {hidden && <line x1="3" y1="3" x2="21" y2="21" />}
+    </svg>
+  );
+}
+
 interface Props {
   silver: readonly SilverTokenWire[];
   library: readonly TokenTemplateWire[];
@@ -64,7 +82,7 @@ export function OnStagePanel({ silver, library, placeId, poiId, dispatch }: Prop
                       aria-label={token.hidden ? `Show ${token.name}` : `Hide ${token.name}`}
                       onClick={() => dispatch({ kind: 'hideSilver', ...where, id: token.id, hidden: !token.hidden })}
                     >
-                      {token.hidden ? '◌' : '◉'}
+                      <Eye hidden={token.hidden === true} />
                     </button>
                   </Tooltip>
                 </ConfirmDelete>
