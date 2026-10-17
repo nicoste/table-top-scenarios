@@ -10,7 +10,7 @@ import {
 } from '../wire/index.js';
 import {
   MAX_HEIGHT, MAX_BRUSH, MAP_BRUSH_CELLS, MAX_TEMPLATE_NAME, MAX_TAG, MAX_TAGS, MAX_SILVER_NAME,
-  MAX_SILVER_NOTE, MIN_ORDER, MAX_ORDER, MAX_SHEET_URL,
+  MAX_SILVER_NOTE, MIN_ORDER, MAX_ORDER, MAX_SHEET_URL, MAX_MEMBER_NOTE,
 } from '@tt/domain';
 
 const cell = { cx: z.number().int(), cz: z.number().int(), x: CellIndex, z: CellIndex };
@@ -71,6 +71,11 @@ export const IntentSchema = z.discriminatedUnion('kind', [
     image: ImageIdSchema.nullable().optional(),
   }),
   z.object({ kind: z.literal('removeMember'), id: z.string().min(1) }),
+  /**
+   * The GM's note on one member (D-315); empty clears it. One note across
+   * every map, kept in the save. Never the table's.
+   */
+  z.object({ kind: z.literal('noteMember'), id: z.string().min(1), note: z.string().max(MAX_MEMBER_NOTE) }),
 
   // Points of interest
   /**

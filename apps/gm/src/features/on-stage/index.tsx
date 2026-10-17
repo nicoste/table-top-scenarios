@@ -7,14 +7,14 @@
 // an order. Per map, so the cellar has its own.
 //
 // Silver tokens are renamed, hidden, noted and taken away here (R-206);
-// party members are picked up for Move and given their sight, as the party
-// card used to (R-46, R-188).
+// party members are picked up for Move, given their sight, as the party card
+// used to (R-46, R-188), and noted (D-315).
 
-import { useState } from 'react';
 import type { Intent, SilverTokenWire, TokenTemplateWire } from '@tt/protocol';
 import { imageUrl } from '@tt/protocol';
 import { inOrder, orderFromJSON, MAX_ORDER, MIN_ORDER } from '@tt/domain';
 import { ConfirmDelete, DraftInput, Tooltip } from '@tt/ui';
+import { GmNote } from '../note/index.js';
 
 const GREY = '#858c94';
 
@@ -28,6 +28,8 @@ export interface PartyOnStage {
   readonly status: 'standing' | 'to place' | 'not on the table';
   /** How far they see, in cubes (R-46). */
   readonly sight: number;
+  /** The GM's note on them, the same in every map (D-315); empty for none. */
+  readonly note: string;
 }
 
 interface Props {
@@ -89,46 +91,7 @@ const isOrder = (draft: string) => {
 /** A sight the field will take: whole cubes, none to two hundred (the intent's own bounds). */
 const isSight = (draft: string) => /^\d{1,3}$/.test(draft.trim()) && Number(draft) <= 200;
 
-/**
- * The GM's note on a silver token (R-208): written in place, kept on leaving
- * the box or on ⌘/Ctrl + Enter, put back on Escape. A textarea, not a line:
- * "wounded, fleeing, has the key" is a sentence.
- */
-function NoteField({ value, name, onCommit, onClose }: {
-  value: string;
-  name: string;
-  onCommit: (note: string) => void;
-  /** Leaving the box closes it, whether or not anything was written. */
-  onClose: () => void;
-}) {
-  const [draft, setDraft] = useState(value);
-  return (
-    <textarea
-      className="stage-note"
-      value={draft}
-      maxLength={500}
-      rows={2}
-      autoFocus
-      placeholder={`A note on ${name} — only you see it`}
-      aria-label={`Note on ${name}`}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={() => { if (draft.trim() !== value) onCommit(draft); onClose(); }}
-      onKeyDown={(e) => {
-        if (e.key === 'Escape') {
-          const box = e.target as HTMLTextAreaElement;
-          setDraft(value);
-          // After the revert has rendered, so the blur finds nothing to keep.
-          requestAnimationFrame(() => box.blur());
-        }
-        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) (e.target as HTMLTextAreaElement).blur();
-      }}
-    />
-  );
-}
-
 export function OnStagePanel({ party, silver, order, library, placeId, poiId, dispatch, onPickMember }: Props) {
-  /** Whose note is open, if anyone's. */
-  const [noting, setNoting] = useState<string | null>(null);
   const where = { placeId, poiId };
   const entryOf = (templateId: string) => library.find((entry) => entry.id === templateId) ?? null;
   const numbers = orderFromJSON(order);
@@ -199,6 +162,12 @@ export function OnStagePanel({ party, silver, order, library, placeId, poiId, di
                       </span>
                     </Tooltip>
                   </div>
+                  {/* The same note in every map: it is the member's, not this map's (D-315). */}
+                  <GmNote
+                    note={member.note}
+                    name={member.name}
+                    onCommit={(note) => dispatch({ kind: 'noteMember', id: member.id, note })}
+                  />
                 </li>
               );
             }
@@ -268,22 +237,11 @@ export function OnStagePanel({ party, silver, order, library, placeId, poiId, di
                   The note, a row of its own across the whole width (D-313):
                   the note itself, or an offer to write one. Click to edit.
                 */}
-                {noting === row.id ? (
-                  <NoteField
-                    value={note}
-                    name={token.name}
-                    onCommit={(next) => dispatch({ kind: 'noteSilver', ...where, id: token.id, note: next })}
-                    onClose={() => setNoting(null)}
-                  />
-                ) : (
-                  <button
-                    className={`plain stage-note-line${note ? '' : ' empty'}`}
-                    onClick={() => setNoting(row.id)}
-                    title={note ? 'Edit the note — only you see it' : 'Only you see it'}
-                  >
-                    {note || 'Add a note…'}
-                  </button>
-                )}
+                <GmNote
+                  note={note}
+                  name={token.name}
+                  onCommit={(next) => dispatch({ kind: 'noteSilver', ...where, id: token.id, note: next })}
+                />
               </li>
             );
           })}

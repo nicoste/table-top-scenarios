@@ -17,6 +17,8 @@ import type { SilverTokens } from '../silver/index.js';
 import type { StageOrder } from '../order/index.js';
 import { NO_ORDER, onStage, withOrder } from '../order/index.js';
 import { NO_SILVER, onLibrary, settledSilver, silverCubes } from '../silver/index.js';
+import type { MemberNotes } from '../member-notes/index.js';
+import { NO_MEMBER_NOTES, notesOnRoster, withMemberNote } from '../member-notes/index.js';
 import type { Campaign } from '../campaign/index.js';
 import type { CuttingPlane, LevelRange } from '../planes/index.js';
 import { sameRange, settleRange } from '../planes/index.js';
@@ -152,6 +154,14 @@ export interface Save {
    * numbers carries no entry.
    */
   readonly order: ReadonlyMap<string, StageOrder>;
+  /**
+   * The GM's note on each party member, by member id (D-315). **Not** per
+   * map, unlike everything above it here: a goblin belongs to one map, and a
+   * member is the same person in every map. Play state, beside the silver
+   * notes, so undo leaves it alone (R-140) — and never sent to the table,
+   * which is not sent the save at all (R-85).
+   */
+  readonly memberNotes: MemberNotes;
 }
 
 /** Which map the party has gone into. Where they are, and nothing else. */
@@ -189,6 +199,7 @@ export function createLiveSave(campaign: Campaign, savedAt: string): Save {
     travelling: ON_FOOT,
     silver: new Map(),
     order: new Map(),
+    memberNotes: NO_MEMBER_NOTES,
   };
 }
 
@@ -469,9 +480,21 @@ export function pruneDiscovery(save: Save, livePlaceIds: ReadonlySet<PlaceId>): 
   return withDiscovery(save, { chunks: save.discovery.chunks, places });
 }
 
-/** The same tolerance for a member who has left the roster (D-155). */
+/**
+ * The same tolerance for a member who has left the roster (D-155): where
+ * they stood on the world, and the GM's note on them (D-315). Read through
+ * the roster until then, so undoing a removal brings the note back with them.
+ */
 export function pruneMembers(save: Save, liveMemberIds: ReadonlySet<MemberId>): Save {
-  return withPlacement(save, prunePlacement(save.placement, liveMemberIds));
+  const placed = withPlacement(save, prunePlacement(save.placement, liveMemberIds));
+  const notes = notesOnRoster(placed.memberNotes, liveMemberIds as ReadonlySet<string>);
+  return notes === placed.memberNotes ? placed : { ...placed, memberNotes: notes };
+}
+
+/** Writes the GM's note on one member, or clears it (D-315). Identity-preserving (R-165). */
+export function withNoteOn(save: Save, memberId: MemberId | string, note: string): Save {
+  const notes = withMemberNote(save.memberNotes, memberId as string, note);
+  return notes === save.memberNotes ? save : { ...save, memberNotes: notes };
 }
 
 /**

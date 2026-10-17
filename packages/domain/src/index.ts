@@ -106,8 +106,13 @@ export {
   pruneInside, pruneRanges, settleRanges,
   tokensFor, tokensIn, withTokens, settleTokens, pruneTokens,
   exploredIn, withExplored, pruneExplored, lookAround, forgetMap,
-  silverIn, withSilver, withoutStrays, orderIn, withStageOrder, tidyOrder,
+  silverIn, withSilver, withoutStrays, orderIn, withStageOrder, tidyOrder, withNoteOn,
 } from './save/index.js';
+
+export type { MemberNotes, MemberNotesJSON } from './member-notes/index.js';
+export {
+  NO_MEMBER_NOTES, MAX_MEMBER_NOTE, withMemberNote, notesOnRoster, memberNotesToJSON, memberNotesFromJSON,
+} from './member-notes/index.js';
 
 export type { StageOrder, StageOrderJSON } from './order/index.js';
 export {

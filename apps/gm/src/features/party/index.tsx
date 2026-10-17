@@ -7,21 +7,25 @@
 
 import { useState } from 'react';
 import type { Intent, PlacementWire } from '@tt/protocol';
+import type { MemberNotes } from '@tt/domain';
 import type { CampaignWire } from '@tt/protocol';
 import { imageUrl } from '@tt/protocol';
 import { uploadPicture } from '@tt/client-core';
 import { ColourInput, DraftInput, PictureInput, Tooltip } from '@tt/ui';
 import { PictureCrop } from '../picture-crop/index.js';
+import { GmNote } from '../note/index.js';
 
 interface Props {
   campaign: CampaignWire;
   placement: PlacementWire | null;
   /** False until some chunk is Known: the party cannot stand in fog (R-131). */
   canPlace: boolean;
+  /** The GM's notes on the members, the same ones On stage shows (D-315). */
+  notes: MemberNotes;
   dispatch: (intent: Intent) => void;
 }
 
-export function PartyPanel({ campaign, placement, canPlace, dispatch }: Props) {
+export function PartyPanel({ campaign, placement, canPlace, notes, dispatch }: Props) {
   /** Whose picture is being stored, if anyone's. */
   const [busy, setBusy] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
@@ -126,6 +130,12 @@ export function PartyPanel({ campaign, placement, canPlace, dispatch }: Props) {
               />
             </div>
           </div>
+          {/* Across maps, so here on the world as well as On stage in a map. */}
+          <GmNote
+            note={notes.get(m.id) ?? ''}
+            name={m.name}
+            onCommit={(note) => dispatch({ kind: 'noteMember', id: m.id, note })}
+          />
         </div>
       ))}
       {problem && <p className="warn">{problem}</p>}

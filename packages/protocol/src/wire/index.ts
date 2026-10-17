@@ -13,7 +13,7 @@ import {
   placementToJSON, placementFromJSON, tokensToJSON, tokensFromJSON,
   DAYLIGHT, OPEN_SKY, clampLighting, clampAmbience, cellsToJSON, cellsFromJSON,
   GROUND_FROM_TERRAIN, OPEN_WATER, ON_FOOT, asFacing, isImageId, silverToJSON, silverFromJSON,
-  orderToJSON, orderFromJSON,
+  orderToJSON, orderFromJSON, memberNotesToJSON, memberNotesFromJSON,
 } from '@tt/domain';
 
 /** The light inside one place (R-182). */
@@ -392,6 +392,13 @@ export const SaveWireSchema = z.object({
    * (D-187). Read leniently by the domain's own reader.
    */
   order: z.record(z.string(), z.record(z.string(), z.unknown())).default({}),
+  /**
+   * The GM's note on each party member, by member id (D-315). Absent before
+   * there were any: nobody noted — no bump (D-187). Read leniently by the
+   * domain's own reader. The GM's view carries it with the save; the table is
+   * never sent the save (R-85).
+   */
+  memberNotes: z.record(z.string(), z.unknown()).default({}),
 });
 export type SaveWire = z.infer<typeof SaveWireSchema>;
 
@@ -575,6 +582,7 @@ export function encodeSave(save: Save): SaveWire {
     order: Object.fromEntries(
       [...save.order.keys()].sort().map((poiId) => [poiId, orderToJSON(save.order.get(poiId)!)]),
     ),
+    memberNotes: memberNotesToJSON(save.memberNotes),
   };
 }
 
@@ -655,6 +663,7 @@ export function decodeSave(wire: SaveWire): Save {
         .map(([poiId, order]) => [poiId, orderFromJSON(order)] as const)
         .filter(([, order]) => order.size > 0),
     ),
+    memberNotes: memberNotesFromJSON(wire.memberNotes),
   };
 }
 

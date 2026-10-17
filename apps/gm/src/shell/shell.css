@@ -355,6 +355,8 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
 .member .grid { display: grid; grid-template-columns: auto 1fr; gap: 4px 6px; margin-top: 6px; align-items: center; }
 .member label { color: var(--dim); font-size: 11.5px; }
 .member input[type=color] { padding: 0; height: 24px; }
+/* The note under a member on the world: flush with the rows above it. */
+.member .stage-note, .member .stage-note-line { margin: 6px 0 0; }
 
 /* A card's picture (R-204): a little 5:7 card, the shape it will be shown in. */
 .card-look { display: flex; align-items: center; gap: 6px; }
@@ -605,9 +607,10 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
 .stage-list .eye { width: var(--row); padding: 0; }
 .stage-list .eye.off { color: var(--dim); }
 /*
- * A silver token's second row: its note, small, across the whole width, or an
- * offer to write one (D-313) — and **the same box either way** (D-314): no
- * background for one and not the other. Only the words differ.
+ * A row's note, small, across the whole width, or an offer to write one
+ * (D-313) — a silver token's or a member's (D-315) — and **the same box
+ * either way** (D-314): no background for one and not the other. Only the
+ * words differ.
  */
 .stage-note { width: 100%; margin: 0 0 4px; font-size: 12px; resize: vertical; }
 .stage-note-line {

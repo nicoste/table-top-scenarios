@@ -293,6 +293,42 @@ describe('notes and the order of who is on stage (R-208)', () => {
   });
 });
 
+describe('notes on the party (D-315)', () => {
+  const noteOf = (state: HostState, memberId: string) => state.activeSave!.memberNotes.get(memberId);
+
+  it('keeps the GM\'s note on a member across every map, and never sends it to the table', () => {
+    const t = tavern();
+    const note: Intent = { kind: 'noteMember', id: t.aldra, note: 'owes the guild 50 gp' };
+    expect(run(t.state, note, 'table').rejected).toBe('only the GM can do that');
+    expect(run(t.state, { kind: 'noteMember', id: 'member_nobody', note: 'x' }).rejected).toBe('no such party member');
+    let state = run(t.state, note).state;
+    expect(noteOf(state, t.aldra)).toBe('owes the guild 50 gp');
+    // One note for the member, not one per map: the cellar finds it too.
+    state = run(state, { kind: 'enterMap', placeId: t.placeId, poiId: t.cellarId }).state;
+    expect((viewFor('gm', state) as GmView).save!.memberNotes).toEqual({ [t.aldra]: 'owes the guild 50 gp' });
+    expect(JSON.stringify(viewFor('table', state))).not.toContain('guild');
+    // Not under undo: play state, like a silver token's note (R-140).
+    expect(state.history).toBe(t.state.history);
+    // An empty note clears it.
+    state = run(state, { kind: 'noteMember', id: t.aldra, note: '  ' }).state;
+    expect(noteOf(state, t.aldra)).toBeUndefined();
+  });
+
+  it('keeps a removed member\'s note until the campaign next opens, so undoing the removal brings it back', () => {
+    const t = tavern();
+    let state = run(t.state, { kind: 'addMember', name: 'Brannoc' }).state;
+    const brannoc = state.active!.party[1]!.id as string;
+    state = run(state, { kind: 'noteMember', id: brannoc, note: 'cursed' }).state;
+    state = run(state, { kind: 'removeMember', id: brannoc }).state;
+    expect(noteOf(run(state, { kind: 'undo' }).state, brannoc)).toBe('cursed');
+    const reopened = openedWith(
+      { ...state, active: null, activeSave: null }, state.active!, state.activeSave!, NOW,
+      new Set(state.active!.places.map((p) => p.id)),
+    );
+    expect(noteOf(reopened.state, brannoc)).toBeUndefined();
+  });
+});
+
 describe('a library entry\'s sheet link on the host (D-313)', () => {
   it('keeps a web address and refuses to keep anything that runs code', () => {
     const t = tavern();

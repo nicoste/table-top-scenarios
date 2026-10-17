@@ -34,7 +34,7 @@ import {
   addTemplate, editTemplate, removeTemplate, templateById,
   silverIn, withSilver, withoutStrays, onLibrary, silverCubes, whyNotPlace,
   spawnSilver, moveSilver, renameSilver, hideSilver, removeSilver, noteSilver,
-  withStageOrder, tidyOrder,
+  withStageOrder, tidyOrder, withNoteOn,
 } from '@tt/domain';
 import type { HostState, Intent, Role } from '@tt/protocol';
 import { parseGround, parseCover, parseMarkerId, travellingFromWire } from '@tt/protocol';
@@ -503,6 +503,16 @@ function applyToCampaign(state: HostState, role: Role, intent: Intent, now: stri
       const party = removeMember(campaign.party, id);
       if (party === campaign.party) return reject(state, 'the party cannot be empty');
       return commit({ ...campaign, party });
+    }
+
+    case 'noteMember': {
+      // Play state, not the campaign: not undoable, like a silver token's
+      // note (R-140). The note stays when its member is removed and goes
+      // when the campaign next opens, so undoing a removal brings it back.
+      const save = state.activeSave;
+      if (!save) return reject(state, 'no save is open');
+      if (!campaign.party.some((m) => m.id === intent.id)) return reject(state, 'no such party member');
+      return commitSave(state, save, withNoteOn(save, intent.id, intent.note), now);
     }
 
     case 'moveToken':

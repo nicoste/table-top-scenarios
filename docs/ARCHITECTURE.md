@@ -3725,7 +3725,8 @@ apps/host/src/
 > its name and never sent. Not hit points — damage is the table's (R-1).
 >
 > **Notes are on silver tokens only.** Party members are the players'
-> characters, and keeping their state is not the tool's.
+> characters, and keeping their state is not the tool's. *(Reversed by
+> D-315: see the amendment below.)*
 >
 > **Amended by D-313.** A silver row is two rows: the number, the picture, the
 > name, and the eye and × side by side; then the note across the whole width,
@@ -3739,6 +3740,16 @@ apps/host/src/
 > **Amended by D-314.** Every control in a first row is **one height**, party
 > and silver alike; the note line under it looks the same written or empty —
 > plain, smaller, dim and in italics when empty.
+>
+> **Amended by D-315.** **A party member has a note too** — the GM's, a line
+> such as *"owes the guild 50 gp"*, never a sheet. One per member **across
+> every map**, since a member is the same person in the tavern and the cellar
+> where a goblin is one map's: shown under their row On stage and under their
+> name in the Party panel on the world, the same note in both. Kept in the
+> save (`memberNotes`), play state beside the silver notes, so undo leaves it
+> alone (R-140); the table is never sent the save, so it cannot reach the
+> players by mistake (R-85). A removed member's note stays until the campaign
+> next opens, so undoing the removal brings it back; a fresh start keeps it.
 
 > **R-188.** **Move: pick a token, aim at a floor, confirm** — the world's
 > travel sequence one surface down (R-132), on both screens.

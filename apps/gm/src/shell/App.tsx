@@ -12,7 +12,7 @@ import {
   bottomOfMap, cutOf, cutIdIn, familyOf, sunReaches, litBy, MAP_MAX_HEIGHT,
   DAYLIGHT, clampLighting,
   NO_TOKENS, tokensIn, onRoster, unplaced, tokensInBand, standsInBand, standingAt,
-  NO_CELLS, shownBy,
+  NO_CELLS, shownBy, memberNotesFromJSON,
 } from '@tt/domain';
 import type {
   SwatchId, CoverId, Lighting, Ambience, MemberId, Tokens, BlockCoord, Route, Travelling,
@@ -381,6 +381,8 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   const memberColour = (id: string) => roster?.find((member) => member.id === id)?.colour ?? '#ffffff';
   /** Their card's picture, or `null` for the colour (R-204). */
   const memberPicture = (id: string) => roster?.find((member) => member.id === id)?.image ?? null;
+  /** The GM's notes on the members, one each across every map (D-315). */
+  const memberNotes = useMemo(() => memberNotesFromJSON(view?.save?.memberNotes), [view?.save?.memberNotes]);
 
   const cellKey = (c: { cx: number; cz: number; x: number; z: number }) => `${c.cx}:${c.cz}:${c.x}:${c.z}`;
   const memberName = (id: string) => campaign?.party.find((m) => m.id === id)?.name ?? null;
@@ -1535,6 +1537,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
                 picture: memberPicture(row.id),
                 status: !row.standing ? 'to place' as const : row.onTable ? 'standing' as const : 'not on the table' as const,
                 sight: row.sight,
+                note: memberNotes.get(row.id) ?? '',
               }))
               : []}
             silver={silverWire ?? []}
@@ -1667,6 +1670,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
               campaign={campaign}
               placement={placement}
               canPlace={knownChunks.size > 0}
+              notes={memberNotes}
               dispatch={dispatch}
             />
           </div>

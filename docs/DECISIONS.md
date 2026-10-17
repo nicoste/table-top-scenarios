@@ -7841,3 +7841,48 @@ the mosaic as it does a single card. Checked on a copy of the GM's data:
 Galion above Turdorn on the grouped standee.
 
 R-201 and R-208 amended. O-022 is closed.
+
+### D-315 — A note on each party member, across maps · `agreed`
+*"How hard do you think it's to add the option to add notes for players too?
+Only visible for the GM and living across maps or per map, whatever it
+matches better for our coding structure."*
+
+This reverses a line of D-312, which kept notes to silver tokens because a
+member's state is their player's. The GM wants a line of their own about each
+character, and a line is not a sheet: still no hit points, no stats (R-1).
+
+**Across maps, not per map.** Every other thing the save keeps about the
+stage is per map, and that is right for them: a goblin, a number in a fight,
+where somebody stood are all one map's. A member is the same person in every
+map, and *"owes the guild 50 gp"* goes with them into the cellar. So one note
+per member, in the save beside the per-map records rather than inside them
+(`memberNotes`).
+
+**In the save, not on the member in the campaign.** Two reasons, and the
+second is the one that decided it. The note is play state like a silver
+token's, so undo leaves it alone (R-140) — the GM was asked and chose the
+simplest consistent answer, which is no undo. And the table is sent the
+campaign but **never the save**: a note on the member would ride to the table
+with the roster unless every path remembered to cut it, the way place notes
+are cut (R-85); a note in the save cannot get there at all. Checked on the
+live socket of a copy of the GM's data, not only in the test.
+
+**Where it shows.** Under the member's row On stage, inside a map, and under
+their name in the Party panel on the world — the same note in both, since it
+is the same everywhere. One component for both kinds of note (`GmNote`), the
+silver token's included, so the keys (click to write, ⌘/Ctrl + Enter or
+leaving to keep, Escape to put back) cannot drift between them.
+
+**When it goes.** Removing a member leaves the note in the save until the
+campaign next opens, as their position on the world already was: so undoing
+the removal brings the note back with them. A fresh start keeps it, as it
+keeps the silver tokens. A duplicated campaign starts with no notes, as it
+starts with a fresh save.
+
+Checked on a copy of the GM's data with the real keyboard: a note written in
+the Party panel on the world appeared under the same member On stage in
+Tollkeep; one written On stage was kept with ⌘Enter; both lines measured the
+same plain 22 px box as the empty ones, and every first-row control 28 px; the
+save file held both; the table's view held neither, nor the field.
+
+R-208 amended.
