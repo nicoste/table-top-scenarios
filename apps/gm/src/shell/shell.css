@@ -567,37 +567,56 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
  * and what that kind of token can be asked to do. A silver token's note sits
  * under its row.
  */
-.stage-list { max-height: 420px; }
+.stage-list { max-height: 420px; --row: 28px; }
 .stage-list li { display: flex; flex-direction: column; gap: 2px; }
-.stage-row { display: flex; align-items: center; gap: 6px; }
+/*
+ * **One height for everything in a row** (D-314): the card's own, 28 px.
+ * Each control used to keep its own padding — a full-size name field, a
+ * smaller number box, a bare party name — and the row read as five things
+ * at five heights. Heights are set on the controls themselves, because a
+ * tooltip wraps each one in a span of its own.
+ */
+.stage-row { display: flex; align-items: center; gap: 6px; min-height: var(--row); }
 .stage-row > input, .stage-row > .stage-name { flex: 1 1 auto; min-width: 0; }
+.stage-row input, .stage-row .stage-name, .stage-row .stage-actions button {
+  height: var(--row); padding-top: 0; padding-bottom: 0;
+}
+.stage-row input { padding-left: 8px; padding-right: 8px; }
 .stage-list input.stage-order {
-  width: 34px; flex: none; padding: 2px 4px; text-align: center; font-weight: 600;
+  width: 34px; flex: none; padding: 0 4px; text-align: center; font-weight: 600;
 }
 .stage-list input.stage-order::placeholder { color: var(--dim); font-weight: 400; }
+/*
+ * A party member's name is a button, a silver token's a field. Same border
+ * width and padding, so the two names start at the same place in the column.
+ */
 .stage-name {
-  display: flex; align-items: baseline; gap: 6px; text-align: left; padding: 4px 6px;
-  background: transparent; border-color: transparent;
+  display: flex; align-items: center; gap: 6px; text-align: left; padding: 0 8px;
+  background: transparent; border: 1px solid transparent;
 }
 .stage-name .nm { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .stage-name .where { flex: none; font-size: 11px; color: var(--dim); white-space: nowrap; }
 .stage-sight { display: flex; align-items: center; gap: 3px; flex: none; }
 .stage-sight .lbl { font-size: 11px; color: var(--dim); }
-.stage-sight input.sight { width: 34px; padding: 2px 4px; text-align: right; font-size: 11.5px; }
+.stage-sight input.sight { width: 34px; padding: 0 4px; text-align: right; font-size: 11.5px; }
+/* The eye and the ×, one group with no gap between them, each a 28 px square. */
+.stage-actions { display: flex; align-items: center; gap: 0; flex: none; }
+.stage-actions button { min-width: var(--row); padding: 0 6px; display: inline-grid; place-items: center; }
+.stage-list .eye { width: var(--row); padding: 0; }
+.stage-list .eye.off { color: var(--dim); }
 /*
- * A silver token's second row: its note across the whole width, or an offer
- * to write one (D-313). Click either to edit in place.
+ * A silver token's second row: its note, small, across the whole width, or an
+ * offer to write one (D-313) — and **the same box either way** (D-314): no
+ * background for one and not the other. Only the words differ.
  */
 .stage-note { width: 100%; margin: 0 0 4px; font-size: 12px; resize: vertical; }
 .stage-note-line {
-  width: 100%; margin: 0 0 4px; padding: 3px 6px; text-align: left; font-size: 11.5px; color: var(--ink);
-  background: #ffffff08; border: 1px solid transparent; border-radius: 6px;
+  width: 100%; margin: 0 0 4px; padding: 2px 8px; text-align: left; font-size: 11.5px; line-height: 1.4;
+  color: var(--ink); background: transparent; border: 1px solid transparent; border-radius: 6px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;
 }
-.stage-note-line.empty { color: var(--dim); font-style: italic; background: transparent; }
-.stage-note-line:hover:not(:disabled) { background: #ffffff10; border-color: var(--edge); }
-/* The eye and the ×, one group with no gap between them. */
-.stage-actions { display: flex; align-items: center; gap: 0; flex: none; }
+.stage-note-line.empty { color: var(--dim); font-style: italic; }
+.stage-note-line:hover:not(:disabled) { background: #ffffff0d; border-color: var(--edge); }
 /*
  * The picture as the way to the sheet (D-313): a chain link over it on hover,
  * and only when there is a sheet — a plain picture promises nothing.
@@ -610,9 +629,3 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
 .sheet-link:hover .link-badge, .sheet-link:focus-visible .link-badge { opacity: 1; }
 .library-url-warn { margin: -4px 0 8px; font-size: 11px; }
 .stage-list li.hidden .library-card, .stage-list li.hidden .stage-row > input { opacity: 0.55; }
-/* A fixed width, so showing and hiding never moves the name field beside it. */
-.stage-list .eye {
-  width: 28px; height: 26px; flex: none; padding: 0;
-  display: grid; place-items: center;
-}
-.stage-list .eye.off { color: var(--dim); }

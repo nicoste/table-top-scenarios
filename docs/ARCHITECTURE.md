@@ -3634,8 +3634,8 @@ apps/host/src/
 > screens and on both kinds of map (R-201). It shows the colour until the
 > picture has arrived — never a black card — and a picture is loaded **once
 > per page**, not per rebuild, or every step a token took would blink it back
-> to its colour. The party standing together has no face: it is nobody in
-> particular (O-022).
+> to its colour. The party standing together shows **everyone**: one card
+> tiled with each member's face, or colour, in roster order (D-314).
 
 > **R-205.** **The GM chooses which part of a picture goes on the card.** A
 > chosen file opens a dialog: the whole picture, dimmed outside a frame of the
@@ -3735,6 +3735,10 @@ apps/host/src/
 > nothing else — `cleanSheetUrl` keeps `http:` and `https:` and refuses the
 > rest, on the console, on the host and on reading the file — and it never
 > reaches the table.
+>
+> **Amended by D-314.** Every control in a first row is **one height**, party
+> and silver alike; the note line under it looks the same written or empty —
+> plain, smaller, dim and in italics when empty.
 
 > **R-188.** **Move: pick a token, aim at a floor, confirm** — the world's
 > travel sequence one surface down (R-132), on both screens.

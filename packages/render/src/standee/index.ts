@@ -16,10 +16,12 @@
 // 1.5 m and a world cell is 1.5 km, and the token is a symbol at both.
 
 import {
-  BoxGeometry, CylinderGeometry, DoubleSide, Group, Mesh, MeshBasicMaterial,
+  BoxGeometry, CanvasTexture, CylinderGeometry, DoubleSide, Group, Mesh, MeshBasicMaterial,
   MeshStandardMaterial, PlaneGeometry, SRGBColorSpace, TextureLoader,
 } from 'three';
 import type { BufferGeometry, Material, Texture } from 'three';
+import { coverCrop } from '@tt/domain';
+import { mosaicTiles } from './mosaic.js';
 
 /**
  * Gold for the party (D-254). Silver, for everything else, comes with silver
@@ -130,6 +132,13 @@ function pictureAt(url: string, onReady: () => void): Texture | null {
   return null;
 }
 
+/** A mosaic card's size in pixels: a card picture's, for the same sharpness (R-204). */
+const MOSAIC_WIDTH = 256;
+const MOSAIC_HEIGHT = Math.round(MOSAIC_WIDTH / (5 / 7));
+/** The lines between a mosaic's faces, and their colour: dark, so each face reads apart. */
+const MOSAIC_GAP = 6;
+const MOSAIC_LINES = '#1b1f26';
+
 /** How faint a faint standee is (R-206). */
 const FAINT = 0.35;
 
@@ -174,6 +183,15 @@ export interface Standees {
     faint?: boolean,
   ): { root: Group; turner: Group; proxy: Mesh };
   /**
+   * A standee whose card is a **mosaic** of several faces (D-314): the party
+   * travelling together, each member's picture — or colour, without one — in
+   * a tile of its own. Pictures still arriving are drawn as their colour and
+   * swapped in as they land.
+   */
+  makeMosaic(faces: readonly { readonly colour: string; readonly picture: string | null }[]): {
+    root: Group; turner: Group; proxy: Mesh;
+  };
+  /**
    * The same thing, translucent, for a move that has not happened yet. Its
    * card material comes back with it: a ghost is recoloured on every aim and
    * must never be rebuilt there.
@@ -185,6 +203,8 @@ export interface Standees {
 export function standees(pictures?: Pictures, metal: string = GOLD): Standees {
   const geometries: BufferGeometry[] = [];
   const materials: Material[] = [];
+  /** Mosaics' own canvases — unlike pictures, these belong to this set alone. */
+  const textures: Texture[] = [];
   /** Set by `dispose`, so a picture arriving afterwards touches nothing. */
   let disposed = false;
 
@@ -290,6 +310,64 @@ export function standees(pictures?: Pictures, metal: string = GOLD): Standees {
       }
       return { root, turner, proxy };
     },
+    makeMosaic(faces) {
+      const root = new Group();
+      const turner = new Group();
+      const canvas = document.createElement('canvas');
+      canvas.width = MOSAIC_WIDTH;
+      canvas.height = MOSAIC_HEIGHT;
+      const texture = new CanvasTexture(canvas);
+      texture.colorSpace = SRGBColorSpace;
+      const material = new MeshStandardMaterial({
+        map: texture, roughness: 0.85, metalness: 0, side: DoubleSide,
+      });
+      materials.push(material);
+      textures.push(texture);
+      const tiles = mosaicTiles(faces.length, MOSAIC_WIDTH, MOSAIC_HEIGHT, MOSAIC_GAP);
+
+      /*
+       * Drawn whole every time, which is cheap — one small canvas — and means
+       * a picture arriving late just triggers another draw rather than a
+       * patch to get right.
+       */
+      const draw = () => {
+        const pen = canvas.getContext('2d');
+        if (!pen) return;
+        pen.fillStyle = MOSAIC_LINES;
+        pen.fillRect(0, 0, canvas.width, canvas.height);
+        faces.forEach((face, i) => {
+          const tile = tiles[i]!;
+          const url = face.picture && pictures ? pictures.url(face.picture) : null;
+          const image = url ? loaded.get(url) : undefined;
+          const source = image?.ready
+            ? (image.texture.image as CanvasImageSource & { width: number; height: number })
+            : null;
+          if (source && source.width > 0) {
+            const { sx, sy, sw, sh } = coverCrop(source.width, source.height, tile.width / tile.height);
+            pen.drawImage(source, sx, sy, sw, sh, tile.x, tile.y, tile.width, tile.height);
+          } else {
+            pen.fillStyle = face.colour;
+            pen.fillRect(tile.x, tile.y, tile.width, tile.height);
+          }
+        });
+        texture.needsUpdate = true;
+      };
+      draw();
+      // Any picture not here yet redraws the mosaic when it lands.
+      for (const face of faces) {
+        if (!face.picture || !pictures) continue;
+        pictureAt(pictures.url(face.picture), () => {
+          if (disposed) return;
+          draw();
+          pictures.redraw();
+        });
+      }
+
+      turner.add(part(clip, gold), part(card, material));
+      root.add(part(base, gold), turner);
+      const proxy = new Mesh(proxyShape, unseen);
+      return { root, turner, proxy };
+    },
     ghost() {
       const ghostGold = new MeshStandardMaterial({
         color: metal, roughness: 0.45, metalness: 0,
@@ -315,6 +393,7 @@ export function standees(pictures?: Pictures, metal: string = GOLD): Standees {
       for (const geometry of geometries) geometry.dispose();
       // The pictures stay: they are shared by every set of standees (`loaded`).
       for (const material of materials) material.dispose();
+      for (const texture of textures) texture.dispose();
     },
   };
 }

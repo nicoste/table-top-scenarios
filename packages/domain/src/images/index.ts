@@ -52,3 +52,30 @@ export function imageType(id: ImageId): string {
  * request — so the host does not write a camera's raw 12 MB to disk.
  */
 export const MAX_IMAGE_BYTES = 512 * 1024;
+
+/**
+ * How much of a too-tall picture's excess comes off the **top**: a third,
+ * and two thirds off the bottom. Portraits keep the face high in the frame,
+ * so an even crop takes foreheads first. A too-wide picture is trimmed evenly
+ * from both sides, because nothing says which side matters.
+ */
+const TOP_SHARE = 1 / 3;
+
+/**
+ * The part of a `width` × `height` picture to keep so that it fills a frame
+ * of this aspect (width over height) without stretching — the picture covers
+ * the card, and what does not fit is cut away.
+ */
+export function coverCrop(
+  width: number,
+  height: number,
+  aspect: number,
+): { readonly sx: number; readonly sy: number; readonly sw: number; readonly sh: number } {
+  if (width <= 0 || height <= 0 || aspect <= 0) return { sx: 0, sy: 0, sw: width, sh: height };
+  if (width / height > aspect) {
+    const sw = height * aspect;
+    return { sx: (width - sw) / 2, sy: 0, sw, sh: height };
+  }
+  const sh = width / aspect;
+  return { sx: 0, sy: (height - sh) * TOP_SHARE, sw: width, sh };
+}

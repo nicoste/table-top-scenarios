@@ -8,6 +8,11 @@
 // they are rules and the dialog that draws them is not tested (R-23b).
 
 import { CARD_ASPECT } from '@tt/render';
+import { coverCrop } from '@tt/domain';
+
+// The cut itself is the domain's, so a card's picture and the party's mosaic
+// on the world map are cut by one rule (D-314).
+export { coverCrop };
 
 /**
  * How wide a card's picture is, in pixels. Tall enough for a card at the
@@ -16,33 +21,6 @@ import { CARD_ASPECT } from '@tt/render';
  */
 export const CARD_PICTURE_WIDTH = 256;
 export const CARD_PICTURE_HEIGHT = Math.round(CARD_PICTURE_WIDTH / CARD_ASPECT);
-
-/**
- * How much of a too-tall picture's excess comes off the **top**: a third,
- * and two thirds off the bottom. Portraits keep the face high in the frame,
- * so an even crop takes foreheads first. A too-wide picture is trimmed evenly
- * from both sides, because nothing says which side matters.
- */
-const TOP_SHARE = 1 / 3;
-
-/**
- * The part of a `width` × `height` picture to keep so that it fills a frame
- * of this aspect (width over height) without stretching — the picture covers
- * the card, and what does not fit is cut away.
- */
-export function coverCrop(
-  width: number,
-  height: number,
-  aspect: number,
-): { readonly sx: number; readonly sy: number; readonly sw: number; readonly sh: number } {
-  if (width <= 0 || height <= 0 || aspect <= 0) return { sx: 0, sy: 0, sw: width, sh: height };
-  if (width / height > aspect) {
-    const sw = height * aspect;
-    return { sx: (width - sw) / 2, sy: 0, sw, sh: height };
-  }
-  const sh = width / aspect;
-  return { sx: 0, sy: (height - sh) * TOP_SHARE, sw: width, sh };
-}
 
 /**
  * The paper a picture is laid on: what shows through wherever the picture is

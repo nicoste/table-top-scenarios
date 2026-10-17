@@ -52,14 +52,6 @@ export interface PartyPawns {
   dispose(): void;
 }
 
-/**
- * The colour of the pawn the whole party shares (O-022).
- *
- * Neutral on purpose: it is not any one member, and borrowing somebody's
- * colour would say it was.
- */
-const TOGETHER = '#e6e9ef';
-
 const centre = (cell: WorldCell) => ({
   x: cell.cx * CHUNK_SIZE + cell.x + 0.5,
   z: cell.cz * CHUNK_SIZE + cell.z + 0.5,
@@ -79,12 +71,19 @@ export function buildPartyPawns(
 
   const byId = new Map<string, PartyMember>(campaign.party.map((m) => [m.id, m]));
 
-  function addPawn(
-    cell: WorldCell, ref: PawnRef, hex: string, name: string | null, picture: string | null,
-  ): void {
+  /**
+   * One pawn on a cell: a member alone, with their card and name, or the
+   * party together, whose card is a **mosaic** of everyone's faces (D-314).
+   * It was a blank grey card, which said a token was there and nothing about
+   * who (O-022).
+   */
+  function addPawn(cell: WorldCell, ref: PawnRef, member: PartyMember | null): void {
     const { x, z } = centre(cell);
     const y = surfaceAt(campaign, cell);
-    const { root, turner, proxy } = shop.make(hex, picture);
+    const { root, turner, proxy } = member
+      ? shop.make(member.colour, member.image)
+      : shop.makeMosaic(campaign.party.map((one) => ({ colour: one.colour, picture: one.image })));
+    const name = member ? member.name : null;
     root.position.set(x, y, z);
     proxy.position.set(x, y, z);
     turning.push(turner);
@@ -106,15 +105,7 @@ export function buildPartyPawns(
   }
 
   for (const pawn of pawnsOf(placement, campaign.party)) {
-    const member = pawn.memberId ? byId.get(pawn.memberId) : null;
-    addPawn(
-      pawn.cell,
-      { memberId: pawn.memberId },
-      member?.colour ?? TOGETHER,
-      member ? member.name : null,
-      // The party together is nobody in particular, so no one's face (O-022).
-      member?.image ?? null,
-    );
+    addPawn(pawn.cell, { memberId: pawn.memberId }, pawn.memberId ? byId.get(pawn.memberId) ?? null : null);
   }
 
   // The ghost is built once and parked out of sight, because aiming moves the

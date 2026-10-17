@@ -28,6 +28,8 @@ export type { Picked, Present, SlotAddress, Standing, StageFog } from './stage/i
 
 export { buildPartyTokens } from './tokens/index.js';
 export { CARD_ASPECT } from './standee/index.js';
+export { mosaicGrid, mosaicTiles } from './standee/mosaic.js';
+export type { Tile } from './standee/mosaic.js';
 export type { Pictures } from './standee/index.js';
 export type { PartyTokens, TokenRef, TokenSpec } from './tokens/index.js';
 

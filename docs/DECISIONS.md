@@ -2174,7 +2174,7 @@ therefore cannot even *form* a move into an unknown chunk — R-131 is enforced 
 the sequence, which is honest: the prompt disappears, so it does not look like a
 click that did nothing.
 
-### O-022 — The group pawn is neutral-coloured · `open`
+### O-022 — The group pawn is neutral-coloured · `resolved by D-314`
 When the party is together its single pawn is off-white rather than any member's
 colour, since it is not any one of them. It reads well on water and grass and will
 read badly on sand or snow. Worth a look once there is a snowy map to look at.
@@ -7810,3 +7810,34 @@ focused note box drew one accent border and no outline.
 
 R-208 amended.
 
+### D-314 — One height for the On stage row, and the party's mosaic · `agreed`
+*"It's like each component has a different height. I agree to have a small
+note, but the first row should be standarized. Also, the note button with or
+without a note should look the same."*
+
+**One height for the first row.** The number, the name, the eye and the ×
+were each as tall as their own padding made them — a field, a button and an
+icon button are three different boxes — so the row looked stepped. Now the
+list sets one row height (28 px) and every control in the first row takes
+it, with the padding moved to the sides; the picture sits inside it. Measured
+on the GM's data: every control in every row 28 px, party and silver alike.
+
+**The note line looks the same written or empty.** It had a background only
+when it held text, which made a written note look like a different control
+from *Add a note…*. Both are now a plain line, transparent, smaller than the
+row above it; the empty one is dim and in italics. Either shows a faint box
+on hover, which is what says it can be clicked.
+
+**The party standing together shows everyone** — a mosaic of the members'
+cards on its one standee, in roster order: one column for two, two for up to
+six, three for up to nine, then a square. Each tile is cut from the member's
+picture by the same rule as a card (`coverCrop`, now in `domain` so `render`
+can use it), or filled with their colour, with a dark line between tiles. It
+was a blank grey card, which said a token was there and nothing about whose.
+A picture for the party itself was the other idea; the GM chose the mosaic as
+enough. The tiling is a pure function (`mosaicGrid`, `mosaicTiles`), tested;
+drawing it is the standee workshop's, and a picture arriving later redraws
+the mosaic as it does a single card. Checked on a copy of the GM's data:
+Galion above Turdorn on the grouped standee.
+
+R-201 and R-208 amended. O-022 is closed.
