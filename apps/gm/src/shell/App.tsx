@@ -19,7 +19,7 @@ import type {
   TravelModeId, Facing,
 } from '@tt/domain';
 import type { GmView, Intent } from '@tt/protocol';
-import { defaultTarget, worldCentre } from '@tt/render';
+import { defaultTarget, worldCentre, SILVER } from '@tt/render';
 import type { Present, Standing, StageFog } from '@tt/render';
 import type { Carry, SilverMove, Stride, Tool, Travel } from '@tt/client-core';
 import {
@@ -30,7 +30,7 @@ import {
   idle, pick, armed, aim, choose, ghostCell, aimedAt, travelIntent, travelPrompt,
   clickAction, holdsSelection, mapAction, mapHover, mapDrags, mapAllowed,
   cameraAction, wheelZoom, CAMERA_HINT,
-  still, grab, armedStride, tokenAim, aimStride, strideGhost, strideIntent, standVerdict,
+  still, grab, armedStride, tokenAim, aimStride, strideGhost, strideIntent, standVerdict, walkShown,
   tokenAction, stridePrompt,
 } from '@tt/client-core';
 import type { MapAction, MapReach, MapTool } from '@tt/client-core';
@@ -668,6 +668,30 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   const silverVerdictAt = (at: BlockCoord, self?: string) => (openBody
     ? silverVerdict(openBody, present, silverHere, at, banded && openRange ? openRange : null, self)
     : 'outside the map');
+
+  /**
+   * The walk the token being moved would take, and how far (R-209) — a party
+   * member's or a silver token's, whichever is in hand. Over the whole body,
+   * and while levelling only the band's floors, which are the ones drawn.
+   * Worked out when the aim changes cube, since both aims keep their identity
+   * until then.
+   */
+  const walk = useMemo(() => {
+    const may = banded && openRange
+      ? (at: BlockCoord) => standsInBand(openRange, at)
+      : undefined;
+    if (stride.step === 'aiming') {
+      return walkShown(openBody, present.get(stride.memberId as MemberId) ?? null, strideGhost(stride), may);
+    }
+    if (silverMove.step === 'aiming' && mapTool !== 'spawn') {
+      const from = silverHere.find((token) => token.id === silverMove.id)?.at ?? null;
+      return walkShown(openBody, from, silverMoveGhost(silverMove), may);
+    }
+    return null;
+  }, [openBody, stride, silverMove, mapTool, present, silverHere, banded, openRange?.lower, openRange?.upper]);
+  useEffect(() => {
+    stage?.showWalk(walk, stride.step === 'aiming' ? memberColour(stride.memberId) : SILVER);
+  }, [walk, stage]);
 
   // With nothing on the board there is no pawn to pick up, so the sequence
   // starts itself (D-167).

@@ -41,6 +41,8 @@ export {
 
 export { grabEnd } from './levels/index.js';
 
+export { NO_PATH, walkLength, walkShown } from './walk/index.js';
+
 export { FRAME_WINDOW, keepRecent, summarise, rate } from './metrics/index.js';
 export type { Frames } from './metrics/index.js';
 

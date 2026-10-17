@@ -11,6 +11,7 @@ export { HEIGHT_SCALE, buildWorldMeshes, columnCentre, worldCentre, surfaceAt } 
 export type { ColumnAddress, WorldMeshes } from './world/index.js';
 export { buildCovers, coverSignature } from './covers/index.js';
 export { routePatches, ROUTE_PATCH, ROUTE_LIFT } from './route/index.js';
+export type { WalkDrawn } from './walk/index.js';
 export type { CoverField } from './covers/index.js';
 
 export { MARKER_ZOOM, buildPlaceMarkers, markerSignature } from './places/index.js';
@@ -27,7 +28,7 @@ export type { StageCost } from './stage/index.js';
 export type { Picked, Present, SlotAddress, Standing, StageFog } from './stage/index.js';
 
 export { buildPartyTokens } from './tokens/index.js';
-export { CARD_ASPECT } from './standee/index.js';
+export { CARD_ASPECT, SILVER } from './standee/index.js';
 export { mosaicGrid, mosaicTiles } from './standee/mosaic.js';
 export type { Tile } from './standee/mosaic.js';
 export type { Pictures } from './standee/index.js';

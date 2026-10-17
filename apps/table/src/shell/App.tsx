@@ -10,16 +10,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { decodeCampaign, decodePlacement, cellsFromWire } from '@tt/protocol';
 import {
   CHUNK_SIZE, DEFAULT_MARKERS, DEFAULT_MATERIALS, mapFromJSON, clampLighting, tokensFromJSON,
-  allKnownIn, routeAcross, toGlobal,
+  allKnownIn, routeAcross, toGlobal, blockKey,
 } from '@tt/domain';
-import type { BlockCoord, Route, TravelModeId, Travelling } from '@tt/domain';
+import type { BlockCoord, MemberId, Route, TravelModeId, Travelling } from '@tt/domain';
 import type { Intent, TableView } from '@tt/protocol';
 import type { Stride, Travel } from '@tt/client-core';
 import {
   idle, pick, aim, ghostCell, canConfirm, movingFrom, aimedAt, travelIntent, travelPrompt,
   tableAction,
   cameraAction, wheelZoom, CAMERA_HINT,
-  still, grab, tokenAim, aimStride, strideGhost, strideIntent, standVerdict, tableCeiling,
+  still, grab, tokenAim, aimStride, strideGhost, strideIntent, standVerdict, tableCeiling, walkShown,
   tokenAction, stridePrompt,
 } from '@tt/client-core';
 import { defaultTarget, worldCentre } from '@tt/render';
@@ -299,6 +299,26 @@ export function App({ view, status, rejection, dispatch }: Props) {
   const strideVerdict = (memberId: string, at: BlockCoord) => (body
     ? standVerdict(body, standing, memberId, at, { ceiling: tableCeiling(body) }, seen, silverCubes)
     : 'outside the map');
+
+  /**
+   * The walk the token being moved would take, and how far (R-209), over
+   * what this screen holds: below its ceiling, and only floors the party has
+   * seen — a path drawn through a room nobody has looked into would draw the
+   * room (R-85's standard, R-131's reason).
+   */
+  const walk = useMemo(() => {
+    if (stride.step !== 'aiming' || !body) return null;
+    const ceiling = tableCeiling(body);
+    return walkShown(
+      body,
+      standing.get(stride.memberId as MemberId) ?? null,
+      strideGhost(stride),
+      (at) => at.y < ceiling && (!seen || seen.has(blockKey(at))),
+    );
+  }, [stride, body, standing, seen]);
+  useEffect(() => {
+    stage?.showWalk(walk, stride.step === 'aiming' ? colourOf(stride.memberId) : undefined);
+  }, [walk, stage]);
 
   // Escape cancels a move or closes an open place (R-132, R-139), and the
   // camera keys are the console's, unchanged — one table decides both (R-156).

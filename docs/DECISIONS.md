@@ -7886,3 +7886,57 @@ same plain 22 px box as the empty ones, and every first-row control 28 px; the
 save file held both; the table's view held neither, nor the field.
 
 R-208 amended.
+
+### D-316 — The walk a moving token would take, and how far · `agreed`
+*"Instead of limiting the movement, because it might vary depending on
+millions of possibilities, we should just show the amount of units up to the
+place where you point, showing the shortest path from current to target
+position."*
+
+Built as asked, with the GM's three answers:
+
+**Real distance, not a game's rules.** *"Orthogonal movement is 1, diagonal
+is 1.41, we are not building this to attach to existent rules, we want to
+have this tool as a tool for anybody."* So not 5e's every-diagonal-is-5-ft,
+nor its alternating variant: geometry.
+
+**Height the same way.** *"You can't move down or up only, that means you end
+in the air or inside a cube, at least you do up or down plus a direction, so
+that's a diagonal, right?"* Right: a stair is a step across and a step up,
+√2, and a stair taken diagonally √3. One block up or down per step — the
+recommended answer, kept — so a ledge two blocks high is walked round, and a
+pillar's top has no path.
+
+**No path says *no path*.** Not a straight line in a different style: the
+GM chose two words over a line that might be mistaken for one.
+
+**A bare number.** *"Don't use the term cubes or units, use just the number,
+for vision distance we just say 'sees 12' (twelve what? check by yourself
+lazy player!)"* `7` or `7.4`: one decimal, none when whole.
+
+Mine, stated so they can be argued with: no squeezing between two blocks that
+meet at their corners; room overhead to climb and over the edge to step down;
+other tokens are walked through, since only the end cube must be free; each
+screen routes over what it shows, which on the table means only floors the
+party has seen — a path through an unexplored room would draw the room. And
+each screen draws only its own aim: the GM's path is not on the table while
+they aim, as the GM's ghost never was (R-64).
+
+**The search** is the world route's shape (A*, a binary heap shared with it,
+and a budget), over the 24 ways out of a cube with the exact lower bound for
+those steps, so the walk found is the shortest. Measured at about 1 ms for a
+long walk on a 48 × 48 map and 9 ms for the worst case, a target nothing
+connects, which searches every floor; it runs when the aim changes cube, not
+on every pointer move. **The drawing** is the world route's squares (D-297)
+and a caption over the ghost, through the walls in front of the floors, as
+the world route is drawn over hills.
+
+Checked on a copy of the GM's data. Turdorn, outside the tavern, walked round
+its corner and a tree to read 35.6 on the console; on the table the same
+member read 34.8 to another floor, over explored ground only. Galion, inside
+the tavern, which has no door at ground level, read *no path* to the grass
+outside — correct, and found by asking the map rather than assuming. A
+silver token outside read 12.2 in grey; the one inside read *no path* to the
+roof.
+
+R-209 is new.

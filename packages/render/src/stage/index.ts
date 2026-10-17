@@ -30,6 +30,8 @@ import { surfaceMove, showWorldMarkers } from '../surface/index.js';
 import { surfaceAt } from '../world/index.js';
 import type { ColumnAddress, WorldMeshes } from '../world/index.js';
 import { routePatches, ROUTE_LIFT } from '../route/index.js';
+import type { WalkDrawn } from '../walk/index.js';
+import { buildWalkPreview } from '../walk/index.js';
 import type { Pictures } from '../standee/index.js';
 import type { SilverTokens3D } from '../silver/index.js';
 import { buildSilverTokens } from '../silver/index.js';
@@ -353,6 +355,8 @@ export class Stage {
   private present: readonly Present[] = [];
   /** Where the silver ghost is, for the same reason as `aimed`. */
   private silverAimed: BlockCoord | null = null;
+  /** The walk a token being moved would take, and how far (R-209). */
+  private readonly walk = buildWalkPreview();
   /** The party's fog, kept so a rebuilt body is drawn under it too (R-69). */
   private partyFog: StageFog | null = null;
   /**
@@ -516,7 +520,7 @@ export class Stage {
     // Under the highlight and the ghost: those say what a click will do, and
     // the route only says what the journey would be.
     this.routeMesh.renderOrder = 4;
-    this.scene.add(this.highlight, this.blockGhost, this.slots, this.fog, this.routeMesh);
+    this.scene.add(this.highlight, this.blockGhost, this.slots, this.fog, this.routeMesh, this.walk.group);
 
     /*
      * Ambient occlusion, as a post-process (R-168).
@@ -699,6 +703,8 @@ export class Stage {
     // A world route has no meaning inside a map (R-148), and the ribbon is
     // only ever shown while aiming anyway.
     if (!worldVisible) this.routeMesh.visible = false;
+    // And a walk has none outside one.
+    if (worldVisible) this.walk.show(null);
     this.fog.visible = worldVisible;
     if (this.grid) this.grid.visible = worldVisible;
     // The other way round: tokens stand in a map and nowhere else (R-148).
@@ -790,6 +796,15 @@ export class Stage {
     this.scene.add(this.silver.group);
     if (this.silverAimed) this.silver.aimAt(this.silverAimed);
     this.applySurface();
+  }
+
+  /**
+   * Draws the walk a token being moved would take, in the mover's colour, and
+   * how far it is — or clears it (R-209). Only inside a map.
+   */
+  showWalk(walk: WalkDrawn | null, colour?: string): void {
+    this.invalidate();
+    this.walk.show(this.showingMap ? walk : null, colour);
   }
 
   /** Puts the move ghost on a cube, in the mover's colour, or takes it off. */
@@ -1617,6 +1632,7 @@ export class Stage {
     this.world?.dispose();
     this.routeMesh.geometry.dispose();
     (this.routeMesh.material as MeshBasicMaterial).dispose();
+    this.walk.dispose();
     this.captions.domElement.remove();
     this.renderer.dispose();
   }

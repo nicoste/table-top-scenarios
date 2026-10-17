@@ -106,8 +106,11 @@ function octile(ax: number, az: number, bx: number, bz: number): number {
  * A binary heap, because the open set is read far more than it is written and
  * a sorted array turns the search quadratic exactly when the world gets big
  * enough to need a budget.
+ *
+ * Exported for the other search, inside a map (`../walk`), and not from the
+ * package: it is a tool of the two searches, not a thing in the domain.
  */
-class Frontier {
+export class Frontier {
   private readonly keys: number[] = [];
   private readonly scores: number[] = [];
 

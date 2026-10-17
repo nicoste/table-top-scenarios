@@ -51,6 +51,8 @@ export {
 } from './light/index.js';
 export type { Route } from './route/index.js';
 export { routeAcross, daysAcross, ROUTE_BUDGET } from './route/index.js';
+export type { Walk } from './walk/index.js';
+export { walkAcross, WALK_BUDGET } from './walk/index.js';
 export type { Material, Cut, Difficulty } from './materials/index.js';
 export type { Cover, CoverPart } from './covers/index.js';
 export {

@@ -3751,6 +3751,33 @@ apps/host/src/
 > players by mistake (R-85). A removed member's note stays until the campaign
 > next opens, so undoing the removal brings it back; a fresh start keeps it.
 
+> **R-209.** **A token being moved inside a map shows the walk it would take,
+> and how far — and limits nothing** (D-316). The world's route one surface
+> down (R-197), on R-133's principle: how far somebody may go turns on more
+> than the tool knows, so the move is allowed whatever the path says.
+>
+> - **Real distance, no game's rules.** A step across is 1, a diagonal √2.
+>   Nobody moves straight up or down, so a change of level comes with a step
+>   across: up a stair √2, diagonally √3. **One block up or down per step**,
+>   so a taller ledge is walked round.
+> - **Over floors somebody could stand on**, with the air clear between them:
+>   no walking through a block, no squeezing between two that meet at their
+>   corners, room overhead to climb and over the edge to step down. Other
+>   tokens are walked through; only the cube a move ends in must be free.
+> - **Each screen over what it shows**: the console within the band while
+>   levelling, the table under its ceiling and **only over floors the party
+>   has seen** — R-133's Known-cells rule, one surface down, so a path never
+>   draws a room nobody has looked into.
+> - **Drawn while aiming, on the screen that aims** (R-64): a square on each
+>   floor between the token and its ghost, in the mover's colour, and over the
+>   ghost **a bare number** — `7`, `7.4` — with no unit, as sight is "sees
+>   12". Where nothing connects them it says *no path*, and draws nothing.
+>   Nobody being placed for the first time has a walk: there is nowhere to
+>   measure from.
+>
+> `walkAcross` in `domain` is the search (A*, with a budget, as the world's);
+> `walkShown` in `client-core` is what both screens draw; the stage draws it.
+
 > **R-188.** **Move: pick a token, aim at a floor, confirm** — the world's
 > travel sequence one surface down (R-132), on both screens.
 >
