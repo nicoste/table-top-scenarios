@@ -7776,3 +7776,37 @@ list; typed for real, every number landed.
 
 R-208 is new; section 1 amended; O-015 closed.
 
+### D-313 — A sheet link per library entry, and the On stage row rearranged · `agreed`
+Four from the GM, built as asked.
+
+**A sheet link**, between the name and the tags in the library editor: *"an
+url, possibly pointing to an online sheet of it for quick stats review."* On
+the entry, not the token, because every goblin shares the goblin's stats.
+Opened from the console as a link, which is why it is cleaned by one rule in
+`domain` wherever it enters — the editor's field, the host's handler, the
+file on disk: only `http:` and `https:` survive, so a `javascript:` link
+cannot get in by any of the three doors. A scheme left off is added
+(`dndbeyond.com/…` becomes `https://dndbeyond.com/…`), and the editor says
+plainly when what was typed is not a web address and will not be kept.
+
+**The row, as the GM laid it out.** First row: number, picture, name, then
+the eye and the × with no gap between them. Second row: the note across the
+whole width, or *Add a note…*; click to write, as before. The picture had
+been the way into the note, which the GM found odd — it is the way to the
+**sheet** now, with a link icon over it on hover, and only when there is a
+sheet: a picture that offers nothing should not look as if it does.
+
+**The odd stroke on the note box** was the browser's own focus ring — a
+double outline drawn outside the box's border. Nothing in the console styled
+focus at all, so every text field had it; on a large box it looked like a
+mistake. Now one rule for every field: the border turns to the accent, and
+nothing is drawn outside it.
+
+Checked on a copy of the GM's data with the real keyboard: a `javascript:`
+link warned and was not kept; `dndbeyond.com/monsters/bartender` was kept as
+an `https:` address; the picture opened it in a new tab, isolated
+(`noopener`), with the link icon on hover; eye and × measured 0 px apart; the
+focused note box drew one accent border and no outline.
+
+R-208 amended.
+

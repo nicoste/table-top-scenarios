@@ -26,6 +26,12 @@ export interface TokenTemplate {
   readonly tags: readonly string[];
   /** The picture on its card; without one the card is plain grey (R-204). */
   readonly image: ImageId | null;
+  /**
+   * Where its stats live — an online sheet the GM opens for a quick look
+   * (D-313), or `null`. A web address and nothing else: it is opened from
+   * the console, so a `javascript:` link must never get in (`cleanSheetUrl`).
+   */
+  readonly url: string | null;
 }
 
 /** In the order entries were made; screens sort for themselves. */
@@ -36,6 +42,30 @@ export const EMPTY_LIBRARY: TokensLibrary = [];
 export const MAX_TEMPLATE_NAME = 40;
 export const MAX_TAG = 24;
 export const MAX_TAGS = 12;
+export const MAX_SHEET_URL = 500;
+
+/**
+ * A sheet's address as kept: a web address, or `null`.
+ *
+ * Typed by hand, so forgiving about the scheme — `dndbeyond.com/monsters/x`
+ * becomes `https://dndbeyond.com/monsters/x` — and strict about everything
+ * else: only `http:` and `https:` survive. It is opened as a link, and a link
+ * that runs code when clicked is not a sheet.
+ */
+export function cleanSheetUrl(raw: string | null | undefined): string | null {
+  const text = (raw ?? '').trim();
+  if (!text || text.length > MAX_SHEET_URL) return null;
+  const withScheme = /^[a-z][a-z0-9+.-]*:/i.test(text) ? text : `https://${text}`;
+  let parsed: URL;
+  try {
+    parsed = new URL(withScheme);
+  } catch {
+    return null;
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+  if (!parsed.hostname.includes('.') && parsed.hostname !== 'localhost') return null;
+  return parsed.href;
+}
 
 function cleanName(name: string | undefined, fallback: string): string {
   const trimmed = (name ?? '').replace(/\s+/g, ' ').trim().slice(0, MAX_TEMPLATE_NAME);
@@ -69,13 +99,19 @@ export function templateById(library: TokensLibrary, id: TemplateId | string): T
 /** Adds an entry. Its name defaults rather than refuses: a blank one is fixable. */
 export function addTemplate(
   library: TokensLibrary,
-  fields: { readonly name?: string; readonly tags?: readonly string[]; readonly image?: ImageId | null },
+  fields: {
+    readonly name?: string;
+    readonly tags?: readonly string[];
+    readonly image?: ImageId | null;
+    readonly url?: string | null;
+  },
 ): TokensLibrary {
   const template: TokenTemplate = {
     id: freshId<'TemplateId'>('template'),
     name: cleanName(fields.name, 'New token'),
     tags: cleanTags(fields.tags ?? []),
     image: fields.image ?? null,
+    url: cleanSheetUrl(fields.url),
   };
   return [...library, template];
 }
@@ -84,7 +120,12 @@ export function addTemplate(
 export function editTemplate(
   library: TokensLibrary,
   id: TemplateId | string,
-  patch: { readonly name?: string; readonly tags?: readonly string[]; readonly image?: ImageId | null },
+  patch: {
+    readonly name?: string;
+    readonly tags?: readonly string[];
+    readonly image?: ImageId | null;
+    readonly url?: string | null;
+  },
 ): TokensLibrary {
   let touched = false;
   const next = library.map((template) => {
@@ -92,11 +133,12 @@ export function editTemplate(
     const name = patch.name === undefined ? template.name : cleanName(patch.name, template.name);
     const tags = patch.tags === undefined ? template.tags : cleanTags(patch.tags);
     const image = patch.image === undefined ? template.image : patch.image;
-    const same = name === template.name && image === template.image
+    const url = patch.url === undefined ? template.url : cleanSheetUrl(patch.url);
+    const same = name === template.name && image === template.image && url === template.url
       && tags.length === template.tags.length && tags.every((tag, i) => tag === template.tags[i]);
     if (same) return template;
     touched = true;
-    return { ...template, name, tags, image };
+    return { ...template, name, tags, image, url };
   });
   return touched ? next : library;
 }
@@ -134,11 +176,12 @@ export interface TokenTemplateJSON {
   name: string;
   tags: string[];
   image: string | null;
+  url: string | null;
 }
 
 export function libraryToJSON(library: TokensLibrary): TokenTemplateJSON[] {
   return library.map((template) => ({
-    id: template.id, name: template.name, tags: [...template.tags], image: template.image,
+    id: template.id, name: template.name, tags: [...template.tags], image: template.image, url: template.url,
   }));
 }
 
@@ -160,6 +203,8 @@ export function libraryFromJSON(json: unknown): TokensLibrary {
       name: cleanName(typeof entry.name === 'string' ? entry.name : undefined, 'New token'),
       tags: cleanTags(Array.isArray(entry.tags) ? entry.tags.filter((t): t is string => typeof t === 'string') : []),
       image: isImageId(entry.image) ? entry.image : null,
+      // Cleaned on the way in too: a hand-edited file is an input like any other.
+      url: typeof entry.url === 'string' ? cleanSheetUrl(entry.url) : null,
     });
   }
   return out;

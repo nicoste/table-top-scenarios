@@ -3726,6 +3726,15 @@ apps/host/src/
 >
 > **Notes are on silver tokens only.** Party members are the players'
 > characters, and keeping their state is not the tool's.
+>
+> **Amended by D-313.** A silver row is two rows: the number, the picture, the
+> name, and the eye and × side by side; then the note across the whole width,
+> or *Add a note…* — click either to write. The picture opens the entry's
+> **sheet link** in a new tab when it has one, with a link icon over it on
+> hover; without one it is only a picture. A sheet link is a web address and
+> nothing else — `cleanSheetUrl` keeps `http:` and `https:` and refuses the
+> rest, on the console, on the host and on reading the file — and it never
+> reaches the table.
 
 > **R-188.** **Move: pick a token, aim at a floor, confirm** — the world's
 > travel sequence one surface down (R-132), on both screens.

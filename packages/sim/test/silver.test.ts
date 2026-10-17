@@ -293,3 +293,21 @@ describe('notes and the order of who is on stage (R-208)', () => {
   });
 });
 
+describe('a library entry\'s sheet link on the host (D-313)', () => {
+  it('keeps a web address and refuses to keep anything that runs code', () => {
+    const t = tavern();
+    let state = run(t.state, { kind: 'editTemplate', id: t.goblin, url: 'dndbeyond.com/monsters/goblin' }).state;
+    expect(state.library.find((e) => e.id === t.goblin)!.url).toBe('https://dndbeyond.com/monsters/goblin');
+    state = run(state, { kind: 'editTemplate', id: t.goblin, url: 'javascript:alert(1)' }).state;
+    expect(state.library.find((e) => e.id === t.goblin)!.url).toBeNull();
+  });
+
+  it('never reaches the table', () => {
+    const t = tavern();
+    let state = run(t.state, { kind: 'editTemplate', id: t.goblin, url: 'https://example.com/goblin-sheet' }).state;
+    state = run(state, spawn(t, cube(5, 1, 5))).state;
+    expect(tableSilver(state)).toHaveLength(1);
+    expect(JSON.stringify(viewFor('table', state))).not.toContain('goblin-sheet');
+  });
+});
+

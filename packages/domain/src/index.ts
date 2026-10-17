@@ -116,7 +116,7 @@ export {
 
 export type { TokenTemplate, TokensLibrary, TokenTemplateJSON } from './library/index.js';
 export {
-  EMPTY_LIBRARY, MAX_TEMPLATE_NAME, MAX_TAG, MAX_TAGS,
+  EMPTY_LIBRARY, MAX_TEMPLATE_NAME, MAX_TAG, MAX_TAGS, MAX_SHEET_URL, cleanSheetUrl,
   cleanTags, tagsFromText, templateById, addTemplate, editTemplate, removeTemplate, searchLibrary,
   libraryToJSON, libraryFromJSON,
 } from './library/index.js';

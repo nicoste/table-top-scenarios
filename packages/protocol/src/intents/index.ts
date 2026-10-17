@@ -10,7 +10,7 @@ import {
 } from '../wire/index.js';
 import {
   MAX_HEIGHT, MAX_BRUSH, MAP_BRUSH_CELLS, MAX_TEMPLATE_NAME, MAX_TAG, MAX_TAGS, MAX_SILVER_NAME,
-  MAX_SILVER_NOTE, MIN_ORDER, MAX_ORDER,
+  MAX_SILVER_NOTE, MIN_ORDER, MAX_ORDER, MAX_SHEET_URL,
 } from '@tt/domain';
 
 const cell = { cx: z.number().int(), cz: z.number().int(), x: CellIndex, z: CellIndex };
@@ -176,11 +176,17 @@ export const IntentSchema = z.discriminatedUnion('kind', [
    * The Tokens Library (D-307): shared across campaigns, so these work with
    * no campaign open, and campaign undo does not reach them. GM only.
    */
+  /*
+   * `url` is where its stats live (D-313). Any string reaches the host and
+   * is cleaned there by the domain's rule — only a web address survives —
+   * so the console's own check is a courtesy, not the guard.
+   */
   z.object({
     kind: z.literal('addTemplate'),
     name: z.string().max(MAX_TEMPLATE_NAME).optional(),
     tags: z.array(z.string().max(MAX_TAG)).max(MAX_TAGS).optional(),
     image: ImageIdSchema.nullable().optional(),
+    url: z.string().max(MAX_SHEET_URL).nullable().optional(),
   }),
   z.object({
     kind: z.literal('editTemplate'),
@@ -188,6 +194,7 @@ export const IntentSchema = z.discriminatedUnion('kind', [
     name: z.string().max(MAX_TEMPLATE_NAME).optional(),
     tags: z.array(z.string().max(MAX_TAG)).max(MAX_TAGS).optional(),
     image: ImageIdSchema.nullable().optional(),
+    url: z.string().max(MAX_SHEET_URL).nullable().optional(),
   }),
   /** Takes every token placed from it, in every campaign, with it (D-307). */
   z.object({ kind: z.literal('removeTemplate'), id: z.string().min(1) }),

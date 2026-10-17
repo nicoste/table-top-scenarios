@@ -64,6 +64,19 @@ function Eye({ hidden }: { readonly hidden: boolean }) {
   );
 }
 
+/** A chain link: the token's sheet, shown over its picture on hover (D-313). */
+function LinkIcon() {
+  return (
+    <svg
+      width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+    >
+      <path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.5 1.5" />
+      <path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.5-1.5" />
+    </svg>
+  );
+}
+
 /** A whole number in range, or blank for none. */
 const isOrder = (draft: string) => {
   const text = draft.trim();
@@ -117,7 +130,7 @@ export function OnStagePanel({ party, silver, order, library, placeId, poiId, di
   /** Whose note is open, if anyone's. */
   const [noting, setNoting] = useState<string | null>(null);
   const where = { placeId, poiId };
-  const pictureOf = (templateId: string) => library.find((entry) => entry.id === templateId)?.image ?? null;
+  const entryOf = (templateId: string) => library.find((entry) => entry.id === templateId) ?? null;
   const numbers = orderFromJSON(order);
 
   const rows = inOrder<Row>([
@@ -190,51 +203,71 @@ export function OnStagePanel({ party, silver, order, library, placeId, poiId, di
               );
             }
             const { token } = row;
-            const picture = pictureOf(token.templateId);
+            const entry = entryOf(token.templateId);
+            const picture = entry?.image ?? null;
+            const sheet = entry?.url ?? null;
             const hidden = token.hidden === true;
             const note = token.note ?? '';
+            const look = picture ? { backgroundImage: `url(${imageUrl(picture)})` } : { background: GREY };
             return (
               <li key={row.id} className={hidden ? 'hidden' : ''}>
                 <div className="stage-row">
                   {number(row, token.name)}
-                  {/* The card opens the note: the one thing a row has no room for. */}
-                  <Tooltip label={note ? 'Edit the note — only you see it' : 'Add a note — only you see it'} placement="left">
-                    <button
-                      className={`plain library-card note-card${note ? ' noted' : ''}`}
-                      aria-label={`Note on ${token.name}`}
-                      aria-expanded={noting === row.id}
-                      style={picture ? { backgroundImage: `url(${imageUrl(picture)})` } : { background: GREY }}
-                      onClick={() => setNoting(noting === row.id ? null : row.id)}
-                    />
-                  </Tooltip>
+                  {/*
+                    The picture opens the sheet, when the entry has one (D-313):
+                    a link icon over it on hover says so. Without a sheet it is
+                    only a picture — nothing to click, nothing promised.
+                  */}
+                  {sheet ? (
+                    <a
+                      className="library-card sheet-link"
+                      href={sheet}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={`Open ${entry?.name ?? token.name}'s sheet`}
+                      aria-label={`Open ${entry?.name ?? token.name}'s sheet`}
+                      style={look}
+                    >
+                      <span className="link-badge"><LinkIcon /></span>
+                    </a>
+                  ) : (
+                    <span className="library-card" style={look} />
+                  )}
                   <DraftInput
                     value={token.name}
                     valid={(name) => name.trim().length > 0}
                     onCommit={(name) => dispatch({ kind: 'renameSilver', ...where, id: token.id, name })}
                   />
-                  <ConfirmDelete
-                    label={`Take ${token.name} off the map`}
-                    confirmLabel="Remove"
-                    onConfirm={() => dispatch({ kind: 'removeSilver', ...where, id: token.id })}
-                  >
-                    {/* Only ever hides more (R-206). */}
-                    <Tooltip
-                      label={hidden
-                        ? 'Hidden from the players — click to let them see it when they can'
-                        : 'The players see it when the party can — click to hide it'}
-                      placement="left"
+                  {/* The eye and the × touch: they are one group of actions. */}
+                  <span className="stage-actions">
+                    <ConfirmDelete
+                      label={`Take ${token.name} off the map`}
+                      confirmLabel="Remove"
+                      onConfirm={() => dispatch({ kind: 'removeSilver', ...where, id: token.id })}
                     >
-                      <button
-                        className={`quiet eye${hidden ? ' off' : ''}`}
-                        aria-pressed={hidden}
-                        aria-label={hidden ? `Show ${token.name}` : `Hide ${token.name}`}
-                        onClick={() => dispatch({ kind: 'hideSilver', ...where, id: token.id, hidden: !hidden })}
+                      {/* Only ever hides more (R-206). */}
+                      <Tooltip
+                        label={hidden
+                          ? 'Hidden from the players — click to let them see it when they can'
+                          : 'The players see it when the party can — click to hide it'}
+                        placement="left"
                       >
-                        <Eye hidden={hidden} />
-                      </button>
-                    </Tooltip>
-                  </ConfirmDelete>
+                        <button
+                          className={`quiet eye${hidden ? ' off' : ''}`}
+                          aria-pressed={hidden}
+                          aria-label={hidden ? `Show ${token.name}` : `Hide ${token.name}`}
+                          onClick={() => dispatch({ kind: 'hideSilver', ...where, id: token.id, hidden: !hidden })}
+                        >
+                          <Eye hidden={hidden} />
+                        </button>
+                      </Tooltip>
+                    </ConfirmDelete>
+                  </span>
                 </div>
+                {/*
+                  The note, a row of its own across the whole width (D-313):
+                  the note itself, or an offer to write one. Click to edit.
+                */}
                 {noting === row.id ? (
                   <NoteField
                     value={note}
@@ -242,9 +275,13 @@ export function OnStagePanel({ party, silver, order, library, placeId, poiId, di
                     onCommit={(next) => dispatch({ kind: 'noteSilver', ...where, id: token.id, note: next })}
                     onClose={() => setNoting(null)}
                   />
-                ) : note && (
-                  <button className="plain stage-note-line" onClick={() => setNoting(row.id)} title="Edit the note">
-                    {note}
+                ) : (
+                  <button
+                    className={`plain stage-note-line${note ? '' : ' empty'}`}
+                    onClick={() => setNoting(row.id)}
+                    title={note ? 'Edit the note — only you see it' : 'Only you see it'}
+                  >
+                    {note || 'Add a note…'}
                   </button>
                 )}
               </li>

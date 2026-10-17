@@ -3,7 +3,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   EMPTY_LIBRARY, addTemplate, editTemplate, removeTemplate, templateById, searchLibrary,
-  cleanTags, tagsFromText, libraryToJSON, libraryFromJSON, MAX_TAGS,
+  cleanTags, tagsFromText, libraryToJSON, libraryFromJSON, MAX_TAGS, cleanSheetUrl,
 } from '@tt/domain';
 import type { ImageId, TokensLibrary } from '@tt/domain';
 
@@ -91,3 +91,41 @@ describe('the library on disk', () => {
     expect(libraryFromJSON({ not: 'a list' })).toEqual([]);
   });
 });
+
+describe('a sheet link (D-313)', () => {
+  it('keeps a web address', () => {
+    expect(cleanSheetUrl('https://www.dndbeyond.com/monsters/goblin')).toBe('https://www.dndbeyond.com/monsters/goblin');
+    expect(cleanSheetUrl('http://example.com/sheet?id=7')).toBe('http://example.com/sheet?id=7');
+  });
+
+  it('adds the scheme a GM leaves off', () => {
+    expect(cleanSheetUrl('  dndbeyond.com/monsters/goblin  ')).toBe('https://dndbeyond.com/monsters/goblin');
+  });
+
+  it('keeps nothing that would run code or is not on the web', () => {
+    // Opened as a link from the console: a link that runs code is not a sheet.
+    for (const bad of [
+      'javascript:alert(1)', 'JavaScript:alert(1)', 'data:text/html,<script>x</script>',
+      'file:///etc/passwd', 'ftp://example.com/x', 'vbscript:msgbox', 'not a link', 'goblin', '',
+    ]) {
+      expect(cleanSheetUrl(bad), bad).toBeNull();
+    }
+    expect(cleanSheetUrl(null)).toBeNull();
+    expect(cleanSheetUrl(`https://example.com/${'x'.repeat(600)}`)).toBeNull();
+  });
+
+  it('is kept on an entry, cleaned on the way in, and the same entry when nothing changed', () => {
+    const [entry] = addTemplate(EMPTY_LIBRARY, { name: 'Goblin', url: 'dndbeyond.com/monsters/goblin' });
+    expect(entry!.url).toBe('https://dndbeyond.com/monsters/goblin');
+    const lib = [entry!];
+    expect(editTemplate(lib, entry!.id, { url: 'https://dndbeyond.com/monsters/goblin' })).toBe(lib);
+    expect(templateById(editTemplate(lib, entry!.id, { url: 'javascript:alert(1)' }), entry!.id)!.url).toBeNull();
+    expect(templateById(editTemplate(lib, entry!.id, { url: null }), entry!.id)!.url).toBeNull();
+  });
+
+  it('is cleaned when read from a hand-edited file too', () => {
+    const [read] = libraryFromJSON([{ id: 'template_a', name: 'Goblin', tags: [], image: null, url: 'javascript:alert(1)' }]);
+    expect(read!.url).toBeNull();
+  });
+});
+

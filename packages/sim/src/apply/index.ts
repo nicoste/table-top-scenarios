@@ -379,6 +379,7 @@ function applyToLibrary(
         ...(intent.name !== undefined ? { name: intent.name } : {}),
         ...(intent.tags !== undefined ? { tags: intent.tags } : {}),
         ...(intent.image !== undefined ? { image: intent.image as ImageId | null } : {}),
+        ...(intent.url !== undefined ? { url: intent.url } : {}),
       }));
 
     case 'editTemplate': {
@@ -387,6 +388,7 @@ function applyToLibrary(
         ...(intent.name !== undefined ? { name: intent.name } : {}),
         ...(intent.tags !== undefined ? { tags: intent.tags } : {}),
         ...(intent.image !== undefined ? { image: intent.image as ImageId | null } : {}),
+        ...(intent.url !== undefined ? { url: intent.url } : {}),
       }));
     }
 

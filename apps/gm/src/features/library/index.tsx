@@ -9,7 +9,7 @@
 import { useMemo, useState } from 'react';
 import type { Intent, TokenTemplateWire } from '@tt/protocol';
 import { imageUrl } from '@tt/protocol';
-import { searchLibrary, tagsFromText } from '@tt/domain';
+import { cleanSheetUrl, searchLibrary, tagsFromText } from '@tt/domain';
 import type { ImageId, TokenTemplate } from '@tt/domain';
 import { uploadPicture } from '@tt/client-core';
 import { PictureInput } from '@tt/ui';
@@ -30,6 +30,8 @@ interface Props {
 interface Draft {
   readonly id: string | null;
   readonly name: string;
+  /** Where its stats live, as typed (D-313). */
+  readonly url: string;
   readonly tags: string;
   readonly image: ImageId | null;
 }
@@ -52,13 +54,19 @@ export function LibraryPanel({ library, chosen, onChoose, dispatch }: Props) {
     setProblem(null);
     setDeleting(false);
     setDraft(entry
-      ? { id: entry.id, name: entry.name, tags: entry.tags.join(' '), image: entry.image as ImageId | null }
-      : { id: null, name: '', tags: '', image: null });
+      ? {
+        id: entry.id, name: entry.name, url: entry.url ?? '', tags: entry.tags.join(' '),
+        image: entry.image as ImageId | null,
+      }
+      : { id: null, name: '', url: '', tags: '', image: null });
   };
 
   const save = () => {
     if (!draft) return;
-    const fields = { name: draft.name, tags: [...tagsFromText(draft.tags)], image: draft.image };
+    const fields = {
+      name: draft.name, tags: [...tagsFromText(draft.tags)], image: draft.image,
+      url: draft.url.trim() === '' ? null : draft.url,
+    };
     if (draft.id) {
       dispatch({ kind: 'editTemplate', id: draft.id, ...fields });
     } else {
@@ -105,6 +113,21 @@ export function LibraryPanel({ library, chosen, onChoose, dispatch }: Props) {
           onChange={(e) => setDraft({ ...draft, name: e.target.value })}
           onKeyDown={(e) => { if (e.key === 'Enter') save(); }}
         />
+        {/* Where its stats live (D-313): opened from its card in the On stage list. */}
+        <label className="lbl" htmlFor="lib-url">Sheet link</label>
+        <input
+          id="lib-url"
+          value={draft.url}
+          maxLength={500}
+          inputMode="url"
+          placeholder="https://… its stats, for a quick look"
+          className={draft.url.trim() && !cleanSheetUrl(draft.url) ? 'invalid' : ''}
+          onChange={(e) => setDraft({ ...draft, url: e.target.value })}
+          onKeyDown={(e) => { if (e.key === 'Enter') save(); }}
+        />
+        {draft.url.trim() && !cleanSheetUrl(draft.url) && (
+          <p className="warn library-url-warn">That is not a web address, so it will not be kept.</p>
+        )}
         <label className="lbl" htmlFor="lib-tags">Tags</label>
         <input
           id="lib-tags"

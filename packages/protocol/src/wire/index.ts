@@ -323,6 +323,8 @@ export const TokenTemplateWireSchema = z.object({
   name: z.string(),
   tags: z.array(z.string()),
   image: z.string().nullable(),
+  /** Where its stats live (D-313). The GM's; the table never sees an entry. */
+  url: z.string().nullable(),
 });
 export type TokenTemplateWire = z.infer<typeof TokenTemplateWireSchema>;
 
