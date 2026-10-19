@@ -497,10 +497,12 @@ cube and a short far cube can land on the same pixels. These are not polish.
 > **R-119.** **At most one place per cell.** Two would make the tap gesture (R-86)
 > ambiguous, and R-50 already says a place is one cell.
 
-> **R-50.** A place occupies **exactly one cell**. Multi-cell footprints are a
-> wanted future feature — an "expand place" tool that assigns extra cells — and are
-> deliberately not modelled yet (O-014). Building the single-cell case first keeps
-> travel targeting, marker placement and the tap gesture unambiguous.
+> **R-50.** A place occupies **exactly one cell**. Building the single-cell case
+> first keeps travel targeting, marker placement and the tap gesture unambiguous.
+>
+> **And it stays one** (D-319, discarding O-014). A city that spans several cells
+> is several places — *north guard*, *city center*, *south suburbs* — each with
+> its own points of interest and maps. No footprint tool.
 
 > **R-51.** A point of interest's map has **no geometric relationship to the world
 > cell its place sits on**, and the tool never implies one. A place occupies one
@@ -2956,9 +2958,9 @@ apps/host/src/
 >
 > **A route the router cannot find says so.** `null` means "I cannot show you
 > a way" and never "you may not go" (R-197), so the prompt says *"no way
-> there with what they have"* and the click still works. The console's
-> journey menu is stricter — its Travel button is disabled — which is a
-> divergence worth naming: see O-032.
+> there with what they have"* and the click still works. On both screens: the
+> console's journey menu says there is no route and its Travel button still
+> sends them (D-319, closing O-032) — as a map's *no path* does (R-209).
 
 > **R-195.** **A cover earns its id by costing something; what it looks like
 > is free.**

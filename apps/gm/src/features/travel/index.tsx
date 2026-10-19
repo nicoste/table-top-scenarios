@@ -19,7 +19,7 @@ import { Tooltip } from '@tt/ui';
 /** The journey being costed, or null when the party is not going anywhere. */
 export interface Journey {
   readonly who: string;
-  /** The route previewed, or null when there is no way there. */
+  /** The route previewed, or null when there is none to show — never a refusal (R-197). */
   readonly route: Route | null;
   onConfirm: () => void;
   onCancel: () => void;
@@ -117,14 +117,19 @@ export function TravelPanel({ modes, travelling, journey, onTravelling }: Travel
               )}
             </>
           ) : (
+            /*
+             * Says there is no way to *show*, and still sends them if the GM
+             * says so (D-319): a route is a preview, never a rule (R-197) —
+             * the table already worked this way, and so does a map (R-209).
+             */
             <p className="readout">
-              No way there with what they have. Give them something for the
-              water, or go round.
+              No route with what they have. Give them something for the water,
+              or send them anyway.
             </p>
           )}
           <div className="btn-grid tools">
             <Tooltip label="Send them" placement="bottom" stretch>
-              <button className="on" onClick={journey.onConfirm} disabled={journey.route === null}>
+              <button className="on" onClick={journey.onConfirm}>
                 ✓ Travel
               </button>
             </Tooltip>

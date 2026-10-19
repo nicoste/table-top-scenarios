@@ -536,7 +536,7 @@ question now recorded as O-009.
 
 ## Open
 
-### O-009 — What is an encounter map, vertically? · `open`
+### O-009 — What is an encounter map, vertically? · `resolved by D-319`
 Raised by Nicolás and deliberately **not** designed yet:
 
 > *"A plaza surrounded by markets and houses, a church, they might all have
@@ -950,7 +950,7 @@ where changing the camera leaks a secret.
 
 ## Open
 
-### O-014 — Multi-cell places ("expand place") · `open`
+### O-014 — Multi-cell places ("expand place") · `discarded by D-319`
 Wanted, explicitly deferred. A tool to assign extra cells to an existing place, for
 a realm or a city spanning several 200 m cells. Needs answers on what the extra
 cells *do*: are they drawn differently, are they all valid travel targets, can
@@ -2091,7 +2091,7 @@ beside it. The party needs to name a cell too, and `party/` importing from `plac
 to say where someone is standing would be nonsense. Promoted to `world/` as
 `WorldCell` with one validity check; `PlaceCell` becomes an alias.
 
-### O-019 — Pathfinding on the world map · `open`
+### O-019 — Pathfinding on the world map · `resolved by D-293`
 Deferred from round 28 deliberately. A→Z is legal (D-151), so once positions
 exist the obvious next round is the route: easiest path by terrain difficulty
 (R-52) and the 0.83 slope factor, **constrained to Known cells** (R-133), drawn
@@ -2103,7 +2103,7 @@ and pace, reporting days of travel, with confirm/cancel. Blocked on O-006 (trave
 pace presets) for the actual numbers. R-132 keeps the confirm step local so this
 slots in rather than being retrofitted.
 
-### O-021 — Does the party pawn show who is where when separated? · `open`
+### O-021 — Does the party pawn show who is where when separated? · `resolved by D-319`
 Six pawns of six colours on a 1350 km map, at the zoom where miniatures collapse
 into flat markers (R-83). Names may be unreadable exactly when the party is most
 spread out. Not blocking; worth a look once it can be seen running.
@@ -3156,7 +3156,7 @@ rather than *"expand the terrain to:"*. Inside a point of interest there is no
 terrain — the world map has terrain with a difficulty, a map has materials — and
 D-176 was a large cleanup of exactly this kind of drift.
 
-### O-025 — Two rounds running, I verified against a stale host · `open`
+### O-025 — Two rounds running, I verified against a stale host · `closed by D-319`
 The host loads TypeScript at startup, so a change under `packages/` that it
 reads — protocol, sim, domain, persistence — does not reach it until it is
 restarted. O-024 recorded this. I then walked into it twice more: the bucket fill
@@ -7363,7 +7363,7 @@ be the GM's alone, a *result* may not differ between the screens.
 
 R-202 is new. R-134 and R-200 are amended. O-032 is opened.
 
-### O-032 — The console will not send a journey it cannot draw, and the table will · `open`
+### O-032 — The console will not send a journey it cannot draw, and the table will · `resolved by D-319`
 R-197 says plainly that a route of `null` means *"I cannot show you a way"* and
 never *"you may not go"* — the destination is not adjacency-checked and a GM
 may move the party anywhere (R-133).
@@ -7991,3 +7991,49 @@ hand them over next.
 Checked on a copy of the GM's data with the band cut to the water level: the
 party card said somebody was outside it, and both rows read their names
 whole, untruncated.
+
+### D-319 — Housekeeping: six open questions closed, and two that need no work · `agreed`
+The GM read the "what are we missing" list and answered every item.
+
+**O-032 — the console sends a journey it cannot draw.** The console's journey
+menu disabled ✓ Travel when there was no route; the table sent it. The
+console now says *"No route with what they have. Give them something for the
+water, or send them anyway."* and the button works. R-197 as written, and the
+rule the map's walk was just built on (R-209): a path is a preview, never a
+rule. The console's old strictness was useful as a nudge to grant a boat;
+the sentence keeps the nudge without the refusal.
+
+**O-009 — what an encounter map is, vertically.** Answered by the levels:
+one map is the whole building, its floors are planes inside it, and the band
+cuts it for playing and for looking into (R-146, R-161). The GM, closing the
+last part of it: *"we don't do multiple maps per levels, because levels are
+just cuts inside the same map."* So **no stairs between maps** either — the
+connector this question once anticipated has nothing to connect.
+
+**O-014 — multi-cell places. Discarded.** *"We can add multiple places, and
+each one contain their own maps, calling each place something like, north
+guard, city center, south suburbs, etc."* R-50 now says so.
+
+**O-019 — world pathfinding.** Built in D-293 to D-299 and never closed: the
+route, its days, mixed conveyances.
+
+**O-021 — whose pawn is whose when the party splits.** Answered by the
+captions (R-196): a member's name stands over their pawn when the party has
+split, and over nobody's when it is together, whose pawn now shows everyone's
+faces (D-314).
+
+**O-025 — the stale host.** Not a question, a note to myself; the standing
+order in it stands (restart the host before verifying a change under
+`packages/`) and the entry is closed.
+
+**Two that need no work, recorded so nobody proposes them again:**
+
+- **Light and sight.** The hour and the lighting are what the scene looks
+  like; they do not shorten anybody's sight. *"Light and sight will be
+  adjusted by the GM while playing."* That is R-1: the GM changes a member's
+  sight number when the cave is dark.
+- **The table on the TV's computer** (D-244's "measure that first"). *"No
+  rush, and I'm pretty sure it will be fine, I tested on my pc many times."*
+  Left as the GM's call.
+
+No open questions remain.
