@@ -8651,3 +8651,18 @@ Each light already carried all three in its box — its flood, its straight-line
 light, its bounce — so a step is the field put together again from what is
 cached, nothing worked out afresh.
 
+### D-340 — The first time a lamp count appears, it compiles; left as it is · `agreed`
+*"Instancing a light for the first time it takes a lot of time, then enabling
+and disabling is fast, why?"* Measured on the test copy: with real shadows on
+(D-338), three.js builds every material's shader for the number of lamps there
+are, and keeps what it built. The first switch to real shadows froze the page
+2.3 s and compiled 14 programs (the shadow maps' own among them); a lamp count
+not seen before, 0.1 s and 12; any count seen before, nothing. In soft, placing
+a torch costs what placing a chair does.
+
+Two fixes were offered — always six lamps while real shadows are on, dark when
+unused, so the count never changes; and compiling in the background when L is
+pressed — and declined: *"that's fine, I thought it might be an issue, but
+it's normal working!"* Real shadows are a switch that starts off, and the
+hitch is its own.
+
