@@ -13,7 +13,7 @@ import type { SilverToken } from '@tt/domain';
 
 const cube = (x: number, y: number, z: number): BlockCoord => ({ x, y, z });
 const STONE = DEFAULT_FLOOR as SwatchId;
-const torch = (at: BlockCoord, reach = 4) => ({ at, colour: '#ffffff', reach });
+const torch = (at: BlockCoord, reach = 4) => ({ at, colour: '#ffffff', reach, rise: 0.5 });
 const brightness = (map: EncounterMap, sources: ReturnType<typeof torch>[], at: BlockCoord, opened = NONE_OPEN) =>
   lightIn(lampField(map, opened, sources), at)[0];
 
@@ -71,7 +71,7 @@ describe('how bright, how far', () => {
 
   it('adds lights up, in their colours', () => {
     const map = createMap();
-    const blue = lightIn(lampField(map, NONE_OPEN, [{ at: cube(8, 1, 8), colour: flameColour('cold'), reach: 4 }]), cube(8, 1, 9));
+    const blue = lightIn(lampField(map, NONE_OPEN, [{ at: cube(8, 1, 8), colour: flameColour('cold'), reach: 4, rise: 0.5 }]), cube(8, 1, 9));
     expect(blue[2]).toBeGreaterThan(blue[0]);
     const one = brightness(map, [torch(cube(8, 1, 8))], cube(8, 1, 10));
     const two = brightness(map, [torch(cube(8, 1, 8)), torch(cube(8, 1, 12))], cube(8, 1, 10));
@@ -135,6 +135,18 @@ describe('shadows (D-337)', () => {
   });
 });
 
+describe('a light whose lamp casts its own shadows (D-338)', () => {
+  it('leaves only what bounced round in the field, where its lamp cannot reach', () => {
+    const pillar = [1, 2, 3, 4, 5, 6].map((y) => cube(8, y, 8));
+    const map = setBlocks(createMap(), pillar, STONE);
+    const lamp = { ...torch(cube(5, 1, 8), 8), shadowed: true };
+    // In plain view, the field has only the bounce: the lamp lights it.
+    expect(brightness(map, [lamp], cube(5, 1, 11))).toBeLessThan(brightness(map, [torch(cube(5, 1, 8), 8)], cube(5, 1, 11)) * 0.5);
+    // Behind the pillar the two agree: only what bounced reaches it either way.
+    expect(brightness(map, [lamp], cube(11, 1, 8))).toBeCloseTo(brightness(map, [torch(cube(5, 1, 8), 8)], cube(11, 1, 8)));
+  });
+});
+
 describe('where the lights are', () => {
   it('is every lit light in a map, in its flame and its reach', () => {
     let map = putProp(createMap(), { type: 'campfire', at: cube(3, 1, 3), facing: 0 });
@@ -142,8 +154,8 @@ describe('where the lights are', () => {
     map = putProp(map, { type: 'table', at: cube(12, 1, 12), facing: 0 });
     const [fire, candles] = map.props;
     expect(propLights(map.props)).toEqual([
-      { at: cube(3, 1, 3), colour: flameColour('fire'), reach: 10 },
-      { at: cube(9, 1, 9), colour: flameColour('candle'), reach: 3 },
+      { at: cube(3, 1, 3), colour: flameColour('fire'), reach: 10, rise: 0.8 },
+      { at: cube(9, 1, 9), colour: flameColour('candle'), reach: 3, rise: 0.45 },
     ]);
     // Put out, it gives none.
     expect(propLights(map.props, new Set([fire!.id as string]))).toEqual([propLights(map.props)[1]]);
@@ -151,7 +163,7 @@ describe('where the lights are', () => {
   });
 
   it('is where somebody carrying one stands', () => {
-    expect(carriedAt(cube(2, 1, 2), TORCH)).toEqual({ at: cube(2, 1, 2), colour: flameColour('fire'), reach: 6 });
+    expect(carriedAt(cube(2, 1, 2), TORCH)).toEqual({ at: cube(2, 1, 2), colour: flameColour('fire'), reach: 6, rise: 1.1 });
   });
 });
 

@@ -38,6 +38,8 @@ export interface Reading {
   readonly occlusion: boolean;
   /** Whether materials draw the figure in their surface, so an A/B is legible. */
   readonly figures: boolean;
+  /** Whether lights cast real shadows on this screen (D-338), so an A/B is legible. */
+  readonly lampShadows: boolean;
   /** What the GPU spent on a recent frame, or null where the browser hides it. */
   readonly gpuMs: number | null;
   /** The frame budget this screen is capped to, which is what p95 is judged against. */
@@ -121,6 +123,8 @@ export function Metrics({ reading, hint }: MetricsProps) {
         <dd>{reading.figures ? 'on' : 'off'}</dd>
         <dt>occlusion</dt>
         <dd>{reading.occlusion ? 'on' : 'off'}</dd>
+        <dt>light shadows</dt>
+        <dd>{reading.lampShadows ? 'on' : 'off'}</dd>
       </dl>
       <p className="hint">{hint}</p>
     </div>

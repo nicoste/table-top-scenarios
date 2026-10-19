@@ -30,7 +30,7 @@ const SAMPLE_MS = 250;
  * of the console already follows for its digits and brackets.
  */
 export const COST_CODE = 'Backquote';
-export const COST_HINT = 'backtick closes this · shift+backtick occlusion · T surface figure';
+export const COST_HINT = 'backtick closes this · shift+backtick occlusion · T surface figure · L light shadows';
 
 /*
  * Traffic is recorded where the socket is and read where the overlay is, and
@@ -83,6 +83,12 @@ export function useCost(
   const [occlusion, setOcclusion] = useState(true);
   /** The figure in a material's surface (R-177), on T. On, like occlusion. */
   const [figures, setFigures] = useState(true);
+  /**
+   * Real shadows from lights (D-338), on L. **Off by default**: every lamp is
+   * six more passes over the scene each time something it lights moves, and
+   * this screen's computer is the one to say whether it can afford them.
+   */
+  const [lampShadows, setLampShadows] = useState(false);
   const [reading, setReading] = useState<Reading | null>(null);
 
   useEffect(() => {
@@ -91,6 +97,7 @@ export function useCost(
       const typing = (e.target as HTMLElement | null)?.tagName;
       if (typing && /^(INPUT|TEXTAREA|SELECT)$/.test(typing)) return;
       if (e.code === 'KeyT') { setFigures((drawn) => !drawn); return; }
+      if (e.code === 'KeyL') { setLampShadows((cast) => !cast); return; }
       if (e.code !== COST_CODE) return;
       // Not while the GM is naming something: a backtick belongs to the field.
       const to = e.target as HTMLElement | null;
@@ -104,6 +111,7 @@ export function useCost(
 
   useEffect(() => { stage?.setOcclusion(occlusion); }, [stage, occlusion]);
   useEffect(() => { stage?.setFigures(figures); }, [stage, figures]);
+  useEffect(() => { stage?.setLampShadows(lampShadows); }, [stage, lampShadows]);
 
   useEffect(() => {
     if (!on) { setReading(null); return undefined; }
@@ -125,6 +133,7 @@ export function useCost(
         heap: heapNow(),
         occlusion,
         figures,
+        lampShadows,
         gpuMs: cost?.gpuMs ?? null,
         budgetMs: FRAME_BUDGET_MS,
       });
@@ -132,7 +141,7 @@ export function useCost(
     take();
     const timer = setInterval(take, SAMPLE_MS);
     return () => clearInterval(timer);
-  }, [on, stage, frames, draws, occlusion, figures]);
+  }, [on, stage, frames, draws, occlusion, figures, lampShadows]);
 
   return { on, reading };
 }

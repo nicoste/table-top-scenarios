@@ -8593,3 +8593,46 @@ column three high built beside it threw a wedge of shade over the grass
 behind it, the barrel in it went dark, and the ground either side stayed
 lit; undone, the barrel was lit again.
 
+### D-338 — Real shadows from lights, a switch that starts off · `agreed`
+*"I don't see the effect, lets try the real shadowing and make it disabled by
+default."* D-337's shadows are a share of light at cube size, and a 30% bounce
+under a soft blend did not read. These are the 3D engine's own.
+
+**A switch on each screen, like occlusion and the surface figure** — **L**,
+off until pressed, shown in the cost overlay (backtick) as *light shadows*.
+Not in the Light panel: that panel is scene controls and has no on/off
+switches (D-249), and this is a cost the machine pays, the table's computer
+above all, so each screen decides for itself (D-233's reasoning). Not saved;
+a reload turns it off again. *"Are we switching these toggles globally?"* —
+yes: every map on that screen, not one scene.
+
+**Six lamps, nearest the middle of the view.** On, the lit lights nearest
+the camera's focus — up to six — each get a three.js point light at the top
+of its flame, casting a shadow map; the field then carries only what bounced
+round for those (`shadowed` sources), so the two never count the same light
+twice. Every other light stays the field's. When the view moves four cubes
+the six are handed out again. Six because each is six more passes over the
+scene whenever shadows are redrawn, and a shadow map every material has to
+read, and a material has only so many to read.
+
+**Lamps are made only when how many there are changes**, since three.js
+compiles every material again then: lighting a seventh light or putting one
+out costs a moment; a carried torch moving moves its lamp and redraws the
+shadows (R-180's "on change"), nothing more.
+
+**Where the light comes from** is a new number per light type: how high over
+its cube's floor — the top of the flame. A campfire's light from a third of a
+cube up grazed the floor and lit almost nothing round it, so: torch 0.95,
+lantern 0.3, candles 0.45, brazier 1.1, campfire 0.8, a carried light 1.1.
+The lamp's strength is 3, falling off with distance, so that close up it
+lights about as the field does.
+
+**What casts:** every block and every prop with a body — the furniture too,
+here, since the shadow map does not ask what stops sight. Tokens still cast
+none (D-254). A lantern's cage throws bars of shadow across the floor.
+
+Checked on the test copy at night: with L off, the field's light as before;
+on, the campfire threw the column's shadow up Tollkeep's wall, the brazier's
+legs and the table's long shadows across the grass, and with the lantern and
+Galion's torch lit too, three lamps at once. No shader errors.
+

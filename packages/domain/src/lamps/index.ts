@@ -27,7 +27,7 @@
 import type { BlockCoord, EncounterMap } from '../map/index.js';
 import { blockKey, cleanReach, inMap, MAP_MAX_HEIGHT, MAP_MIN_DEPTH, MAX_LIGHT_REACH } from '../map/index.js';
 import type { Opened, Props } from '../props/index.js';
-import { FLAMES, NONE_OPEN, flameColour, isLit, propRules, reachOf } from '../props/index.js';
+import { FLAMES, NONE_OPEN, flameColour, isLit, propRules, propType, reachOf } from '../props/index.js';
 
 // -- carried lights ----------------------------------------------------------
 
@@ -116,18 +116,30 @@ export interface LightSource {
   readonly at: BlockCoord;
   readonly colour: string;
   readonly reach: number;
+  /** How high over its cube's floor the light comes from, in cubes: where a screen puts a lamp (D-338). */
+  readonly rise: number;
+  /**
+   * Lit by a screen's own lamp, with real shadows (D-338): the field then
+   * carries only the light that bounced round, and the lamp the rest.
+   */
+  readonly shadowed?: boolean;
 }
 
 /** A map's lit props, as lights. */
 export function propLights(props: Props, opened: Opened = NONE_OPEN): readonly LightSource[] {
   return props
     .filter((prop) => isLit(prop, opened))
-    .map((prop) => ({ at: prop.at, colour: flameColour(prop.finish), reach: reachOf(prop)! }));
+    .map((prop) => ({
+      at: prop.at, colour: flameColour(prop.finish), reach: reachOf(prop)!, rise: propType(prop.type)!.light!.rise,
+    }));
 }
+
+/** Where a carried light burns over its carrier's floor: held up, about head high. */
+const HELD = 1.1;
 
 /** A carried light, burning where its carrier stands. */
 export function carriedAt(at: BlockCoord, light: CarriedLight): LightSource {
-  return { at, colour: flameColour(light.flame), reach: light.reach };
+  return { at, colour: flameColour(light.flame), reach: light.reach, rise: HELD };
 }
 
 /** How bright a light is this far from its flame: full there, and nothing past its reach. */
@@ -172,8 +184,10 @@ interface Spread {
   /** The box's side, in cubes. */
   readonly side: number;
   readonly cubes: Uint8Array;
-  /** Its brightness in each cube, 0 to 1. */
+  /** Its brightness in each cube, 0 to 1, shadows and all. */
   readonly level: Float32Array;
+  /** Only what bounced round, for a light whose lamp casts its own shadows (D-338). */
+  readonly bounce: Float32Array;
 }
 
 /** The 26 steps, each with what it costs and the cubes it passes between. */
@@ -329,6 +343,7 @@ function spread(map: EncounterMap, stops: ReadonlySet<string>, at: BlockCoord, r
     }
   }
   const level = new Float32Array(count);
+  const bounce = new Float32Array(count);
   for (let z = 0; z < side; z += 1) {
     for (let y = 0; y < side; y += 1) {
       for (let x = 0; x < side; x += 1) {
@@ -336,11 +351,12 @@ function spread(map: EncounterMap, stops: ReadonlySet<string>, at: BlockCoord, r
         if (far[i]! === Infinity) continue;
         const bounced = BOUNCE * glow(far[i]!, reach);
         const straight = Math.hypot(x - r, y - r, z - r);
+        bounce[i] = bounced;
         level[i] = inView(cubes, side, r, x, y, z) ? Math.max(glow(straight, reach), bounced) : bounced;
       }
     }
   }
-  return { min, side, cubes, level };
+  return { min, side, cubes, level, bounce };
 }
 
 /** How much of a light reaches a cube its flame cannot see: what bounced round (D-337). */
@@ -465,7 +481,7 @@ export function lampField(map: EncounterMap, opened: Opened, sources: readonly L
           const i = x + one.side * (y + one.side * z);
           const f = fx + size.x * (fy + size.y * fz);
           if (one.cubes[i] === STOPS) { solid[f] = 1; continue; }
-          const level = one.level[i]!;
+          const level = source.shadowed ? one.bounce[i]! : one.level[i]!;
           if (level === 0) continue;
           light[f * 3] = light[f * 3]! + level * red;
           light[f * 3 + 1] = light[f * 3 + 1]! + level * green;

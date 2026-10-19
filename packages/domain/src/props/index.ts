@@ -80,8 +80,13 @@ export interface PropType {
   readonly states?: PropStates;
   /** Hung on a wall — held by the block behind it, not by one below (D-335). */
   readonly hangs?: boolean;
-  /** The light it gives while lit (D-335): how far, unless the GM sets its own. */
-  readonly light?: { readonly reach: number };
+  /**
+   * The light it gives while lit (D-335): how far, unless the GM sets its own,
+   * and how high over its cube's floor the light comes from — the top of the
+   * flame, which can be above the cube — where a lamp casting real shadows is
+   * put (D-338).
+   */
+  readonly light?: { readonly reach: number; readonly rise: number };
 }
 
 const SHUT_OR_OPEN: PropStates = { placed: 'shut', other: 'open', toPlaced: 'Close', toOther: 'Open' };
@@ -115,8 +120,8 @@ const STOPS_NOTHING: PropEffect = { blocksSight: false, blocksWalking: false };
 
 const fixed = (effect: PropEffect) => ({ opens: false, closed: effect, open: effect });
 /** A light: it changes — lit or out — and does the same to sight and walking either way. */
-const burns = (effect: PropEffect, reach: number) => ({
-  opens: true, closed: effect, open: effect, states: LIT_OR_OUT, light: { reach },
+const burns = (effect: PropEffect, reach: number, rise: number) => ({
+  opens: true, closed: effect, open: effect, states: LIT_OR_OUT, light: { reach, rise },
 });
 
 /** The catalogue (D-328, D-335): doors and bars, then furniture, then lights. */
@@ -148,15 +153,15 @@ export const PROP_TYPES: readonly PropType[] = [
   // A brazier and a campfire are in the way; the others are not.
   {
     id: 'torch', name: 'Torch', group: 'lights', size: { x: 1, y: 1, z: 1 }, hangs: true,
-    ...burns(STOPS_NOTHING, 6), finishes: FLAMES,
+    ...burns(STOPS_NOTHING, 6, 0.95), finishes: FLAMES,
   },
-  { id: 'lantern', name: 'Lantern', group: 'lights', size: { x: 1, y: 1, z: 1 }, ...burns(STOPS_NOTHING, 5), finishes: FLAMES },
+  { id: 'lantern', name: 'Lantern', group: 'lights', size: { x: 1, y: 1, z: 1 }, ...burns(STOPS_NOTHING, 5, 0.3), finishes: FLAMES },
   {
     id: 'candles', name: 'Candles', group: 'lights', size: { x: 1, y: 1, z: 1 },
-    ...burns(STOPS_NOTHING, 3), finishes: [CANDLE, FIRE, COLD, GREEN],
+    ...burns(STOPS_NOTHING, 3, 0.45), finishes: [CANDLE, FIRE, COLD, GREEN],
   },
-  { id: 'brazier', name: 'Brazier', group: 'lights', size: { x: 1, y: 1, z: 1 }, ...burns(STOPS_WALKING, 8), finishes: FLAMES },
-  { id: 'campfire', name: 'Campfire', group: 'lights', size: { x: 1, y: 1, z: 1 }, ...burns(STOPS_WALKING, 10), finishes: FLAMES },
+  { id: 'brazier', name: 'Brazier', group: 'lights', size: { x: 1, y: 1, z: 1 }, ...burns(STOPS_WALKING, 8, 1.1), finishes: FLAMES },
+  { id: 'campfire', name: 'Campfire', group: 'lights', size: { x: 1, y: 1, z: 1 }, ...burns(STOPS_WALKING, 10, 0.8), finishes: FLAMES },
 ];
 
 export function propType(id: string): PropType | null {

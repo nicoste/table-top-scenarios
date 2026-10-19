@@ -3,14 +3,15 @@
 // anything from an app, the protocol or the simulation.
 
 import {
-  Color, DirectionalLight, GridHelper, HemisphereLight, Mesh, PCFSoftShadowMap,
+  Color, DirectionalLight, GridHelper, HemisphereLight, Mesh, PCFSoftShadowMap, PointLight,
   Vector3,
   MeshBasicMaterial, PlaneGeometry, Raycaster, Scene, Vector2, WebGLRenderer, BoxGeometry,
   WebGLRenderTarget, HalfFloatType, MathUtils,
   EdgesGeometry, LineSegments, LineBasicMaterial, Group, BufferGeometry, DoubleSide,
 } from 'three';
 import type {
-  BlockCoord, Campaign, CarriedLight, EncounterMap, GlobalCell, Lighting, Material, Opened, Placement, WorldCell,
+  BlockCoord, Campaign, CarriedLight, EncounterMap, GlobalCell, LightSource, Lighting, Material, Opened, Placement,
+  WorldCell,
 } from '@tt/domain';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -204,6 +205,19 @@ export interface StageCost {
   readonly gpuMs: number | null;
 }
 
+/**
+ * How many lights may cast real shadows at once (D-338). Each is six more
+ * passes over the scene whenever shadows are redrawn, and a shadow map every
+ * material reads — and a material has only so many to read.
+ */
+const MAX_LAMPS = 6;
+
+/**
+ * A lamp's strength, falling off with distance as three.js's lights do, so
+ * that close to its flame it lights about as the field's light does (D-335).
+ */
+const LAMP_INTENSITY = 3;
+
 export class Stage {
   /** How many Stages are alive. A leak means a leaked rAF loop and GL context. */
   static get liveCount(): number { return instances; }
@@ -381,6 +395,17 @@ export class Stage {
   /** The light the lights in the open map give (D-335), and what it was worked out from. */
   private readonly lamps = buildLamplight();
   private lit: { map: EncounterMap; opened: Opened; sources: string } | null = null;
+  /**
+   * Real shadows from lights (D-338): off unless this screen turns them on.
+   * Then the lights nearest the middle of the view get a lamp of three.js's
+   * own, casting shadow maps, and the field keeps only what bounced round for
+   * them. The rest stay the field's.
+   */
+  private lampShadows = false;
+  private readonly lampGroup = new Group();
+  private lampPool: PointLight[] = [];
+  /** Where the view was looking when the lamps were last handed out. */
+  private lampFocus: { x: number; z: number } | null = null;
   /** The walk a token being moved would take, and how far (R-209). */
   private readonly walk = buildWalkPreview();
   /** The prefab about to be placed (D-321). */
@@ -832,19 +857,85 @@ export class Stage {
     if (!map) {
       this.lit = null;
       this.lamps.set(null);
+      this.setLamps([]);
       return;
     }
-    const sources = [
+    const all = [
       ...propLights(map.props, this.opened),
       ...this.standing.flatMap((one) => (one.light ? [carriedAt(one.at, one.light)] : [])),
       ...this.present.flatMap((one) => (one.light ? [carriedAt(one.at, one.light)] : [])),
     ];
-    const said = sources.map((one) => `${one.at.x},${one.at.y},${one.at.z}:${one.colour}:${one.reach}`).join('|');
+    const lamped = this.lampShadows ? this.nearestLights(all) : new Set<number>();
+    const sources = all.map((one, i) => (lamped.has(i) ? { ...one, shadowed: true } : one));
+    const said = sources
+      .map((one) => `${one.at.x},${one.at.y},${one.at.z}:${one.colour}:${one.reach}${one.shadowed ? ':lamp' : ''}`)
+      .join('|');
     const was = this.lit;
     if (was && was.map === map && was.opened === this.opened && was.sources === said) return;
     this.lit = { map, opened: this.opened, sources: said };
     this.lamps.set(lampField(map, this.opened, sources));
+    this.setLamps(sources.filter((one) => one.shadowed));
     this.invalidate();
+  }
+
+  /**
+   * Real shadows from lights, or none (D-338). A switch for this screen, off
+   * unless turned on: each lamp redraws the scene six more times whenever
+   * something it lights changes, and the table's computer is the one that
+   * has to afford it.
+   */
+  setLampShadows(on: boolean): void {
+    if (on === this.lampShadows) return;
+    this.lampShadows = on;
+    this.relight();
+  }
+
+  /** Which lights get a lamp: the ones nearest the middle of the view, as many as there are lamps. */
+  private nearestLights(all: readonly LightSource[]): ReadonlySet<number> {
+    const focus = this.target.focus;
+    this.lampFocus = { x: focus.x, z: focus.z };
+    const far = (one: LightSource) => (one.at.x + 0.5 - focus.x) ** 2 + (one.at.z + 0.5 - focus.z) ** 2;
+    return new Set(all
+      .map((one, i) => ({ i, far: far(one) }))
+      .sort((a, b) => a.far - b.far)
+      .slice(0, MAX_LAMPS)
+      .map((one) => one.i));
+  }
+
+  /**
+   * Puts a lamp at each of these lights' flames. Lamps are made or dropped
+   * only when how many there are changes — three.js compiles every material
+   * again then, so moving a lamp moves the one there is.
+   */
+  private setLamps(lamps: readonly LightSource[]): void {
+    const had = this.lampPool.length;
+    if (lamps.length !== had) {
+      for (const lamp of this.lampPool) {
+        this.lampGroup.remove(lamp);
+        lamp.dispose();
+      }
+      this.lampPool = lamps.map(() => {
+        const lamp = new PointLight(0xffffff, LAMP_INTENSITY, 1, 1);
+        lamp.castShadow = true;
+        lamp.shadow.mapSize.set(512, 512);
+        lamp.shadow.camera.near = 0.05;
+        lamp.shadow.bias = -0.002;
+        lamp.shadow.normalBias = 0.02;
+        this.lampGroup.add(lamp);
+        return lamp;
+      });
+      if (!this.lampGroup.parent) this.scene.add(this.lampGroup);
+    }
+    lamps.forEach((one, i) => {
+      const lamp = this.lampPool[i]!;
+      lamp.color.set(one.colour);
+      lamp.position.set(one.at.x + 0.5, one.at.y + one.rise, one.at.z + 0.5);
+      lamp.distance = one.reach + 1;
+      lamp.shadow.camera.far = one.reach + 1;
+      lamp.shadow.camera.updateProjectionMatrix();
+    });
+    // Their shadow maps are drawn when shadows are, and only then (R-180).
+    if (lamps.length > 0 || had > 0) this.restage();
   }
 
   private rebuildProps(): void {
@@ -1681,6 +1772,14 @@ export class Stage {
      * only on the frames that happened to be drawn and arrive in steps.
      */
     const moving = this.advance(dt);
+    /*
+     * Lamps follow the view (D-338): when it has moved a few cubes from where
+     * they were handed out, the lights nearest its middle may be others.
+     */
+    if (this.lampShadows && this.lampFocus) {
+      const focus = this.target.focus;
+      if (Math.hypot(focus.x - this.lampFocus.x, focus.z - this.lampFocus.z) > 4) this.relight();
+    }
     const changed = this.dirty || moving;
     if (!changed && now - this.lastDrawn < IDLE_HEARTBEAT_MS) return 'skipped';
     this.dirty = false;
@@ -1765,6 +1864,7 @@ export class Stage {
     this.prefabGhost.dispose();
     this.props?.dispose();
     this.lamps.dispose();
+    for (const lamp of this.lampPool) lamp.dispose();
     this.captions.domElement.remove();
     this.renderer.dispose();
   }
