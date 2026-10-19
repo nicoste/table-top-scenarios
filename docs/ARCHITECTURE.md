@@ -2275,6 +2275,12 @@ apps/host/src/
 >   further it went and nothing past its reach. Blocks stop it; so does what
 >   stops sight, whose cubes are lit on the side the light came from. A shut
 >   door keeps a room's light in, and opening it lets the light out.
+> - **What the flame can see in a straight line gets its full light; the
+>   rest gets what bounced round** (D-337) — three tenths of the light that
+>   found its way there. So a pillar throws a shadow, a doorway throws a
+>   wedge of light into the room beyond, and nowhere light reaches is black.
+>   What casts a shadow is what stops light: blocks, and what stops sight —
+>   not furniture, and not tokens.
 > - **Worked out on change, read per frame** (R-170): when the body, a door,
 >   a light or a carrier changes, never per frame — no flicker. Any number of
 >   lights; one texture every surface reads, the cube in front of each face.

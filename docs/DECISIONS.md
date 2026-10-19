@@ -8554,3 +8554,42 @@ On the test copy's map, with six lights: 10,456 cubes of open air read as
 solid before, none after. A test holds it: one light's box reaching another's
 flame leaves that flame in open air.
 
+### D-337 — Shadows from lights · `agreed`
+*"Can we test how shadow works? Recalculated on any light change (including
+the player movement when carrying a light). Or do you think it will be a lot
+of extra calculation."* The light already stopped at walls (D-335), but it
+went round anything in its way, and a pillar in the middle of a room threw
+almost no shadow: the way round it is barely longer than the way past.
+
+**Not the 3D engine's shadows.** A shadow map per light redraws the scene six
+times for each lit light whenever anything moves, and the shader can carry
+only a handful before the TV's computer feels it (R-170, R-180). Lights are
+meant to be many.
+
+**A straight line from the flame, in the field the light already has.** For
+each cube a light reaches, is the line from the flame to the cube's middle
+clear of anything that stops light? Clear, the cube gets the flame's full
+light for how far it is; not clear, it gets three tenths of the light that
+found its way round — the bounce. The line asks every cube it touches, and
+where it passes exactly through an edge or a corner, every cube meeting
+there, so it slips through no crack the light's own steps would not.
+
+What it costs: array lookups in the box the light already has, worked out
+per light and only when that light, the body or a door changes — a carried
+torch moving redoes that torch. On the test copy's map: 1 to 3 ms for a
+torch, about 15 to 25 ms for one reaching 20.
+
+**Chosen here, to be argued with:**
+
+- **The bounce is 0.3** of the light that went round. Lower, and shadows are
+  darker and rooms round a corner from their only light go dim; higher, and
+  shadows fade. One number in `lamps`.
+- **What casts a shadow is what stops light**: blocks, and what stops sight.
+  Not furniture, which does not stop sight (D-328), and not tokens: in cubes,
+  a person would throw a shadow a cube wide all the way to the light's reach.
+
+Checked on the test copy at night with only the campfire lit: a stone
+column three high built beside it threw a wedge of shade over the grass
+behind it, the barrel in it went dark, and the ground either side stayed
+lit; undone, the barrel was lit again.
+

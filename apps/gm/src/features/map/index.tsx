@@ -271,7 +271,7 @@ export function MapPanel({
           </Tooltip>
           {/* The sixth (D-328): doors, bars and furniture, one per click. */}
           <Tooltip
-            label="Place doors, bars and furniture, or change one — key 6"
+            label="Place doors, bars, furniture and lights, or change one — key 6"
             placement="bottom"
             stretch
           >

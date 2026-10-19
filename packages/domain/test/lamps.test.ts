@@ -110,6 +110,31 @@ describe('what stops it', () => {
   });
 });
 
+describe('shadows (D-337)', () => {
+  it('a pillar throws one: dimmer behind it, never black, and nothing changes beside it', () => {
+    const pillar = [1, 2, 3, 4, 5, 6].map((y) => cube(8, y, 8));
+    const map = setBlocks(createMap(), pillar, STONE);
+    const sources = [torch(cube(5, 1, 8), 8)];
+    const open = brightness(createMap(), sources, cube(11, 1, 8));
+    const behind = brightness(map, sources, cube(11, 1, 8));
+    expect(behind).toBeGreaterThan(0);
+    expect(behind).toBeLessThan(open * 0.5);
+    expect(brightness(map, sources, cube(8, 1, 11))).toBeCloseTo(brightness(createMap(), sources, cube(8, 1, 11)));
+  });
+
+  it('a doorway throws a wedge of light into the room beyond, and the rest of it has what bounced', () => {
+    const wall: BlockCoord[] = [];
+    for (let z = 0; z < 16; z += 1) for (let y = 1; y <= 6; y += 1) if (!(z === 7 && y <= 2)) wall.push(cube(5, y, z));
+    const map = setBlocks(createMap(), wall, STONE);
+    const sources = [torch(cube(2, 1, 7), 8)];
+    const through = brightness(map, sources, cube(8, 1, 7));
+    expect(through).toBeCloseTo(glow(6, 8));
+    const aside = brightness(map, sources, cube(6, 1, 10));
+    expect(aside).toBeGreaterThan(0);
+    expect(aside).toBeLessThan(glow(5, 8) * 0.5);
+  });
+});
+
 describe('where the lights are', () => {
   it('is every lit light in a map, in its flame and its reach', () => {
     let map = putProp(createMap(), { type: 'campfire', at: cube(3, 1, 3), facing: 0 });

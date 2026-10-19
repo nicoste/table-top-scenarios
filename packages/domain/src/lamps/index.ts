@@ -16,6 +16,13 @@
 // The steps are the walk's (R-209): 1 along an edge, √2 across a face, √3
 // corner to corner — and a step across never squeezes between two cubes that
 // stop it, so light does not leak through the crack where two walls meet.
+//
+// **Shadows** (D-337): that way round is only the light that bounces. A cube
+// the flame can see in a straight line gets the flame's full light for how
+// far it is; one it cannot — behind a pillar, round a corner, off to the side
+// of a doorway — gets a share of the light that found its way round. So a
+// pillar throws a shadow, a doorway throws a wedge of light into the room
+// beyond, and nothing is ever pitch black where light can reach.
 
 import type { BlockCoord, EncounterMap } from '../map/index.js';
 import { blockKey, cleanReach, inMap, MAP_MAX_HEIGHT, MAP_MIN_DEPTH, MAX_LIGHT_REACH } from '../map/index.js';
@@ -322,8 +329,66 @@ function spread(map: EncounterMap, stops: ReadonlySet<string>, at: BlockCoord, r
     }
   }
   const level = new Float32Array(count);
-  for (let i = 0; i < count; i += 1) if (far[i]! < Infinity) level[i] = glow(far[i]!, reach);
+  for (let z = 0; z < side; z += 1) {
+    for (let y = 0; y < side; y += 1) {
+      for (let x = 0; x < side; x += 1) {
+        const i = x + side * (y + side * z);
+        if (far[i]! === Infinity) continue;
+        const bounced = BOUNCE * glow(far[i]!, reach);
+        const straight = Math.hypot(x - r, y - r, z - r);
+        level[i] = inView(cubes, side, r, x, y, z) ? Math.max(glow(straight, reach), bounced) : bounced;
+      }
+    }
+  }
   return { min, side, cubes, level };
+}
+
+/** How much of a light reaches a cube its flame cannot see: what bounced round (D-337). */
+const BOUNCE = 0.3;
+
+/**
+ * Whether a straight line from the flame, in the middle of the box, to the
+ * middle of cube (x, y, z) passes nothing that stops light (D-337).
+ *
+ * Every cube the line touches is asked, and where it passes exactly through
+ * an edge or a corner, every cube meeting there — so, like a step of the
+ * light's own, it never slips through the crack where two walls meet. The
+ * cube at the far end may stop light itself: a shut door is lit on the side
+ * the flame can see.
+ */
+function inView(cubes: Uint8Array, side: number, r: number, x: number, y: number, z: number): boolean {
+  const dx = x - r;
+  const dy = y - r;
+  const dz = z - r;
+  const way = [Math.sign(dx), Math.sign(dy), Math.sign(dz)] as const;
+  // How far along the line, 0 to 1, each cube's width is, and where the next
+  // face in each direction comes: half a cube out from the middle.
+  const across = [dx === 0 ? Infinity : 1 / Math.abs(dx), dy === 0 ? Infinity : 1 / Math.abs(dy), dz === 0 ? Infinity : 1 / Math.abs(dz)];
+  const next = [across[0]! / 2, across[1]! / 2, across[2]! / 2];
+  const at = [r, r, r];
+  const stopsAt = (cx: number, cy: number, cz: number) => {
+    if (cx === x && cy === y && cz === z) return false;
+    const cube = cubes[cx + side * (cy + side * cz)];
+    return cube === STOPS || cube === KEEPS;
+  };
+  for (;;) {
+    const t = Math.min(next[0]!, next[1]!, next[2]!);
+    if (t >= 1 - 1e-9) return true;
+    const moves = [0, 1, 2].filter((axis) => next[axis]! - t < 1e-9);
+    // Through an edge or a corner: every cube that meets there, not only the one beyond.
+    if (moves.length > 1) {
+      for (let mask = 1; mask < (1 << moves.length) - 1; mask += 1) {
+        const side3 = [at[0]!, at[1]!, at[2]!];
+        moves.forEach((axis, k) => { if (mask & (1 << k)) side3[axis] = side3[axis]! + way[axis]!; });
+        if (stopsAt(side3[0]!, side3[1]!, side3[2]!)) return false;
+      }
+    }
+    for (const axis of moves) {
+      at[axis] = at[axis]! + way[axis]!;
+      next[axis] = next[axis]! + across[axis]!;
+    }
+    if (stopsAt(at[0]!, at[1]!, at[2]!)) return false;
+  }
 }
 
 /**
