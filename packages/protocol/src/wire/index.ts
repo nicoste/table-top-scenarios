@@ -13,7 +13,7 @@ import {
   placementToJSON, placementFromJSON, tokensToJSON, tokensFromJSON,
   DAYLIGHT, OPEN_SKY, clampLighting, clampAmbience, cellsToJSON, cellsFromJSON,
   GROUND_FROM_TERRAIN, OPEN_WATER, ON_FOOT, asFacing, isImageId, silverToJSON, silverFromJSON,
-  orderToJSON, orderFromJSON, memberNotesToJSON, memberNotesFromJSON,
+  orderToJSON, orderFromJSON, memberNotesToJSON, memberNotesFromJSON, carriedToJSON, carriedFromJSON,
 } from '@tt/domain';
 
 /** The light inside one place (R-182). */
@@ -318,6 +318,8 @@ export const SilverTokenWireSchema = z.object({
   hidden: z.boolean().optional(),
   /** The GM's note (R-208). In the GM's view and on disk; never the table's. */
   note: z.string().optional(),
+  /** The light it carries (D-335). Absent is none. Read leniently by the domain. */
+  light: z.object({ flame: z.string(), reach: z.number() }).optional(),
 });
 export type SilverTokenWire = z.infer<typeof SilverTokenWireSchema>;
 
@@ -426,6 +428,12 @@ export const SaveWireSchema = z.object({
    * before there were props: everything shut — no bump (D-187).
    */
   opened: z.record(z.string(), z.array(z.string())).default({}),
+  /**
+   * The light each party member carries, by member id (D-335). Absent before
+   * there were lights: nobody carrying one — no bump (D-187). Read leniently
+   * by the domain's own reader.
+   */
+  carried: z.record(z.string(), z.unknown()).default({}),
 });
 export type SaveWire = z.infer<typeof SaveWireSchema>;
 
@@ -613,6 +621,7 @@ export function encodeSave(save: Save): SaveWire {
     opened: Object.fromEntries(
       [...save.opened.keys()].sort().map((poiId) => [poiId, [...save.opened.get(poiId)!].sort()]),
     ),
+    carried: carriedToJSON(save.carried),
   };
 }
 
@@ -699,6 +708,7 @@ export function decodeSave(wire: SaveWire): Save {
         .filter(([, ids]) => ids.length > 0)
         .map(([poiId, ids]) => [poiId, new Set(ids)] as const),
     ),
+    carried: carriedFromJSON(wire.carried),
   };
 }
 

@@ -16,15 +16,21 @@
 //
 // **No secrets** (D-328): a prop is on the table once the party has seen where
 // it stands. Something the players must not find yet is added when they do.
+//
+// **Lights are props too** (D-322, D-335): a torch, a brazier, a campfire.
+// What they give is drawn, never ruled — the light changes how the room looks
+// and nobody's sight (D-319). A light is placed lit, and its other state is
+// out, as a door's is open: the save keeps which props are not as they were
+// placed (`Opened`), whatever that means for each.
 
 import type { PropId } from '../ids/index.js';
 import { freshId } from '../ids/index.js';
 import type { BlockCoord, EncounterMap, Prop } from '../map/index.js';
-import { blockAt, blockKey, inMap } from '../map/index.js';
+import { blockAt, blockKey, cleanReach, inMap } from '../map/index.js';
 import type { Facing } from '../place/index.js';
 import { asFacing } from '../place/index.js';
 import type { Box, Size } from '../boxes/index.js';
-import { boxCubes, placedBox } from '../boxes/index.js';
+import { backOf, boxCubes, placedBox } from '../boxes/index.js';
 
 /** What a prop does to sight and walking, in one of its states. */
 export interface PropEffect {
@@ -39,12 +45,27 @@ export interface PropFinish {
   readonly colour: string;
 }
 
+/**
+ * What a prop that changes calls its two states, and the verbs between them
+ * (D-335): a door is placed shut and opened; a light is placed lit and put out.
+ */
+export interface PropStates {
+  /** As it was placed: *shut*, *lit*. */
+  readonly placed: string;
+  /** The other: *open*, *out*. */
+  readonly other: string;
+  /** What puts it back as placed: *Close*, *Light*. */
+  readonly toPlaced: string;
+  /** What changes it: *Open*, *Put out*. */
+  readonly toOther: string;
+}
+
 /** One entry in the catalogue: *a door*. */
 export interface PropType {
   readonly id: string;
   readonly name: string;
   /** Where the catalogue lists it. */
-  readonly group: 'doors' | 'furniture';
+  readonly group: 'doors' | 'furniture' | 'lights';
   /** The box it fills unturned, in cubes: wide (x), tall (y), deep (z). A door is 1 × 2. */
   readonly size: Size;
   /** Whether it has an open state at all. A table does not. */
@@ -53,8 +74,22 @@ export interface PropType {
   readonly closed: PropEffect;
   /** What it does open. The same as closed for one that does not open. */
   readonly open: PropEffect;
-  /** The ways it can look, the first the one it is placed in. */
+  /** The ways it can look, the first the one it is placed in. A light's are its flames. */
   readonly finishes: readonly PropFinish[];
+  /** Its two states' words, when they are not a door's. */
+  readonly states?: PropStates;
+  /** Hung on a wall — held by the block behind it, not by one below (D-335). */
+  readonly hangs?: boolean;
+  /** The light it gives while lit (D-335): how far, unless the GM sets its own. */
+  readonly light?: { readonly reach: number };
+}
+
+const SHUT_OR_OPEN: PropStates = { placed: 'shut', other: 'open', toPlaced: 'Close', toOther: 'Open' };
+const LIT_OR_OUT: PropStates = { placed: 'lit', other: 'out', toPlaced: 'Light', toOther: 'Put out' };
+
+/** A prop's two states, in words: a door's unless it says otherwise. */
+export function statesOf(type: PropType): PropStates {
+  return type.states ?? SHUT_OR_OPEN;
 }
 
 const WOOD: PropFinish = { id: 'wood', name: 'Wood', colour: '#8a5a35' };
@@ -64,13 +99,27 @@ const IRON: PropFinish = { id: 'iron', name: 'Iron', colour: '#5d646c' };
 const DARK_IRON: PropFinish = { id: 'dark-iron', name: 'Dark iron', colour: '#363a40' };
 const RUSTED: PropFinish = { id: 'rusted', name: 'Rusted', colour: '#7a4a34' };
 
+/**
+ * The flames (D-335): a light's finish is the colour of what it gives. The
+ * light itself is drawn in it, and so is everything it falls on.
+ */
+const FIRE: PropFinish = { id: 'fire', name: 'Fire', colour: '#ff9440' };
+const CANDLE: PropFinish = { id: 'candle', name: 'Candle', colour: '#ffcf7a' };
+const COLD: PropFinish = { id: 'cold', name: 'Cold blue', colour: '#7fb0ff' };
+const GREEN: PropFinish = { id: 'green', name: 'Green', colour: '#86f07a' };
+export const FLAMES: readonly PropFinish[] = [FIRE, CANDLE, COLD, GREEN];
+
 const STOPS_BOTH: PropEffect = { blocksSight: true, blocksWalking: true };
 const STOPS_WALKING: PropEffect = { blocksSight: false, blocksWalking: true };
 const STOPS_NOTHING: PropEffect = { blocksSight: false, blocksWalking: false };
 
 const fixed = (effect: PropEffect) => ({ opens: false, closed: effect, open: effect });
+/** A light: it changes — lit or out — and does the same to sight and walking either way. */
+const burns = (effect: PropEffect, reach: number) => ({
+  opens: true, closed: effect, open: effect, states: LIT_OR_OUT, light: { reach },
+});
 
-/** The catalogue (D-328): doors and bars, then furniture. */
+/** The catalogue (D-328, D-335): doors and bars, then furniture, then lights. */
 export const PROP_TYPES: readonly PropType[] = [
   {
     id: 'door', name: 'Door', group: 'doors', size: { x: 1, y: 2, z: 1 },
@@ -95,6 +144,19 @@ export const PROP_TYPES: readonly PropType[] = [
   { id: 'bookcase', name: 'Bookcase', group: 'furniture', size: { x: 1, y: 1, z: 1 }, ...fixed(STOPS_BOTH), finishes: [WOOD, DARK_WOOD, PALE_WOOD] },
   { id: 'barrel', name: 'Barrel', group: 'furniture', size: { x: 1, y: 1, z: 1 }, ...fixed(STOPS_WALKING), finishes: [WOOD, DARK_WOOD] },
   { id: 'crate', name: 'Crate', group: 'furniture', size: { x: 1, y: 1, z: 1 }, ...fixed(STOPS_WALKING), finishes: [WOOD, PALE_WOOD, DARK_WOOD] },
+  // Lights (D-335). A torch hangs on the wall behind it; the rest stand.
+  // A brazier and a campfire are in the way; the others are not.
+  {
+    id: 'torch', name: 'Torch', group: 'lights', size: { x: 1, y: 1, z: 1 }, hangs: true,
+    ...burns(STOPS_NOTHING, 6), finishes: FLAMES,
+  },
+  { id: 'lantern', name: 'Lantern', group: 'lights', size: { x: 1, y: 1, z: 1 }, ...burns(STOPS_NOTHING, 5), finishes: FLAMES },
+  {
+    id: 'candles', name: 'Candles', group: 'lights', size: { x: 1, y: 1, z: 1 },
+    ...burns(STOPS_NOTHING, 3), finishes: [CANDLE, FIRE, COLD, GREEN],
+  },
+  { id: 'brazier', name: 'Brazier', group: 'lights', size: { x: 1, y: 1, z: 1 }, ...burns(STOPS_WALKING, 8), finishes: FLAMES },
+  { id: 'campfire', name: 'Campfire', group: 'lights', size: { x: 1, y: 1, z: 1 }, ...burns(STOPS_WALKING, 10), finishes: FLAMES },
 ];
 
 export function propType(id: string): PropType | null {
@@ -137,10 +199,11 @@ export function propById(props: Props, id: PropId | string): Prop | null {
  * - `taken` — another prop is, or somebody is standing there.
  * - `unsupported` — something under its bottom is air. A prop stands on a
  *   block or on another prop (D-322: they stack — a tall bookcase is two).
+ * - `unhung` — one that hangs has no block behind it to hang on (D-335).
  *
  * `self` is the prop being turned or moved, which does not get in its own way.
  */
-export type PropFooting = 'outside' | 'solid' | 'taken' | 'unsupported';
+export type PropFooting = 'outside' | 'solid' | 'taken' | 'unsupported' | 'unhung';
 
 export function whyNotPut(
   map: EncounterMap,
@@ -154,6 +217,10 @@ export function whyNotPut(
   if (cubes.some((cube) => !inMap(map, cube))) return 'outside';
   if (cubes.some((cube) => blockAt(map, cube))) return 'solid';
   if (cubes.some((cube) => taken.has(blockKey(cube)) || standing.has(blockKey(cube)))) return 'taken';
+  if (propType(prop.type)?.hangs) {
+    const back = backOf(prop.facing);
+    return blockAt(map, { x: prop.at.x + back.x, y: prop.at.y, z: prop.at.z + back.z }) ? null : 'unhung';
+  }
   const bottom = Math.min(...cubes.map((cube) => cube.y));
   const held = cubes
     .filter((cube) => cube.y === bottom)
@@ -188,13 +255,15 @@ export function putProp(
 }
 
 /**
- * Turns or refinishes a prop where it stands. A turn that would not fit is
- * refused — the map comes back as it was. Identity-preserving (R-165).
+ * Turns, refinishes or — for a light — sets how far it reaches, where it
+ * stands. A turn that would not fit is refused — the map comes back as it
+ * was. A reach equal to its type's own is no reach of its own. Identity-
+ * preserving (R-165).
  */
 export function editProp(
   map: EncounterMap,
   id: PropId | string,
-  patch: { readonly facing?: Facing; readonly finish?: string },
+  patch: { readonly facing?: Facing; readonly finish?: string; readonly reach?: number },
   standing: ReadonlySet<string> = new Set(),
 ): EncounterMap {
   const prop = propById(map.props, id);
@@ -203,8 +272,11 @@ export function editProp(
   const facing = patch.facing === undefined ? prop.facing : asFacing(patch.facing);
   const finish = patch.finish !== undefined && type.finishes.some((one) => one.id === patch.finish)
     ? patch.finish : prop.finish;
-  if (facing === prop.facing && finish === prop.finish) return map;
-  const next = { ...prop, facing, finish };
+  const asked = patch.reach !== undefined && type.light && Number.isFinite(patch.reach) ? cleanReach(patch.reach) : null;
+  const reach = asked === null ? prop.reach : asked === type.light!.reach ? undefined : asked;
+  if (facing === prop.facing && finish === prop.finish && reach === prop.reach) return map;
+  const { reach: _, ...rest } = prop;
+  const next: Prop = { ...rest, facing, finish, ...(reach !== undefined ? { reach } : {}) };
   if (facing !== prop.facing && whyNotPut(map, next, standing, prop.id) !== null) return map;
   return { ...map, props: map.props.map((one) => (one.id === prop.id ? next : one)) };
 }
@@ -216,7 +288,10 @@ export function removeProp(map: EncounterMap, id: PropId | string): EncounterMap
 
 // -- what they do now --------------------------------------------------------
 
-/** Which props stand open, by id: the session's (R-140). Closed is the default. */
+/**
+ * Which props are not as they were placed, by id: the session's (R-140). A
+ * door in it is open; a light in it is out (D-335). As placed is the default.
+ */
 export type Opened = ReadonlySet<string>;
 
 export const NONE_OPEN: Opened = new Set();
@@ -255,4 +330,23 @@ export function propRules(props: Props, opened: Opened = NONE_OPEN): PropRules {
   const rules = { sight, walking, occupied };
   byOpened.set(opened, rules);
   return rules;
+}
+
+// -- lights (D-335) ----------------------------------------------------------
+
+/** Whether a prop gives light now: a light, and not put out. */
+export function isLit(prop: Prop, opened: Opened = NONE_OPEN): boolean {
+  return !!propType(prop.type)?.light && !opened.has(prop.id);
+}
+
+/** How far a light reaches — its own, or its type's — or `null` for a prop that gives none. */
+export function reachOf(prop: Prop): number | null {
+  const light = propType(prop.type)?.light;
+  if (!light) return null;
+  return prop.reach ?? light.reach;
+}
+
+/** The colour of a flame, by its id, or fire's for one nobody knows. */
+export function flameColour(id: string): string {
+  return (FLAMES.find((flame) => flame.id === id) ?? FLAMES[0]!).colour;
 }

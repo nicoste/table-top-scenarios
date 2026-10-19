@@ -239,14 +239,15 @@ describe('what the table is told', () => {
     // table is sent something new, so that adding a field is a decision rather
     // than a diff — which is how `lighting` came to be argued for in D-250,
     // `tokens` in D-259, `fog` in D-273, `travelling` in D-304, `silver` in
-    // D-310, and `opened` — which props the table holds stand open — in D-322.
+    // D-310, `opened` — which props the table holds stand open — in D-322, and
+    // `carried` — the lights the members it holds carry — in D-335.
     let state = revealed();
     state = run(state, { kind: 'moveParty', cell: at(4, 4) }).state;
     const view = tableView(state);
 
     expect(view.role).toBe('table');
     expect(Object.keys(view).sort())
-      .toEqual(['campaign', 'fog', 'lighting', 'opened', 'placement', 'role', 'silver', 'tokens', 'travelling']);
+      .toEqual(['campaign', 'carried', 'fog', 'lighting', 'opened', 'placement', 'role', 'silver', 'tokens', 'travelling']);
     expect(view.placement).toMatchObject({ together: true, at: at(4, 4) });
     // Out on the world there is no map to stand in or to see, so there is
     // nothing to send.

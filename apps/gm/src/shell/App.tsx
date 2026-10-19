@@ -12,7 +12,7 @@ import {
   bottomOfMap, cutOf, cutIdIn, familyOf, sunReaches, litBy, MAP_MAX_HEIGHT,
   DAYLIGHT, clampLighting,
   NO_TOKENS, tokensIn, onRoster, unplaced, tokensInBand, standsInBand, standingAt,
-  NO_CELLS, shownBy, memberNotesFromJSON,
+  NO_CELLS, shownBy, memberNotesFromJSON, carriedFromJSON,
   prefabFromJSON, capturePrefab, propById, propBox, propType, blockKey, propsSeen, sightShows,
 } from '@tt/domain';
 import type {
@@ -35,7 +35,7 @@ import {
   tokenAction, stridePrompt,
   NOT_PLACING, turnPlacing, mirrorPlacing, prefabAim, prefabPreview, placeIntent, placePrompt,
   NO_CAPTURE, captureCorner, captureClick, captureHeight, captureBack, captureBox, capturePrompt,
-  EMPTY_HAND, turnHand, propAim, propPreview, placePropIntent, propPrompt, toggleIntent, toggleLabel,
+  EMPTY_HAND, turnHand, propAim, propWall, propPreview, placePropIntent, propPrompt, toggleIntent, toggleLabel,
 } from '@tt/client-core';
 import type { MapAction, MapReach, MapTool } from '@tt/client-core';
 import { useStage } from '../scene/use-stage.js';
@@ -109,6 +109,8 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   const [propHand, setPropHand] = useState<PropHand>(EMPTY_HAND);
   const [selectedProp, setSelectedProp] = useState<string | null>(null);
   const [propAt, setPropAt] = useState<BlockCoord | null>(null);
+  /** The wall a torch would hang on there, when the pointer is on one (D-335). */
+  const [propWallAt, setPropWallAt] = useState<0 | 1 | 2 | 3 | null>(null);
   /**
    * The cell under the pointer while the Places tool is out, so the ghost can
    * be redrawn by a key press as well as by a pointer move. Replaced only when
@@ -417,6 +419,8 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   const memberPicture = (id: string) => roster?.find((member) => member.id === id)?.image ?? null;
   /** The GM's notes on the members, one each across every map (D-315). */
   const memberNotes = useMemo(() => memberNotesFromJSON(view?.save?.memberNotes), [view?.save?.memberNotes]);
+  /** The lights the members carry, one each across every map (D-335). */
+  const carried = useMemo(() => carriedFromJSON(view?.save?.carried), [view?.save?.carried]);
 
   const cellKey = (c: { cx: number; cz: number; x: number; z: number }) => `${c.cx}:${c.cz}:${c.x}:${c.z}`;
   const memberName = (id: string) => campaign?.party.find((m) => m.id === id)?.name ?? null;
@@ -638,9 +642,10 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     const shown = banded && openRange ? tokensInBand(present, openRange) : present;
     const standing: Standing[] = [...shown].map(([memberId, at]) => ({
       memberId, at, colour: memberColour(memberId), picture: memberPicture(memberId),
+      light: carried.get(memberId) ?? null,
     }));
     stage.setTokens(standing);
-  }, [stage, present, banded, openRange?.lower, openRange?.upper, roster]);
+  }, [stage, present, banded, openRange?.lower, openRange?.upper, roster, carried]);
 
   /**
    * Everyone in the open map who is not the party (R-206), hidden ones too —
@@ -661,6 +666,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     const pictureOf = (templateId: string) => library.find((entry) => entry.id === templateId)?.image ?? null;
     const present3d: Present[] = shown.map((token) => ({
       id: token.id, name: token.name, at: token.at, hidden: token.hidden, picture: pictureOf(token.templateId),
+      light: token.light ?? null,
     }));
     stage.setSilver(present3d);
   }, [stage, silverHere, banded, previewing, sightWire, openRange?.lower, openRange?.upper, library]);
@@ -740,10 +746,11 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   useEffect(() => {
     if (!stage || !openMap || mapTool !== 'props' || !openBody) return;
     if (propHand.type) {
-      const preview = propAt ? propPreview(openBody, propHand, propAt, standingCubes) : null;
+      const preview = propAt ? propPreview(openBody, propHand, propAt, standingCubes, propWallAt) : null;
       stage.showPrefabGhost(preview?.cubes ?? null);
       stage.showBlockGhost(preview ? [preview.box.min, preview.box.max] : [], preview?.why ? 0xff6b6b : 0xffffff);
-      setHoverLabel(propPrompt(propType(propHand.type)?.name ?? null, propAt, preview?.why ?? null));
+      const type = propType(propHand.type);
+      setHoverLabel(propPrompt(type?.name ?? null, propAt, preview?.why ?? null, !!type?.hangs));
       return;
     }
     stage.showPrefabGhost(null);
@@ -756,7 +763,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     }
     stage.showBlockGhost([]);
     setHoverLabel(propPrompt(null, null, null));
-  }, [stage, openMap, mapTool, openBody, propHand, propAt, selectedProp, standingCubes]);
+  }, [stage, openMap, mapTool, openBody, propHand, propAt, propWallAt, selectedProp, standingCubes]);
   // A prop removed, or undone away, is no longer selected.
   useEffect(() => {
     if (selectedProp && openBody && !propById(openBody.props, selectedProp)) setSelectedProp(null);
@@ -770,6 +777,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     setPrefabAt(null);
     setCaptureHover(null);
     setPropAt(null);
+    setPropWallAt(null);
     setSelectedProp(null);
   }, [mapTool, openMap?.poiId, stage]);
 
@@ -1147,8 +1155,9 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     if (openMap && mapTool === 'props') {
       if (propHand.type) {
         const at = propAim(picked.face, picked.propFace);
-        const preview = at && openBody ? propPreview(openBody, propHand, at, standingCubes) : null;
-        const intent = at && preview && !preview.why ? placePropIntent(propHand, at, openMap.placeId, openMap.poiId) : null;
+        const wall = propWall(picked.face, picked.propFace);
+        const preview = at && openBody ? propPreview(openBody, propHand, at, standingCubes, wall) : null;
+        const intent = at && preview && !preview.why ? placePropIntent(propHand, at, openMap.placeId, openMap.poiId, wall) : null;
         if (intent) dispatch(intent);
         return;
       }
@@ -1347,6 +1356,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       const picked = stage.pick(e.clientX, e.clientY);
       const at = propAim(picked.face, picked.propFace);
       setPropAt((now) => (now === at || (now && at && now.x === at.x && now.y === at.y && now.z === at.z) ? now : at));
+      setPropWallAt(propWall(picked.face, picked.propFace));
       return;
     }
 
@@ -1515,6 +1525,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     // The same for props: the ghost goes, the selected prop's outline stays.
     if (openMap && mapTool === 'props') {
       setPropAt(null);
+      setPropWallAt(null);
       return;
     }
     setHoverLabel(null);
@@ -1863,6 +1874,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
                 picture: memberPicture(row.id),
                 sight: row.sight,
                 note: memberNotes.get(row.id) ?? '',
+                light: carried.get(row.id) ?? null,
               }))
               : []}
             silver={silverWire ?? []}

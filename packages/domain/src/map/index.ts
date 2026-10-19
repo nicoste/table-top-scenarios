@@ -79,6 +79,20 @@ export interface Prop {
   /** Quarter turns clockwise from above (R-203). */
   readonly facing: 0 | 1 | 2 | 3;
   readonly finish: string;
+  /**
+   * How far a light reaches, when the GM has set it (D-335): absent means
+   * its type's own. Only a light has one; on anything else it means nothing.
+   */
+  readonly reach?: number;
+}
+
+/** How far a light may reach, placed or carried (D-335): whole cubes. */
+export const MIN_LIGHT_REACH = 1;
+export const MAX_LIGHT_REACH = 20;
+
+/** A reach as kept: whole, and inside the bounds. */
+export function cleanReach(reach: number): number {
+  return Math.min(MAX_LIGHT_REACH, Math.max(MIN_LIGHT_REACH, Math.round(reach)));
 }
 
 export interface EncounterMap {
@@ -556,6 +570,8 @@ export interface PropJSON {
   at: { x: number; y: number; z: number };
   facing: number;
   finish: string;
+  /** A light's own reach (D-335). Written only when the GM set one. */
+  reach?: number;
 }
 
 const isWhole = (n: unknown): n is number => typeof n === 'number' && Number.isInteger(n);
@@ -583,6 +599,7 @@ export function propsOfJSON(json: unknown): readonly Prop[] {
       at: { x: at.x, y: at.y, z: at.z },
       facing,
       finish: typeof entry.finish === 'string' ? entry.finish : '',
+      ...(typeof entry.reach === 'number' && Number.isFinite(entry.reach) ? { reach: cleanReach(entry.reach) } : {}),
     });
   }
   return out;
@@ -592,6 +609,7 @@ export function propsAsJSON(props: readonly Prop[]): PropJSON[] {
   return props.map((prop) => ({
     id: prop.id, type: prop.type, at: { x: prop.at.x, y: prop.at.y, z: prop.at.z },
     facing: prop.facing, finish: prop.finish,
+    ...(prop.reach !== undefined ? { reach: prop.reach } : {}),
   }));
 }
 

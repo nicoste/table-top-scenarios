@@ -8468,3 +8468,73 @@ ways and having book is too much detail."* The frame and the shelves stay
 (D-333); the books go. An empty set of shelves is a library, a pantry or an
 armoury as the GM says it is — the fiction is the table's to fill. It still
 stops sight (D-329).
+
+### D-335 — Lights · `agreed`
+The third of D-321's order, after prefabs and props. The GM's answers before
+building, all three the recommended ones:
+
+- **A token may carry a light, this round** — a party member or a silver
+  token, from a flame beside their row in On stage.
+- **A light's reach is a number per light**, like a sight number: its type's
+  to start (candles 3, lantern 5, torch 6, brazier 8, campfire 10), and the
+  GM's to change, 1 to 20.
+- **Steady flames.** No flicker: the screen is drawn when something changes,
+  and a flicker would draw it all the time (R-170).
+
+R-213 is the rule. How it was put together, and what it chose for itself:
+
+**The light fills the air instead of being three.js lights.** Every light
+in three.js is a term in every material's shader, recompiled whenever the
+count changes, and without a shadow of its own each one shines through
+walls — a torch in one room lighting the next. A dungeon has dozens. So the
+light is worked out in the domain (`lamps`): from each flame, the shortest
+way through the air to every cube within its reach, by the walk's steps
+(R-209), never squeezing between two cubes that stop it. Blocks stop it,
+and so does whatever stops sight — a shut door, a bookcase — whose cubes are
+lit on the side the light came from and pass none on. The cubes' light goes
+up as one 3D texture (`render/lamplight`), and every standard material adds
+the light of the cube in front of each point of its surface, blended from
+the eight around it — only those light can be in, so the floor beside a
+wall is not darkened by the wall and the floor beyond it is not lit by this
+room. Worked out per light and cached, so moving one torch redoes that torch:
+about 10 ms for a map with seven lights, reach 20 included.
+
+**The light is eased before it is added** (`1 − e^−light`): one flame lights
+a surface to about its own colour close by, and a room full of them is
+bright without being daylight. Found on the test copy: seven lights in a
+corner of Tollkeep, added straight, turned night into noon.
+
+**A light is placed lit; its other state is out.** The save's `opened`
+already said which props are not as they were placed, and a light's
+"other" is out — so lighting and putting out are `setPropOpen`, the Move
+click and the panel's button, with their own words (*Put out the torch*,
+*Light the torch*). Nothing new to remember when a light is placed or
+stamped with a prefab: it is lit because nothing says otherwise. Lighting
+one is never refused for somebody standing there; shutting a door still is.
+
+**Chosen here, to be argued with:**
+
+- **A torch hangs on the wall pointed at**, its back to the block, and
+  turns with nothing else — the Turn buttons and Z / X leave it alone. Over
+  a floor it says *no wall behind it to hang on*.
+- **Candles, a lantern and a torch stop nothing; a brazier and a campfire
+  stop walking.** A walk through the campfire looked wrong; a lantern on the
+  floor is stepped over.
+- **The flame is the light itself**: drawn flat in its colour, lit by
+  nothing and casting no shadow, and gone when the light is out — a brazier's
+  coals go to ash.
+- **A carried light is a torch's to start** — fire, 6 — and goes where its
+  carrier goes. A member's is the same in every map; a silver token's is the
+  token's.
+- **Lights the party cannot see do not reach the table**: placed ones with
+  their props, a member's with the members the table holds, a silver token's
+  only with the token. A goblin's torch beyond the wall would say a goblin is
+  there (R-85).
+
+Checked on a copy of the GM's data at night (sun 0.1, ambience 0.14): a torch
+hung on Tollkeep's wall, put out and lit from the panel; a campfire and a
+brazier on the grass, a lantern on the table and candles on the barrel;
+Galion and Turdorn given torches from On stage. The table drew the torch on
+the wall and Galion's light over the remembered ground. No errors on either
+screen.
+

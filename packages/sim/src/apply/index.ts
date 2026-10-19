@@ -33,8 +33,8 @@ import {
   exploredIn, pruneExplored, lookAround, blockKey, forgetMap,
   addTemplate, editTemplate, removeTemplate, templateById,
   silverIn, withSilver, withoutStrays, onLibrary, silverCubes, whyNotPlace,
-  spawnSilver, moveSilver, renameSilver, hideSilver, removeSilver, noteSilver,
-  withStageOrder, tidyOrder, withNoteOn, openedIn,
+  spawnSilver, moveSilver, renameSilver, hideSilver, removeSilver, noteSilver, lightSilver,
+  withStageOrder, tidyOrder, withNoteOn, withLightOn, openedIn,
   capturePrefab, prefabById, addPrefab, editPrefab, removePrefab, stampPrefab, editPoiMap,
   propType, propById, propCubes, whyNotPut, putProp, editProp, removeProp, propRules, withOpen, tidyOpened,
 } from '@tt/domain';
@@ -557,6 +557,16 @@ function applyToCampaign(state: HostState, role: Role, intent: Intent, now: stri
       return commitSave(state, save, withNoteOn(save, intent.id, intent.note), now);
     }
 
+    case 'carryLight': {
+      // Play state, as the note is (R-140): a torch lit is not a building
+      // edit to take back. Kept when its member is removed, for the note's
+      // reason, and dropped when the campaign next opens (D-335).
+      const save = state.activeSave;
+      if (!save) return reject(state, 'no save is open');
+      if (!campaign.party.some((m) => m.id === intent.id)) return reject(state, 'no such party member');
+      return commitSave(state, save, withLightOn(save, intent.id, intent.light), now);
+    }
+
     case 'moveToken':
       return applyToTokens(state, campaign, role, intent, now);
 
@@ -566,6 +576,7 @@ function applyToCampaign(state: HostState, role: Role, intent: Intent, now: stri
     case 'hideSilver':
     case 'removeSilver':
     case 'noteSilver':
+    case 'lightSilver':
       return applyToSilver(state, campaign, intent, now);
 
     case 'setOrder': {
@@ -608,6 +619,7 @@ const PROP_FOOTING = {
   solid: 'there is a block there',
   taken: 'something is already there',
   unsupported: 'there is nothing under it to stand on',
+  unhung: 'there is no wall behind it to hang on',
 } as const;
 
 /**
@@ -658,14 +670,17 @@ function applyToProps(
     return edited((m) => editProp(m, prop.id, {
       ...(intent.facing !== undefined ? { facing: intent.facing as Facing } : {}),
       ...(intent.finish !== undefined ? { finish: intent.finish } : {}),
+      ...(intent.reach !== undefined ? { reach: intent.reach } : {}),
     }, standing));
   }
 
-  // Opening and closing: play, not building (R-140).
+  // Opening and closing, lighting and putting out: play, not building (R-140).
   const save = state.activeSave;
   if (!save) return reject_('no save is open');
-  if (!propType(prop.type)?.opens) return reject_('that does not open');
-  if (!intent.open && propCubes(prop).some((cube) => standing.has(blockKey(cube)))) {
+  const type = propType(prop.type);
+  if (!type?.opens) return reject_('that does not open');
+  // A door is not shut on somebody in the doorway; a torch is lit over anybody.
+  if (!intent.open && type.closed.blocksWalking && propCubes(prop).some((cube) => standing.has(blockKey(cube)))) {
     return reject_('somebody is standing in the way');
   }
   return commitSave(state, save, withOpen(save, poi.id, prop.id, intent.open), now);
@@ -768,7 +783,7 @@ function applyToSilver(
   state: HostState,
   campaign: Campaign,
   intent: Extract<Intent, {
-    kind: 'spawnSilver' | 'moveSilver' | 'renameSilver' | 'hideSilver' | 'removeSilver' | 'noteSilver';
+    kind: 'spawnSilver' | 'moveSilver' | 'renameSilver' | 'hideSilver' | 'removeSilver' | 'noteSilver' | 'lightSilver';
   }>,
   now: string,
 ): Applied {
@@ -807,6 +822,8 @@ function applyToSilver(
       return commitSilver(hideSilver(silver, intent.id, intent.hidden));
     case 'noteSilver':
       return commitSilver(noteSilver(silver, intent.id, intent.note));
+    case 'lightSilver':
+      return commitSilver(lightSilver(silver, intent.id, intent.light));
     default:
       return commitSilver(removeSilver(silver, intent.id));
   }

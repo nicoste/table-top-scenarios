@@ -10,7 +10,7 @@ import {
   EdgesGeometry, LineSegments, LineBasicMaterial, Group, BufferGeometry, DoubleSide,
 } from 'three';
 import type {
-  BlockCoord, Campaign, EncounterMap, GlobalCell, Lighting, Material, Opened, Placement, WorldCell,
+  BlockCoord, Campaign, CarriedLight, EncounterMap, GlobalCell, Lighting, Material, Opened, Placement, WorldCell,
 } from '@tt/domain';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -19,7 +19,7 @@ import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import {
   CHUNK_SIZE, brushCentreOffset, mapCentre, DAYLIGHT, sunDirection, shadowReach, bounceOf,
-  dropBelow, fromGlobal, NONE_OPEN, propCubes,
+  dropBelow, fromGlobal, NONE_OPEN, propCubes, propLights, carriedAt, lampField,
 } from '@tt/domain';
 import type { CameraTarget } from '../camera/index.js';
 import {
@@ -36,6 +36,7 @@ import type { GhostCube } from '../prefab-ghost/index.js';
 import { buildPrefabGhost } from '../prefab-ghost/index.js';
 import type { PropMeshes } from '../props/index.js';
 import { buildProps } from '../props/index.js';
+import { buildLamplight } from '../lamplight/index.js';
 import type { Pictures } from '../standee/index.js';
 import type { SilverTokens3D } from '../silver/index.js';
 import { buildSilverTokens } from '../silver/index.js';
@@ -59,6 +60,8 @@ export interface Standing {
   /** The picture on their card, by name, or `null` for the colour (R-204). */
   readonly picture: string | null;
   readonly at: BlockCoord;
+  /** The light they carry, if any (D-335). */
+  readonly light?: CarriedLight | null;
 }
 
 /**
@@ -72,6 +75,8 @@ export interface Present {
   readonly at: BlockCoord;
   readonly picture: string | null;
   readonly hidden: boolean;
+  /** The light it carries, if any (D-335). */
+  readonly light?: CarriedLight | null;
 }
 
 /**
@@ -373,6 +378,9 @@ export class Stage {
   /** Doors, bars, furniture in the open map (D-322), and which stand open. */
   private props: PropMeshes | null = null;
   private opened: Opened = NONE_OPEN;
+  /** The light the lights in the open map give (D-335), and what it was worked out from. */
+  private readonly lamps = buildLamplight();
+  private lit: { map: EncounterMap; opened: Opened; sources: string } | null = null;
   /** The walk a token being moved would take, and how far (R-209). */
   private readonly walk = buildWalkPreview();
   /** The prefab about to be placed (D-321). */
@@ -786,6 +794,7 @@ export class Stage {
     this.invalidate();
     this.standing = standing ?? [];
     this.rebuildTokens();
+    this.relight();
   }
 
   /**
@@ -797,6 +806,7 @@ export class Stage {
     this.invalidate();
     this.present = present ?? [];
     this.rebuildSilver();
+    this.relight();
   }
 
   /**
@@ -808,6 +818,33 @@ export class Stage {
     this.opened = opened;
     this.invalidate();
     this.rebuildProps();
+    this.relight();
+  }
+
+  /**
+   * Works the lamplight out again (D-335), when what it comes from changed:
+   * the body, which props are open or out, or a light — placed, or carried by
+   * somebody who moved. Asked by every setter that could have changed one,
+   * and answers the same question with the field it has.
+   */
+  private relight(): void {
+    const map = this.shownMap;
+    if (!map) {
+      this.lit = null;
+      this.lamps.set(null);
+      return;
+    }
+    const sources = [
+      ...propLights(map.props, this.opened),
+      ...this.standing.flatMap((one) => (one.light ? [carriedAt(one.at, one.light)] : [])),
+      ...this.present.flatMap((one) => (one.light ? [carriedAt(one.at, one.light)] : [])),
+    ];
+    const said = sources.map((one) => `${one.at.x},${one.at.y},${one.at.z}:${one.colour}:${one.reach}`).join('|');
+    const was = this.lit;
+    if (was && was.map === map && was.opened === this.opened && was.sources === said) return;
+    this.lit = { map, opened: this.opened, sources: said };
+    this.lamps.set(lampField(map, this.opened, sources));
+    this.invalidate();
   }
 
   private rebuildProps(): void {
@@ -822,6 +859,7 @@ export class Stage {
     this.props = buildProps(map.props, this.opened, fog
       ? (prop) => propCubes(prop).some((cube) => fog.lit.has(`${cube.x},${cube.y},${cube.z}`))
       : null);
+    this.lamps.light(this.props.group);
     this.scene.add(this.props.group);
     this.applySurface();
   }
@@ -844,6 +882,7 @@ export class Stage {
     this.silver = buildSilverTokens(this.present.map((token) => ({
       ...token, drop: dropBelow(map, token.at),
     })), this.pictures ?? undefined);
+    this.lamps.light(this.silver.group);
     this.scene.add(this.silver.group);
     if (this.silverAimed) this.silver.aimAt(this.silverAimed);
     this.applySurface();
@@ -898,6 +937,7 @@ export class Stage {
       ...token,
       drop: dropBelow(map, token.at),
     })), this.pictures ?? undefined);
+    this.lamps.light(this.tokens.group);
     this.scene.add(this.tokens.group);
     // A rebuild under a ghost that is mid-aim must not drop it: the pointer has
     // not moved, and the next pointer event may be a while coming.
@@ -957,6 +997,7 @@ export class Stage {
         mesh.castShadow = true;
         mesh.receiveShadow = true;
       }
+      this.lamps.light(this.blocks.group);
       this.scene.add(this.blocks.group);
       // A map is tens of cells across; the world is hundreds (R-148).
       this.fitShadows(Math.max(map.size.x, map.size.z), mapCentre(map));
@@ -979,6 +1020,7 @@ export class Stage {
     this.rebuildTokens();
     this.rebuildSilver();
     this.rebuildProps();
+    this.relight();
     this.applySurface();
 
     if (move === 'frame' && map) {
@@ -1722,6 +1764,7 @@ export class Stage {
     this.walk.dispose();
     this.prefabGhost.dispose();
     this.props?.dispose();
+    this.lamps.dispose();
     this.captions.domElement.remove();
     this.renderer.dispose();
   }

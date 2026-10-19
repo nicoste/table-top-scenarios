@@ -8,7 +8,7 @@
 
 import type { Intent } from '@tt/protocol';
 import type { BlockCoord, Box, EncounterMap, Facing, Opened, PropFooting, SwatchId } from '@tt/domain';
-import { propBox, propById, propCubes, propType, turned, whyNotPut } from '@tt/domain';
+import { facingWithBack, propBox, propById, propCubes, propType, statesOf, turned, whyNotPut } from '@tt/domain';
 import type { FacePick, GhostCube } from '@tt/render';
 
 /** The prop in hand: which catalogue entry, turned how, in which finish. */
@@ -40,12 +40,28 @@ export function propAim(face: FacePick | null, propFace: FacePick | null): Block
   return (propFace ?? face)?.adjacent ?? null;
 }
 
+/**
+ * The facing that hangs a torch on the wall pointed at (D-335): its back to
+ * the block whose side is under the pointer. `null` over a floor, a ceiling
+ * or a prop — then the hand's own facing, turned with Z / X, decides.
+ */
+export function propWall(face: FacePick | null, propFace: FacePick | null): Facing | null {
+  if (propFace || !face || face.adjacent.y !== face.block.y) return null;
+  return facingWithBack({ x: face.block.x - face.adjacent.x, z: face.block.z - face.adjacent.z });
+}
+
+/** How the prop in hand would be turned here: to the wall, for one that hangs and has one. */
+function facingHere(hand: PropHand, wall: Facing | null): Facing {
+  return wall !== null && hand.type && propType(hand.type)?.hangs ? wall : hand.facing;
+}
+
 /** Why not, in the readout's words (R-18). */
 export function propWords(why: PropFooting): string {
   switch (why) {
     case 'outside': return 'outside the map';
     case 'solid': return 'a block is in the way';
     case 'taken': return 'something is already there';
+    case 'unhung': return 'no wall behind it to hang on';
     default: return 'nothing under it to stand on';
   }
 }
@@ -62,10 +78,12 @@ export function propPreview(
   hand: PropHand,
   at: BlockCoord,
   standing: ReadonlySet<string>,
+  /** The wall pointed at, for one that hangs (`propWall`). */
+  wall: Facing | null = null,
 ): PropPreview | null {
   const type = hand.type ? propType(hand.type) : null;
   if (!type) return null;
-  const candidate = { type: type.id, at, facing: hand.facing };
+  const candidate = { type: type.id, at, facing: facingHere(hand, wall) };
   const finish = type.finishes.find((one) => one.id === hand.finish) ?? type.finishes[0]!;
   const why = whyNotPut(map, candidate, standing);
   return {
@@ -79,25 +97,34 @@ export function propPreview(
 }
 
 /** The placement a click sends, or nothing with no prop in hand. */
-export function placePropIntent(hand: PropHand, at: BlockCoord, placeId: string, poiId: string): Intent | null {
+export function placePropIntent(
+  hand: PropHand,
+  at: BlockCoord,
+  placeId: string,
+  poiId: string,
+  wall: Facing | null = null,
+): Intent | null {
   if (!hand.type) return null;
   return {
-    kind: 'placeProp', placeId, poiId, type: hand.type, at, facing: hand.facing,
+    kind: 'placeProp', placeId, poiId, type: hand.type, at, facing: facingHere(hand, wall),
     ...(hand.finish ? { finish: hand.finish } : {}),
   };
 }
 
-/** What the readout says with the Props tool in hand. */
-export function propPrompt(name: string | null, at: BlockCoord | null, why: string | null): string {
+/** What the readout says with the Props tool in hand. One that hangs is hung on a wall (D-335). */
+export function propPrompt(name: string | null, at: BlockCoord | null, why: string | null, hangs = false): string {
   if (!name) return 'Pick a prop from the catalogue, or click one on the map to change it.';
-  if (!at) return `Placing a ${name.toLowerCase()} — point at where it should stand.`;
+  if (!at) return hangs
+    ? `Hanging a ${name.toLowerCase()} — point at a wall.`
+    : `Placing a ${name.toLowerCase()} — point at where it should stand.`;
   if (why) return `${name}: ${why}.`;
-  return `Click to place a ${name.toLowerCase()} here. Z / X turn it.`;
+  return hangs ? `Click to hang a ${name.toLowerCase()} here.` : `Click to place a ${name.toLowerCase()} here. Z / X turn it.`;
 }
 
 /**
  * A Move click on a prop (D-328): opens it if it is shut, shuts it if it is
- * open — only for one that opens. Nothing for a table.
+ * open — or puts a light out, or lights it (D-335). Only for one that
+ * changes; nothing for a table.
  */
 export function toggleIntent(
   map: EncounterMap,
@@ -111,10 +138,11 @@ export function toggleIntent(
   return { kind: 'setPropOpen', placeId, poiId, id: prop.id, open: !opened.has(prop.id) };
 }
 
-/** What Move's readout says over a prop that opens: "Open the door", "Close the chest". */
+/** What Move's readout says over a prop that changes: "Open the door", "Put out the torch". */
 export function toggleLabel(map: EncounterMap, id: string, opened: Opened): string | null {
   const prop = propById(map.props, id);
   const type = prop ? propType(prop.type) : null;
   if (!prop || !type?.opens) return null;
-  return `${opened.has(prop.id) ? 'Close' : 'Open'} the ${type.name.toLowerCase()}`;
+  const states = statesOf(type);
+  return `${opened.has(prop.id) ? states.toPlaced : states.toOther} the ${type.name.toLowerCase()}`;
 }

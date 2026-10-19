@@ -57,15 +57,22 @@ export {
   placedBox, placedBlocks, placedProps, stampPrefab, prefabById, addPrefab, editPrefab, removePrefab,
   prefabToJSON, prefabFromJSON,
 } from './prefab/index.js';
-export type { Size, Turn } from './boxes/index.js';
-export { boxCubes, placeInBox, anchorOf } from './boxes/index.js';
+export type { Size, Turn, Heading } from './boxes/index.js';
+export { boxCubes, placeInBox, anchorOf, backOf, facingWithBack } from './boxes/index.js';
 export type {
-  Prop, Props, PropType, PropFinish, PropEffect, PropFooting, PropRules, Opened,
+  Prop, Props, PropType, PropFinish, PropEffect, PropFooting, PropRules, PropStates, Opened,
 } from './props/index.js';
 export {
-  PROP_TYPES, NO_PROPS, NONE_OPEN, propType, propBox, propCubes, propAt, propById, whyNotPut, putProp, editProp,
-  removeProp, propRules,
+  PROP_TYPES, NO_PROPS, NONE_OPEN, FLAMES, propType, propBox, propCubes, propAt, propById, whyNotPut, putProp, editProp,
+  removeProp, propRules, statesOf, isLit, reachOf, flameColour,
 } from './props/index.js';
+export type {
+  CarriedLight, CarriedLightJSON, CarriedLights, LightSource, LampField,
+} from './lamps/index.js';
+export {
+  TORCH, NO_CARRIED, carriedLightFromJSON, carriedLightToJSON, cleanCarried, sameLight, withCarried,
+  carriedOnRoster, carriedToJSON, carriedFromJSON, propLights, carriedAt, glow, lampField, lightIn,
+} from './lamps/index.js';
 export type { Walk } from './walk/index.js';
 export { walkAcross, WALK_BUDGET } from './walk/index.js';
 export type { Material, Cut, Difficulty } from './materials/index.js';
@@ -93,7 +100,7 @@ export {
   BRUSHES, DEFAULT_BRUSH, MAP_BRUSH_CELLS, brushById, brushPatch,
   setBlocks, paintBlocks, clearBlocks,
   createMap, setBlock, clearBlock, growMap, topOfMap, bottomOfMap, mapToJSON, mapFromJSON, packBlocks, unpackBlocks,
-  fillRegion, fillMaterial, mapCentre, enclosing, sliceOf,
+  fillRegion, fillMaterial, mapCentre, enclosing, sliceOf, MIN_LIGHT_REACH, MAX_LIGHT_REACH, cleanReach,
 } from './map/index.js';
 export {
   MAX_PLACE_NAME, MAX_NOTE_TEXT, sameCell, placeGlobal, placeCellFromGlobal, isValidPlaceCell,
@@ -124,7 +131,7 @@ export {
   tokensFor, tokensIn, withTokens, settleTokens, pruneTokens,
   exploredIn, withExplored, pruneExplored, lookAround, forgetMap,
   silverIn, withSilver, withoutStrays, orderIn, withStageOrder, tidyOrder, withNoteOn,
-  openedIn, withOpen, tidyOpened,
+  openedIn, withOpen, tidyOpened, withLightOn,
 } from './save/index.js';
 
 export type { MemberNotes, MemberNotesJSON } from './member-notes/index.js';
@@ -147,7 +154,7 @@ export {
 export type { SilverToken, SilverTokens, SilverTokenJSON } from './silver/index.js';
 export {
   NO_SILVER, MAX_SILVER_NAME, MAX_SILVER_NOTE, SUFFIX_LETTERS,
-  silverAt, silverCubes, nameFor, whyNotPlace, spawnSilver, moveSilver, renameSilver, hideSilver, noteSilver,
+  silverAt, silverCubes, nameFor, whyNotPlace, spawnSilver, moveSilver, renameSilver, hideSilver, noteSilver, lightSilver,
   removeSilver, onLibrary, settledSilver, silverInBand, silverShown, silverToJSON, silverFromJSON,
 } from './silver/index.js';
 

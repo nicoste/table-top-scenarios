@@ -20,6 +20,8 @@ import { sameCube, standingAt, standsInBand } from '../tokens/index.js';
 import type { TokenTemplate } from '../library/index.js';
 import type { Opened } from '../props/index.js';
 import { NONE_OPEN, propRules } from '../props/index.js';
+import type { CarriedLight, CarriedLightJSON } from '../lamps/index.js';
+import { carriedLightFromJSON, carriedLightToJSON, cleanCarried, sameLight } from '../lamps/index.js';
 
 export interface SilverToken {
   readonly id: SilverId;
@@ -40,6 +42,12 @@ export interface SilverToken {
    * Empty when there is none.
    */
   readonly note: string;
+  /**
+   * The light it carries, if any (D-335): a goblin's torch. Drawn on the
+   * table only while the token is — a light the party cannot see the bearer
+   * of would say somebody is there (R-85).
+   */
+  readonly light?: CarriedLight;
 }
 
 /** One map's silver tokens, in the order they were placed. */
@@ -192,6 +200,16 @@ export function noteSilver(silver: SilverTokens, id: SilverId | string, note: st
   return mapToken(silver, id, (token) => (clean === token.note ? token : { ...token, note: clean }));
 }
 
+/** Gives one a light to carry, or takes it away with `null` (D-335). */
+export function lightSilver(silver: SilverTokens, id: SilverId | string, light: CarriedLight | null): SilverTokens {
+  const next = light ? cleanCarried(light) : null;
+  return mapToken(silver, id, (token) => {
+    if (sameLight(token.light ?? null, next)) return token;
+    const { light: _, ...rest } = token;
+    return next ? { ...rest, light: next } : rest;
+  });
+}
+
 /** Keeps one off the table, or lets the party see it again (R-206). */
 export function hideSilver(silver: SilverTokens, id: SilverId | string, hidden: boolean): SilverTokens {
   return mapToken(silver, id, (token) => (token.hidden === hidden ? token : { ...token, hidden }));
@@ -250,6 +268,7 @@ export interface SilverTokenJSON {
   at: { x: number; y: number; z: number };
   hidden?: boolean | undefined;
   note?: string | undefined;
+  light?: CarriedLightJSON | undefined;
 }
 
 export function silverToJSON(silver: SilverTokens): SilverTokenJSON[] {
@@ -260,6 +279,7 @@ export function silverToJSON(silver: SilverTokens): SilverTokenJSON[] {
     at: { x: token.at.x, y: token.at.y, z: token.at.z },
     ...(token.hidden ? { hidden: true } : {}),
     ...(token.note ? { note: token.note } : {}),
+    ...(token.light ? { light: carriedLightToJSON(token.light) } : {}),
   }));
 }
 
@@ -272,5 +292,12 @@ export function silverFromJSON(json: readonly SilverTokenJSON[] | undefined | nu
     at: { x: token.at.x, y: token.at.y, z: token.at.z },
     hidden: token.hidden === true,
     note: typeof token.note === 'string' ? token.note.slice(0, MAX_SILVER_NOTE) : '',
+    ...lightFrom(token.light),
   }));
+}
+
+/** A token's light as read: none, or one carried (R-137a's leniency). */
+function lightFrom(json: unknown): { light?: CarriedLight } {
+  const light = json === undefined ? null : carriedLightFromJSON(json);
+  return light ? { light } : {};
 }

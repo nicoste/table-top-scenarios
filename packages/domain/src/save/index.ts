@@ -21,6 +21,8 @@ import type { MemberNotes } from '../member-notes/index.js';
 import type { Opened } from '../props/index.js';
 import { NONE_OPEN } from '../props/index.js';
 import { NO_MEMBER_NOTES, notesOnRoster, withMemberNote } from '../member-notes/index.js';
+import type { CarriedLight, CarriedLights } from '../lamps/index.js';
+import { NO_CARRIED, carriedOnRoster, withCarried } from '../lamps/index.js';
 import type { Campaign } from '../campaign/index.js';
 import type { CuttingPlane, LevelRange } from '../planes/index.js';
 import { sameRange, settleRange } from '../planes/index.js';
@@ -171,6 +173,13 @@ export interface Save {
    * all shut carries no entry.
    */
   readonly opened: ReadonlyMap<string, Opened>;
+  /**
+   * The light each party member carries, by member id (D-335). Across maps,
+   * as their note is (D-315): a torch lit in the cellar is lit on the stairs.
+   * Play state, so undo leaves it alone (R-140). Nobody carrying one has no
+   * entry.
+   */
+  readonly carried: CarriedLights;
 }
 
 /** Which map the party has gone into. Where they are, and nothing else. */
@@ -210,6 +219,7 @@ export function createLiveSave(campaign: Campaign, savedAt: string): Save {
     order: new Map(),
     memberNotes: NO_MEMBER_NOTES,
     opened: new Map(),
+    carried: NO_CARRIED,
   };
 }
 
@@ -492,13 +502,24 @@ export function pruneDiscovery(save: Save, livePlaceIds: ReadonlySet<PlaceId>): 
 
 /**
  * The same tolerance for a member who has left the roster (D-155): where
- * they stood on the world, and the GM's note on them (D-315). Read through
- * the roster until then, so undoing a removal brings the note back with them.
+ * they stood on the world, the GM's note on them (D-315) and the light they
+ * carried (D-335). Read through the roster until then, so undoing a removal
+ * brings them back with their note and their torch.
  */
 export function pruneMembers(save: Save, liveMemberIds: ReadonlySet<MemberId>): Save {
   const placed = withPlacement(save, prunePlacement(save.placement, liveMemberIds));
-  const notes = notesOnRoster(placed.memberNotes, liveMemberIds as ReadonlySet<string>);
-  return notes === placed.memberNotes ? placed : { ...placed, memberNotes: notes };
+  const live = liveMemberIds as ReadonlySet<string>;
+  const notes = notesOnRoster(placed.memberNotes, live);
+  const carried = carriedOnRoster(placed.carried, live);
+  return notes === placed.memberNotes && carried === placed.carried
+    ? placed
+    : { ...placed, memberNotes: notes, carried };
+}
+
+/** Gives one member a light to carry, or takes it with `null` (D-335). Identity-preserving (R-165). */
+export function withLightOn(save: Save, memberId: MemberId | string, light: CarriedLight | null): Save {
+  const carried = withCarried(save.carried, memberId as string, light);
+  return carried === save.carried ? save : { ...save, carried };
 }
 
 /** Writes the GM's note on one member, or clears it (D-315). Identity-preserving (R-165). */

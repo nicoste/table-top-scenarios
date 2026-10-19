@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest';
 import type { BlockCoord, EncounterMap, SwatchId } from '@tt/domain';
 import { createMap, setBlocks, putProp, DEFAULT_FLOOR } from '@tt/domain';
 import {
-  EMPTY_HAND, takeProp, turnHand, propAim, propPreview, placePropIntent, propPrompt, toggleIntent, toggleLabel,
+  EMPTY_HAND, takeProp, turnHand, propAim, propWall, propPreview, placePropIntent, propPrompt, toggleIntent, toggleLabel,
 } from '@tt/client-core';
 
 const cube = (x: number, y: number, z: number): BlockCoord => ({ x, y, z });
@@ -68,5 +68,31 @@ describe('a Move click on a door (D-328)', () => {
     const table = putProp(createMap(), { type: 'table', at: cube(3, 1, 3), facing: 0 });
     expect(toggleIntent(table, table.props[0]!.id, new Set(), 'place_a', 'poi_a')).toBeNull();
     expect(toggleLabel(table, table.props[0]!.id, new Set())).toBeNull();
+  });
+});
+
+describe('a light (D-335)', () => {
+  it('hangs on the wall pointed at, turned to it, whatever the hand\'s own turn', () => {
+    // The side of a block at x = 6, pointed at from x = 5: its back to +x, facing 1.
+    const side = { block: cube(6, 1, 3), adjacent: cube(5, 1, 3) };
+    expect(propWall(side as never, null)).toBe(1);
+    expect(propWall({ block: cube(3, 0, 3), adjacent: cube(3, 1, 3) } as never, null)).toBeNull();
+    expect(propWall(side as never, side as never)).toBeNull();
+    const map = setBlocks(createMap(), [cube(6, 1, 3)], DEFAULT_FLOOR as SwatchId);
+    const hand = takeProp(EMPTY_HAND, 'torch');
+    expect(propPreview(map, hand, cube(5, 1, 3), new Set(), 1)!.why).toBeNull();
+    expect(propPreview(map, hand, cube(5, 1, 3), new Set(), null)!.why).toBe('no wall behind it to hang on');
+    expect(placePropIntent(hand, cube(5, 1, 3), 'place_a', 'poi_a', 1)).toMatchObject({ facing: 1 });
+    // Anything that stands keeps the hand's turn.
+    expect(placePropIntent(turnHand(takeProp(EMPTY_HAND, 'lantern'), 1), cube(5, 1, 3), 'place_a', 'poi_a', 3)).toMatchObject({ facing: 1 });
+    expect(propPrompt('Torch', cube(5, 1, 3), null, true)).toMatch(/Click to hang a torch/);
+  });
+
+  it('is put out and lit by a Move click, in its own words', () => {
+    const map = putProp(createMap(), { type: 'campfire', at: cube(3, 1, 3), facing: 0 });
+    const id = map.props[0]!.id as string;
+    expect(toggleLabel(map, id, new Set())).toBe('Put out the campfire');
+    expect(toggleLabel(map, id, new Set([id]))).toBe('Light the campfire');
+    expect(toggleIntent(map, id, new Set(), 'place_a', 'poi_a')).toMatchObject({ open: true });
   });
 });

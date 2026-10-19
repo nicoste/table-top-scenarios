@@ -2253,6 +2253,37 @@ apps/host/src/
 >   now (`sightShows`) is the blocks it shows and the cubes of the props it
 >   shows, by the same seen-or-beside rule (`propsSeen`, D-331).
 
+> **R-213.** **A light is drawn, never ruled: it fills the air from its flame,
+> cube by cube, and stops where sight stops** (D-321, D-335). It changes how
+> a room looks and nobody's sight — that is the GM's number (D-319).
+>
+> - **Placed lights are props** (R-212), a group of their own: torch,
+>   lantern, candles, brazier, campfire. A torch hangs on the wall pointed at,
+>   held by the block behind it; the rest stand. A light's finish is its
+>   flame — fire, candle, cold blue, green — and its reach is its type's
+>   unless the GM sets its own (1 to 20), which is building, under undo.
+> - **A light is placed lit, and its other state is out**, as a door's is
+>   open: the save's `opened` is *which props are not as they were placed*.
+>   A **Move** click puts one out or lights it, the GM's alone (D-328), over
+>   anybody standing there.
+> - **Anybody on stage may carry one** — a party member or a silver token —
+>   given from the flame by their row in On stage, with a reach and a flame.
+>   Play state, never under undo (R-140): a member's light is theirs in every
+>   map (`carried`, as their note is), a silver token's is the token's.
+> - **The light goes the walk's way** (R-209): steps of 1, √2 and √3 through
+>   the air, never squeezing between two cubes that stop it, dimmer the
+>   further it went and nothing past its reach. Blocks stop it; so does what
+>   stops sight, whose cubes are lit on the side the light came from. A shut
+>   door keeps a room's light in, and opening it lets the light out.
+> - **Worked out on change, read per frame** (R-170): when the body, a door,
+>   a light or a carrier changes, never per frame — no flicker. Any number of
+>   lights; one texture every surface reads, the cube in front of each face.
+> - **The table is sent no light it could not draw** (R-85): placed lights
+>   come with the props it holds, which are lit or out as `opened` says; a
+>   member's carried light comes for the members it holds (`carried`, the
+>   eighth piece of save data it is sent); a silver token's comes with the
+>   token, and only with it.
+
 ---
 
 ## 6i. Knowing which way you are facing

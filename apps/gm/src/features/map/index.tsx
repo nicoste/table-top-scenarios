@@ -335,7 +335,7 @@ export function MapPanel({
               Click a token to pick it up, then the top of a block to stand it there.
               One to a cube, gold or silver, and always on something. Escape or
               right-click puts it back down where it was. Click a door to open or
-              shut it.
+              shut it, and a light to put it out or light it.
             </>
           )}
           {tool === 'spawn' && (
@@ -348,10 +348,11 @@ export function MapPanel({
           {tool === 'props' && (
             <>
               Pick a prop from the catalogue and click where it stands — <b>Z / X</b>{' '}
-              turn it first. One per click, and each is one undo. With nothing in hand,
-              click a prop to turn, refinish, open or remove it — <b>Backspace</b>{' '}
-              removes the one selected. During play, a{' '}
-              <b>Move</b> click opens and shuts a door.
+              turn it first; a torch hangs on the wall you point at. One per click, and
+              each is one undo. With nothing in hand, click a prop to turn, refinish,
+              open or remove it, or to set how far a light reaches — <b>Backspace</b>{' '}
+              removes the one selected. During play, a <b>Move</b> click opens and
+              shuts a door, and lights or puts out a light.
             </>
           )}
           {tool === 'prefabs' && (

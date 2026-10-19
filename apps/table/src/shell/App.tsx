@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { decodeCampaign, decodePlacement, cellsFromWire } from '@tt/protocol';
 import {
   CHUNK_SIZE, DEFAULT_MARKERS, DEFAULT_MATERIALS, mapFromJSON, clampLighting, tokensFromJSON,
-  allKnownIn, routeAcross, toGlobal, blockKey,
+  allKnownIn, routeAcross, toGlobal, blockKey, carriedFromJSON, carriedLightFromJSON,
 } from '@tt/domain';
 import type { BlockCoord, MemberId, Route, TravelModeId, Travelling } from '@tt/domain';
 import type { Intent, TableView } from '@tt/protocol';
@@ -248,14 +248,18 @@ export function App({ view, status, rejection, dispatch }: Props) {
 
   // The party in the map, as they were sent (R-184). Their own effect, for the
   // pawns' reason: they move far more often than the map changes (R-19a).
+  /** The lights they carry (D-335), sent for exactly the members sent. */
+  const carriedWire = view?.carried ?? null;
+  const carried = useMemo(() => carriedFromJSON(carriedWire), [carriedWire]);
   useEffect(() => {
     if (!stage) return;
     const tokens: Standing[] = [...standing].map(([memberId, at]) => ({
       memberId, at, colour: colourOf(memberId),
       picture: campaign?.party.find((m) => m.id === memberId)?.image ?? null,
+      light: carried.get(memberId) ?? null,
     }));
     stage.setTokens(tokens);
-  }, [stage, standing, campaign?.party]);
+  }, [stage, standing, campaign?.party, carried]);
 
   /**
    * Everyone not of the party whom the party can see right now (R-206). The
@@ -268,6 +272,7 @@ export function App({ view, status, rejection, dispatch }: Props) {
     stage?.setSilver(silverWire
       ? silverWire.map((token) => ({
         id: token.id, name: token.name, at: token.at, picture: token.image, hidden: false,
+        light: token.light ? carriedLightFromJSON(token.light) : null,
       }))
       : null);
   }, [stage, silverWire]);

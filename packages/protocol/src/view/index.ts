@@ -8,7 +8,9 @@ import {
   tokensFor, onRoster, tokensInBand, tokensToJSON,
   exploredIn, partySight, seenPart, inRange, placeById, poiById, ON_FOOT,
   silverIn, silverShown, templateById, libraryToJSON, prefabToJSON, openedIn, sliceOf, sightShows,
+  carriedLightToJSON,
 } from '@tt/domain';
+import type { CarriedLightJSON } from '@tt/domain';
 import type {
   CampaignWire, SaveWire, PlacementWire, MapWire, LightingWire, TokensWire, CellsWire,
   TravellingWire, TokenTemplateWire, PrefabWire,
@@ -200,6 +202,13 @@ export interface TableView {
    * not hold is not mentioned. `null` out on the world.
    */
   readonly opened: readonly string[] | null;
+  /**
+   * The **eighth** piece of save data the table is sent (D-335): the light
+   * each party member carries, by member id — only for the members whose
+   * tokens it was sent, so a torch never burns where the table has nobody.
+   * The players' own, as their tokens are (R-136). `null` out on the world.
+   */
+  readonly carried: Readonly<Record<string, CarriedLightJSON>> | null;
 }
 
 /** One silver token as the table sees it (R-206). */
@@ -208,6 +217,11 @@ export interface TableSilverWire {
   readonly name: string;
   readonly at: { readonly x: number; readonly y: number; readonly z: number };
   readonly image: string | null;
+  /**
+   * The light it carries (D-335), absent for none. Sent with the token and
+   * only with it: a torch whose bearer the party cannot see is not sent.
+   */
+  readonly light?: CarriedLightJSON;
 }
 
 export type View = GmView | TableView;
@@ -276,7 +290,24 @@ export function viewFor(role: Role, state: HostState, connect: readonly string[]
       ? silverForTheTable(state.active, state.activeSave, state.library)
       : null,
     opened: campaign && state.active && state.activeSave ? openedForTheTable(state.active, state.activeSave) : null,
+    carried: campaign && state.active && state.activeSave ? carriedForTheTable(state.active, state.activeSave) : null,
   };
+}
+
+/**
+ * The lights the members the table holds carry (D-335): the same members
+ * `tokensForTheTable` sends, and nobody else.
+ */
+function carriedForTheTable(campaign: Campaign, save: Save): Readonly<Record<string, CarriedLightJSON>> | null {
+  const shown = shownMap(campaign, save);
+  if (!shown) return null;
+  const standing = tokensInBand(onRoster(tokensFor(save, shown.poi.id), campaign.party), rangeFor(save, shown.poi.id));
+  const out: Record<string, CarriedLightJSON> = {};
+  for (const id of [...standing.keys()].sort()) {
+    const light = save.carried.get(id);
+    if (light) out[id] = carriedLightToJSON(light);
+  }
+  return out;
 }
 
 /** Which props the table holds stand open (D-322): its body's props, nothing beyond. */
@@ -312,6 +343,7 @@ function silverForTheTable(
       name: token.name,
       at: { x: token.at.x, y: token.at.y, z: token.at.z },
       image: templateById(library, token.templateId)?.image ?? null,
+      ...(token.light ? { light: carriedLightToJSON(token.light) } : {}),
     }));
 }
 

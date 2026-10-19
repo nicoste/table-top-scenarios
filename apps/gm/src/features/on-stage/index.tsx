@@ -8,13 +8,16 @@
 //
 // Silver tokens are renamed, hidden, noted and taken away here (R-206);
 // party members are picked up for Move, given their sight, as the party card
-// used to (R-46, R-188), and noted (D-315).
+// used to (R-46, R-188), and noted (D-315). Anybody may be given a light to
+// carry (D-335).
 
 import type { Intent, SilverTokenWire, TokenTemplateWire } from '@tt/protocol';
 import { imageUrl } from '@tt/protocol';
-import { inOrder, orderFromJSON, MAX_ORDER, MIN_ORDER } from '@tt/domain';
+import type { CarriedLight } from '@tt/domain';
+import { carriedLightFromJSON, inOrder, orderFromJSON, MAX_ORDER, MIN_ORDER } from '@tt/domain';
 import { ConfirmDelete, DraftInput, Tooltip } from '@tt/ui';
 import { GmNote } from '../note/index.js';
+import { CarriedLightLine, FlameButton } from '../carried/index.js';
 
 const GREY = '#858c94';
 
@@ -28,6 +31,8 @@ export interface PartyOnStage {
   readonly sight: number;
   /** The GM's note on them, the same in every map (D-315); empty for none. */
   readonly note: string;
+  /** The light they carry, the same in every map (D-335), or none. */
+  readonly light: CarriedLight | null;
 }
 
 interface Props {
@@ -161,7 +166,19 @@ export function OnStagePanel({ party, silver, order, library, placeId, poiId, di
                         />
                       </span>
                     </Tooltip>
+                    <FlameButton
+                      light={member.light}
+                      name={member.name}
+                      onChange={(light) => dispatch({ kind: 'carryLight', id: member.id, light })}
+                    />
                   </div>
+                  {member.light && (
+                    <CarriedLightLine
+                      light={member.light}
+                      name={member.name}
+                      onChange={(light) => dispatch({ kind: 'carryLight', id: member.id, light })}
+                    />
+                  )}
                   {/* The same note in every map: it is the member's, not this map's (D-315). */}
                   <GmNote
                     note={member.note}
@@ -177,6 +194,8 @@ export function OnStagePanel({ party, silver, order, library, placeId, poiId, di
             const sheet = entry?.url ?? null;
             const hidden = token.hidden === true;
             const note = token.note ?? '';
+            const light = token.light ? carriedLightFromJSON(token.light) : null;
+            const carry = (next: CarriedLight | null) => dispatch({ kind: 'lightSilver', ...where, id: token.id, light: next });
             const look = picture ? { backgroundImage: `url(${imageUrl(picture)})` } : { background: GREY };
             return (
               <li key={row.id} className={hidden ? 'hidden' : ''}>
@@ -207,6 +226,7 @@ export function OnStagePanel({ party, silver, order, library, placeId, poiId, di
                     valid={(name) => name.trim().length > 0}
                     onCommit={(name) => dispatch({ kind: 'renameSilver', ...where, id: token.id, name })}
                   />
+                  <FlameButton light={light} name={token.name} onChange={carry} />
                   {/* The eye and the × touch: they are one group of actions. */}
                   <span className="stage-actions">
                     <ConfirmDelete
@@ -233,6 +253,7 @@ export function OnStagePanel({ party, silver, order, library, placeId, poiId, di
                     </ConfirmDelete>
                   </span>
                 </div>
+                {light && <CarriedLightLine light={light} name={token.name} onChange={carry} />}
                 {/*
                   The note, a row of its own across the whole width (D-313):
                   the note itself, or an offer to write one. Click to edit.

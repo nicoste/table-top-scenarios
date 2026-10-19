@@ -28,6 +28,35 @@ export interface Turn {
   readonly mirrored: boolean;
 }
 
+/** A way along the ground: one step in x and z. */
+export interface Heading {
+  readonly x: number;
+  readonly z: number;
+}
+
+/**
+ * Which way the back of a thing points once turned: toward −z unturned, and
+ * round with each quarter turn as `placeInBox` turns a box — what a torch
+ * hangs on (D-335).
+ */
+export function backOf(facing: Facing): Heading {
+  switch (asFacing(facing)) {
+    case 1: return { x: 1, z: 0 };
+    case 2: return { x: 0, z: 1 };
+    case 3: return { x: -1, z: 0 };
+    default: return { x: 0, z: -1 };
+  }
+}
+
+/** The facing whose back points this way, or `null` for a way that is not one step along x or z. */
+export function facingWithBack(back: Heading): Facing | null {
+  for (const facing of [0, 1, 2, 3] as const) {
+    const way = backOf(facing);
+    if (way.x === back.x && way.z === back.z) return facing;
+  }
+  return null;
+}
+
 /** The box two corners span, whichever way round they were clicked. */
 export function boxBetween(a: BlockCoord, b: BlockCoord): Box {
   return {

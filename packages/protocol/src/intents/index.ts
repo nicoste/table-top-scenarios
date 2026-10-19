@@ -11,6 +11,7 @@ import {
 import {
   MAX_HEIGHT, MAX_BRUSH, MAP_BRUSH_CELLS, MAX_TEMPLATE_NAME, MAX_TAG, MAX_TAGS, MAX_SILVER_NAME,
   MAX_SILVER_NOTE, MIN_ORDER, MAX_ORDER, MAX_SHEET_URL, MAX_MEMBER_NOTE, MAX_PREFAB_NAME,
+  MIN_LIGHT_REACH, MAX_LIGHT_REACH,
 } from '@tt/domain';
 
 const cell = { cx: z.number().int(), cz: z.number().int(), x: CellIndex, z: CellIndex };
@@ -23,6 +24,10 @@ const size = z.number().int().min(1).max(MAX_BRUSH).optional();
 const stroke = z.string().min(1).max(64).optional();
 /** Quarter turns clockwise from above (R-203). */
 const facing = z.number().int().min(0).max(3).optional();
+/** How far a light reaches, in whole cubes (D-335). */
+const reach = z.number().int().min(MIN_LIGHT_REACH).max(MAX_LIGHT_REACH);
+/** A light somebody carries: its flame and its reach (D-335). `null` takes it away. */
+const carried = z.object({ flame: z.string().min(1).max(40), reach }).nullable();
 /**
  * The cells one block edit touches: a brush's patch, or a single cube (R-162).
  *
@@ -76,6 +81,12 @@ export const IntentSchema = z.discriminatedUnion('kind', [
    * every map, kept in the save. Never the table's.
    */
   z.object({ kind: z.literal('noteMember'), id: z.string().min(1), note: z.string().max(MAX_MEMBER_NOTE) }),
+  /**
+   * A light one member carries (D-335), or none. One light across every map,
+   * kept in the save — play, so not under undo (R-140). The GM's, like a
+   * door: the table never lights or puts one out (D-328).
+   */
+  z.object({ kind: z.literal('carryLight'), id: z.string().min(1), light: carried }),
 
   // Points of interest
   /**
@@ -244,11 +255,17 @@ export const IntentSchema = z.discriminatedUnion('kind', [
     placeId: z.string().min(1), poiId: z.string().min(1), id: z.string().min(1),
     facing: z.number().int().min(0).max(3).optional(),
     finish: z.string().max(40).optional(),
+    /** A light's reach (D-335); one equal to its type's own clears its own. */
+    reach: reach.optional(),
   }),
   z.object({
     kind: z.literal('removeProp'),
     placeId: z.string().min(1), poiId: z.string().min(1), id: z.string().min(1),
   }),
+  /**
+   * Sets a prop as placed (`open: false`) or the other way (`open: true`):
+   * a door shut or open, a light lit or out (D-335).
+   */
   z.object({
     kind: z.literal('setPropOpen'),
     placeId: z.string().min(1), poiId: z.string().min(1), id: z.string().min(1),
@@ -297,6 +314,12 @@ export const IntentSchema = z.discriminatedUnion('kind', [
     kind: z.literal('noteSilver'),
     placeId: z.string().min(1), poiId: z.string().min(1), id: z.string().min(1),
     note: z.string().max(MAX_SILVER_NOTE),
+  }),
+  /** A light one silver token carries (D-335), or none. */
+  z.object({
+    kind: z.literal('lightSilver'),
+    placeId: z.string().min(1), poiId: z.string().min(1), id: z.string().min(1),
+    light: carried,
   }),
   /**
    * A number beside a token on stage, gold or silver (R-208), or `null` to

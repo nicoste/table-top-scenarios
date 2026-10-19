@@ -8,6 +8,7 @@ import {
   createMap, setBlocks, blockKey, DEFAULT_FLOOR, PROP_TYPES, propType, propBox, propAt, whyNotPut, putProp,
   editProp, removeProp, propRules, NONE_OPEN, whyNotStand, walkAcross, partySight, mapToJSON, mapFromJSON,
   sliceOf, seenPart, propsSeen, sightShows, shownBy, createCampaign, createLiveSave, openedIn, withOpen, tidyOpened,
+  statesOf, isLit, reachOf, backOf, facingWithBack, MAX_LIGHT_REACH,
 } from '@tt/domain';
 
 const cube = (x: number, y: number, z: number): BlockCoord => ({ x, y, z });
@@ -29,9 +30,10 @@ const door = (map: EncounterMap) => putProp(map, { type: 'door', at: cube(5, 1, 
 const doorId = (map: EncounterMap) => map.props[0]!.id as string;
 
 describe('the catalogue (D-328)', () => {
-  it('has the doors and bars, and the furniture', () => {
+  it('has the doors and bars, the furniture, and the lights (D-335)', () => {
     expect(PROP_TYPES.map((type) => type.id)).toEqual([
       'door', 'cell-door', 'bars', 'portcullis', 'chest', 'table', 'chair', 'bookcase', 'barrel', 'crate',
+      'torch', 'lantern', 'candles', 'brazier', 'campfire',
     ]);
   });
 
@@ -180,5 +182,58 @@ describe('what sight shows now, props and all (D-332)', () => {
     const bare = withDoorway();
     const cells = new Set([blockKey(cube(4, 1, 7))]);
     expect(sightShows(bare, cells)).toBe(shownBy(bare, cells));
+  });
+});
+
+describe('lights (D-335)', () => {
+  it('are placed lit, and their other state is out, in words of their own', () => {
+    const map = putProp(createMap(), { type: 'lantern', at: cube(3, 1, 3), facing: 0 });
+    const lantern = map.props[0]!;
+    expect(isLit(lantern)).toBe(true);
+    expect(isLit(lantern, new Set([lantern.id as string]))).toBe(false);
+    expect(statesOf(propType('lantern')!)).toMatchObject({ placed: 'lit', other: 'out', toOther: 'Put out', toPlaced: 'Light' });
+    expect(statesOf(propType('door')!)).toMatchObject({ placed: 'shut', other: 'open' });
+    expect(isLit(putProp(createMap(), { type: 'table', at: cube(3, 1, 3), facing: 0 }).props[0]!)).toBe(false);
+  });
+
+  it('stop nothing, but a brazier and a campfire are in the way, lit or out', () => {
+    expect(propType('torch')).toMatchObject({ closed: { blocksSight: false, blocksWalking: false } });
+    expect(propType('brazier')).toMatchObject({ closed: { blocksWalking: true }, open: { blocksWalking: true } });
+    expect(propType('campfire')).toMatchObject({ closed: { blocksSight: false, blocksWalking: true } });
+  });
+
+  it('a torch hangs on the block behind it, and nothing under it will do instead', () => {
+    // Its back is toward −z unturned, and turns with it.
+    expect([0, 1, 2, 3].map((facing) => backOf(facing as 0))).toEqual([
+      { x: 0, z: -1 }, { x: 1, z: 0 }, { x: 0, z: 1 }, { x: -1, z: 0 },
+    ]);
+    expect(facingWithBack({ x: 1, z: 0 })).toBe(1);
+    expect(facingWithBack({ x: 1, z: 1 })).toBeNull();
+    const map = withDoorway();
+    // Beside the wall at x = 5, its back to it: facing 1.
+    expect(whyNotPut(map, { type: 'torch', at: cube(4, 2, 3), facing: 1 })).toBeNull();
+    expect(whyNotPut(map, { type: 'torch', at: cube(4, 2, 3), facing: 3 })).toBe('unhung');
+    // On the floor in the open, with nothing behind it.
+    expect(whyNotPut(map, { type: 'torch', at: cube(2, 1, 2), facing: 0 })).toBe('unhung');
+  });
+
+  it('reach as far as their type says, or as far as the GM sets, in bounds', () => {
+    let map = putProp(createMap(), { type: 'torch', at: cube(0, 1, 3), facing: 3 });
+    // No wall behind it in a new map: not placed. Hang it on one.
+    expect(map.props).toHaveLength(0);
+    map = putProp(setBlocks(createMap(), [cube(0, 1, 3)], STONE), { type: 'lantern', at: cube(3, 1, 3), facing: 0 });
+    const id = map.props[0]!.id as string;
+    expect(reachOf(map.props[0]!)).toBe(5);
+    map = editProp(map, id, { reach: 9 });
+    expect(map.props[0]!.reach).toBe(9);
+    expect(reachOf(map.props[0]!)).toBe(9);
+    expect(mapFromJSON(mapToJSON(map))!.props[0]!.reach).toBe(9);
+    expect(reachOf(editProp(map, id, { reach: 500 }).props[0]!)).toBe(MAX_LIGHT_REACH);
+    // Its type's own reach again is no reach of its own.
+    expect(editProp(map, id, { reach: 5 }).props[0]!.reach).toBeUndefined();
+    // A table has none, and is not given one.
+    const table = putProp(createMap(), { type: 'table', at: cube(3, 1, 3), facing: 0 });
+    expect(editProp(table, table.props[0]!.id, { reach: 4 })).toBe(table);
+    expect(reachOf(table.props[0]!)).toBeNull();
   });
 });
