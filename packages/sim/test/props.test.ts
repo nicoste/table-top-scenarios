@@ -132,3 +132,21 @@ describe('opening and closing (D-328)', () => {
     expect(JSON.stringify((viewFor('table', state) as TableView).campaign)).not.toContain(far);
   });
 });
+
+describe('what the party remembers of props (D-331)', () => {
+  it('forgets them with the room on a fresh start, and sees them again only once it looks', () => {
+    const t = tavern();
+    let state = run(t.state, { kind: 'placeProp', placeId: t.placeId, poiId: t.poiId, type: 'table', at: { x: 3, y: 1, z: 7 }, facing: 0 }).state;
+    const tableProps = (s: HostState) => {
+      const poi = (viewFor('table', s) as TableView).campaign?.places.flatMap((place) => place.pois).find((one) => one.map);
+      return poi?.map?.props ?? [];
+    };
+    expect(tableProps(state)).toHaveLength(1);
+    // A fresh start: what they saw is forgotten and nobody is standing there.
+    state = run(state, { kind: 'forgetMap', placeId: t.placeId, poiId: t.poiId }).state;
+    expect(tableProps(state)).toHaveLength(0);
+    // Stood in the room again, they see the table again.
+    state = run(state, { kind: 'moveToken', placeId: t.placeId, poiId: t.poiId, memberId: t.aldra, at: { x: 2, y: 1, z: 7 } }).state;
+    expect(tableProps(state)).toHaveLength(1);
+  });
+});

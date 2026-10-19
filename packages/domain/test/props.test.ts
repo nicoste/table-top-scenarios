@@ -7,7 +7,7 @@ import type { BlockCoord, EncounterMap, MemberId, PartyMember, SwatchId } from '
 import {
   createMap, setBlocks, blockKey, DEFAULT_FLOOR, PROP_TYPES, propType, propBox, propAt, whyNotPut, putProp,
   editProp, removeProp, propRules, NONE_OPEN, whyNotStand, walkAcross, partySight, mapToJSON, mapFromJSON,
-  sliceOf, seenPart, createCampaign, createLiveSave, openedIn, withOpen, tidyOpened,
+  sliceOf, seenPart, propsSeen, createCampaign, createLiveSave, openedIn, withOpen, tidyOpened,
 } from '@tt/domain';
 
 const cube = (x: number, y: number, z: number): BlockCoord => ({ x, y, z });
@@ -156,5 +156,14 @@ describe('which props stand open, in the save (R-140)', () => {
     expect(tidyOpened(save, () => new Set()).opened.size).toBe(0);
     expect(tidyOpened(save, () => new Set(['prop_door']))).toBe(save);
     expect(tidyOpened(save, () => null).opened.size).toBe(0);
+  });
+});
+
+describe('the props the party has seen (D-331)', () => {
+  it('is the one rule the table and the Party\'s view both read: seen, or beside what was seen', () => {
+    const map = door(withDoorway());
+    expect(propsSeen(map.props, new Set())).toEqual([]);
+    expect(propsSeen(map.props, new Set([blockKey(cube(4, 1, 7))]))).toBe(map.props);
+    expect(propsSeen(map.props, new Set([blockKey(cube(1, 1, 1))]))).toEqual([]);
   });
 });

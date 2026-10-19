@@ -13,7 +13,7 @@ import {
   DAYLIGHT, clampLighting,
   NO_TOKENS, tokensIn, onRoster, unplaced, tokensInBand, standsInBand, standingAt,
   NO_CELLS, shownBy, memberNotesFromJSON,
-  prefabFromJSON, capturePrefab, propById, propBox, propType, blockKey,
+  prefabFromJSON, capturePrefab, propById, propBox, propType, blockKey, propsSeen,
 } from '@tt/domain';
 import type {
   SwatchId, CoverId, Lighting, Ambience, MemberId, Tokens, BlockCoord, Route, Travelling,
@@ -507,10 +507,16 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    * are absent from the scene and so cannot be picked. A dimmed block is still
    * clickable, which is how a GM ends up editing something they cannot see.
    */
-  const shownBody = useMemo(
-    () => (openBody && banded && openRange ? sliceOf(openBody, openRange) : openBody),
-    [openBody, banded, openRange?.lower, openRange?.upper],
-  );
+  const exploredWire = openMap ? view?.save?.explored?.[openMap.poiId] : undefined;
+  const shownBody = useMemo(() => {
+    const sliced = openBody && banded && openRange ? sliceOf(openBody, openRange) : openBody;
+    // The Party's view draws only the props the party has seen, by the rule
+    // the table's payload is cut with (D-331); the fog hides blocks, but a
+    // prop is no block, and a fresh start left the furniture standing.
+    if (!sliced || !previewing) return sliced;
+    const props = propsSeen(sliced.props, exploredWire ? cellsFromWire(exploredWire) : NO_CELLS);
+    return props === sliced.props ? sliced : { ...sliced, props };
+  }, [openBody, banded, previewing, exploredWire, openRange?.lower, openRange?.upper]);
 
   /**
    * The party's fog, for the console's preview of the table (R-76, D-274):
@@ -519,7 +525,6 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    * and the save's own record by the same rule the filter cuts the table's
    * payload with (D-271), so the preview cannot disagree with the table.
    */
-  const exploredWire = openMap ? view?.save?.explored?.[openMap.poiId] : undefined;
   const sightWire = view?.sight ?? null;
   const partyFog: StageFog | null = useMemo(() => {
     if (!previewing || !openBody) return null;

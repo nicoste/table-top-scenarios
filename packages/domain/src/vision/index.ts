@@ -20,7 +20,7 @@
 
 import { lineIsClear, cubeGrid, cubeIndex, cubeAt } from '@tt/geometry';
 import type { Blocks, CubeGrid, Point } from '@tt/geometry';
-import type { BlockCoord, EncounterMap } from '../map/index.js';
+import type { BlockCoord, EncounterMap, Prop } from '../map/index.js';
 import { MAP_MAX_HEIGHT, MAP_MIN_DEPTH, parseBlockKey } from '../map/index.js';
 import { DEFAULT_MATERIALS, materialById, materialIn } from '../materials/index.js';
 import type { PartyMember } from '../party/index.js';
@@ -292,6 +292,24 @@ export function shownBy(map: EncounterMap, cells: Cells): ReadonlySet<string> {
 }
 
 /**
+ * The props the party has seen (D-322): a prop is shown as a block is, once a
+ * cube of it, or one across a face from it, has been seen — so a shut door is
+ * seen from the room it closes, not from beyond it.
+ *
+ * **One rule, two readers** (D-311's lesson, D-331): the host cuts the
+ * table's payload with it, and the console's Party's view draws with it. The
+ * preview drew every prop for a round, so a fresh start that made the party
+ * forget a room left its furniture standing in the GM's picture of the table.
+ * Identity-preserving: all of them seen hands back the same list.
+ */
+export function propsSeen<P extends Prop>(props: readonly P[], explored: Cells): readonly P[] {
+  if (props.length === 0) return props;
+  const seen = props.filter((prop) => propCubes(prop).some((cube) => AROUND.some(([dx, dy, dz]) =>
+    explored.has(`${cube.x + dx},${cube.y + dy},${cube.z + dz}`))));
+  return seen.length === props.length ? props : seen;
+}
+
+/**
  * A map holding only the blocks the party has been shown (R-85): what the
  * table is sent. Kept per body and per set, so an unchanged answer is the same
  * object and the wire's own cache recognises it (D-219).
@@ -305,12 +323,7 @@ export function seenPart(map: EncounterMap, explored: Cells): EncounterMap {
   if (cached) return cached;
   const shown = shownBy(map, explored);
   const blocks = new Map([...map.blocks].filter(([key]) => shown.has(key)));
-  // A prop is shown as a block is (D-322): once a cube of it, or one across a
-  // face from it, has been seen. A closed door is seen from the room it
-  // closes, not from beyond it.
-  const props = map.props.filter((prop) => propCubes(prop).some((cube) => AROUND.some(([dx, dy, dz]) =>
-    explored.has(`${cube.x + dx},${cube.y + dy},${cube.z + dz}`))));
-  const part: EncounterMap = { ...map, blocks, props: props.length === map.props.length ? map.props : props };
+  const part: EncounterMap = { ...map, blocks, props: propsSeen(map.props, explored) };
   byCells.set(explored, part);
   return part;
 }

@@ -8403,3 +8403,21 @@ hand and a prop selected, Backspace — or Delete, on a keyboard that has one �
 does what the panel's Remove button does. No confirmation: removing a prop is
 building, and one undo brings it back (R-212). A field being typed in keeps
 its own Backspace; the console's shortcuts never see a key meant for a field.
+
+### D-331 — The Party's view forgets props with the room · `agreed`
+*"The party remembers items after clearing what they have seen."*
+
+The table did not: its payload is cut by what the party has explored, and a
+fresh start (D-277) empties that, props and all. The **console's Party's
+view** did — it is the GM's picture of the table (R-76), and it hid unseen
+blocks with the fog, but a prop is no block and the fog never touched it, so
+every prop in the map stayed standing in the preview of a party that had
+forgotten the room.
+
+Fixed by giving the two screens one rule, as the silver tokens' was given
+(D-311): `propsSeen` — a prop is seen once a cube of it, or one across a face
+from it, has been explored — cuts the table's payload in the host and the
+preview's body on the console. Checked on a copy of the GM's data: with the
+Party's view on, the furniture by Tollkeep's door showed; after *Forget*, the
+preview showed nothing, and the table's feed held no props and named no open
+door.
