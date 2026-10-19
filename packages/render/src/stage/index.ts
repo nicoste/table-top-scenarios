@@ -19,7 +19,7 @@ import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import {
   CHUNK_SIZE, brushCentreOffset, mapCentre, DAYLIGHT, sunDirection, shadowReach, bounceOf,
-  dropBelow, fromGlobal, NONE_OPEN,
+  dropBelow, fromGlobal, NONE_OPEN, propCubes,
 } from '@tt/domain';
 import type { CameraTarget } from '../camera/index.js';
 import {
@@ -818,7 +818,10 @@ export class Stage {
     }
     const map = this.shownMap;
     if (!map || map.props.length === 0) return;
-    this.props = buildProps(map.props, this.opened);
+    const fog = this.partyFog;
+    this.props = buildProps(map.props, this.opened, fog
+      ? (prop) => propCubes(prop).some((cube) => fog.lit.has(`${cube.x},${cube.y},${cube.z}`))
+      : null);
     this.scene.add(this.props.group);
     this.applySurface();
   }
@@ -1013,6 +1016,8 @@ export class Stage {
     const reshaped = this.blocks.setFog(fog
       ? (key) => (fog.lit.has(key) ? 'inSight' : !fog.shown || fog.shown.has(key) ? 'explored' : 'hidden')
       : null);
+    // And the props, which the fog reaches through their cubes (D-332).
+    this.rebuildProps();
     this.invalidate();
     if (reshaped) this.restage();
   }

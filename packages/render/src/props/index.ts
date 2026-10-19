@@ -118,6 +118,24 @@ export interface PropMeshes {
 
 const BOOKS = '#7b3d33';
 const BRASS = '#c9a24f';
+/**
+ * Out of sight, a prop is greyed as an explored block is (R-45, D-332): most
+ * of the way to its own grey, and dimmed. The same two numbers as the blocks'
+ * (`render/blocks`), so a remembered room reads as one thing.
+ */
+const GREYED = 0.75;
+const DIMMED = 0.55;
+
+/** A colour as the fog draws it out of sight. */
+function greyed(colour: string): string {
+  const { r, g, b } = new Color(colour);
+  const grey = 0.299 * r + 0.587 * g + 0.114 * b;
+  return `#${new Color(
+    (r + (grey - r) * GREYED) * DIMMED,
+    (g + (grey - g) * GREYED) * DIMMED,
+    (b + (grey - b) * GREYED) * DIMMED,
+  ).getHexString()}`;
+}
 
 /** The colour of each tone of a finish, worked out once a colour. */
 function tonesOf(colour: string): Record<NonNullable<Part['tone']>, string> {
@@ -131,7 +149,15 @@ function tonesOf(colour: string): Record<NonNullable<Part['tone']>, string> {
   };
 }
 
-export function buildProps(props: readonly Prop[], opened: Opened): PropMeshes {
+/**
+ * `inSight` says whether the party sees a prop now — `null` when nobody is
+ * asking, the GM's own view, where nothing is greyed.
+ */
+export function buildProps(
+  props: readonly Prop[],
+  opened: Opened,
+  inSight: ((prop: Prop) => boolean) | null = null,
+): PropMeshes {
   const group = new Group();
   const proxies: Mesh[] = [];
   const owners = new Map<object, string>();
@@ -151,7 +177,10 @@ export function buildProps(props: readonly Prop[], opened: Opened): PropMeshes {
     const type = propType(prop.type);
     const size = type?.size ?? { x: 1, y: 1, z: 1 };
     const finish = type?.finishes.find((one) => one.id === prop.finish) ?? type?.finishes[0];
-    const tones = tonesOf(finish?.colour ?? '#9aa3ad');
+    const lit = tonesOf(finish?.colour ?? '#9aa3ad');
+    const tones = !inSight || inSight(prop)
+      ? lit
+      : Object.fromEntries(Object.entries(lit).map(([tone, colour]) => [tone, greyed(colour)])) as typeof lit;
     const box = propBox(prop);
     const turned = turnedSize(size, prop.facing);
 

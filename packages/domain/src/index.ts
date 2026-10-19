@@ -160,7 +160,7 @@ export {
 export type { Cells, CellsJSON } from './vision/index.js';
 export {
   EYE_HEIGHT, EYE_UNDER_CEILING, NO_CELLS, eyeOf, memberSight, partySight, explore, shownBy,
-  seenPart, propsSeen, cellsToJSON, cellsFromJSON,
+  seenPart, propsSeen, sightShows, cellsToJSON, cellsFromJSON,
 } from './vision/index.js';
 
 export type { Placement, PlacementJSON } from './placement/index.js';

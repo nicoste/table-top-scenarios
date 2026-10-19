@@ -8421,3 +8421,32 @@ preview's body on the console. Checked on a copy of the GM's data: with the
 Party's view on, the furniture by Tollkeep's door showed; after *Forget*, the
 preview showed nothing, and the table's feed held no props and named no open
 door.
+
+### D-332 — Props grey out of sight; the On stage row is the name alone · `agreed`
+Two from the GM.
+
+*"Drop the hint too."* D-318 kept *to place* beside a member's name because
+it was short enough to leave the name whole. It was not: after a fresh start
+the row read *Turd…*. The row is the name and nothing else now — the party
+card above already says who is still to place, as it says who is outside the
+band.
+
+*"Check why the items are not graying out like the blocks when they are out
+of sight."* Because the fog never reached them. It is worked out as a set of
+block keys — those sight shows now — and each block is drawn in sight,
+explored (greyed) or hidden by whether its key is in it. A prop is no block,
+so nothing ever asked about it, and every prop was drawn as if in sight,
+however far the party had walked away (D-329 noted it and left it).
+
+Now `sightShows` adds the cubes of the props sight shows to that set, by
+D-331's seen-or-beside rule, and the stage greys a prop none of whose cubes
+are in it — with the blocks' own two numbers, most of the way to its grey
+and dimmed, so a remembered room reads as one thing. The host builds the
+table's fog with it and the console builds the Party's view with it, so the
+two cannot disagree; the GM's own view, with no fog, greys nothing.
+
+Checked on a copy of the GM's data: Galion stood beside the table with sight
+cut to 1 — the table, touching what Galion saw, stayed in colour; the
+bookcases, the barrel and the door greyed with the explored ground, in the
+Party's view and on the table alike. The On stage rows read *Galion* and
+*Turdorn*, whole.

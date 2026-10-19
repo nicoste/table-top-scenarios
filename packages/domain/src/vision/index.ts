@@ -292,6 +292,31 @@ export function shownBy(map: EncounterMap, cells: Cells): ReadonlySet<string> {
 }
 
 /**
+ * Everything sight shows now (D-332): the blocks it shows (`shownBy`), and the
+ * cubes of every prop it shows (`propsSeen`) — the fog's *in sight*, for props
+ * as for blocks. Props are no blocks, so a fog worked out from blocks alone
+ * left every prop drawn as if in sight however far the party had walked away.
+ *
+ * Kept per body and per set of cubes, for `shownBy`'s reason.
+ */
+const showsNow = new WeakMap<EncounterMap, WeakMap<Cells, ReadonlySet<string>>>();
+
+export function sightShows(map: EncounterMap, sight: Cells): ReadonlySet<string> {
+  const blocks = shownBy(map, sight);
+  if (map.props.length === 0) return blocks;
+  let bySight = showsNow.get(map);
+  if (!bySight) { bySight = new WeakMap(); showsNow.set(map, bySight); }
+  const cached = bySight.get(sight);
+  if (cached) return cached;
+  const seen = propsSeen(map.props, sight);
+  if (seen.length === 0) { bySight.set(sight, blocks); return blocks; }
+  const all = new Set(blocks);
+  for (const prop of seen) for (const cube of propCubes(prop)) all.add(`${cube.x},${cube.y},${cube.z}`);
+  bySight.set(sight, all);
+  return all;
+}
+
+/**
  * The props the party has seen (D-322): a prop is shown as a block is, once a
  * cube of it, or one across a face from it, has been seen — so a shut door is
  * seen from the room it closes, not from beyond it.

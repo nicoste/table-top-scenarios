@@ -13,7 +13,7 @@ import {
   DAYLIGHT, clampLighting,
   NO_TOKENS, tokensIn, onRoster, unplaced, tokensInBand, standsInBand, standingAt,
   NO_CELLS, shownBy, memberNotesFromJSON,
-  prefabFromJSON, capturePrefab, propById, propBox, propType, blockKey, propsSeen,
+  prefabFromJSON, capturePrefab, propById, propBox, propType, blockKey, propsSeen, sightShows,
 } from '@tt/domain';
 import type {
   SwatchId, CoverId, Lighting, Ambience, MemberId, Tokens, BlockCoord, Route, Travelling,
@@ -529,7 +529,8 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   const partyFog: StageFog | null = useMemo(() => {
     if (!previewing || !openBody) return null;
     return {
-      lit: shownBy(openBody, sightWire ? cellsFromWire(sightWire) : NO_CELLS),
+      // Blocks and props alike (D-332), by the rule the table's fog uses.
+      lit: sightShows(openBody, sightWire ? cellsFromWire(sightWire) : NO_CELLS),
       shown: shownBy(openBody, exploredWire ? cellsFromWire(exploredWire) : NO_CELLS),
     };
   }, [previewing, openBody, sightWire, exploredWire]);
@@ -1860,7 +1861,6 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
                 name: row.name,
                 colour: row.colour,
                 picture: memberPicture(row.id),
-                toPlace: !row.standing,
                 sight: row.sight,
                 note: memberNotes.get(row.id) ?? '',
               }))

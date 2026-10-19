@@ -7,7 +7,7 @@ import type { BlockCoord, EncounterMap, MemberId, PartyMember, SwatchId } from '
 import {
   createMap, setBlocks, blockKey, DEFAULT_FLOOR, PROP_TYPES, propType, propBox, propAt, whyNotPut, putProp,
   editProp, removeProp, propRules, NONE_OPEN, whyNotStand, walkAcross, partySight, mapToJSON, mapFromJSON,
-  sliceOf, seenPart, propsSeen, createCampaign, createLiveSave, openedIn, withOpen, tidyOpened,
+  sliceOf, seenPart, propsSeen, sightShows, shownBy, createCampaign, createLiveSave, openedIn, withOpen, tidyOpened,
 } from '@tt/domain';
 
 const cube = (x: number, y: number, z: number): BlockCoord => ({ x, y, z });
@@ -165,5 +165,20 @@ describe('the props the party has seen (D-331)', () => {
     expect(propsSeen(map.props, new Set())).toEqual([]);
     expect(propsSeen(map.props, new Set([blockKey(cube(4, 1, 7))]))).toBe(map.props);
     expect(propsSeen(map.props, new Set([blockKey(cube(1, 1, 1))]))).toEqual([]);
+  });
+});
+
+describe('what sight shows now, props and all (D-332)', () => {
+  it('is the blocks it shows and the cubes of the props it shows — and nothing of a prop out of sight', () => {
+    const map = door(withDoorway());
+    const near = sightShows(map, new Set([blockKey(cube(4, 1, 7))]));
+    expect(near.has(blockKey(cube(5, 1, 7)))).toBe(true);
+    expect(near.has(blockKey(cube(5, 2, 7)))).toBe(true);
+    const far = sightShows(map, new Set([blockKey(cube(1, 1, 1))]));
+    expect(far.has(blockKey(cube(5, 1, 7)))).toBe(false);
+    // Without props, it is what the blocks alone show.
+    const bare = withDoorway();
+    const cells = new Set([blockKey(cube(4, 1, 7))]);
+    expect(sightShows(bare, cells)).toBe(shownBy(bare, cells));
   });
 });

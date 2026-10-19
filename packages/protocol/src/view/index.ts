@@ -6,8 +6,8 @@ import {
   isPlaceOnTable, isPoiOnTable, isChunkKnown, belongsTo, placementToJSON, rangeFor, DAYLIGHT,
   OPEN_SKY, sunReaches, litBy, MAP_MAX_HEIGHT,
   tokensFor, onRoster, tokensInBand, tokensToJSON,
-  exploredIn, partySight, shownBy, seenPart, inRange, placeById, poiById, ON_FOOT,
-  silverIn, silverShown, templateById, libraryToJSON, prefabToJSON, openedIn, sliceOf,
+  exploredIn, partySight, seenPart, inRange, placeById, poiById, ON_FOOT,
+  silverIn, silverShown, templateById, libraryToJSON, prefabToJSON, openedIn, sliceOf, sightShows,
 } from '@tt/domain';
 import type {
   CampaignWire, SaveWire, PlacementWire, MapWire, LightingWire, TokensWire, CellsWire,
@@ -344,7 +344,8 @@ function fogForTheTable(campaign: Campaign, save: Save): TableFog | null {
   const sight = partySight(map, tokensFor(save, shown.poi.id), campaign.party, openedIn(save, shown.poi.id));
   return {
     seen: inBand(exploredIn(save, shown.poi.id), range),
-    lit: inBand(shownBy(map, sight), range),
+    // Blocks and props alike (D-332): a prop out of sight greys as a block does.
+    lit: inBand(sightShows(map, sight), range),
   };
 }
 

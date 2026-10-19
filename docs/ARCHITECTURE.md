@@ -2248,6 +2248,10 @@ apps/host/src/
 >   beside it, has been seen — cut with the band like the blocks — and which
 >   of the props it holds stand open (`opened`, the seventh piece of save
 >   data it is sent). Nothing else.
+> - **The fog reaches props** (D-332): out of sight, a prop is greyed as an
+>   explored block is, on the table and in the Party's view. What sight shows
+>   now (`sightShows`) is the blocks it shows and the cubes of the props it
+>   shows, by the same seen-or-beside rule (`propsSeen`, D-331).
 
 ---
 
