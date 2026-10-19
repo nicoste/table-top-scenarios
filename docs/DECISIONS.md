@@ -8450,3 +8450,14 @@ cut to 1 — the table, touching what Galion saw, stayed in colour; the
 bookcases, the barrel and the door greyed with the explored ground, in the
 Party's view and on the table alike. The On stage rows read *Galion* and
 *Turdorn*, whole.
+
+### D-333 — A bookcase is open at the front · `agreed`
+*"Is the bookcase closed? Can we do it without the covers? Like the frame with
+the back and the stands."* It was drawn as a solid box with the books painted
+on its face. Now it is a back, two sides, a top and a bottom, two shelves,
+and a row of books standing on each — red, blue, green and dark spines of a
+few heights, a different run on each shelf so the three do not read as one
+stamp. Open toward the front of its facing; turned with Z / X like any prop.
+
+Only the drawing changed. It still stops sight (D-329): a bookcase full of
+books is a wall to look through.
