@@ -8077,3 +8077,65 @@ identical to the data, without the thirteen trashed campaigns; the console
 loaded as usual.
 
 R-210 is new.
+
+### D-321 — What comes next: prefabs, items, lights, rulers and areas · `agreed in part; not built`
+A design conversation, recorded before anything is built so the agreements
+survive until it is (R-0). Proposals the GM has not answered are marked as
+such.
+
+**Prefabs** — agreed. A tool to select a box of a map by two corner blocks
+(the band helps reach inside a building) and save it, named and tagged, to
+a library shared by every campaign (`data/prefabs/`, as the Tokens Library
+is, D-307). It holds the blocks and their materials — items too, once there
+are any — and never tokens, which are the session's. Placing shows a ghost
+of the whole prefab on the face pointed at; **Z / X turn it and it can be
+mirrored** (the GM: yes). One placement is one undo step, and the host
+places it from the library by id rather than receiving every block.
+**The prefab's blocks win and its air leaves the map alone** (the GM: yes):
+a house on grass gets its own floor and the tree beside it survives; a
+*clear the box* mode carves the space for a room sunk into rock. A placed
+prefab is **a stamp, not a link**: editing or deleting the prefab never
+touches the copies already on maps. Whatever would land outside the map is
+shown red in the ghost and left out. Proposed, not answered: a picture
+taken on saving for the list, and a few starter prefabs.
+
+**Jail bars are an item, not a material** — the GM's correction of my
+proposal, for three reasons that hold: the registry is by what a cube is
+made of (D-245), and *bars* is a shape — *metal* is the material; the Build
+tool would be laying down its first thing that does not look like a block;
+and a plane of bars inside a cube needs a facing, so Build would grow a
+rotation for one material and the corners would still not meet. The rule it
+leaves: **a material is what a whole cube is made of; anything that is not a
+whole cube is an item**, whether or not it opens.
+
+Proposed for bars, not answered: they **connect** — a post in the middle of
+the cube and an arm toward each neighbouring bar or solid block, so a
+corner, a T or a cross draws itself and nothing needs turning. The same item
+with a wooden finish is a fence. The cell door and the portcullis are
+separate items, with a facing and an open or closed state.
+
+**Items** — proposed, not answered. A built-in catalogue, one cube each for
+the rules, four facings. The item is the map's (authored, under undo); its
+state is the session's (in the save, R-140). Two rule flags, *blocks sight*
+and *blocks walking*, feeding vision and the walk (R-209) so opening a door
+reveals the room. Finishes instead of painting. Ladders let the walk climb
+more than one block. Secret doors hidden as silver tokens are; a GM note on
+a chest; no "locked" state (R-1). Open: the name ("Props"?), whether the
+table may open doors, and whether an item may be drawn up to two cubes tall
+while counting as one.
+
+**Lights** — proposed. Visual only (D-319). Items that give light (sconce,
+brazier, lantern) with lit or unlit as their state, and a light a token
+carries. Every light lights; only the nearest few cast shadows; no flicker
+by default (R-170). The table is sent only lights in cubes the party has
+seen (R-85).
+
+**Rulers and areas** — proposed. A ruler is local and momentary, a straight
+3D distance as a bare number (D-316), on both screens. An area is shared and
+saved per map: circle or sphere, cone, line, square or cube; a colour, a
+name, optionally attached to a token, optionally hidden. Drawn, never
+resolved — nothing lists who is caught (R-1). Open: whether the table may
+draw them.
+
+**Order, proposed:** prefabs first (blocks only — they depend on nothing),
+then items (doors and bars first), then lights, then rulers and areas.
