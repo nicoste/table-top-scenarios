@@ -1078,12 +1078,12 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
      */
     if (openMap && mapTool === 'prefabs') {
       if (prefabMode === 'capture') {
-        // Three clicks (D-325): a corner, the area's far corner, the height.
-        // The height measures its moves against how tall a level is on screen
-        // at the box, so its top keeps up with the pointer at any zoom.
-        const at = captureCorner(picked.face, e.shiftKey);
-        const pixels = capture.step === 'area' ? stage.levelPixels(capture.first) : 18;
-        setCapture((now) => captureClick(now, at, { y: e.clientY, pixels }));
+        // Three clicks (D-325): a corner, the area's far corner, the height —
+        // which is the block clicked, the top of the tree (D-326).
+        const at = capture.step === 'height'
+          ? picked.face?.block ?? null
+          : captureCorner(picked.face, e.shiftKey);
+        setCapture((now) => captureClick(now, at));
         return;
       }
       const at = prefabAim(picked.face);
@@ -1264,9 +1264,10 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       const same = (a: BlockCoord | null, b: BlockCoord | null) =>
         a === b || (!!a && !!b && a.x === b.x && a.y === b.y && a.z === b.z);
       if (prefabMode === 'capture') {
-        // Setting the height, the pointer's height on screen is all that counts.
+        // Setting the height, the block under the pointer is the top (D-326).
         if (capture.step === 'height') {
-          setCapture((now) => captureHeight(now, e.clientY));
+          const block = face?.block ?? null;
+          setCapture((now) => captureHeight(now, block));
           return;
         }
         const at = captureCorner(face, e.shiftKey);

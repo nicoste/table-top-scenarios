@@ -119,8 +119,9 @@ export function captureCorner(face: FacePick | null, block: boolean): BlockCoord
  * - `start` — nothing yet. The cube a click would take is outlined.
  * - `area` — the first corner is down, and the box follows the pointer across
  *   that corner's level: one cube tall.
- * - `height` — the area is down, and moving the pointer up or down raises or
- *   sinks the box a level at a time, from where the second click was made.
+ * - `height` — the area is down, and **the block under the pointer sets the
+ *   box's top** — or its bottom, when it is below the area (D-326). Point at
+ *   the top of the tree, and that is the height.
  * - `done` — the third click ended it. Named and saved from here.
  */
 export type Capture =
@@ -133,10 +134,6 @@ export type Capture =
     readonly second: BlockCoord;
     /** Levels above the area — or below it, when negative. */
     readonly levels: number;
-    /** Where the pointer was when the area was set, in client pixels. */
-    readonly fromY: number;
-    /** How many pixels one level spans on screen there, so the box keeps up with the pointer. */
-    readonly pixels: number;
   }
   | { readonly step: 'done'; readonly box: Box };
 
@@ -153,50 +150,44 @@ function raised(capture: Extract<Capture, { step: 'height' }>): Box {
 
 /**
  * A click while capturing (D-325): the first corner; then the area's far
- * corner, on the first corner's level whatever the pointer is over; then
- * the height, wherever the click lands. A click on a finished box starts a
- * new one from there, so a wrong box is undone by clicking again.
+ * corner, on the first corner's level whatever the pointer is over; then the
+ * height, from the block the click lands on (D-326) — or, off the map, the
+ * height the box already had. A click on a finished box starts a new one
+ * from there, so a wrong box is undone by clicking again.
  *
- * `pointer` is where the click was and how many pixels a level spans there,
- * which the height step measures its moves against.
+ * In the height step `at` is **the block pointed at**, not the cube in front
+ * of it: the top of the tree is the tree's top block, and that is what the
+ * GM is clicking.
  */
-export function captureClick(
-  capture: Capture,
-  at: BlockCoord | null,
-  pointer: { readonly y: number; readonly pixels: number },
-): Capture {
+export function captureClick(capture: Capture, at: BlockCoord | null): Capture {
   switch (capture.step) {
     case 'start':
       return at ? { step: 'area', first: at } : capture;
     case 'area':
       if (!at) return capture;
-      return {
-        step: 'height',
-        first: capture.first,
-        second: { x: at.x, y: capture.first.y, z: at.z },
-        levels: 0,
-        fromY: pointer.y,
-        pixels: pointer.pixels > 0 ? pointer.pixels : 18,
-      };
-    case 'height':
-      return { step: 'done', box: raised(capture) };
+      return { step: 'height', first: capture.first, second: { x: at.x, y: capture.first.y, z: at.z }, levels: 0 };
+    case 'height': {
+      const set = at ? captureHeight(capture, at) : capture;
+      return { step: 'done', box: raised(set as Extract<Capture, { step: 'height' }>) };
+    }
     default:
       return at ? { step: 'area', first: at } : NO_CAPTURE;
   }
 }
 
 /**
- * The height step following the pointer: a level up for every level's worth
- * of pixels it rises, a level down for every one it falls — within the map's
- * levels and the longest side a prefab may have. Identity-preserving, so a
- * pointer that has not crossed a level redraws nothing.
+ * The height step following what the pointer is over (D-326): **the block
+ * under it is the box's top**, or its bottom when it is below the area — so
+ * the GM points at the top of what they are saving rather than counting
+ * levels. Within the map's levels and a prefab's longest side; nothing under
+ * the pointer leaves the height as it was. Identity-preserving, so the same
+ * level again redraws nothing.
  */
-export function captureHeight(capture: Capture, pointerY: number): Capture {
-  if (capture.step !== 'height') return capture;
-  const wanted = Math.round((capture.fromY - pointerY) / capture.pixels);
+export function captureHeight(capture: Capture, at: BlockCoord | null): Capture {
+  if (capture.step !== 'height' || !at) return capture;
   const up = Math.min(MAP_MAX_HEIGHT - 1 - capture.first.y, MAX_PREFAB_SIDE - 1);
   const down = -Math.min(capture.first.y - MAP_MIN_DEPTH, MAX_PREFAB_SIDE - 1);
-  const levels = Math.max(down, Math.min(up, wanted));
+  const levels = Math.max(down, Math.min(up, at.y - capture.first.y));
   return levels === capture.levels ? capture : { ...capture, levels };
 }
 
@@ -236,7 +227,7 @@ export function capturePrompt(capture: Capture, hover: BlockCoord | null): strin
     case 'area':
       return `Now the opposite corner of the area — ${size()}. Click to set it.`;
     case 'height':
-      return `Move up or down for the height — ${size()}. Click to finish.`;
+      return `Point at the top — or the bottom — of what to save: ${size()}. Click to finish.`;
     default:
       return `${size()}. Name it and save it, or click again to start over.`;
   }

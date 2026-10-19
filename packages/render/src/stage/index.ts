@@ -826,19 +826,6 @@ export class Stage {
     if (mesh) this.scene.add(mesh);
   }
 
-  /**
-   * How many screen pixels one level spans at a cube, at the camera as it is
-   * now — so a gesture that raises a box can keep its top under the pointer
-   * at any zoom (D-325). The world's height drag is a fixed 18 px a level;
-   * this is the same idea measured rather than assumed.
-   */
-  levelPixels(at: BlockCoord): number {
-    const low = new Vector3(at.x + 0.5, at.y, at.z + 0.5).project(this.camera);
-    const high = new Vector3(at.x + 0.5, at.y + 1, at.z + 0.5).project(this.camera);
-    const pixels = Math.abs(high.y - low.y) * (this.renderer.domElement.clientHeight / 2);
-    return Number.isFinite(pixels) && pixels >= 2 ? pixels : 18;
-  }
-
   /** Puts the move ghost on a cube, in the mover's colour, or takes it off. */
   aimToken(at: BlockCoord | null, colour?: string): void {
     this.invalidate();

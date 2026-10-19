@@ -146,10 +146,11 @@ export function PrefabsPanel({
           {capture.step !== 'done' ? (
             <p className="hint">
               Three clicks: <b>a corner</b> — the outlined cube is in; <b>the opposite
-              corner of the area</b>, on that corner&apos;s level; then move up or down
-              for <b>the height</b> and click to finish. Hold <b>⇧ shift</b> to take the
-              block itself rather than the cube in front of it. Cut the <b>levels</b> to
-              reach inside a building; <b>Escape</b> steps back a click.
+              corner of the area</b>, on that corner&apos;s level; then <b>the top</b> —
+              point at the highest block of what you are saving, the top of the tree,
+              and click. Hold <b>⇧ shift</b> on the first click to take the block itself
+              rather than the cube in front of it. Cut the <b>levels</b> to reach inside
+              a building; <b>Escape</b> steps back a click.
             </p>
           ) : typeof captured === 'string' ? (
             <p className="warn">That box cannot be saved: {captured}.</p>

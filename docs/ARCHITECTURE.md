@@ -2201,8 +2201,9 @@ apps/host/src/
 >   which is the one **in front of** the face pointed at, or with **⇧ shift**
 >   the block itself; **the opposite corner of the area**, taken on the first
 >   corner's level, the box one level tall as it follows the pointer; then
->   **the height**, raised or sunk a level for every level's height the
->   pointer moves on screen, and a click to finish. Escape steps back a click.
+>   **the height**: the block under the pointer is the box's top — or its
+>   bottom, below the area — so the last click is on the top of the tree
+>   (D-326). Escape steps back a click.
 >   Kept as drawn, air at the edges included, at most 64 cubes a side. The
 >   band helps reach inside a building.
 > - **A library shared by every campaign**, beside them in `data/prefabs/`, a

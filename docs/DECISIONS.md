@@ -8279,3 +8279,29 @@ click finished it at the tree's 13 blocks, the outline from just above the
 grass to the top of the canopy.
 
 R-211 amended.
+
+### D-326 — The height is the block pointed at · `agreed`
+*"Whatever you point at the moment you're picking height should be the
+targeted Y for 'closing' the selection … right now feels like move up and
+down by unit and sometimes is difficult to understand if you are at the
+correct height. If we change this, the last click will be by clicking on the
+top of the tree and that's it."*
+
+D-325's height followed the pointer's travel on screen, a level for every
+level's worth of pixels. It was precise and it was the wrong question: it
+asked the GM to count levels on a box they could not see the top of, rather
+than to say where the top is. Now **the block under the pointer is the box's
+top** — or its bottom, when it is below the area — so the third click is on
+the top of the tree. Off the map the height stays as it was; it still stops
+at the map's levels and a prefab's longest side.
+
+The **block**, not the cube in front of it as the first corner takes (D-323):
+the top of the tree is its top leaf, and a box that stopped in the air above
+it would be a level taller than what was clicked. `levelPixels` went with the
+old rule; nothing else measured a level on screen.
+
+Checked on a copy of the GM's data with real clicks: the birch, a corner,
+the area, then the pointer on the top of the canopy read 4 × 5 × 3 at once,
+and the click there finished it at its 13 blocks.
+
+R-211 amended; D-325's way of setting the height is superseded.
