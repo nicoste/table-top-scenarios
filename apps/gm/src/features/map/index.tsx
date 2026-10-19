@@ -338,7 +338,8 @@ export function MapPanel({
             <>
               <b>Place</b>: choose a prefab and click a face to stand it there — <b>Z / X</b>{' '}
               turn it, <b>M</b> mirrors it, and each placement is one undo. <b>Capture</b>:
-              click two opposite corners, name the box, save it for every campaign.
+              three clicks — a corner, the opposite corner of the area, then the top —
+              then name the box and save it for every campaign.
             </>
           )}
         </p>

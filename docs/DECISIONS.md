@@ -8305,3 +8305,22 @@ the area, then the pointer on the top of the canopy read 4 × 5 × 3 at once,
 and the click there finished it at its 13 blocks.
 
 R-211 amended; D-325's way of setting the height is superseded.
+
+### D-327 — A box being captured stays while it is named · `agreed`
+*"At some point the selected volume disappears, and I think it's related to
+moving the mouse over the prefab menu."*
+
+It was. Leaving the map clears every outline the canvas drew — right for a
+hover, which means nothing once the pointer is elsewhere, and wrong for a box
+being captured, which is exactly what the GM is naming in the panel the
+pointer has just moved to. It came back only when the pointer returned.
+
+Now the Prefabs tool keeps its own drawing when the pointer leaves: only what
+followed the pointer goes — the placing ghost, and the single cube outlined
+before a first corner — and the box being captured, at any of its steps,
+stays. The Tool card's help, which still described two corners, now
+describes the three clicks.
+
+Checked on a copy of the GM's data: the birch captured, the pointer moved to
+the panel and *Birch* typed into the name — the box stayed on the tree
+throughout.

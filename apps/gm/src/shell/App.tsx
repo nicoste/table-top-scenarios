@@ -1405,6 +1405,19 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   const onPointerLeave = () => {
     endGesture();
     lastPointer.current = null;
+    /*
+     * The Prefabs tool draws from its own state, and a box being captured is
+     * not a hover: it is what the GM is about to name in the panel, which is
+     * exactly where the pointer goes next. Clearing every outline on leaving
+     * the map made it vanish while it was being named (D-327). Only what
+     * followed the pointer goes — the placing ghost, the cube under it before
+     * a first corner — and the effect redraws the rest.
+     */
+    if (openMap && mapTool === 'prefabs') {
+      setPrefabAt(null);
+      if (capture.step === 'start') setCaptureHover(null);
+      return;
+    }
     setHoverLabel(null);
     stage?.showBlockGhost([]);
   };
