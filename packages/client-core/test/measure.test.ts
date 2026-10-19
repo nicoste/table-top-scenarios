@@ -6,19 +6,27 @@ import type { BlockCoord } from '@tt/domain';
 import { drawArea, NO_AREAS } from '@tt/domain';
 import {
   MEASURE_START, chooseMeasure, measurePress, measureDrag, measureRelease, rulerShown, rulerLength, areasShown,
-  handleAt, measurePrompt, measureCleared,
+  handleAt, measurePrompt, measureCleared, faceCentre, floorCentre,
 } from '@tt/client-core';
 
 const cube = (x: number, y: number, z: number): BlockCoord => ({ x, y, z });
 const nobody = () => null;
 
 describe('the ruler', () => {
-  it('measures straight from middle to middle, a bare number, and stays after the drag until the next press', () => {
+  it('measures straight from the middle of one face to another\'s, a bare number, and stays until the next press', () => {
     expect(rulerLength(cube(0, 1, 0), cube(3, 1, 4))).toBe('5');
     expect(rulerLength(cube(0, 1, 0), cube(1, 2, 1))).toBe('1.7');
-    let hand = measurePress(MEASURE_START, cube(1, 1, 1), null);
-    hand = measureDrag(hand, cube(4, 1, 5));
-    expect(rulerShown(hand)).toEqual({ from: cube(1, 1, 1), to: cube(4, 1, 5), label: '5' });
+    // Pointing at the top of a floor block, and at the side of a wall (D-342).
+    const floor = faceCentre({ block: cube(1, 0, 1), adjacent: cube(1, 1, 1) } as never);
+    const wall = faceCentre({ block: cube(5, 1, 1), adjacent: cube(4, 1, 1) } as never);
+    expect(floor).toEqual({ x: 1.5, y: 1, z: 1.5 });
+    expect(wall).toEqual({ x: 5, y: 1.5, z: 1.5 });
+    expect(floorCentre(cube(4, 1, 5))).toEqual({ x: 4.5, y: 1, z: 5.5 });
+    let hand = measurePress(MEASURE_START, cube(1, 1, 1), null, floor);
+    hand = measureDrag(hand, cube(4, 1, 5), floorCentre(cube(4, 1, 5)));
+    expect(rulerShown(hand)).toEqual({ from: floor, to: { x: 4.5, y: 1, z: 5.5 }, label: '5' });
+    // The same cube in front of it, but the wall's face this time: the ruler follows.
+    expect(rulerShown(measureDrag(hand, cube(4, 1, 1), wall))!.to).toEqual(wall);
     const released = measureRelease(hand, 'place_a', 'poi_a');
     expect(released.intent).toBeNull();
     expect(rulerShown(released.hand)).not.toBeNull();

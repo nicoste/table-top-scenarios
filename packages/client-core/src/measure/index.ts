@@ -3,10 +3,11 @@
 // reaches the host, and an area being drawn or moved is only a picture until
 // the pointer comes up.
 //
-// **A drag draws.** With the ruler, from the cube pressed to the cube let go
-// of, and how far — a bare number (D-316), straight from middle to middle;
-// it stays until the next press. With a shape, the area a drag that long
-// would be (`areaFromDrag`), sent when the pointer comes up.
+// **A drag draws.** With the ruler, from the face pressed to the face let go
+// of — the middle of each, as every tool's aim sits on the face it points at
+// (D-342) — and how far, a bare number (D-316); it stays until the next
+// press. With a shape, the area a drag that long would be (`areaFromDrag`),
+// sent when the pointer comes up.
 //
 // **A press on an area's handle moves it** — the small mark on the cube it
 // starts from — whatever is in hand, so an area is never drawn by accident
@@ -15,7 +16,7 @@
 import type { Intent } from '@tt/protocol';
 import type { Area, AreaShape, Areas, BlockCoord } from '@tt/domain';
 import { AREA_COLOURS, AREA_SHAPES, areaAt, areaColour, areaFromDrag, areaStartingAt } from '@tt/domain';
-import type { AreaDrawn, RulerDrawn } from '@tt/render';
+import type { AreaDrawn, FacePick, RulerDrawn, RulerPoint } from '@tt/render';
 import { walkLength } from '../walk/index.js';
 
 export type MeasureMode = 'ruler' | AreaShape;
@@ -28,6 +29,9 @@ export interface MeasureHand {
   /** Where the press was, and where the pointer is now: a ruler, or an area being drawn or moved. */
   readonly from: BlockCoord | null;
   readonly to: BlockCoord | null;
+  /** The ruler's ends: the middle of the face pressed, and of the face under the pointer now (D-342). */
+  readonly fromPoint: RulerPoint | null;
+  readonly toPoint: RulerPoint | null;
   /** Still held down. */
   readonly held: boolean;
   /** The area being moved by its handle, by id. */
@@ -35,15 +39,32 @@ export interface MeasureHand {
 }
 
 export const MEASURE_START: MeasureHand = {
-  mode: 'ruler', colour: AREA_COLOURS[0]!.id, from: null, to: null, held: false, moving: null,
+  mode: 'ruler', colour: AREA_COLOURS[0]!.id, from: null, to: null, fromPoint: null, toPoint: null, held: false, moving: null,
 };
 
-const same = (a: BlockCoord | null, b: BlockCoord | null) =>
+const same = (a: BlockCoord | RulerPoint | null, b: BlockCoord | RulerPoint | null) =>
   a === b || (!!a && !!b && a.x === b.x && a.y === b.y && a.z === b.z);
+
+/**
+ * The middle of a face (D-342): half way between the block hit and the cube
+ * in front of it — the floor's centre on top of a block, the wall's on its side.
+ */
+export function faceCentre(face: FacePick): RulerPoint {
+  return {
+    x: (face.block.x + face.adjacent.x) / 2 + 0.5,
+    y: (face.block.y + face.adjacent.y) / 2 + 0.5,
+    z: (face.block.z + face.adjacent.z) / 2 + 0.5,
+  };
+}
+
+/** The middle of the floor somebody stands on: what a ruler from them measures from. */
+export function floorCentre(at: BlockCoord): RulerPoint {
+  return { x: at.x + 0.5, y: at.y, z: at.z + 0.5 };
+}
 
 /** The ruler or a shape, with nothing half-drawn. */
 export function chooseMeasure(hand: MeasureHand, mode: MeasureMode): MeasureHand {
-  return { ...hand, mode, from: null, to: null, held: false, moving: null };
+  return measureCleared({ ...hand, mode });
 }
 
 export function chooseAreaColour(hand: MeasureHand, colour: string): MeasureHand {
@@ -52,22 +73,32 @@ export function chooseAreaColour(hand: MeasureHand, colour: string): MeasureHand
 
 /** Lets go of everything: the ruler standing, a drag under way. */
 export function measureCleared(hand: MeasureHand): MeasureHand {
-  return { ...hand, from: null, to: null, held: false, moving: null };
+  return { ...hand, from: null, to: null, fromPoint: null, toPoint: null, held: false, moving: null };
 }
 
 /**
  * A press on a cube: on an area's handle, picks it up to move; anywhere else,
  * starts a ruler or an area there. Off the map, lets go of the ruler.
+ * `point` is the middle of the face pressed, where a ruler starts.
  */
-export function measurePress(hand: MeasureHand, at: BlockCoord | null, handle: string | null): MeasureHand {
+export function measurePress(
+  hand: MeasureHand,
+  at: BlockCoord | null,
+  handle: string | null,
+  point: RulerPoint | null = at ? floorCentre(at) : null,
+): MeasureHand {
   if (!at) return measureCleared(hand);
-  return { ...hand, from: at, to: at, held: true, moving: handle };
+  return { ...hand, from: at, to: at, fromPoint: point, toPoint: point, held: true, moving: handle };
 }
 
-/** The pointer moving with the button down: the drag follows it, a cube at a time. */
-export function measureDrag(hand: MeasureHand, at: BlockCoord | null): MeasureHand {
-  if (!hand.held || !at || same(at, hand.to)) return hand;
-  return { ...hand, to: at };
+/** The pointer moving with the button down: the drag follows it, a face at a time. */
+export function measureDrag(
+  hand: MeasureHand,
+  at: BlockCoord | null,
+  point: RulerPoint | null = at ? floorCentre(at) : null,
+): MeasureHand {
+  if (!hand.held || !at || (same(at, hand.to) && same(point, hand.toPoint))) return hand;
+  return { ...hand, to: at, toPoint: point };
 }
 
 /**
@@ -96,15 +127,16 @@ export function measureRelease(
   };
 }
 
-/** How far apart two cubes are, middle to middle, as the readout says it. */
-export function rulerLength(from: BlockCoord, to: BlockCoord): string {
+/** How far apart two points are, as the readout says it. */
+export function rulerLength(from: RulerPoint, to: RulerPoint): string {
   return walkLength(Math.hypot(to.x - from.x, to.y - from.y, to.z - from.z));
 }
 
-/** The ruler to draw, or none. */
+/** The ruler to draw, face middle to face middle, or none. */
 export function rulerShown(hand: MeasureHand): RulerDrawn | null {
-  if (hand.mode !== 'ruler' || hand.moving || !hand.from || !hand.to || same(hand.from, hand.to)) return null;
-  return { from: hand.from, to: hand.to, label: rulerLength(hand.from, hand.to) };
+  const { fromPoint: from, toPoint: to } = hand;
+  if (hand.mode !== 'ruler' || hand.moving || !from || !to || same(from, to)) return null;
+  return { from, to, label: rulerLength(from, to) };
 }
 
 /**
@@ -143,7 +175,7 @@ export function measurePrompt(hand: MeasureHand, overHandle: boolean): string {
   if (hand.held && hand.moving) return 'Let go where it should start.';
   if (overHandle) return 'Drag to move this area.';
   if (hand.mode === 'ruler') {
-    if (hand.held && hand.from && hand.to) return `${rulerLength(hand.from, hand.to)} — let go to keep it.`;
+    if (hand.held && hand.fromPoint && hand.toPoint) return `${rulerLength(hand.fromPoint, hand.toPoint)} — let go to keep it.`;
     return 'Drag from one cube to another to measure.';
   }
   const shape = AREA_SHAPES.find((one) => one.id === hand.mode)!.name.toLowerCase();

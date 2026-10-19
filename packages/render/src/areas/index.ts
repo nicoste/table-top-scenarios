@@ -152,10 +152,17 @@ export function buildAreas(map: EncounterMap, areas: readonly AreaDrawn[]): Area
   };
 }
 
-/** A ruler as a screen hands it over: two cubes and how far apart, already worded. */
+/** A point on a face — where a ruler ends (D-342). */
+export interface RulerPoint {
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+}
+
+/** A ruler as a screen hands it over: two points on faces and how far apart, already worded. */
 export interface RulerDrawn {
-  readonly from: BlockCoord;
-  readonly to: BlockCoord;
+  readonly from: RulerPoint;
+  readonly to: RulerPoint;
   readonly label: string;
 }
 
@@ -184,9 +191,10 @@ export function buildRuler(): Ruler {
     group,
     show(ruler) {
       if (!ruler) { group.visible = false; return; }
-      // From middle to middle, a little over the floor, where a token's feet would be.
-      const from = [ruler.from.x + 0.5, ruler.from.y + 0.25, ruler.from.z + 0.5] as const;
-      const to = [ruler.to.x + 0.5, ruler.to.y + 0.25, ruler.to.z + 0.5] as const;
+      // On the faces themselves, middle to middle (D-342): drawn over
+      // everything, so a point flush with a face is never lost in it.
+      const from = [ruler.from.x, ruler.from.y, ruler.from.z] as const;
+      const to = [ruler.to.x, ruler.to.y, ruler.to.z] as const;
       line.geometry.dispose();
       const geometry = new BufferGeometry();
       geometry.setAttribute('position', new Float32BufferAttribute([...from, ...to], 3));

@@ -8714,3 +8714,18 @@ of 3 drawn by dragging; the sphere moved by its handle; all four listed with
 their sizes, eyes and whom they follow, and drawn on the table over the
 ground it knows.
 
+### D-342 — The ruler ends on the middle of a face · `agreed`
+*"There is only 1 thing, and it's on the ruler, measures don't snap to
+cube-face centers like the others."* It measured from the middle of the cube
+in front of the face pointed at, and drew its ends a quarter of a cube over
+the floor: on a floor its dots floated off the square, and on a wall they
+stood out in the air in front of it. Every other tool's aim sits on the face
+under the pointer.
+
+Now each end is **the middle of the face pointed at** — half way between the
+block hit and the cube in front of it: the floor's centre on top of a block,
+the wall's on its side — and the number is the straight distance between the
+two. Pressed on somebody, the end is the middle of the floor they stand on.
+Between two floors at one height the number is what it was; to a wall it is
+to the wall itself. Areas still start from the cube, which is what they are.
+

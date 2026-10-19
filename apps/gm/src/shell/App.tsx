@@ -21,7 +21,7 @@ import type {
 } from '@tt/domain';
 import type { GmView, Intent } from '@tt/protocol';
 import { defaultTarget, worldCentre, SILVER } from '@tt/render';
-import type { Picked, Present, Standing, StageFog } from '@tt/render';
+import type { Picked, Present, RulerPoint, Standing, StageFog } from '@tt/render';
 import type {
   Capture, Carry, MeasureHand, PrefabPlacing, PropHand, SilverMove, Stride, Tool, Travel,
 } from '@tt/client-core';
@@ -39,7 +39,7 @@ import {
   NO_CAPTURE, captureCorner, captureClick, captureHeight, captureBack, captureBox, capturePrompt,
   EMPTY_HAND, turnHand, propAim, propWall, propPreview, placePropIntent, propPrompt, toggleIntent, toggleLabel,
   MEASURE_START, measureCleared, measurePress, measureDrag, measureRelease, rulerShown, areasShown, handleAt,
-  measurePrompt,
+  measurePrompt, faceCentre, floorCentre,
 } from '@tt/client-core';
 import type { MapAction, MapReach, MapTool } from '@tt/client-core';
 import { useStage } from '../scene/use-stage.js';
@@ -1138,6 +1138,18 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     if (picked.silver) return silverHere.find((token) => token.id === picked.silver)?.at ?? null;
     return picked.face?.adjacent ?? null;
   };
+  /**
+   * Where the ruler ends (D-342): the middle of the face under the pointer, as
+   * every tool's aim sits on the face it points at — or, on somebody, the
+   * middle of the floor they stand on.
+   */
+  const measuredPoint = (picked: Picked): RulerPoint | null => {
+    if (picked.token || picked.silver) {
+      const at = measuredAt(picked);
+      return at ? floorCentre(at) : null;
+    }
+    return picked.face ? faceCentre(picked.face) : null;
+  };
 
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!stage || !campaign) return;
@@ -1210,7 +1222,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
      */
     if (openMap && mapTool === 'measure') {
       const at = measuredAt(picked);
-      setMeasure(measurePress(measureRef.current, at, handleAt(areasHere, at, standingById)));
+      setMeasure(measurePress(measureRef.current, at, handleAt(areasHere, at, standingById), measuredPoint(picked)));
       return;
     }
     /*
@@ -1419,9 +1431,10 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
 
     if (openMap && mapTool === 'measure') {
       lastPointer.current = { x: e.clientX, y: e.clientY };
-      const at = measuredAt(stage.pick(e.clientX, e.clientY));
+      const picked = stage.pick(e.clientX, e.clientY);
+      const at = measuredAt(picked);
       const now = measureRef.current;
-      const next = measureDrag(now, at);
+      const next = measureDrag(now, at, measuredPoint(picked));
       if (next !== now) setMeasure(next);
       setOverHandle(!now.held && handleAt(areasHere, at, standingById) !== null);
       return;

@@ -2303,10 +2303,11 @@ apps/host/src/
 > never resolved** (D-321, D-322, D-341). The map's seventh tool, key 7; the
 > brushes moved along to 8, 9, 0, minus and equals.
 >
-> - **The ruler** is a drag from one cube to another — from where somebody
->   stands, when the press is on them — and how far, straight from middle to
->   middle, a bare number (D-316). It stays until the next press or Escape,
->   and it is the screen's own: nothing is sent.
+> - **The ruler** is a drag from one face to another — the middle of each,
+>   where every tool's aim sits (D-342); from the middle of somebody's floor,
+>   when the press is on them — and how far, straight between them, a bare
+>   number (D-316). It stays until the next press or Escape, and it is the
+>   screen's own: nothing is sent.
 > - **An area** is a sphere, a cone, a line or a cube, drawn by a drag: a
 >   sphere as far round as the drag is long, a cone or a line the way it went,
 >   a cube from corner to corner, as tall as it is wide. Sizes are whole

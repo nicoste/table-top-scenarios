@@ -58,7 +58,7 @@ export type { PropHand, PropPreview } from './props/index.js';
 
 export {
   MEASURE_START, chooseMeasure, chooseAreaColour, measureCleared, measurePress, measureDrag, measureRelease,
-  rulerLength, rulerShown, areasShown, handleAt, measurePrompt,
+  rulerLength, rulerShown, areasShown, handleAt, measurePrompt, faceCentre, floorCentre,
 } from './measure/index.js';
 export type { MeasureHand, MeasureMode } from './measure/index.js';
 
