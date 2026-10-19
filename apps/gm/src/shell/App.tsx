@@ -34,7 +34,7 @@ import {
   still, grab, armedStride, tokenAim, aimStride, strideGhost, strideIntent, standVerdict, walkShown,
   tokenAction, stridePrompt,
   NOT_PLACING, turnPlacing, mirrorPlacing, prefabAim, prefabPreview, placeIntent, placePrompt,
-  NO_CAPTURE, captureCorner, captureClick, captureBox, capturePrompt,
+  NO_CAPTURE, captureCorner, captureClick, captureHeight, captureBack, captureBox, capturePrompt,
 } from '@tt/client-core';
 import type { MapAction, MapReach, MapTool } from '@tt/client-core';
 import { useStage } from '../scene/use-stage.js';
@@ -672,7 +672,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   }, [prefabs]);
   /** What the box being captured would save — or why it cannot be. */
   const captured = useMemo(
-    () => (capture.first && capture.second && openBody ? capturePrefab(openBody, capture.first, capture.second) : null),
+    () => (capture.step === 'done' && openBody ? capturePrefab(openBody, capture.box.min, capture.box.max) : null),
     [capture, openBody],
   );
   /*
@@ -1078,8 +1078,12 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
      */
     if (openMap && mapTool === 'prefabs') {
       if (prefabMode === 'capture') {
+        // Three clicks (D-325): a corner, the area's far corner, the height.
+        // The height measures its moves against how tall a level is on screen
+        // at the box, so its top keeps up with the pointer at any zoom.
         const at = captureCorner(picked.face, e.shiftKey);
-        if (at) setCapture((now) => captureClick(now, at));
+        const pixels = capture.step === 'area' ? stage.levelPixels(capture.first) : 18;
+        setCapture((now) => captureClick(now, at, { y: e.clientY, pixels }));
         return;
       }
       const at = prefabAim(picked.face);
@@ -1260,6 +1264,11 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       const same = (a: BlockCoord | null, b: BlockCoord | null) =>
         a === b || (!!a && !!b && a.x === b.x && a.y === b.y && a.z === b.z);
       if (prefabMode === 'capture') {
+        // Setting the height, the pointer's height on screen is all that counts.
+        if (capture.step === 'height') {
+          setCapture((now) => captureHeight(now, e.clientY));
+          return;
+        }
         const at = captureCorner(face, e.shiftKey);
         setCaptureHover((now) => (same(now, at) ? now : at));
       } else {
@@ -1485,7 +1494,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
           if (stride.step === 'aiming') { setStride(still); return; }
           if (silverMove.step === 'aiming') { setSilverMove(noSilverMove); return; }
           // A half-drawn box, then a prefab in hand, before leaving the map.
-          if (mapTool === 'prefabs' && capture.first) { setCapture(NO_CAPTURE); return; }
+          if (mapTool === 'prefabs' && capture.step !== 'start') { setCapture(captureBack); return; }
           if (mapTool === 'prefabs' && placing.id) { setPlacing((now) => ({ ...now, id: null })); return; }
           setOpenMap(null);
           return;
@@ -1557,7 +1566,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     // quietly changed the world tool behind the map instead. `stride.step`
     // for the same reason: Escape has to know whether a move is in progress.
     // `tool` and `hands.step` so Z / X know whether they turn a place in hand.
-  }, [stage, openMap, stride.step, silverMove.step, tool, hands.step, mapTool, capture.first, placing.id]);
+  }, [stage, openMap, stride.step, silverMove.step, tool, hands.step, mapTool, capture.step, placing.id]);
 
   return (
     <>

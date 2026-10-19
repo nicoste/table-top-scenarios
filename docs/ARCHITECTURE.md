@@ -2197,11 +2197,14 @@ apps/host/src/
 > **R-211.** **A prefab is a box of a map, saved by name and stamped into any
 > map** (D-321, D-323). The map's fifth tool, key 5.
 >
-> - **Captured by two opposite corners.** A corner is the cube **in front of**
->   the face pointed at — where Build would put a block — so a box can have air
->   at its corners, as the box around a tree must; with **⇧ shift** it is the
->   block itself, to take a floor too. Kept as drawn, air at the edges
->   included, at most 64 cubes a side. The band helps reach inside a building.
+> - **Captured in three clicks** (D-325): **a corner** — the outlined cube,
+>   which is the one **in front of** the face pointed at, or with **⇧ shift**
+>   the block itself; **the opposite corner of the area**, taken on the first
+>   corner's level, the box one level tall as it follows the pointer; then
+>   **the height**, raised or sunk a level for every level's height the
+>   pointer moves on screen, and a click to finish. Escape steps back a click.
+>   Kept as drawn, air at the edges included, at most 64 cubes a side. The
+>   band helps reach inside a building.
 > - **A library shared by every campaign**, beside them in `data/prefabs/`, a
 >   file each, packed as a map is (D-217). Named and tagged, searched as the
 >   Tokens Library is. Not under undo; removing one moves its file aside

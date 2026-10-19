@@ -46,7 +46,7 @@ export { NO_PATH, walkLength, walkShown } from './walk/index.js';
 
 export {
   NOT_PLACING, turnPlacing, mirrorPlacing, prefabAim, prefabPreview, placeIntent, placePrompt,
-  NO_CAPTURE, captureCorner, captureClick, captureBox, capturePrompt, describeBox, saveIntent,
+  NO_CAPTURE, captureCorner, captureClick, captureHeight, captureBack, captureBox, capturePrompt, describeBox, saveIntent,
 } from './prefabs/index.js';
 export type { PrefabPlacing, PrefabPreview, Capture } from './prefabs/index.js';
 

@@ -6,7 +6,7 @@ import type { BlockCoord, Prefab, SwatchId } from '@tt/domain';
 import { capturePrefab, createMap, setBlocks } from '@tt/domain';
 import {
   NOT_PLACING, turnPlacing, mirrorPlacing, prefabAim, prefabPreview, placeIntent, placePrompt,
-  NO_CAPTURE, captureCorner, captureClick, captureBox, capturePrompt, describeBox, saveIntent,
+  NO_CAPTURE, captureCorner, captureClick, captureHeight, captureBack, captureBox, capturePrompt, describeBox, saveIntent,
 } from '@tt/client-core';
 
 const cube = (x: number, y: number, z: number): BlockCoord => ({ x, y, z });
@@ -16,34 +16,63 @@ const post = (): Prefab => capturePrefab(
   { name: 'Post' },
 ) as Prefab;
 
-describe('capturing a box', () => {
-  it('takes the first corner, then the second, and a third click starts again', () => {
-    let capture = captureClick(NO_CAPTURE, cube(1, 1, 1));
-    expect(capture).toEqual({ first: cube(1, 1, 1), second: null });
-    capture = captureClick(capture, cube(4, 3, 2));
-    expect(capture).toEqual({ first: cube(1, 1, 1), second: cube(4, 3, 2) });
-    expect(captureClick(capture, cube(9, 1, 9))).toEqual({ first: cube(9, 1, 9), second: null });
+describe('capturing a box, in three clicks (D-325)', () => {
+  /** Clicked at screen height `y`, where a level is 20 px tall. */
+  const at = (y: number) => ({ y, pixels: 20 });
+
+  it('takes a corner, then the area on that corner\'s level, then the height', () => {
+    let capture = captureClick(NO_CAPTURE, cube(1, 1, 1), at(300));
+    expect(capture).toEqual({ step: 'area', first: cube(1, 1, 1) });
+    // The far corner is taken on the first one's level, whatever the pointer is over.
+    capture = captureClick(capture, cube(4, 6, 3), at(300));
+    expect(capture.step).toBe('height');
+    expect(captureBox(capture, null)).toEqual({ min: cube(1, 1, 1), max: cube(4, 1, 3) });
+    // Up four levels' worth of pixels: four levels taller.
+    capture = captureHeight(capture, 220);
+    expect(captureBox(capture, null)).toEqual({ min: cube(1, 1, 1), max: cube(4, 5, 3) });
+    capture = captureClick(capture, null, at(220));
+    expect(capture).toEqual({ step: 'done', box: { min: cube(1, 1, 1), max: cube(4, 5, 3) } });
   });
 
-  it('outlines the box to the pointer until the second corner is down', () => {
-    const capture = captureClick(NO_CAPTURE, cube(4, 3, 2));
-    expect(captureBox(capture, cube(1, 1, 1))).toEqual({ min: cube(1, 1, 1), max: cube(4, 3, 2) });
-    // Before any corner, the cube a click would take — so the tool never looks dead (D-324).
+  it('outlines the area one level tall while it follows the pointer', () => {
+    const capture = captureClick(NO_CAPTURE, cube(4, 3, 2), at(300));
+    expect(captureBox(capture, cube(1, 9, 1))).toEqual({ min: cube(1, 3, 1), max: cube(4, 3, 2) });
+  });
+
+  it('sinks the box when the pointer goes down, and stays inside the map', () => {
+    let capture = captureClick(captureClick(NO_CAPTURE, cube(1, 1, 1), at(300)), cube(2, 1, 2), at(300));
+    capture = captureHeight(capture, 340);
+    expect(captureBox(capture, null)).toEqual({ min: cube(1, -1, 1), max: cube(2, 1, 2) });
+    capture = captureHeight(capture, -100000);
+    expect(captureBox(capture, null)!.max.y).toBe(31);
+    expect(captureHeight(capture, -100000)).toBe(capture);
+  });
+
+  it('outlines the cube a click would take before any corner, so the tool never looks dead (D-324)', () => {
     expect(captureBox(NO_CAPTURE, cube(1, 1, 1))).toEqual({ min: cube(1, 1, 1), max: cube(1, 1, 1) });
     expect(captureBox(NO_CAPTURE, null)).toBeNull();
   });
 
-  it('says the size as bare numbers, wide by tall by deep (D-316)', () => {
-    expect(describeBox({ min: cube(1, 1, 1), max: cube(4, 3, 2) })).toBe('4 × 3 × 2');
-    expect(capturePrompt(NO_CAPTURE, null)).toMatch(/one corner/);
-    expect(capturePrompt(captureClick(NO_CAPTURE, cube(1, 1, 1)), cube(2, 1, 1))).toMatch(/2 × 1 × 1/);
+  it('steps back a click with Escape, and starts again from a click on a finished box', () => {
+    const area = captureClick(NO_CAPTURE, cube(1, 1, 1), at(300));
+    const height = captureClick(area, cube(3, 1, 3), at(300));
+    expect(captureBack(height)).toEqual(area);
+    expect(captureBack(area)).toEqual(NO_CAPTURE);
+    const done = captureClick(height, null, at(300));
+    expect(captureClick(done, cube(9, 1, 9), at(300))).toEqual({ step: 'area', first: cube(9, 1, 9) });
   });
 
-  it('sends a save only once both corners are down', () => {
-    const half = captureClick(NO_CAPTURE, cube(1, 1, 1));
-    expect(saveIntent(half, { name: 'Wall', tags: [] }, 'place_a', 'poi_a')).toBeNull();
-    const whole = captureClick(half, cube(3, 2, 1));
-    expect(saveIntent(whole, { name: 'Wall', tags: ['ruins'] }, 'place_a', 'poi_a')).toEqual({
+  it('says the size as bare numbers, wide by tall by deep (D-316)', () => {
+    expect(describeBox({ min: cube(1, 1, 1), max: cube(4, 3, 2) })).toBe('4 × 3 × 2');
+    expect(capturePrompt(NO_CAPTURE, null)).toMatch(/first corner/);
+    expect(capturePrompt(captureClick(NO_CAPTURE, cube(1, 1, 1), at(300)), cube(2, 1, 1))).toMatch(/2 × 1 × 1/);
+  });
+
+  it('sends a save only once the box is finished', () => {
+    const height = captureClick(captureClick(NO_CAPTURE, cube(1, 1, 1), at(300)), cube(3, 1, 1), at(300));
+    expect(saveIntent(height, { name: 'Wall', tags: [] }, 'place_a', 'poi_a')).toBeNull();
+    const done = captureClick(captureHeight(height, 280), null, at(280));
+    expect(saveIntent(done, { name: 'Wall', tags: ['ruins'] }, 'place_a', 'poi_a')).toEqual({
       kind: 'savePrefab', placeId: 'place_a', poiId: 'poi_a',
       from: cube(1, 1, 1), to: cube(3, 2, 1), name: 'Wall', tags: ['ruins'],
     });

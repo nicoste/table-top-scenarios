@@ -8244,3 +8244,38 @@ panel the GM was looking at. Two smaller faults showed on the way.
 Checked again: the tool opened on Capture with Place greyed out; a blue cube
 followed the pointer before any click; the same two corners read 29 × 1 × 13;
 saved, and with the prefab put down, the panel asked for one to be picked.
+
+### D-325 — Capturing a prefab is three clicks: corner, area, height · `agreed`
+*"The selection should be splitted into 3 steps because a tree doesn't have
+cube shape."* The GM's sequence, built as given:
+
+1. **The first click** takes the cube outlined under the pointer — it is in,
+   and it is one corner.
+2. **Moving** shows the area from it to the pointer, **one cube tall**, on
+   the first corner's level whatever the pointer is over.
+3. **The second click** sets the area.
+4. **Moving** then sets the height: up raises the box and down sinks it.
+5. **The third click** ends the selection; it is named and saved from there.
+
+Two corners in space could never frame a tree: whatever the second corner
+is, it has to be something the pointer lands on, and the far top corner of a
+canopy's box is air. A footprint on one level and then a height asks for
+nothing that is not there.
+
+**The height follows the pointer's height on screen**, a level for every
+level's worth of pixels — measured at the box with the camera as it is
+(`levelPixels`), not a fixed 18 px as the world's height drag uses, so the
+top of the box stays under the pointer at any zoom. It stops at the map's
+top and bottom and at a prefab's longest side. **Escape steps back a click**:
+the height to the area, the area to nothing. A click on a finished box starts
+a new one there, as before.
+
+The first corner keeps D-323's rule: the cube in front of the face, or the
+block with ⇧ shift.
+
+Checked on a copy of the GM's data: the birch beside the tavern — a corner
+by the trunk, the area read 4 × 1 × 3, 45 px up read 4 × 5 × 3, and the third
+click finished it at the tree's 13 blocks, the outline from just above the
+grass to the top of the canopy.
+
+R-211 amended.

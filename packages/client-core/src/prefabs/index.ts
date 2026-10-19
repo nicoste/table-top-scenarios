@@ -8,7 +8,9 @@
 
 import type { Intent } from '@tt/protocol';
 import type { BlockCoord, Box, EncounterMap, Facing, Prefab } from '@tt/domain';
-import { boxBetween, inMap, placedBlocks, placedBox, sizeOfBox, turned } from '@tt/domain';
+import {
+  boxBetween, inMap, placedBlocks, placedBox, sizeOfBox, turned, MAP_MAX_HEIGHT, MAP_MIN_DEPTH, MAX_PREFAB_SIDE,
+} from '@tt/domain';
 import type { FacePick, GhostCube } from '@tt/render';
 
 /** How the chosen prefab will be put down. */
@@ -108,47 +110,136 @@ export function captureCorner(face: FacePick | null, block: boolean): BlockCoord
   return block ? face.block : face.adjacent;
 }
 
-/** The two corners of the box being captured, as they are clicked. */
-export interface Capture {
-  readonly first: BlockCoord | null;
-  readonly second: BlockCoord | null;
-}
-
-export const NO_CAPTURE: Capture = { first: null, second: null };
-
 /**
- * A click on a block while capturing: the first corner, then the second — and
- * a click after both starts a new box from there, so a wrong corner is undone
- * by clicking again rather than by finding a button.
+ * A box being captured, in **three clicks** (D-325): a corner, the far corner
+ * of the area on that corner's level, then the height — because nothing worth
+ * saving is a cube. A tree's box is its canopy's footprint by its height, and
+ * neither corner of it is anything the pointer could land on.
+ *
+ * - `start` — nothing yet. The cube a click would take is outlined.
+ * - `area` — the first corner is down, and the box follows the pointer across
+ *   that corner's level: one cube tall.
+ * - `height` — the area is down, and moving the pointer up or down raises or
+ *   sinks the box a level at a time, from where the second click was made.
+ * - `done` — the third click ended it. Named and saved from here.
  */
-export function captureClick(capture: Capture, at: BlockCoord): Capture {
-  if (!capture.first || capture.second) return { first: at, second: null };
-  return { first: capture.first, second: at };
+export type Capture =
+  | { readonly step: 'start' }
+  | { readonly step: 'area'; readonly first: BlockCoord }
+  | {
+    readonly step: 'height';
+    readonly first: BlockCoord;
+    /** The area's far corner, on the first corner's level. */
+    readonly second: BlockCoord;
+    /** Levels above the area — or below it, when negative. */
+    readonly levels: number;
+    /** Where the pointer was when the area was set, in client pixels. */
+    readonly fromY: number;
+    /** How many pixels one level spans on screen there, so the box keeps up with the pointer. */
+    readonly pixels: number;
+  }
+  | { readonly step: 'done'; readonly box: Box };
+
+export const NO_CAPTURE: Capture = { step: 'start' };
+
+/** The box the height step describes: the area, raised or sunk by `levels`. */
+function raised(capture: Extract<Capture, { step: 'height' }>): Box {
+  const { first, second, levels } = capture;
+  return {
+    min: { x: Math.min(first.x, second.x), y: Math.min(first.y, first.y + levels), z: Math.min(first.z, second.z) },
+    max: { x: Math.max(first.x, second.x), y: Math.max(first.y, first.y + levels), z: Math.max(first.z, second.z) },
+  };
 }
 
 /**
- * The box to outline: both corners, or the first and the cube under the
- * pointer — and before any corner, the cube under the pointer alone, so the
- * GM sees where a click would put the first one rather than a tool that
- * seems to do nothing (D-324).
+ * A click while capturing (D-325): the first corner; then the area's far
+ * corner, on the first corner's level whatever the pointer is over; then
+ * the height, wherever the click lands. A click on a finished box starts a
+ * new one from there, so a wrong box is undone by clicking again.
+ *
+ * `pointer` is where the click was and how many pixels a level spans there,
+ * which the height step measures its moves against.
+ */
+export function captureClick(
+  capture: Capture,
+  at: BlockCoord | null,
+  pointer: { readonly y: number; readonly pixels: number },
+): Capture {
+  switch (capture.step) {
+    case 'start':
+      return at ? { step: 'area', first: at } : capture;
+    case 'area':
+      if (!at) return capture;
+      return {
+        step: 'height',
+        first: capture.first,
+        second: { x: at.x, y: capture.first.y, z: at.z },
+        levels: 0,
+        fromY: pointer.y,
+        pixels: pointer.pixels > 0 ? pointer.pixels : 18,
+      };
+    case 'height':
+      return { step: 'done', box: raised(capture) };
+    default:
+      return at ? { step: 'area', first: at } : NO_CAPTURE;
+  }
+}
+
+/**
+ * The height step following the pointer: a level up for every level's worth
+ * of pixels it rises, a level down for every one it falls — within the map's
+ * levels and the longest side a prefab may have. Identity-preserving, so a
+ * pointer that has not crossed a level redraws nothing.
+ */
+export function captureHeight(capture: Capture, pointerY: number): Capture {
+  if (capture.step !== 'height') return capture;
+  const wanted = Math.round((capture.fromY - pointerY) / capture.pixels);
+  const up = Math.min(MAP_MAX_HEIGHT - 1 - capture.first.y, MAX_PREFAB_SIDE - 1);
+  const down = -Math.min(capture.first.y - MAP_MIN_DEPTH, MAX_PREFAB_SIDE - 1);
+  const levels = Math.max(down, Math.min(up, wanted));
+  return levels === capture.levels ? capture : { ...capture, levels };
+}
+
+/** Escape steps back one click: the height to the area, the area to nothing. */
+export function captureBack(capture: Capture): Capture {
+  if (capture.step === 'height') return { step: 'area', first: capture.first };
+  return NO_CAPTURE;
+}
+
+/**
+ * The box to outline. Before any corner, the cube a click would take, so
+ * the tool never looks dead (D-324); while setting the area, the first
+ * corner to the pointer, one level tall; then the height as it is raised.
  */
 export function captureBox(capture: Capture, hover: BlockCoord | null): Box | null {
-  if (!capture.first) return hover ? boxBetween(hover, hover) : null;
-  const other = capture.second ?? hover;
-  return other ? boxBetween(capture.first, other) : null;
+  switch (capture.step) {
+    case 'start':
+      return hover ? boxBetween(hover, hover) : null;
+    case 'area':
+      return boxBetween(capture.first, hover ? { x: hover.x, y: capture.first.y, z: hover.z } : capture.first);
+    case 'height':
+      return raised(capture);
+    default:
+      return capture.box;
+  }
 }
 
 /** What the readout says while capturing. */
 export function capturePrompt(capture: Capture, hover: BlockCoord | null): string {
-  if (!capture.first) {
-    return 'Point at a face: one corner is the cube in front of it (⇧ shift: the block itself). Cut the levels to reach inside.';
-  }
-  if (!capture.second) {
+  const size = () => {
     const box = captureBox(capture, hover);
-    const size = box ? ` — ${describeBox(box)}` : '';
-    return `Now the opposite corner${size}.`;
+    return box ? describeBox(box) : '';
+  };
+  switch (capture.step) {
+    case 'start':
+      return 'Click the first corner: the outlined cube is in (⇧ shift: the block itself). Cut the levels to reach inside.';
+    case 'area':
+      return `Now the opposite corner of the area — ${size()}. Click to set it.`;
+    case 'height':
+      return `Move up or down for the height — ${size()}. Click to finish.`;
+    default:
+      return `${size()}. Name it and save it, or click again to start over.`;
   }
-  return `${describeBox(captureBox(capture, null)!)}. Name it and save it, or click again to start over.`;
 }
 
 /** "5 × 3 × 4": wide, tall, deep, in cubes — a bare number each (D-316). */
@@ -157,16 +248,16 @@ export function describeBox(box: Box): string {
   return `${size.x} × ${size.y} × ${size.z}`;
 }
 
-/** The save a button sends, or nothing until both corners are down. */
+/** The save a button sends, or nothing until the box is finished. */
 export function saveIntent(
   capture: Capture,
   fields: { readonly name: string; readonly tags: readonly string[] },
   placeId: string,
   poiId: string,
 ): Intent | null {
-  if (!capture.first || !capture.second) return null;
+  if (capture.step !== 'done') return null;
   return {
-    kind: 'savePrefab', placeId, poiId, from: capture.first, to: capture.second,
+    kind: 'savePrefab', placeId, poiId, from: capture.box.min, to: capture.box.max,
     name: fields.name, tags: [...fields.tags],
   };
 }

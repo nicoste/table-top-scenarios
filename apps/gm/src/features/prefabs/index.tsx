@@ -11,7 +11,7 @@ import type { Intent, PrefabWire } from '@tt/protocol';
 import type { Prefab } from '@tt/domain';
 import { searchLibrary, tagsFromText } from '@tt/domain';
 import type { Capture, PrefabPlacing } from '@tt/client-core';
-import { captureBox, describeBox, mirrorPlacing, saveIntent, turnPlacing } from '@tt/client-core';
+import { NO_CAPTURE, captureBox, describeBox, mirrorPlacing, saveIntent, turnPlacing } from '@tt/client-core';
 import { Tooltip } from '@tt/ui';
 
 export type PrefabMode = 'place' | 'capture';
@@ -58,7 +58,7 @@ export function PrefabsPanel({
     dispatch(intent);
     setName('');
     setTags('');
-    onCapture({ first: null, second: null });
+    onCapture(NO_CAPTURE);
     onSaved();
   };
 
@@ -143,12 +143,13 @@ export function PrefabsPanel({
 
       {mode === 'capture' ? (
         <>
-          {!capture.second ? (
+          {capture.step !== 'done' ? (
             <p className="hint">
-              Click one corner of what to save, then the opposite corner. A corner is
-              the cube <b>in front of</b> the face you point at — so a tree&apos;s box can
-              have air at its corners — or, holding <b>⇧ shift</b>, the block itself, to
-              take a floor too. Cut the <b>levels</b> to reach inside a building.
+              Three clicks: <b>a corner</b> — the outlined cube is in; <b>the opposite
+              corner of the area</b>, on that corner&apos;s level; then move up or down
+              for <b>the height</b> and click to finish. Hold <b>⇧ shift</b> to take the
+              block itself rather than the cube in front of it. Cut the <b>levels</b> to
+              reach inside a building; <b>Escape</b> steps back a click.
             </p>
           ) : typeof captured === 'string' ? (
             <p className="warn">That box cannot be saved: {captured}.</p>
@@ -179,12 +180,12 @@ export function PrefabsPanel({
               />
             </>
           )}
-          {capture.first && (
+          {capture.step !== 'start' && (
             <div className="btn-grid tools" style={{ marginTop: 8 }}>
-              {capture.second && typeof captured !== 'string' && (
+              {capture.step === 'done' && typeof captured !== 'string' && (
                 <button className="on" onClick={save}>Save prefab</button>
               )}
-              <button onClick={() => onCapture({ first: null, second: null })}>Start over</button>
+              <button onClick={() => onCapture(NO_CAPTURE)}>Start over</button>
             </div>
           )}
         </>
