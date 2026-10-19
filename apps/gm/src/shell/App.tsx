@@ -13,6 +13,7 @@ import {
   DAYLIGHT, clampLighting,
   NO_TOKENS, tokensIn, onRoster, unplaced, tokensInBand, standsInBand, standingAt,
   NO_CELLS, shownBy, memberNotesFromJSON,
+  prefabFromJSON, capturePrefab,
 } from '@tt/domain';
 import type {
   SwatchId, CoverId, Lighting, Ambience, MemberId, Tokens, BlockCoord, Route, Travelling,
@@ -21,7 +22,7 @@ import type {
 import type { GmView, Intent } from '@tt/protocol';
 import { defaultTarget, worldCentre, SILVER } from '@tt/render';
 import type { Present, Standing, StageFog } from '@tt/render';
-import type { Carry, SilverMove, Stride, Tool, Travel } from '@tt/client-core';
+import type { Capture, Carry, PrefabPlacing, SilverMove, Stride, Tool, Travel } from '@tt/client-core';
 import {
   emptyHanded, pickUp, turnCarried, canSetDown, setDownIntent, placesPrompt,
   worldToolShows, mapToolShows,
@@ -32,6 +33,8 @@ import {
   cameraAction, wheelZoom, CAMERA_HINT,
   still, grab, armedStride, tokenAim, aimStride, strideGhost, strideIntent, standVerdict, walkShown,
   tokenAction, stridePrompt,
+  NOT_PLACING, turnPlacing, mirrorPlacing, prefabAim, prefabPreview, placeIntent, placePrompt,
+  NO_CAPTURE, captureCorner, captureClick, captureBox, capturePrompt,
 } from '@tt/client-core';
 import type { MapAction, MapReach, MapTool } from '@tt/client-core';
 import { useStage } from '../scene/use-stage.js';
@@ -43,6 +46,8 @@ import { PartyPanel } from '../features/party/index.js';
 import { PlacesPanel, PlaceInspector } from '../features/place/index.js';
 import { TravelPanel } from '../features/travel/index.js';
 import { LibraryPanel } from '../features/library/index.js';
+import { PrefabsPanel } from '../features/prefabs/index.js';
+import type { PrefabMode } from '../features/prefabs/index.js';
 import { OnStagePanel } from '../features/on-stage/index.js';
 import { ChunkInspector } from '../features/visibility/index.js';
 import { MapPanel } from '../features/map/index.js';
@@ -82,6 +87,18 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   const [chosenTemplate, setChosenTemplate] = useState<string | null>(null);
   /** A silver token being moved, if one is (R-206). Local until confirmed. */
   const [silverMove, setSilverMove] = useState<SilverMove>(noSilverMove);
+  /**
+   * The Prefabs tool (D-321): placing or capturing; the prefab in hand and
+   * how it is turned, kept between placements as the brush is; the corners
+   * of a box being captured; and the cube under the pointer for each.
+   */
+  const [prefabMode, setPrefabMode] = useState<PrefabMode>('place');
+  const [placing, setPlacing] = useState<PrefabPlacing>(NOT_PLACING);
+  const [capture, setCapture] = useState<Capture>(NO_CAPTURE);
+  const [prefabAt, setPrefabAt] = useState<BlockCoord | null>(null);
+  const [captureHover, setCaptureHover] = useState<BlockCoord | null>(null);
+  /** A prefab was just saved: the next one to arrive is put in hand. */
+  const awaitingPrefab = useRef<number | null>(null);
   /**
    * The cell under the pointer while the Places tool is out, so the ghost can
    * be redrawn by a key press as well as by a pointer move. Replaced only when
@@ -630,6 +647,65 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     if (mapTool !== 'spawn') stage?.aimSilver(silverMoveGhost(silverMove));
   }, [silverMove, stage, mapTool]);
 
+  /**
+   * The prefabs as the domain's shape, decoded once per prefab: the view
+   * keeps an unchanged prefab the same object between pushes, so this only
+   * decodes what changed.
+   */
+  const prefabWires = view?.prefabs;
+  const prefabs = useMemo(
+    () => (prefabWires ?? []).map((wire) => prefabFromJSON(wire)).filter((one): one is NonNullable<typeof one> => !!one),
+    [prefabWires],
+  );
+  // A prefab just saved is put in hand when it arrives: that is why it was made.
+  useEffect(() => {
+    if (awaitingPrefab.current === null || prefabs.length <= awaitingPrefab.current) return;
+    awaitingPrefab.current = null;
+    const newest = prefabs[prefabs.length - 1]!;
+    setPlacing((now) => ({ ...now, id: newest.id }));
+    setPrefabMode('place');
+  }, [prefabs]);
+  /** What the box being captured would save — or why it cannot be. */
+  const captured = useMemo(
+    () => (capture.first && capture.second && openBody ? capturePrefab(openBody, capture.first, capture.second) : null),
+    [capture, openBody],
+  );
+  /*
+   * The Prefabs tool's ghost, its box and its readout (D-321): drawn from
+   * state rather than in the pointer handler, so a key that turns or mirrors
+   * the prefab redraws it without the pointer moving.
+   */
+  useEffect(() => {
+    if (!stage || !openMap || mapTool !== 'prefabs') return;
+    if (prefabMode === 'capture') {
+      stage.showPrefabGhost(null);
+      const box = captureBox(capture, captureHover);
+      stage.showBlockGhost(box ? [box.min, box.max] : [], 0x7fd4ff);
+      setHoverLabel(capturePrompt(capture, captureHover));
+      return;
+    }
+    const prefab = prefabs.find((one) => one.id === placing.id) ?? null;
+    if (!prefab || !prefabAt || !openBody) {
+      stage.showPrefabGhost(null);
+      stage.showBlockGhost([]);
+      setHoverLabel(placePrompt(prefab?.name ?? null, prefabAt, 0));
+      return;
+    }
+    const preview = prefabPreview(prefab, prefabAt, placing, openBody);
+    stage.showPrefabGhost(preview.cubes);
+    // Orange while it will carve its box, so the GM sees the box is the edit.
+    stage.showBlockGhost([preview.box.min, preview.box.max], placing.clear ? 0xff9a5a : 0xffffff);
+    setHoverLabel(placePrompt(prefab.name, prefabAt, preview.outside));
+  }, [stage, openMap, mapTool, prefabMode, capture, captureHover, placing, prefabAt, prefabs, openBody]);
+  // Putting the tool down, or changing map, drops the ghost and any half-drawn box.
+  useEffect(() => {
+    stage?.showPrefabGhost(null);
+    stage?.showBlockGhost([]);
+    setCapture(NO_CAPTURE);
+    setPrefabAt(null);
+    setCaptureHover(null);
+  }, [mapTool, openMap?.poiId, stage]);
+
   // Changing tool, or map, drops a silver token in hand and the Spawn ghost.
   useEffect(() => {
     setSilverMove(noSilverMove);
@@ -991,6 +1067,22 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       return;
     }
     /*
+     * Prefabs (D-321): capturing takes a corner per click; placing stamps
+     * the prefab in hand where the ghost stands, and keeps it in hand — a
+     * row of trees is a click each.
+     */
+    if (openMap && mapTool === 'prefabs') {
+      if (prefabMode === 'capture') {
+        const at = captureCorner(picked.face, e.shiftKey);
+        if (at) setCapture((now) => captureClick(now, at));
+        return;
+      }
+      const at = prefabAim(picked.face);
+      const intent = at ? placeIntent(placing, at, openMap.placeId, openMap.poiId) : null;
+      if (intent) dispatch(intent);
+      return;
+    }
+    /*
      * Spawn places another of the chosen entry on the floor clicked, and
      * stays in hand (D-307): five goblins are five clicks. A floor the token
      * cannot stand on does nothing; the readout has already said why.
@@ -1152,6 +1244,23 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
         ? memberName(picked.token.memberId)
         : picked.silver ? silverName(picked.silver) : null;
       setHoverLabel(name ? `Pick up ${name}` : null);
+      return;
+    }
+
+    if (openMap && mapTool === 'prefabs') {
+      lastPointer.current = { x: e.clientX, y: e.clientY };
+      const face = stage.pick(e.clientX, e.clientY).face;
+      // Only when the pointer reaches another cube: the ghost is drawn from
+      // these, and the same cube again must not redraw a thousand of them.
+      const same = (a: BlockCoord | null, b: BlockCoord | null) =>
+        a === b || (!!a && !!b && a.x === b.x && a.y === b.y && a.z === b.z);
+      if (prefabMode === 'capture') {
+        const at = captureCorner(face, e.shiftKey);
+        setCaptureHover((now) => (same(now, at) ? now : at));
+      } else {
+        const at = prefabAim(face);
+        setPrefabAt((now) => (same(now, at) ? now : at));
+      }
       return;
     }
 
@@ -1335,6 +1444,17 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
         if (digit === '3') { setMapTool('move'); return; }
         // The fourth (D-307): everyone else, from the Tokens Library.
         if (digit === '4') { setMapTool('spawn'); return; }
+        // The fifth (D-321): pieces of map, saved and stamped.
+        if (digit === '5') { setMapTool('prefabs'); return; }
+        // Z / X turn the prefab in hand, as they turn a place (R-203); M mirrors it.
+        if (mapTool === 'prefabs' && (e.code === 'KeyZ' || e.code === 'KeyX')) {
+          setPlacing((now) => turnPlacing(now, e.code === 'KeyX' ? 1 : -1));
+          return;
+        }
+        if (mapTool === 'prefabs' && e.code === 'KeyM') {
+          setPlacing(mirrorPlacing);
+          return;
+        }
         // The brushes run along the digits from 6, which is where the world's
         // terrain brushes start — the habit transfers even though the two are
         // different things (R-164). Five shapes reach 0, which is where the
@@ -1359,6 +1479,9 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
           // A move in progress is the nearer thing to back out of (R-139).
           if (stride.step === 'aiming') { setStride(still); return; }
           if (silverMove.step === 'aiming') { setSilverMove(noSilverMove); return; }
+          // A half-drawn box, then a prefab in hand, before leaving the map.
+          if (mapTool === 'prefabs' && capture.first) { setCapture(NO_CAPTURE); return; }
+          if (mapTool === 'prefabs' && placing.id) { setPlacing((now) => ({ ...now, id: null })); return; }
           setOpenMap(null);
           return;
         }
@@ -1429,7 +1552,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     // quietly changed the world tool behind the map instead. `stride.step`
     // for the same reason: Escape has to know whether a move is in progress.
     // `tool` and `hands.step` so Z / X know whether they turn a place in hand.
-  }, [stage, openMap, stride.step, silverMove.step, tool, hands.step]);
+  }, [stage, openMap, stride.step, silverMove.step, tool, hands.step, mapTool, capture.first, placing.id]);
 
   return (
     <>
@@ -1549,6 +1672,22 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
               library={library}
               chosen={chosenTemplate}
               onChoose={setChosenTemplate}
+              dispatch={dispatch}
+            />
+          )}
+          {mapToolShows(mapTool, 'prefabs') && (
+            <PrefabsPanel
+              prefabs={view?.prefabs ?? []}
+              mode={prefabMode}
+              onMode={(mode) => { setPrefabMode(mode); setCapture(NO_CAPTURE); }}
+              placing={placing}
+              onPlacing={setPlacing}
+              capture={capture}
+              onCapture={setCapture}
+              captured={captured}
+              onSaved={() => { awaitingPrefab.current = prefabs.length; }}
+              placeId={openPlace.id}
+              poiId={openPoi.id}
               dispatch={dispatch}
             />
           )}

@@ -428,6 +428,20 @@ export function partyVisiblePois(place: Place): readonly Poi[] {
 
 // -- a point of interest's map -----------------------------------------------
 
+/**
+ * Changes one point of interest's map, and nothing else. Identity-preserving:
+ * a change that changes nothing leaves the places as they were (R-165).
+ * Exported for edits that know more than a place should — a prefab (D-321).
+ */
+export function editPoiMap(
+  places: readonly Place[],
+  placeId: PlaceId,
+  poiId: PoiId,
+  change: (map: EncounterMap) => EncounterMap,
+): readonly Place[] {
+  return mapOfPoi(places, placeId, poiId, change);
+}
+
 function mapOfPoi(
   places: readonly Place[],
   placeId: PlaceId,

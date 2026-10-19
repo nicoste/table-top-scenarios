@@ -6,7 +6,7 @@ import { chunkAt, columnAt, createCampaign, createLiveSave, liveSaveId, ORIGIN, 
 import type { ImageId } from '@tt/domain';
 
 const NOW = '2026-01-01T00:00:00.000Z';
-const empty: HostState = { campaigns: [], active: null, activeSave: null, history: emptyHistory(), library: EMPTY_LIBRARY };
+const empty: HostState = { campaigns: [], active: null, activeSave: null, history: emptyHistory(), library: EMPTY_LIBRARY, prefabs: [] };
 
 function withCampaign(): HostState {
   const campaign = createCampaign('Ashfall');
@@ -15,7 +15,7 @@ function withCampaign(): HostState {
     campaigns: [{ id: campaign.id, name: campaign.name }],
     active: campaign,
     activeSave: live,
-    history: emptyHistory(), library: EMPTY_LIBRARY,
+    history: emptyHistory(), library: EMPTY_LIBRARY, prefabs: [],
   };
 }
 const run = (state: HostState, intent: Intent, role: 'gm' | 'table' = 'gm') => apply(state, role, intent, NOW);

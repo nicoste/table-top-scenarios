@@ -7,7 +7,7 @@ export {
   encodePoi, decodePoi, parseMarkerId,
   DiscoveryWireSchema, PlacementWireSchema, SaveWireSchema, encodeSave, decodeSave,
   TravellingWireSchema, travellingToWire, travellingFromWire, ImageIdSchema,
-  IMAGE_PATH, imageUrl, SilverTokenWireSchema, TokenTemplateWireSchema,
+  IMAGE_PATH, imageUrl, SilverTokenWireSchema, TokenTemplateWireSchema, PrefabWireSchema,
   encodePlacement, decodePlacement, CubeWireSchema, TokensWireSchema,
   CellsWireSchema, cellsWire, cellsFromWire,
   ChunkWireSchema, TerrainWireSchema, MemberWireSchema, WorldWireSchema, CampaignWireSchema,
@@ -17,7 +17,7 @@ export {
 } from './wire/index.js';
 export type {
   ChunkWire, CampaignWire, PlaceWire, SaveWire, PlacementWire, MapWire, TokensWire, CellsWire,
-  TravellingWire, SilverTokenWire, TokenTemplateWire,
+  TravellingWire, SilverTokenWire, TokenTemplateWire, PrefabWire,
 } from './wire/index.js';
 
 export { IntentSchema, parseIntent } from './intents/index.js';

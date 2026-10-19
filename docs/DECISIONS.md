@@ -8176,3 +8176,47 @@ runs. They let sight through and block walking (confirmed).
 
 Still proposed, not answered: a picture for each prefab taken on saving,
 and a few starter prefabs.
+
+### D-323 — Prefabs, built · `agreed`
+*"Go ahead with prefabs!"* — D-321 and D-322 as agreed, built, and one
+change found by using it.
+
+**A corner is the cube in front of the face, not the block.** D-321 said
+"two corner blocks". The first thing tried was a tree, and a tree's box has
+leaves at its edges and air at every corner: with corners that had to be
+blocks, no two clicks could frame it — the box either cut leaves off or
+dragged in the ground. So a corner is the cube against the face pointed at,
+the one Build would fill, which may be air; **⇧ shift** takes the block
+itself, for a box that should include a floor. Air at a box's edges costs
+nothing, because a prefab's air leaves the map alone, and pointing at the
+top of a floor leaves the floor out — what a house dropped onto grass wants.
+The outline shows the box exactly, either way.
+
+**How it is put together.** `domain/prefab` holds the rules: capturing a
+box from the map's sparse keys, turning a quarter clockwise and mirroring
+left to right before turning, centring the footprint on the cube pointed at,
+and stamping — blocks win, air leaves the map alone, *clear box* empties it
+first, nothing outside the map and nothing on anyone standing (R-186). The
+format is a map's (D-217): a palette and runs over the box, so a 4 × 5 × 3
+birch is 227 bytes. The sim saves from the open map and places from the
+library by id, so a placement is one intent and one undo step however many
+cubes it holds; renaming and removing need no campaign open and touch no
+history. `persistence` keeps a file per prefab, moves a removed one aside
+(D-108) and an unreadable one too, and refuses an id that could not be a
+file name; backups take the folder with the rest (R-210). The console draws
+the ghost as see-through cubes in their materials' colours — red where they
+would fall outside the map — framed by the block outline, orange while
+*clear box* is on; a prefab just saved is put in hand.
+
+`searchLibrary` is now generic, so prefabs are found by the same rule as
+tokens: every word must match the name or a tag. `editPoiMap` is exported
+from places so the sim can stamp a prefab without places knowing what one is.
+
+Checked on a copy of the GM's data with the real keyboard: a birch beside
+the tavern captured as 4 × 5 × 3, 13 blocks, named and tagged with Enter,
+written to `prefabs/` and put in hand; its ghost followed the pointer; one
+click put all 13 blocks down on open grass, trunk and leaves where the
+original had them; one ⌘Z took all 13 back; X turned it, M mirrored it; the
+console logged no errors.
+
+R-211 is new; D-321's "two corner blocks" is superseded.

@@ -7,7 +7,7 @@ export {
 } from './ids/index.js';
 export type {
   CampaignId, SaveId, MemberId, PlaceId, CoverId, NoteId, PoiId, PlaneId, MarkerId, MaterialId,
-  SwatchId, TemplateId, SilverId,
+  SwatchId, TemplateId, SilverId, PrefabId,
 } from './ids/index.js';
 
 
@@ -51,6 +51,12 @@ export {
 } from './light/index.js';
 export type { Route } from './route/index.js';
 export { routeAcross, daysAcross, ROUTE_BUDGET } from './route/index.js';
+export type { Prefab, Prefabs, PrefabSize, PrefabJSON, Box, PrefabTurn, CaptureRefusal } from './prefab/index.js';
+export {
+  NO_PREFABS, MAX_PREFAB_NAME, MAX_PREFAB_SIDE, boxBetween, sizeOfBox, capturePrefab, turnedSize,
+  placedBox, placedBlocks, stampPrefab, prefabById, addPrefab, editPrefab, removePrefab,
+  prefabToJSON, prefabFromJSON,
+} from './prefab/index.js';
 export type { Walk } from './walk/index.js';
 export { walkAcross, WALK_BUDGET } from './walk/index.js';
 export type { Material, Cut, Difficulty } from './materials/index.js';
@@ -89,7 +95,7 @@ export {
   addPoi, renamePoi, setPoiVisible, removePoi, movePoi,
   partyVisiblePois,
   setMapBlock, clearMapBlock, setMapBlocks, paintMapBlocks, clearMapBlocks,
-  fillPoiMaterial, growPoiMap, poiById, withPoiMaps,
+  fillPoiMaterial, growPoiMap, editPoiMap, poiById, withPoiMaps,
   addPoiPlane, renamePoiPlane, movePoiPlane, removePoiPlane,
 } from './place/index.js';
 

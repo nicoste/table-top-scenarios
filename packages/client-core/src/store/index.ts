@@ -82,7 +82,8 @@ export type Tool = 'select' | 'paint' | 'cover' | 'height' | 'places' | 'travel'
  * else (R-188). Travel's job, one surface down.
  */
 /** `spawn` places silver tokens from the Tokens Library (D-307). */
-export type MapTool = 'build' | 'paint' | 'move' | 'spawn';
+/** `prefabs` saves a box of the map and places saved ones (D-321). */
+export type MapTool = 'build' | 'paint' | 'move' | 'spawn' | 'prefabs';
 
 export interface ViewState {
   readonly camera: CameraTarget;

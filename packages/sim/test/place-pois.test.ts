@@ -21,7 +21,7 @@ function seeded() {
     campaigns: [{ id: campaign.id, name: campaign.name }],
     active: campaign,
     activeSave: createLiveSave(campaign, NOW),
-    history: emptyHistory(), library: EMPTY_LIBRARY,
+    history: emptyHistory(), library: EMPTY_LIBRARY, prefabs: [],
   };
   state = run(state, { kind: 'setChunkKnown', cx: ORIGIN.cx, cz: ORIGIN.cz, known: true }).state;
   state = run(state, { kind: 'addPlace', cell: at(5, 6), name: 'Ashfall Keep' }).state;
@@ -150,7 +150,7 @@ describe('an older campaign (R-137)', () => {
     const campaign = createCampaign('Ashfall');
     const stale = { ...campaign, schemaVersion: 2 };
     const opened = openedWith(
-      { campaigns: [], active: null, activeSave: null, history: emptyHistory(), library: EMPTY_LIBRARY },
+      { campaigns: [], active: null, activeSave: null, history: emptyHistory(), library: EMPTY_LIBRARY, prefabs: [] },
       stale,
       null,
       NOW,

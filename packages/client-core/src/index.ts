@@ -44,6 +44,12 @@ export type { RowBox } from './levels/index.js';
 
 export { NO_PATH, walkLength, walkShown } from './walk/index.js';
 
+export {
+  NOT_PLACING, turnPlacing, mirrorPlacing, prefabAim, prefabPreview, placeIntent, placePrompt,
+  NO_CAPTURE, captureCorner, captureClick, captureBox, capturePrompt, describeBox, saveIntent,
+} from './prefabs/index.js';
+export type { PrefabPlacing, PrefabPreview, Capture } from './prefabs/index.js';
+
 export { FRAME_WINDOW, keepRecent, summarise, rate } from './metrics/index.js';
 export type { Frames } from './metrics/index.js';
 

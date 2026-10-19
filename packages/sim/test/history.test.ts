@@ -20,7 +20,7 @@ function open(): HostState {
     campaigns: [{ id: campaign.id, name: campaign.name }],
     active: campaign,
     activeSave: createLiveSave(campaign, NOW),
-    history: emptyHistory(), library: EMPTY_LIBRARY,
+    history: emptyHistory(), library: EMPTY_LIBRARY, prefabs: [],
   };
 }
 

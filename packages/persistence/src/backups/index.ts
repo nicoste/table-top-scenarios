@@ -14,13 +14,13 @@ import { join } from 'node:path';
 
 /**
  * What a backup holds, relative to the data folder: the campaigns (worlds and
- * maps), the saves (play state) and the Tokens Library.
+ * maps), the saves (play state), the Tokens Library and the prefabs (D-321).
  *
  * **Not the pictures.** They are stored under the hash of what they are
  * (R-204) and never deleted or rewritten, so every picture a backup names is
  * still in `images/` — copying them would only cost the disk.
  */
-export const BACKED_UP = ['campaigns', 'saves', 'library.json'] as const;
+export const BACKED_UP = ['campaigns', 'saves', 'library.json', 'prefabs'] as const;
 
 /** The folder backups go in, inside the data folder. */
 export const BACKUPS = 'backups';

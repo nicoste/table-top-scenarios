@@ -19,7 +19,7 @@ function open(): HostState {
     campaigns: [{ id: campaign.id, name: campaign.name }],
     active: campaign,
     activeSave: createLiveSave(campaign, NOW),
-    history: emptyHistory(), library: EMPTY_LIBRARY,
+    history: emptyHistory(), library: EMPTY_LIBRARY, prefabs: [],
   };
 }
 
@@ -312,7 +312,7 @@ describe('what the table is told', () => {
   it('sends on foot when there is no save to read it from', () => {
     // A default the table can always route with, rather than a null it would
     // have to decide about (R-138).
-    const empty = { campaigns: [], active: null, activeSave: null, history: emptyHistory(), library: EMPTY_LIBRARY };
+    const empty = { campaigns: [], active: null, activeSave: null, history: emptyHistory(), library: EMPTY_LIBRARY, prefabs: [] };
     expect(tableView(empty).travelling).toEqual({ land: 'travel:foot', water: null, air: null });
   });
 
@@ -341,7 +341,7 @@ describe('what the table is told', () => {
   });
 
   it('sends no pawns when no campaign is on the table', () => {
-    expect(tableView({ campaigns: [], active: null, activeSave: null, history: emptyHistory(), library: EMPTY_LIBRARY }).placement).toBeNull();
+    expect(tableView({ campaigns: [], active: null, activeSave: null, history: emptyHistory(), library: EMPTY_LIBRARY, prefabs: [] }).placement).toBeNull();
   });
 });
 

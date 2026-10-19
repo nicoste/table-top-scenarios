@@ -33,7 +33,7 @@ function tavern() {
     active: campaign,
     activeSave: createLiveSave(campaign, NOW),
     history: emptyHistory(),
-    library: EMPTY_LIBRARY,
+    library: EMPTY_LIBRARY, prefabs: [],
   };
   state = run(state, { kind: 'addTemplate', name: 'Goblin', tags: ['monster'], image: PICTURE }).state;
   state = run(state, { kind: 'addTemplate', name: 'Bartender', tags: ['npc'] }).state;
@@ -68,7 +68,7 @@ const wallAt8 = Array.from({ length: 16 }, (_, z) => [cube(8, 1, z), cube(8, 2, 
 describe('the Tokens Library on the host (D-307)', () => {
   it('keeps entries with no campaign open, and asks the host to write them', () => {
     const empty: HostState = {
-      campaigns: [], active: null, activeSave: null, history: emptyHistory(), library: EMPTY_LIBRARY,
+      campaigns: [], active: null, activeSave: null, history: emptyHistory(), library: EMPTY_LIBRARY, prefabs: [],
     };
     const result = run(empty, { kind: 'addTemplate', name: 'Ogre' });
     expect(result.rejected).toBeUndefined();

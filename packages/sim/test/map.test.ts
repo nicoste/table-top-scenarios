@@ -34,7 +34,7 @@ function seeded() {
     campaigns: [{ id: campaign.id, name: campaign.name }],
     active: campaign,
     activeSave: createLiveSave(campaign, NOW),
-    history: emptyHistory(), library: EMPTY_LIBRARY,
+    history: emptyHistory(), library: EMPTY_LIBRARY, prefabs: [],
   };
   state = run(state, { kind: 'setChunkKnown', cx: ORIGIN.cx, cz: ORIGIN.cz, known: true }).state;
   state = run(state, { kind: 'addPlace', cell: cell(5, 6), name: 'Casilda' }).state;
@@ -75,7 +75,7 @@ describe('a point of interest arrives with its map (D-187)', () => {
       })),
     };
     const opened = openedWith(
-      { campaigns: [], active: null, activeSave: null, history: emptyHistory(), library: EMPTY_LIBRARY },
+      { campaigns: [], active: null, activeSave: null, history: emptyHistory(), library: EMPTY_LIBRARY, prefabs: [] },
       mapless,
       null,
       NOW,

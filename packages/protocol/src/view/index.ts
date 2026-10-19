@@ -1,17 +1,17 @@
 // The single path from state to a screen (R-19). Every field a client receives
 // passes through viewFor, and there is no second route.
 
-import type { Campaign, Cells, LevelRange, Place, Poi, Save, TokensLibrary } from '@tt/domain';
+import type { Campaign, Cells, LevelRange, Place, Poi, Prefabs, Save, TokensLibrary } from '@tt/domain';
 import {
   isPlaceOnTable, isPoiOnTable, isChunkKnown, belongsTo, placementToJSON, rangeFor, DAYLIGHT,
   OPEN_SKY, sunReaches, litBy, MAP_MAX_HEIGHT,
   tokensFor, onRoster, tokensInBand, tokensToJSON,
   exploredIn, partySight, shownBy, seenPart, inRange, placeById, poiById, ON_FOOT,
-  silverIn, silverShown, templateById, libraryToJSON,
+  silverIn, silverShown, templateById, libraryToJSON, prefabToJSON,
 } from '@tt/domain';
 import type {
   CampaignWire, SaveWire, PlacementWire, MapWire, LightingWire, TokensWire, CellsWire,
-  TravellingWire, TokenTemplateWire,
+  TravellingWire, TokenTemplateWire, PrefabWire,
 } from '../wire/index.js';
 import {
   encodeCampaign, encodeSave, mapWire, cellsWire, travellingToWire,
@@ -64,6 +64,11 @@ export interface HostState {
    * sight, and then it arrives as that goblin.
    */
   readonly library: TokensLibrary;
+  /**
+   * The Prefabs library (D-321): shared by every campaign like the Tokens
+   * Library, held beside them, and never sent to the table.
+   */
+  readonly prefabs: Prefabs;
 }
 
 export interface GmView {
@@ -87,6 +92,8 @@ export interface GmView {
   readonly sight: CellsWire | null;
   /** The Tokens Library, whole (D-307). The GM's, and only the GM's. */
   readonly library: readonly TokenTemplateWire[];
+  /** The Prefabs library, whole (D-321). The GM's, and only the GM's. */
+  readonly prefabs: readonly PrefabWire[];
 }
 
 /**
@@ -224,6 +231,7 @@ export function viewFor(role: Role, state: HostState, connect: readonly string[]
       connect,
       sight: state.active && state.activeSave ? sightOf(state.active, state.activeSave) : null,
       library: libraryToJSON(state.library),
+      prefabs: state.prefabs.map(prefabToJSON),
     };
   }
   const campaign = forTheTable(state.active, state.activeSave);

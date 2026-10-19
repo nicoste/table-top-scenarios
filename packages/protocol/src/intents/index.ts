@@ -10,7 +10,7 @@ import {
 } from '../wire/index.js';
 import {
   MAX_HEIGHT, MAX_BRUSH, MAP_BRUSH_CELLS, MAX_TEMPLATE_NAME, MAX_TAG, MAX_TAGS, MAX_SILVER_NAME,
-  MAX_SILVER_NOTE, MIN_ORDER, MAX_ORDER, MAX_SHEET_URL, MAX_MEMBER_NOTE,
+  MAX_SILVER_NOTE, MIN_ORDER, MAX_ORDER, MAX_SHEET_URL, MAX_MEMBER_NOTE, MAX_PREFAB_NAME,
 } from '@tt/domain';
 
 const cell = { cx: z.number().int(), cz: z.number().int(), x: CellIndex, z: CellIndex };
@@ -203,6 +203,38 @@ export const IntentSchema = z.discriminatedUnion('kind', [
   }),
   /** Takes every token placed from it, in every campaign, with it (D-307). */
   z.object({ kind: z.literal('removeTemplate'), id: z.string().min(1) }),
+
+  /*
+   * Prefabs (D-321): a library shared by every campaign, and the GM's —
+   * building is (R-136). Saving one reads a box of a map; placing one is a
+   * map edit, one undo step however many cubes it puts down; renaming and
+   * removing touch only the library, never anything placed from it.
+   */
+  z.object({
+    kind: z.literal('savePrefab'),
+    placeId: z.string().min(1), poiId: z.string().min(1),
+    from: CubeWireSchema, to: CubeWireSchema,
+    name: z.string().max(MAX_PREFAB_NAME).optional(),
+    tags: z.array(z.string().max(MAX_TAG)).max(MAX_TAGS).optional(),
+  }),
+  z.object({
+    kind: z.literal('editPrefab'),
+    id: z.string().min(1),
+    name: z.string().max(MAX_PREFAB_NAME).optional(),
+    tags: z.array(z.string().max(MAX_TAG)).max(MAX_TAGS).optional(),
+  }),
+  z.object({ kind: z.literal('removePrefab'), id: z.string().min(1) }),
+  z.object({
+    kind: z.literal('placePrefab'),
+    placeId: z.string().min(1), poiId: z.string().min(1),
+    id: z.string().min(1),
+    at: CubeWireSchema,
+    /** Quarter turns clockwise from above (R-203's convention). */
+    facing: z.number().int().min(0).max(3),
+    mirrored: z.boolean(),
+    /** Empty the whole box first, rather than only adding its blocks. */
+    clear: z.boolean(),
+  }),
 
   /*
    * Silver tokens in a map (R-206). The world's, not the party's, so GM only

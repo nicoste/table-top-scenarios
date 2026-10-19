@@ -2,7 +2,7 @@
 // effects sim asked for. The only place side effects meet the rules (R-67,
 // R-98) — the host owns them, sim never sees them.
 
-import type { CampaignStore, LibraryStore, SaveStore } from '@tt/persistence';
+import type { CampaignStore, LibraryStore, PrefabStore, SaveStore } from '@tt/persistence';
 import type { HostState, Intent, Role, View } from '@tt/protocol';
 import { viewFor, liveSaveId } from '@tt/protocol';
 import { apply, openedWith, emptyHistory } from '@tt/sim';
@@ -29,6 +29,8 @@ export function createSession(
    * test that predates it — runs with an empty one rather than none at all.
    */
   library?: LibraryStore,
+  /** The Prefabs library (D-321), optional for the same reason. */
+  prefabs?: PrefabStore,
 ): Session {
   let state: HostState = {
     campaigns: store.list(),
@@ -36,6 +38,7 @@ export function createSession(
     activeSave: null,
     history: emptyHistory(),
     library: library ? library.load() : [],
+    prefabs: prefabs ? prefabs.load() : [],
   };
 
   return {
@@ -65,6 +68,12 @@ export function createSession(
             break;
           case 'saveLibrary':
             library?.save(effect.library);
+            break;
+          case 'savePrefab':
+            prefabs?.save(effect.prefab);
+            break;
+          case 'removePrefab':
+            prefabs?.remove(effect.id);
             break;
 
           case 'loadCampaign': {

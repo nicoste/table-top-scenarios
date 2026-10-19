@@ -328,6 +328,21 @@ export const TokenTemplateWireSchema = z.object({
 });
 export type TokenTemplateWire = z.infer<typeof TokenTemplateWireSchema>;
 
+/**
+ * A prefab as the GM's console receives it (D-321): its box packed as it is
+ * on disk, so the console can draw its ghost before it is placed. The GM's
+ * alone — the table is never sent the library.
+ */
+export const PrefabWireSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  tags: z.array(z.string()),
+  size: z.object({ x: z.number().int(), y: z.number().int(), z: z.number().int() }),
+  palette: z.array(z.string()),
+  runs: z.array(z.number().int()),
+});
+export type PrefabWire = z.infer<typeof PrefabWireSchema>;
+
 export const SaveWireSchema = z.object({
   id: z.string(),
   campaignId: z.string(),

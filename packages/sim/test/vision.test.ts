@@ -26,7 +26,7 @@ function inTavern() {
     campaigns: [{ id: campaign.id, name: campaign.name }],
     active: campaign,
     activeSave: createLiveSave(campaign, NOW),
-    history: emptyHistory(), library: EMPTY_LIBRARY,
+    history: emptyHistory(), library: EMPTY_LIBRARY, prefabs: [],
   };
   state = run(state, { kind: 'addMember', name: 'Brann' }).state;
   state = run(state, { kind: 'setChunkKnown', cx: ORIGIN.cx, cz: ORIGIN.cz, known: true }).state;

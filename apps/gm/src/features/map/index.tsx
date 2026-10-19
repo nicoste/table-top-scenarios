@@ -259,6 +259,16 @@ export function MapPanel({
               ✚ Spawn
             </button>
           </Tooltip>
+          {/* The fifth (D-321): pieces of map, saved and stamped. */}
+          <Tooltip
+            label="Save a piece of this map, or place a saved one — key 5"
+            placement="bottom"
+            stretch
+          >
+            <button className={tool === 'prefabs' ? 'on' : ''} onClick={() => onTool('prefabs')}>
+              ⧉ Prefabs
+            </button>
+          </Tooltip>
         </div>
 
         {/*
@@ -324,9 +334,16 @@ export function MapPanel({
               name, so the table can say which.
             </>
           )}
+          {tool === 'prefabs' && (
+            <>
+              <b>Place</b>: choose a prefab and click a face to stand it there — <b>Z / X</b>{' '}
+              turn it, <b>M</b> mirrors it, and each placement is one undo. <b>Capture</b>:
+              click two opposite corners, name the box, save it for every campaign.
+            </>
+          )}
         </p>
         <p className="readout">{hoverLabel ?? '—'}</p>
-        <p className="hint">1–4 tool · 6–0 or [ ] brush · {CAMERA_HINT} · Esc leaves</p>
+        <p className="hint">1–5 tool · 6–0 or [ ] brush · {CAMERA_HINT} · Esc leaves</p>
       </div>
 
       {/* Build's and Paint's, and nobody else's (R-207). */}

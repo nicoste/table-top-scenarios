@@ -2194,6 +2194,27 @@ apps/host/src/
 > began from nothing would have to guess what the GM meant (R-18: it is a no-op,
 > not a silent wrong answer).
 
+> **R-211.** **A prefab is a box of a map, saved by name and stamped into any
+> map** (D-321, D-323). The map's fifth tool, key 5.
+>
+> - **Captured by two opposite corners.** A corner is the cube **in front of**
+>   the face pointed at — where Build would put a block — so a box can have air
+>   at its corners, as the box around a tree must; with **⇧ shift** it is the
+>   block itself, to take a floor too. Kept as drawn, air at the edges
+>   included, at most 64 cubes a side. The band helps reach inside a building.
+> - **A library shared by every campaign**, beside them in `data/prefabs/`, a
+>   file each, packed as a map is (D-217). Named and tagged, searched as the
+>   Tokens Library is. Not under undo; removing one moves its file aside
+>   (D-108). Never sent to the table.
+> - **Placed against the face pointed at**, its footprint centred there, turned
+>   with **Z / X** and mirrored with **M**. **Its blocks win and its air leaves
+>   the map alone**; *clear box* empties the whole box first. What would fall
+>   outside the map is drawn red and left out, and it never lands in a cube
+>   somebody stands in (R-186). The host stamps it from the library by id:
+>   **one placement, one map edit, one undo step**.
+> - **A stamp, not a link.** Editing or deleting a prefab changes nothing
+>   already placed from it.
+
 ---
 
 ## 6i. Knowing which way you are facing

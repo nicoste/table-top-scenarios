@@ -5,7 +5,7 @@
 import type { Campaign, ChunkCoord, WorldCell } from '@tt/domain';
 import type {
   PartyMember, PlaceId, NoteId, PoiId, PlaneId, MemberId, SwatchId, Save, Place, Footing, Tokens,
-  TokensLibrary, ImageId,
+  TokensLibrary, ImageId, Prefab, Prefabs, Facing,
 } from '@tt/domain';
 import {
   createCampaign, duplicateCampaign, uniqueCampaignName, createMember, editMember, removeMember,
@@ -35,6 +35,7 @@ import {
   silverIn, withSilver, withoutStrays, onLibrary, silverCubes, whyNotPlace,
   spawnSilver, moveSilver, renameSilver, hideSilver, removeSilver, noteSilver,
   withStageOrder, tidyOrder, withNoteOn,
+  capturePrefab, prefabById, addPrefab, editPrefab, removePrefab, stampPrefab, editPoiMap,
 } from '@tt/domain';
 import type { HostState, Intent, Role } from '@tt/protocol';
 import { parseGround, parseCover, parseMarkerId, travellingFromWire } from '@tt/protocol';
@@ -47,7 +48,11 @@ export type Effect =
   | { readonly kind: 'removeCampaign'; readonly id: string }
   | { readonly kind: 'saveSave'; readonly save: Save }
   /** The Tokens Library changed (D-307). It lives beside the campaigns. */
-  | { readonly kind: 'saveLibrary'; readonly library: TokensLibrary };
+  | { readonly kind: 'saveLibrary'; readonly library: TokensLibrary }
+  /** A prefab was saved or renamed (D-321). One file each, beside the campaigns. */
+  | { readonly kind: 'savePrefab'; readonly prefab: Prefab }
+  /** A prefab left the library. Nothing placed from it changes: a stamp, not a link. */
+  | { readonly kind: 'removePrefab'; readonly id: string };
 
 export interface Applied {
   readonly state: HostState;
@@ -348,6 +353,10 @@ function applyIntent(state: HostState, role: Role, intent: Intent, now: string):
     case 'removeTemplate':
       return applyToLibrary(state, intent, now);
 
+    case 'editPrefab':
+    case 'removePrefab':
+      return applyToPrefabs(state, intent);
+
     default:
       return applyToCampaign(state, role, intent, now);
   }
@@ -412,6 +421,34 @@ function applyToLibrary(
     default:
       return ok(state);
   }
+}
+
+// -- the Prefabs library ----------------------------------------------------
+
+/**
+ * Renaming, retagging and removing a prefab (D-321). Needs no campaign open
+ * and writes no campaign history, for the Tokens Library's reason: it is not
+ * in the campaign. Removing one changes nothing placed from it.
+ */
+function applyToPrefabs(
+  state: HostState,
+  intent: Extract<Intent, { kind: 'editPrefab' | 'removePrefab' }>,
+): Applied {
+  if (!prefabById(state.prefabs, intent.id)) return reject(state, 'no such prefab');
+  if (intent.kind === 'removePrefab') {
+    return ok({ ...state, prefabs: removePrefab(state.prefabs, intent.id) }, [{ kind: 'removePrefab', id: intent.id }]);
+  }
+  const next = editPrefab(state.prefabs, intent.id, {
+    ...(intent.name !== undefined ? { name: intent.name } : {}),
+    ...(intent.tags !== undefined ? { tags: intent.tags } : {}),
+  });
+  if (next === state.prefabs) return ok(state);
+  return ok({ ...state, prefabs: next }, [{ kind: 'savePrefab', prefab: prefabById(next, intent.id)! }]);
+}
+
+/** A new prefab into the library, and onto the disk. */
+function savedPrefab(state: HostState, prefabs: Prefabs, prefab: Prefab): Applied {
+  return ok({ ...state, prefabs: addPrefab(prefabs, prefab) }, [{ kind: 'savePrefab', prefab }]);
 }
 
 // -- everything below needs an open campaign ---------------------------------
@@ -827,6 +864,43 @@ function applyToPois(
         default:
           return withPlaces(movePoi(campaign.places, id, poiId, intent.delta));
       }
+    }
+
+    case 'savePrefab': {
+      // Reads a box of a map into the library (D-321). Not a campaign edit:
+      // nothing in the campaign changes, so undo has nothing to take back.
+      const place = placeById(campaign.places, intent.placeId as PlaceId);
+      const map = place ? poiOfPlace(place, intent.poiId as PoiId)?.map : null;
+      if (!map) return reject_('no such map');
+      const captured = capturePrefab(map, intent.from, intent.to, {
+        ...(intent.name !== undefined ? { name: intent.name } : {}),
+        ...(intent.tags !== undefined ? { tags: intent.tags } : {}),
+      });
+      if (typeof captured === 'string') return reject_(captured);
+      return savedPrefab(state, state.prefabs, captured);
+    }
+
+    case 'placePrefab': {
+      /*
+       * One placement, one map edit, one undo step (D-321) — however many
+       * cubes it puts down, the way a brush is one (R-162). Its blocks win
+       * over what is there; it keeps out of every cube somebody stands in,
+       * gold or silver, as a brush does (R-186).
+       */
+      const place = placeById(campaign.places, intent.placeId as PlaceId);
+      const poi = place ? poiOfPlace(place, intent.poiId as PoiId) : null;
+      if (!place || !poi?.map) return reject_('no such map');
+      const prefab = prefabById(state.prefabs, intent.id);
+      if (!prefab) return reject_('no such prefab');
+      const keep = new Set<string>([
+        ...[...presentIn(state, campaign, intent.placeId, intent.poiId).values()].map(blockKey),
+        ...(state.activeSave ? silverCubes(silverIn(state.activeSave, intent.poiId)) : []),
+      ]);
+      const places = editPoiMap(campaign.places, place.id, poi.id, (map) => stampPrefab(map, prefab, intent.at, {
+        facing: intent.facing as Facing, mirrored: intent.mirrored, clear: intent.clear,
+      }, keep));
+      if (places === campaign.places) return reject_('that would change nothing');
+      return withPlaces(places);
     }
 
     case 'setBlock':

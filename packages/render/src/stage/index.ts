@@ -32,6 +32,8 @@ import type { ColumnAddress, WorldMeshes } from '../world/index.js';
 import { routePatches, ROUTE_LIFT } from '../route/index.js';
 import type { WalkDrawn } from '../walk/index.js';
 import { buildWalkPreview } from '../walk/index.js';
+import type { GhostCube } from '../prefab-ghost/index.js';
+import { buildPrefabGhost } from '../prefab-ghost/index.js';
 import type { Pictures } from '../standee/index.js';
 import type { SilverTokens3D } from '../silver/index.js';
 import { buildSilverTokens } from '../silver/index.js';
@@ -357,6 +359,8 @@ export class Stage {
   private silverAimed: BlockCoord | null = null;
   /** The walk a token being moved would take, and how far (R-209). */
   private readonly walk = buildWalkPreview();
+  /** The prefab about to be placed (D-321). */
+  private readonly prefabGhost = buildPrefabGhost();
   /** The party's fog, kept so a rebuilt body is drawn under it too (R-69). */
   private partyFog: StageFog | null = null;
   /**
@@ -703,8 +707,11 @@ export class Stage {
     // A world route has no meaning inside a map (R-148), and the ribbon is
     // only ever shown while aiming anyway.
     if (!worldVisible) this.routeMesh.visible = false;
-    // And a walk has none outside one.
-    if (worldVisible) this.walk.show(null);
+    // And a walk has none outside one, nor a prefab's ghost.
+    if (worldVisible) {
+      this.walk.show(null);
+      this.prefabGhost.show(null);
+    }
     this.fog.visible = worldVisible;
     if (this.grid) this.grid.visible = worldVisible;
     // The other way round: tokens stand in a map and nowhere else (R-148).
@@ -805,6 +812,18 @@ export class Stage {
   showWalk(walk: WalkDrawn | null, colour?: string): void {
     this.invalidate();
     this.walk.show(this.showingMap ? walk : null, colour);
+  }
+
+  /**
+   * The prefab about to be placed, as see-through cubes in their materials'
+   * colours and red where they would fall outside the map — or nothing
+   * (D-321). Its box is framed by `showBlockGhost`, which already outlines a
+   * box of any size. Only inside a map.
+   */
+  showPrefabGhost(cubes: readonly GhostCube[] | null): void {
+    this.invalidate();
+    const mesh = this.prefabGhost.show(this.showingMap ? cubes : null);
+    if (mesh) this.scene.add(mesh);
   }
 
   /** Puts the move ghost on a cube, in the mover's colour, or takes it off. */
@@ -1633,6 +1652,7 @@ export class Stage {
     this.routeMesh.geometry.dispose();
     (this.routeMesh.material as MeshBasicMaterial).dispose();
     this.walk.dispose();
+    this.prefabGhost.dispose();
     this.captions.domElement.remove();
     this.renderer.dispose();
   }

@@ -4,7 +4,9 @@ import { createServer } from 'node:http';
 import { networkInterfaces } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { backUpData, fileCampaignStore, fileImageStore, fileLibraryStore, fileSaveStore } from '@tt/persistence';
+import {
+  backUpData, fileCampaignStore, fileImageStore, fileLibraryStore, filePrefabStore, fileSaveStore,
+} from '@tt/persistence';
 import { createSession } from './session/index.js';
 import { serveSockets } from './transport/index.js';
 import { serveStatic } from './static/index.js';
@@ -45,7 +47,9 @@ const saves = fileSaveStore(join(DATA, 'saves'));
 // The Tokens Library is one file beside the campaigns: it belongs to all of
 // them (D-307).
 const library = fileLibraryStore(join(DATA, 'library.json'));
-const session = createSession(store, saves, () => lanUrls(PORT), undefined, library);
+// Prefabs beside it, a file each, for the same reason (D-321).
+const prefabs = filePrefabStore(join(DATA, 'prefabs'));
+const session = createSession(store, saves, () => lanUrls(PORT), undefined, library, prefabs);
 
 // Pictures beside the campaigns, not in one: the Tokens Library is shared
 // across campaigns (D-307), and a portrait is the same kind of thing (R-204).

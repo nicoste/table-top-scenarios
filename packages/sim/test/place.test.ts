@@ -12,7 +12,7 @@ function open(): HostState {
     campaigns: [{ id: campaign.id, name: campaign.name }],
     active: campaign,
     activeSave: live,
-    history: emptyHistory(), library: EMPTY_LIBRARY,
+    history: emptyHistory(), library: EMPTY_LIBRARY, prefabs: [],
   };
 }
 const run = (s: HostState, i: Intent, role: 'gm' | 'table' = 'gm') => apply(s, role, i, NOW);

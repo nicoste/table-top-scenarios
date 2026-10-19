@@ -162,7 +162,10 @@ export function removeTemplate(library: TokensLibrary, id: TemplateId | string):
  * word matches anywhere inside a name or a tag, so `gob` finds a goblin. An
  * empty search finds everything.
  */
-export function searchLibrary(library: TokensLibrary, query: string): readonly TokenTemplate[] {
+export function searchLibrary<T extends { readonly name: string; readonly tags: readonly string[] }>(
+  library: readonly T[],
+  query: string,
+): readonly T[] {
   const words = query.toLowerCase().split(/[,\s]+/).filter(Boolean);
   return library
     .filter((template) => words.every((word) =>
