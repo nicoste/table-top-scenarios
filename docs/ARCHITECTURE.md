@@ -2299,6 +2299,32 @@ apps/host/src/
 >   eighth piece of save data it is sent); a silver token's comes with the
 >   token, and only with it.
 
+> **R-214.** **The Measure tool measures and draws areas; an area is drawn,
+> never resolved** (D-321, D-322, D-341). The map's seventh tool, key 7; the
+> brushes moved along to 8, 9, 0, minus and equals.
+>
+> - **The ruler** is a drag from one cube to another — from where somebody
+>   stands, when the press is on them — and how far, straight from middle to
+>   middle, a bare number (D-316). It stays until the next press or Escape,
+>   and it is the screen's own: nothing is sent.
+> - **An area** is a sphere, a cone, a line or a cube, drawn by a drag: a
+>   sphere as far round as the drag is long, a cone or a line the way it went,
+>   a cube from corner to corner, as tall as it is wide. Sizes are whole
+>   cubes, 1 to 40. A cube is in it when its middle is: a sphere's radius, a
+>   cone as wide at any distance as that distance, a line one cube wide.
+> - **Drawn as the floors it covers, tinted, and a faint outline**: a
+>   sphere's ring and two arcs, a cone's and a line's shape on the floor, a
+>   cube's box. Nothing lists who is caught (R-1).
+> - **A handle on the cube it starts from moves it**, dragged with the
+>   Measure tool. An area may **follow** somebody on stage, gold or silver,
+>   and is wherever they stand; moving it by hand lets go of them.
+> - **Play state, per map, in the save** (R-140): never undone. Named for its
+>   shape and renamed, resized, recoloured, hidden or taken away from the
+>   panel.
+> - **The table is sent the areas not hidden** (`areas`, the ninth piece of
+>   save data it is sent), each where it is now — and none that follows
+>   somebody the table is not sent, which would say where they are (R-85).
+
 ---
 
 ## 6i. Knowing which way you are facing

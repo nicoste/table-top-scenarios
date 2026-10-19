@@ -33,6 +33,8 @@ export type SilverId = Brand<string, 'SilverId'>;
 export type PropId = Brand<string, 'PropId'>;
 /** A saved piece of map in the shared Prefabs library (D-321): *a watchtower*. */
 export type PrefabId = Brand<string, 'PrefabId'>;
+/** An area drawn on a map (D-341): *the fireball*, *Galion's aura*. */
+export type AreaId = Brand<string, 'AreaId'>;
 
 /** Registry ids are namespaced strings: `cover:trees`, never an index (R-11). */
 const REGISTRY_ID = /^[a-z][a-z0-9]*:[a-z0-9]+(-[a-z0-9]+)*$/;

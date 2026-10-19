@@ -7,7 +7,7 @@ export {
 } from './ids/index.js';
 export type {
   CampaignId, SaveId, MemberId, PlaceId, CoverId, NoteId, PoiId, PlaneId, MarkerId, MaterialId,
-  SwatchId, TemplateId, SilverId, PrefabId, PropId,
+  SwatchId, TemplateId, SilverId, PrefabId, PropId, AreaId,
 } from './ids/index.js';
 
 
@@ -131,8 +131,14 @@ export {
   tokensFor, tokensIn, withTokens, settleTokens, pruneTokens,
   exploredIn, withExplored, pruneExplored, lookAround, forgetMap,
   silverIn, withSilver, withoutStrays, orderIn, withStageOrder, tidyOrder, withNoteOn,
-  openedIn, withOpen, tidyOpened, withLightOn,
+  openedIn, withOpen, tidyOpened, withLightOn, areasIn, withAreas, tidyAreas,
 } from './save/index.js';
+export type { Area, Areas, AreaShape, AreaColour, Aim, AreaJSON, AreaPatch } from './areas/index.js';
+export {
+  AREA_SHAPES, AREA_COLOURS, MIN_AREA_SIZE, MAX_AREA_SIZE, MAX_AREA_NAME, NO_AREAS, areaColour, cleanSize,
+  areaFromDrag, areaAt, inArea, areaFloors, nameForArea, drawArea, editArea, removeArea, areaStartingAt,
+  areasToJSON, areasFromJSON,
+} from './areas/index.js';
 
 export type { MemberNotes, MemberNotesJSON } from './member-notes/index.js';
 export {

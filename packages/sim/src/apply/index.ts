@@ -37,6 +37,7 @@ import {
   withStageOrder, tidyOrder, withNoteOn, withLightOn, openedIn,
   capturePrefab, prefabById, addPrefab, editPrefab, removePrefab, stampPrefab, editPoiMap,
   propType, propById, propCubes, whyNotPut, putProp, editProp, removeProp, propRules, withOpen, tidyOpened,
+  areasIn, withAreas, drawArea, editArea, removeArea, areaAt, tidyAreas,
 } from '@tt/domain';
 import type { HostState, Intent, Role } from '@tt/protocol';
 import { parseGround, parseCover, parseMarkerId, travellingFromWire } from '@tt/protocol';
@@ -176,7 +177,8 @@ export function openedWith(
   // And what was open of props that are gone, or of maps that are (D-322).
   const propsOf = new Map(campaign.places.flatMap((place) => place.pois)
     .map((poi) => [poi.id as string, new Set((poi.map?.props ?? []).map((prop) => prop.id as string))] as const));
-  const tidied = tidyOpened(ordered, (poiId) => propsOf.get(poiId) ?? null);
+  // And the areas of maps that are gone (D-341).
+  const tidied = tidyAreas(tidyOpened(ordered, (poiId) => propsOf.get(poiId) ?? null), poiIds as ReadonlySet<string>);
   // What was seen of maps that are gone, and then a look around: a save from
   // before vision has seen nothing, and the party standing in a map should
   // see it the moment the campaign opens (D-273).
@@ -579,6 +581,11 @@ function applyToCampaign(state: HostState, role: Role, intent: Intent, now: stri
     case 'lightSilver':
       return applyToSilver(state, campaign, intent, now);
 
+    case 'placeArea':
+    case 'editArea':
+    case 'removeArea':
+      return applyToAreas(state, campaign, intent, now);
+
     case 'setOrder': {
       // Anybody on stage in that map: a member of the roster, or one of its
       // silver tokens (R-208). Any map — the GM may line a fight up early.
@@ -609,6 +616,55 @@ function applyToCampaign(state: HostState, role: Role, intent: Intent, now: stri
     default:
       return applyToPois(state, campaign, intent, commit, now);
   }
+}
+
+// -- areas --------------------------------------------------------------------
+
+/**
+ * Areas on a map (D-341): drawn, changed and taken away as play, in the save,
+ * which undo leaves alone (R-140). One may follow anybody standing in that
+ * map, gold or silver.
+ */
+function applyToAreas(
+  state: HostState,
+  campaign: Campaign,
+  intent: Extract<Intent, { kind: 'placeArea' | 'editArea' | 'removeArea' }>,
+  now: string,
+): Applied {
+  const save = state.activeSave;
+  if (!save) return reject(state, 'no save is open');
+  const place = placeById(campaign.places, intent.placeId as PlaceId);
+  if (!place) return reject(state, 'no such place');
+  const poi = poiOfPlace(place, intent.poiId as PoiId);
+  if (!poi) return reject(state, 'no such point of interest');
+  if (!poi.map) return reject(state, 'that point of interest has no map');
+  const map = poi.map;
+  const areas = areasIn(save, poi.id);
+  const commitAreas = (next: typeof areas): Applied => commitSave(state, save, withAreas(save, poi.id, next), now);
+  const standing = (id: string) =>
+    tokensFor(save, poi.id).get(id as PartyMember['id']) ?? silverIn(save, poi.id).find((token) => token.id === id)?.at ?? null;
+
+  if (intent.kind === 'placeArea') {
+    if (!inMap(map, intent.at)) return reject(state, 'that is outside the map');
+    return commitAreas(drawArea(areas, intent));
+  }
+  const area = areas.find((one) => one.id === intent.id);
+  if (!area) return reject(state, 'no such area in this map');
+  if (intent.kind === 'removeArea') return commitAreas(removeArea(areas, area.id));
+
+  if (intent.at && !inMap(map, intent.at)) return reject(state, 'that is outside the map');
+  if (intent.follows && !standing(intent.follows)) return reject(state, 'nobody by that id stands in this map');
+  // Let go of, it stays where they stood rather than going back to where it was put.
+  const at = intent.at ?? (intent.follows === null && area.follows ? areaAt(area, standing) : undefined);
+  return commitAreas(editArea(areas, area.id, {
+    ...(at ? { at } : {}),
+    ...(intent.aim ? { aim: intent.aim } : {}),
+    ...(intent.size !== undefined ? { size: intent.size } : {}),
+    ...(intent.colour !== undefined ? { colour: intent.colour } : {}),
+    ...(intent.name !== undefined ? { name: intent.name } : {}),
+    ...(intent.hidden !== undefined ? { hidden: intent.hidden } : {}),
+    ...(intent.follows !== undefined ? { follows: intent.follows } : {}),
+  }));
 }
 
 // -- props --------------------------------------------------------------------

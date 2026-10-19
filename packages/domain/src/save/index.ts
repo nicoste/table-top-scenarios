@@ -22,6 +22,8 @@ import type { Opened } from '../props/index.js';
 import { NONE_OPEN } from '../props/index.js';
 import { NO_MEMBER_NOTES, notesOnRoster, withMemberNote } from '../member-notes/index.js';
 import type { CarriedLight, CarriedLights } from '../lamps/index.js';
+import type { Areas } from '../areas/index.js';
+import { NO_AREAS } from '../areas/index.js';
 import { NO_CARRIED, carriedOnRoster, withCarried } from '../lamps/index.js';
 import type { Campaign } from '../campaign/index.js';
 import type { CuttingPlane, LevelRange } from '../planes/index.js';
@@ -180,6 +182,12 @@ export interface Save {
    * entry.
    */
   readonly carried: CarriedLights;
+  /**
+   * The areas drawn on each map, by point of interest (D-341): a fireball, a
+   * trap's square. Play state, so undo leaves them alone (R-140). A map with
+   * none carries no entry.
+   */
+  readonly areas: ReadonlyMap<string, Areas>;
 }
 
 /** Which map the party has gone into. Where they are, and nothing else. */
@@ -220,6 +228,7 @@ export function createLiveSave(campaign: Campaign, savedAt: string): Save {
     memberNotes: NO_MEMBER_NOTES,
     opened: new Map(),
     carried: NO_CARRIED,
+    areas: new Map(),
   };
 }
 
@@ -561,6 +570,26 @@ export function withTravelling(save: Save, travelling: Travelling): Save {
 /** One map's silver tokens — nobody, unless the GM has placed some (D-307). */
 export function silverIn(save: Save, poiId: PoiId | string): SilverTokens {
   return save.silver.get(poiId as string) ?? NO_SILVER;
+}
+
+/** The areas drawn on one map (D-341). */
+export function areasIn(save: Save, poiId: PoiId | string): Areas {
+  return save.areas.get(poiId as string) ?? NO_AREAS;
+}
+
+/** Replaces one map's areas. Identity-preserving (R-165); a map left with none loses its entry. */
+export function withAreas(save: Save, poiId: PoiId | string, areas: Areas): Save {
+  if (areasIn(save, poiId) === areas) return save;
+  const next = new Map(save.areas);
+  if (areas.length === 0) next.delete(poiId as string);
+  else next.set(poiId as string, areas);
+  return { ...save, areas: next };
+}
+
+/** Forgets the areas of maps that are gone, on the way in. */
+export function tidyAreas(save: Save, livePoiIds: ReadonlySet<string>): Save {
+  const kept = [...save.areas].filter(([poiId]) => livePoiIds.has(poiId));
+  return kept.length === save.areas.size ? save : { ...save, areas: new Map(kept) };
 }
 
 /**

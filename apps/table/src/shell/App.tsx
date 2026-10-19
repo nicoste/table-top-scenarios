@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { decodeCampaign, decodePlacement, cellsFromWire } from '@tt/protocol';
 import {
   CHUNK_SIZE, DEFAULT_MARKERS, DEFAULT_MATERIALS, mapFromJSON, clampLighting, tokensFromJSON,
-  allKnownIn, routeAcross, toGlobal, blockKey, carriedFromJSON, carriedLightFromJSON,
+  allKnownIn, routeAcross, toGlobal, blockKey, carriedFromJSON, carriedLightFromJSON, areaColour,
 } from '@tt/domain';
 import type { BlockCoord, MemberId, Route, TravelModeId, Travelling } from '@tt/domain';
 import type { Intent, TableView } from '@tt/protocol';
@@ -281,6 +281,18 @@ export function App({ view, status, rejection, dispatch }: Props) {
    * host for exactly the props it sent, so a door is drawn open and walked
    * through here as on the console.
    */
+  /**
+   * The areas on this map (D-341), as the host sent them: none hidden, each
+   * where it is now. Drawn, never resolved.
+   */
+  const areasWire = view?.areas ?? null;
+  useEffect(() => {
+    stage?.setAreas(areasWire
+      ? areasWire.map((area) => ({
+        id: area.id, shape: area.shape, at: area.at, aim: area.aim, size: area.size, colour: areaColour(area.colour),
+      }))
+      : null);
+  }, [stage, areasWire, body]);
   const openedWire = view?.opened ?? null;
   const opened = useMemo(() => new Set<string>(openedWire ?? []), [openedWire]);
   useEffect(() => { stage?.setOpened(opened); }, [stage, opened]);

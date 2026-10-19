@@ -38,6 +38,8 @@ import { buildPrefabGhost } from '../prefab-ghost/index.js';
 import type { PropMeshes } from '../props/index.js';
 import { buildProps } from '../props/index.js';
 import { buildLamplight } from '../lamplight/index.js';
+import type { AreaDrawn, AreaMeshes, RulerDrawn } from '../areas/index.js';
+import { buildAreas, buildRuler } from '../areas/index.js';
 import type { Pictures } from '../standee/index.js';
 import type { SilverTokens3D } from '../silver/index.js';
 import { buildSilverTokens } from '../silver/index.js';
@@ -408,6 +410,10 @@ export class Stage {
   private lampFocus: { x: number; z: number } | null = null;
   /** The walk a token being moved would take, and how far (R-209). */
   private readonly walk = buildWalkPreview();
+  /** The areas drawn on the open map (D-341), and the ruler (local to this screen). */
+  private areaMeshes: AreaMeshes | null = null;
+  private areasDrawn: readonly AreaDrawn[] = [];
+  private readonly ruler = buildRuler();
   /** The prefab about to be placed (D-321). */
   private readonly prefabGhost = buildPrefabGhost();
   /** The party's fog, kept so a rebuilt body is drawn under it too (R-69). */
@@ -573,7 +579,7 @@ export class Stage {
     // Under the highlight and the ghost: those say what a click will do, and
     // the route only says what the journey would be.
     this.routeMesh.renderOrder = 4;
-    this.scene.add(this.highlight, this.blockGhost, this.slots, this.fog, this.routeMesh, this.walk.group);
+    this.scene.add(this.highlight, this.blockGhost, this.slots, this.fog, this.routeMesh, this.walk.group, this.ruler.group);
 
     /*
      * Ambient occlusion, as a post-process (R-168).
@@ -756,11 +762,13 @@ export class Stage {
     // A world route has no meaning inside a map (R-148), and the ribbon is
     // only ever shown while aiming anyway.
     if (!worldVisible) this.routeMesh.visible = false;
-    // And a walk has none outside one, nor a prefab's ghost.
+    // And a walk has none outside one, nor a prefab's ghost, nor a ruler.
     if (worldVisible) {
       this.walk.show(null);
       this.prefabGhost.show(null);
+      this.ruler.show(null);
     }
+    if (this.areaMeshes) this.areaMeshes.group.visible = !worldVisible;
     this.fog.visible = worldVisible;
     if (this.grid) this.grid.visible = worldVisible;
     // The other way round: tokens stand in a map and nowhere else (R-148).
@@ -1000,6 +1008,36 @@ export class Stage {
     if (mesh) this.scene.add(mesh);
   }
 
+  /**
+   * The areas on the open map (D-341), each where it is now, or none. Built
+   * again whenever these change or the body does — the floors they tint are
+   * the body's — and never per frame.
+   */
+  setAreas(areas: readonly AreaDrawn[] | null): void {
+    this.invalidate();
+    this.areasDrawn = areas ?? [];
+    this.rebuildAreas();
+  }
+
+  private rebuildAreas(): void {
+    if (this.areaMeshes) {
+      this.scene.remove(this.areaMeshes.group);
+      this.areaMeshes.dispose();
+      this.areaMeshes = null;
+    }
+    const map = this.shownMap;
+    if (!map || this.areasDrawn.length === 0) return;
+    this.areaMeshes = buildAreas(map, this.areasDrawn);
+    this.scene.add(this.areaMeshes.group);
+    this.applySurface();
+  }
+
+  /** The ruler (D-341): from a cube to a cube and how far, or nothing. Only inside a map. */
+  showRuler(ruler: RulerDrawn | null): void {
+    this.invalidate();
+    this.ruler.show(this.showingMap ? ruler : null);
+  }
+
   /** Puts the move ghost on a cube, in the mover's colour, or takes it off. */
   aimToken(at: BlockCoord | null, colour?: string): void {
     this.invalidate();
@@ -1111,6 +1149,7 @@ export class Stage {
     this.rebuildTokens();
     this.rebuildSilver();
     this.rebuildProps();
+    this.rebuildAreas();
     this.relight();
     this.applySurface();
 
@@ -1861,6 +1900,8 @@ export class Stage {
     this.routeMesh.geometry.dispose();
     (this.routeMesh.material as MeshBasicMaterial).dispose();
     this.walk.dispose();
+    this.areaMeshes?.dispose();
+    this.ruler.dispose();
     this.prefabGhost.dispose();
     this.props?.dispose();
     this.lamps.dispose();

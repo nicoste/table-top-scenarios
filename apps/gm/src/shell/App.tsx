@@ -12,7 +12,7 @@ import {
   bottomOfMap, cutOf, cutIdIn, familyOf, sunReaches, litBy, MAP_MAX_HEIGHT,
   DAYLIGHT, clampLighting,
   NO_TOKENS, tokensIn, onRoster, unplaced, tokensInBand, standsInBand, standingAt,
-  NO_CELLS, shownBy, memberNotesFromJSON, carriedFromJSON,
+  NO_CELLS, shownBy, memberNotesFromJSON, carriedFromJSON, areasFromJSON,
   prefabFromJSON, capturePrefab, propById, propBox, propType, blockKey, propsSeen, sightShows,
 } from '@tt/domain';
 import type {
@@ -21,8 +21,10 @@ import type {
 } from '@tt/domain';
 import type { GmView, Intent } from '@tt/protocol';
 import { defaultTarget, worldCentre, SILVER } from '@tt/render';
-import type { Present, Standing, StageFog } from '@tt/render';
-import type { Capture, Carry, PrefabPlacing, PropHand, SilverMove, Stride, Tool, Travel } from '@tt/client-core';
+import type { Picked, Present, Standing, StageFog } from '@tt/render';
+import type {
+  Capture, Carry, MeasureHand, PrefabPlacing, PropHand, SilverMove, Stride, Tool, Travel,
+} from '@tt/client-core';
 import {
   emptyHanded, pickUp, turnCarried, canSetDown, setDownIntent, placesPrompt,
   worldToolShows, mapToolShows,
@@ -36,6 +38,8 @@ import {
   NOT_PLACING, turnPlacing, mirrorPlacing, prefabAim, prefabPreview, placeIntent, placePrompt,
   NO_CAPTURE, captureCorner, captureClick, captureHeight, captureBack, captureBox, capturePrompt,
   EMPTY_HAND, turnHand, propAim, propWall, propPreview, placePropIntent, propPrompt, toggleIntent, toggleLabel,
+  MEASURE_START, measureCleared, measurePress, measureDrag, measureRelease, rulerShown, areasShown, handleAt,
+  measurePrompt,
 } from '@tt/client-core';
 import type { MapAction, MapReach, MapTool } from '@tt/client-core';
 import { useStage } from '../scene/use-stage.js';
@@ -50,6 +54,7 @@ import { LibraryPanel } from '../features/library/index.js';
 import { PrefabsPanel } from '../features/prefabs/index.js';
 import type { PrefabMode } from '../features/prefabs/index.js';
 import { PropsPanel } from '../features/props/index.js';
+import { MeasurePanel } from '../features/measure/index.js';
 import { OnStagePanel } from '../features/on-stage/index.js';
 import { ChunkInspector } from '../features/visibility/index.js';
 import { MapPanel } from '../features/map/index.js';
@@ -108,6 +113,19 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    */
   const [propHand, setPropHand] = useState<PropHand>(EMPTY_HAND);
   const [selectedProp, setSelectedProp] = useState<string | null>(null);
+  /**
+   * The Measure tool (D-341): the ruler or a shape in hand, and the drag under
+   * way. Kept in a ref as well, because a pointer-up can arrive before the
+   * render that a drag's last move asked for.
+   */
+  const [measure, setMeasureState] = useState<MeasureHand>(MEASURE_START);
+  const measureRef = useRef<MeasureHand>(MEASURE_START);
+  const setMeasure = useCallback((next: MeasureHand) => {
+    measureRef.current = next;
+    setMeasureState(next);
+  }, []);
+  /** Whether the pointer is over an area's handle, for the readout. */
+  const [overHandle, setOverHandle] = useState(false);
   const [propAt, setPropAt] = useState<BlockCoord | null>(null);
   /** The wall a torch would hang on there, when the pointer is on one (D-335). */
   const [propWallAt, setPropWallAt] = useState<0 | 1 | 2 | 3 | null>(null);
@@ -381,6 +399,9 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    */
   const silverWire = openMap ? view?.save?.silver?.[openMap.poiId] : undefined;
   const silverHere = useMemo(() => (silverWire ? silverFromJSON(silverWire) : NO_SILVER), [silverWire]);
+  /** The areas drawn on the open map (D-341), from the save. */
+  const areasWire = openMap ? view?.save?.areas?.[openMap.poiId] : undefined;
+  const areasHere = useMemo(() => areasFromJSON(areasWire), [areasWire]);
   /**
    * Which props stand open in the open map (D-322), from the save. The view
    * keeps an unchanged list the same array, so this is the same set until a
@@ -733,6 +754,28 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   }, [stage, openMap, mapTool, prefabMode, capture, captureHover, placing, prefabAt, prefabs, openBody]);
   // The doors as the save has them, drawn open or shut (D-322).
   useEffect(() => { stage?.setOpened(openedHere); }, [stage, openedHere]);
+  /** Where somebody on stage here stands, by id — what an area following them goes by (D-341). */
+  const standingById = useCallback(
+    (id: string) => present.get(id as MemberId) ?? silverHere.find((token) => token.id === id)?.at ?? null,
+    [present, silverHere],
+  );
+  /*
+   * The areas on the open map (D-341), each where it is now — the one being
+   * drawn or moved where the drag has it. In the Party's view, only what the
+   * table is sent: nothing hidden.
+   */
+  useEffect(() => {
+    if (!stage) return;
+    const shown = previewing ? areasHere.filter((area) => !area.hidden) : areasHere;
+    stage.setAreas(openMap ? areasShown(shown, mapTool === 'measure' ? measure : null, standingById) : null);
+  }, [stage, openMap, areasHere, measure, mapTool, standingById, previewing]);
+  // The ruler: this screen's alone (D-341).
+  useEffect(() => {
+    stage?.showRuler(openMap && mapTool === 'measure' ? rulerShown(measure) : null);
+  }, [stage, openMap, mapTool, measure]);
+  useEffect(() => {
+    if (openMap && mapTool === 'measure') setHoverLabel(measurePrompt(measure, overHandle));
+  }, [openMap, mapTool, measure, overHandle]);
   /** Every cube somebody stands in, gold or silver: a prop keeps out of them (R-186). */
   const standingCubes = useMemo(
     () => new Set<string>([...[...present.values()].map(blockKey), ...silverCubes(silverHere)]),
@@ -779,6 +822,8 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     setPropAt(null);
     setPropWallAt(null);
     setSelectedProp(null);
+    setMeasure(measureCleared(measureRef.current));
+    setOverHandle(false);
   }, [mapTool, openMap?.poiId, stage]);
 
   // Changing tool, or map, drops a silver token in hand and the Spawn ghost.
@@ -1083,6 +1128,17 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     }
   };
 
+  /**
+   * The cube the Measure tool means (D-341): where somebody stands, when the
+   * pointer is on them — a ruler from Galion, an aura round a goblin — and
+   * otherwise the cube against the face pointed at, as a token would stand.
+   */
+  const measuredAt = (picked: Picked): BlockCoord | null => {
+    if (picked.token) return present.get(picked.token.memberId as MemberId) ?? null;
+    if (picked.silver) return silverHere.find((token) => token.id === picked.silver)?.at ?? null;
+    return picked.face?.adjacent ?? null;
+  };
+
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!stage || !campaign) return;
     if (e.button === 2 || e.button === 1) {
@@ -1145,6 +1201,16 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       }
       if (act.kind === 'pickToken') setStride(grab(act.memberId));
       if (act.kind === 'pickSilver') setSilverMove(grabSilver(act.id));
+      return;
+    }
+    /*
+     * Measure (D-341): a press starts the ruler or an area where it lands — on
+     * somebody, from where they stand — or, on an area's handle, picks the
+     * area up to move it.
+     */
+    if (openMap && mapTool === 'measure') {
+      const at = measuredAt(picked);
+      setMeasure(measurePress(measureRef.current, at, handleAt(areasHere, at, standingById)));
       return;
     }
     /*
@@ -1351,6 +1417,16 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       return;
     }
 
+    if (openMap && mapTool === 'measure') {
+      lastPointer.current = { x: e.clientX, y: e.clientY };
+      const at = measuredAt(stage.pick(e.clientX, e.clientY));
+      const now = measureRef.current;
+      const next = measureDrag(now, at);
+      if (next !== now) setMeasure(next);
+      setOverHandle(!now.held && handleAt(areasHere, at, standingById) !== null);
+      return;
+    }
+
     if (openMap && mapTool === 'props') {
       lastPointer.current = { x: e.clientX, y: e.clientY };
       const picked = stage.pick(e.clientX, e.clientY);
@@ -1490,6 +1566,16 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     setHoverLabel(info ? `${info.terrain}, height ${info.height}` : null);
   };
 
+  /** The pointer coming up: a drag with the Measure tool is finished, and what it drew is sent (D-341). */
+  const onPointerUp = () => {
+    if (openMap && mapTool === 'measure' && measureRef.current.held) {
+      const { hand, intent } = measureRelease(measureRef.current, openMap.placeId, openMap.poiId);
+      setMeasure(hand);
+      if (intent) dispatch(intent);
+    }
+    endGesture();
+  };
+
   const endGesture = () => {
     drag.current = null;
     panning.current = null;
@@ -1526,6 +1612,12 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     if (openMap && mapTool === 'props') {
       setPropAt(null);
       setPropWallAt(null);
+      return;
+    }
+    // A drag that leaves the map is let go of, not finished: nothing is sent.
+    if (openMap && mapTool === 'measure') {
+      if (measureRef.current.held) setMeasure(measureCleared(measureRef.current));
+      setOverHandle(false);
       return;
     }
     setHoverLabel(null);
@@ -1586,6 +1678,8 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
         if (digit === '5') { setMapTool('prefabs'); return; }
         // The sixth (D-328): doors, bars and furniture.
         if (digit === '6') { setMapTool('props'); return; }
+        // The seventh (D-341): the ruler, and areas.
+        if (digit === '7') { setMapTool('measure'); return; }
         // Backspace — or Delete, where there is one — removes the prop selected
         // (D-330). A field being typed in never gets here (the guard above).
         if (mapTool === 'props' && (e.code === 'Backspace' || e.code === 'Delete') && selectedProp && openMap) {
@@ -1615,11 +1709,11 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
           setPlacing(mirrorPlacing);
           return;
         }
-        // The brushes run along the digits from 7, after the six tools, as the
-        // world's terrain brushes do (R-164) — and the fifth shape is the key
-        // after 0, which is minus (D-328).
-        const KEYS = ['7', '8', '9', '0'];
-        const picked = e.code === 'Minus' ? 4 : digit ? KEYS.indexOf(digit) : -1;
+        // The brushes run along the digits from 8, after the seven tools, as the
+        // world's terrain brushes do (R-164) — and on past 0 to minus and equals
+        // (D-328, D-341).
+        const KEYS = ['8', '9', '0'];
+        const picked = e.code === 'Minus' ? 3 : e.code === 'Equal' ? 4 : digit ? KEYS.indexOf(digit) : -1;
         if (picked >= 0 && picked < BRUSHES.length) {
           setMapBrush(BRUSHES[picked]!.id);
           return;
@@ -1644,6 +1738,8 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
           if (mapTool === 'props' && propHand.type) { setPropHand((now) => ({ ...now, type: null })); return; }
           if (mapTool === 'props' && selectedProp) { setSelectedProp(null); return; }
           if (mapTool === 'prefabs' && placing.id) { setPlacing((now) => ({ ...now, id: null })); return; }
+          // The ruler standing, or a drag under way (D-341).
+          if (mapTool === 'measure' && measureRef.current.from) { setMeasure(measureCleared(measureRef.current)); return; }
           setOpenMap(null);
           return;
         }
@@ -1723,7 +1819,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
           ref={setCanvas}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
-          onPointerUp={endGesture}
+          onPointerUp={onPointerUp}
           onPointerLeave={onPointerLeave}
           onContextMenu={(e) => e.preventDefault()}
         />
@@ -1834,6 +1930,20 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
               library={library}
               chosen={chosenTemplate}
               onChoose={setChosenTemplate}
+              dispatch={dispatch}
+            />
+          )}
+          {mapToolShows(mapTool, 'measure') && (
+            <MeasurePanel
+              hand={measure}
+              onHand={setMeasure}
+              areas={areasHere}
+              people={[
+                ...[...present.keys()].map((id) => ({ id: id as string, name: memberName(id) ?? 'member' })),
+                ...silverHere.map((token) => ({ id: token.id as string, name: token.name })),
+              ]}
+              placeId={openPlace.id}
+              poiId={openPoi.id}
               dispatch={dispatch}
             />
           )}

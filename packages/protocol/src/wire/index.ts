@@ -14,6 +14,7 @@ import {
   DAYLIGHT, OPEN_SKY, clampLighting, clampAmbience, cellsToJSON, cellsFromJSON,
   GROUND_FROM_TERRAIN, OPEN_WATER, ON_FOOT, asFacing, isImageId, silverToJSON, silverFromJSON,
   orderToJSON, orderFromJSON, memberNotesToJSON, memberNotesFromJSON, carriedToJSON, carriedFromJSON,
+  areasToJSON, areasFromJSON,
 } from '@tt/domain';
 
 /** The light inside one place (R-182). */
@@ -434,6 +435,12 @@ export const SaveWireSchema = z.object({
    * by the domain's own reader.
    */
   carried: z.record(z.string(), z.unknown()).default({}),
+  /**
+   * The areas drawn on each map, by point of interest (D-341). Absent before
+   * there were areas: none drawn — no bump (D-187). Read leniently by the
+   * domain's own reader.
+   */
+  areas: z.record(z.string(), z.array(z.unknown())).default({}),
 });
 export type SaveWire = z.infer<typeof SaveWireSchema>;
 
@@ -622,6 +629,9 @@ export function encodeSave(save: Save): SaveWire {
       [...save.opened.keys()].sort().map((poiId) => [poiId, [...save.opened.get(poiId)!].sort()]),
     ),
     carried: carriedToJSON(save.carried),
+    areas: Object.fromEntries(
+      [...save.areas.keys()].sort().map((poiId) => [poiId, areasToJSON(save.areas.get(poiId)!)]),
+    ),
   };
 }
 
@@ -709,6 +719,11 @@ export function decodeSave(wire: SaveWire): Save {
         .map(([poiId, ids]) => [poiId, new Set(ids)] as const),
     ),
     carried: carriedFromJSON(wire.carried),
+    areas: new Map(
+      Object.entries(wire.areas)
+        .map(([poiId, areas]) => [poiId, areasFromJSON(areas)] as const)
+        .filter(([, areas]) => areas.length > 0),
+    ),
   };
 }
 

@@ -279,6 +279,16 @@ export function MapPanel({
               ⚿ Props
             </button>
           </Tooltip>
+          {/* The seventh (D-341): the ruler, and areas. */}
+          <Tooltip
+            label="Measure how far, or draw an area — key 7"
+            placement="bottom"
+            stretch
+          >
+            <button className={tool === 'measure' ? 'on' : ''} onClick={() => onTool('measure')}>
+              ⟷ Measure
+            </button>
+          </Tooltip>
         </div>
 
         {/*
@@ -297,7 +307,7 @@ export function MapPanel({
                   label={`${shape.rise > 1
                     ? `A column ${shape.rise} blocks tall, growing up — or down while ⌥ alt is held`
                     : shape.span > 1 ? `A flat ${shape.span}×${shape.span} square` : 'One cube'
-                  } — key ${['7', '8', '9', '0', '-'][i]}`}
+                  } — key ${['8', '9', '0', '-', '='][i]}`}
                   placement="bottom"
                   stretch
                 >
@@ -355,6 +365,13 @@ export function MapPanel({
               shuts a door, and lights or puts out a light.
             </>
           )}
+          {tool === 'measure' && (
+            <>
+              With the <b>Ruler</b>, drag from one cube to another to see how far. With a
+              shape, drag to draw an area — the players see it unless you hide it. Drag an
+              area by the mark where it starts to move it. Escape lets go of the ruler.
+            </>
+          )}
           {tool === 'prefabs' && (
             <>
               <b>Place</b>: choose a prefab and click a face to stand it there — <b>Z / X</b>{' '}
@@ -365,7 +382,7 @@ export function MapPanel({
           )}
         </p>
         <p className="readout">{hoverLabel ?? '—'}</p>
-        <p className="hint">1–6 tool · 7–0, − or [ ] brush · {CAMERA_HINT} · Esc leaves</p>
+        <p className="hint">1–7 tool · 8–0, −, = or [ ] brush · {CAMERA_HINT} · Esc leaves</p>
       </div>
 
       {/* Build's and Paint's, and nobody else's (R-207). */}

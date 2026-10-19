@@ -11,7 +11,7 @@ import {
 import {
   MAX_HEIGHT, MAX_BRUSH, MAP_BRUSH_CELLS, MAX_TEMPLATE_NAME, MAX_TAG, MAX_TAGS, MAX_SILVER_NAME,
   MAX_SILVER_NOTE, MIN_ORDER, MAX_ORDER, MAX_SHEET_URL, MAX_MEMBER_NOTE, MAX_PREFAB_NAME,
-  MIN_LIGHT_REACH, MAX_LIGHT_REACH,
+  MIN_LIGHT_REACH, MAX_LIGHT_REACH, MIN_AREA_SIZE, MAX_AREA_SIZE, MAX_AREA_NAME,
 } from '@tt/domain';
 
 const cell = { cx: z.number().int(), cz: z.number().int(), x: CellIndex, z: CellIndex };
@@ -26,6 +26,9 @@ const stroke = z.string().min(1).max(64).optional();
 const facing = z.number().int().min(0).max(3).optional();
 /** How far a light reaches, in whole cubes (D-335). */
 const reach = z.number().int().min(MIN_LIGHT_REACH).max(MAX_LIGHT_REACH);
+/** Which way an area points: an offset in cubes (D-341). */
+const aim = z.object({ x: z.number().int().min(-200).max(200), y: z.number().int().min(-200).max(200), z: z.number().int().min(-200).max(200) });
+const areaSize = z.number().int().min(MIN_AREA_SIZE).max(MAX_AREA_SIZE);
 /** A light somebody carries: its flame and its reach (D-335). `null` takes it away. */
 const carried = z.object({ flame: z.string().min(1).max(40), reach }).nullable();
 /**
@@ -314,6 +317,33 @@ export const IntentSchema = z.discriminatedUnion('kind', [
     kind: z.literal('noteSilver'),
     placeId: z.string().min(1), poiId: z.string().min(1), id: z.string().min(1),
     note: z.string().max(MAX_SILVER_NOTE),
+  }),
+  /*
+   * Areas on a map (D-341): a sphere, a cone, a line or a cube. Play, so not
+   * under undo (R-140), and each names its map, like everything on stage.
+   */
+  z.object({
+    kind: z.literal('placeArea'),
+    placeId: z.string().min(1), poiId: z.string().min(1),
+    shape: z.enum(['sphere', 'cone', 'line', 'cube']),
+    at: CubeWireSchema, aim, size: areaSize,
+    colour: z.string().min(1).max(20),
+  }),
+  z.object({
+    kind: z.literal('editArea'),
+    placeId: z.string().min(1), poiId: z.string().min(1), id: z.string().min(1),
+    at: CubeWireSchema.optional(),
+    aim: aim.optional(),
+    size: areaSize.optional(),
+    colour: z.string().min(1).max(20).optional(),
+    name: z.string().max(MAX_AREA_NAME).optional(),
+    hidden: z.boolean().optional(),
+    /** Who it goes with — a member or a silver token in that map — or `null` for nobody. */
+    follows: z.string().min(1).nullable().optional(),
+  }),
+  z.object({
+    kind: z.literal('removeArea'),
+    placeId: z.string().min(1), poiId: z.string().min(1), id: z.string().min(1),
   }),
   /** A light one silver token carries (D-335), or none. */
   z.object({

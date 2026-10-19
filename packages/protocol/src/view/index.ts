@@ -8,7 +8,7 @@ import {
   tokensFor, onRoster, tokensInBand, tokensToJSON,
   exploredIn, partySight, seenPart, inRange, placeById, poiById, ON_FOOT,
   silverIn, silverShown, templateById, libraryToJSON, prefabToJSON, openedIn, sliceOf, sightShows,
-  carriedLightToJSON,
+  carriedLightToJSON, areasIn, areasToJSON,
 } from '@tt/domain';
 import type { CarriedLightJSON } from '@tt/domain';
 import type {
@@ -209,6 +209,24 @@ export interface TableView {
    * The players' own, as their tokens are (R-136). `null` out on the world.
    */
   readonly carried: Readonly<Record<string, CarriedLightJSON>> | null;
+  /**
+   * The **ninth** piece of save data the table is sent (D-341): the areas
+   * drawn on the map it is shown that the GM has not hidden, each where it is
+   * now. One that follows somebody the table is not sent is not sent either:
+   * where it is would say where they are (R-85). `null` out on the world.
+   */
+  readonly areas: readonly TableAreaWire[] | null;
+}
+
+/** One area as the table sees it (D-341): where it is now, and nothing about whom it follows. */
+export interface TableAreaWire {
+  readonly id: string;
+  readonly shape: 'sphere' | 'cone' | 'line' | 'cube';
+  readonly at: { readonly x: number; readonly y: number; readonly z: number };
+  readonly aim: { readonly x: number; readonly y: number; readonly z: number };
+  readonly size: number;
+  readonly colour: string;
+  readonly name: string;
 }
 
 /** One silver token as the table sees it (R-206). */
@@ -291,7 +309,40 @@ export function viewFor(role: Role, state: HostState, connect: readonly string[]
       : null,
     opened: campaign && state.active && state.activeSave ? openedForTheTable(state.active, state.activeSave) : null,
     carried: campaign && state.active && state.activeSave ? carriedForTheTable(state.active, state.activeSave) : null,
+    areas: campaign && state.active && state.activeSave
+      ? areasForTheTable(state.active, state.activeSave, state.library)
+      : null,
   };
+}
+
+/**
+ * The areas the table may draw (D-341): not hidden, and — for one that
+ * follows somebody — only while the table holds them, placed where they
+ * stand. The same members `tokensForTheTable` sends and the same silver
+ * tokens `silverForTheTable` does.
+ */
+function areasForTheTable(campaign: Campaign, save: Save, library: TokensLibrary): readonly TableAreaWire[] | null {
+  const shown = shownMap(campaign, save);
+  if (!shown) return null;
+  const members = tokensInBand(onRoster(tokensFor(save, shown.poi.id), campaign.party), rangeFor(save, shown.poi.id));
+  const silver = silverForTheTable(campaign, save, library) ?? [];
+  const where = (id: string) => members.get(id as never) ?? silver.find((token) => token.id === id)?.at ?? null;
+  const out: TableAreaWire[] = [];
+  for (const area of areasToJSON(areasIn(save, shown.poi.id))) {
+    if (area.hidden) continue;
+    const at = area.follows ? where(area.follows) : area.at;
+    if (!at) continue;
+    out.push({
+      id: area.id,
+      shape: area.shape as TableAreaWire['shape'],
+      at: { x: at.x, y: at.y, z: at.z },
+      aim: area.aim,
+      size: area.size,
+      colour: area.colour,
+      name: area.name,
+    });
+  }
+  return out;
 }
 
 /**

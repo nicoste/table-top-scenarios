@@ -31,6 +31,6 @@ export { viewFor } from './view/index.js';
  */
 export { liveSaveId } from '@tt/domain';
 export type {
-  Role, CampaignSummary, HostState, History, GmView, TableView, TableFog, TableSilverWire, View,
+  Role, CampaignSummary, HostState, History, GmView, TableView, TableFog, TableSilverWire, TableAreaWire, View,
   OutboundMessage,
 } from './view/index.js';

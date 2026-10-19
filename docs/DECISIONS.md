@@ -8666,3 +8666,51 @@ pressed — and declined: *"that's fine, I thought it might be an issue, but
 it's normal working!"* Real shadows are a switch that starts off, and the
 hitch is its own.
 
+### D-341 — Rulers and areas, round one: the console · `agreed`
+The last of D-321's order. The GM's answers before building:
+
+- **The ruler is its own tool**, not a key held over another — so it is the
+  map's seventh, **Measure** (key 7), and the areas live in it too: one tool
+  for "how far" and "what does this cover". The brushes moved to 8, 9, 0,
+  minus and equals.
+- **An area is the floors it covers, tinted, with a faint outline of its
+  shape on top.** The tint says who is in it; the outline what it is.
+- **All four shapes**: sphere, cone, line, cube.
+
+R-214 is the rule. Built in two rounds: this one the console — the ruler,
+areas drawn, moved and changed, saved, and sent to the table to draw — and
+the next the table's own toolbar, so the players can measure and draw and
+move areas themselves (D-322).
+
+**Chosen here, to be argued with:**
+
+- **A drag draws.** A sphere from its middle outwards, a cone or a line
+  from its point the way it goes, a cube corner to corner, as tall as it is
+  wide. No numbers to type first; the size is in the list afterwards.
+- **What is in an area is decided by the middle of each cube**: within a
+  sphere's radius; for a cone, ahead of its point and as wide at any
+  distance as that distance — the table's usual cone — and not its own
+  point; a line a cube wide. Only floors are tinted — a cube somebody could
+  stand in — so a sphere in a tower tints each floor it reaches.
+- **The ruler measures straight, middle to middle, in three dimensions**:
+  not the walk (R-209), which already says how far by the way round. A press
+  on somebody measures from where they stand. It stays until the next press.
+- **A handle on the starting cube** is how an area is moved, whatever is in
+  hand in the Measure tool, so a drag never draws a new area over the one it
+  meant to pick up. Moving one that follows somebody lets go of them; letting
+  go from the panel leaves it where they stood.
+- **Names are the shape and a number** — *Sphere 1* — and the GM's to change.
+  Six colours; the chip in the list steps to the next.
+- **A × takes an area away at once**, without asking: it is play, and
+  drawing it again is one drag.
+- **The table never gets a hidden area, nor one following somebody it is
+  not sent** — a goblin's aura behind a wall would say where the goblin is.
+  The outline is drawn even over ground the table has not seen; the tint only
+  on floors it has.
+
+Checked on the test copy: a ruler of 5.4 across the grass, standing after
+the drag; a red sphere, a blue cone of 6, a green line of 8 and a violet cube
+of 3 drawn by dragging; the sphere moved by its handle; all four listed with
+their sizes, eyes and whom they follow, and drawn on the table over the
+ground it knows.
+
