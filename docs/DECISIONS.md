@@ -8324,3 +8324,19 @@ describes the three clicks.
 Checked on a copy of the GM's data: the birch captured, the pointer moved to
 the panel and *Birch* typed into the name — the box stayed on the tree
 throughout.
+
+### D-328 — Props, round one: a tool of their own, doors opened with Move, no secrets · `agreed; building`
+The GM's answers before building props (D-321, D-322):
+
+- **Their own tool, key 6.** The map's brush keys move along to 7, 8, 9, 0
+  and minus; `[` `]` still step through them.
+- **A door is opened and closed by clicking it with Move** — the tool in hand
+  during play. A click on a token still picks the token up. The Props tool is
+  for building: a click there selects a prop to turn, refinish or remove.
+- **The first catalogue: doors, bars and furniture** — door, cell door, bars,
+  portcullis; chest, table, chair, bookcase, barrel, crate. Furniture blocks
+  walking, not sight.
+- **No secrets.** *"Secrecy should be avoided, a hidden something should be
+  solved by the GM by adding the item at the moment in need."* A prop the
+  party has seen the room of is on the table; nothing is hidden from it by a
+  flag. D-321's secret doors are withdrawn.
