@@ -7,9 +7,10 @@
 // reaches the host until a prefab is saved or put down.
 
 import type { Intent } from '@tt/protocol';
-import type { BlockCoord, Box, EncounterMap, Facing, Prefab } from '@tt/domain';
+import type { BlockCoord, Box, EncounterMap, Facing, Prefab, SwatchId } from '@tt/domain';
 import {
   boxBetween, inMap, placedBlocks, placedBox, sizeOfBox, turned, MAP_MAX_HEIGHT, MAP_MIN_DEPTH, MAX_PREFAB_SIDE,
+  placedProps, propCubes, propType,
 } from '@tt/domain';
 import type { FacePick, GhostCube } from '@tt/render';
 
@@ -58,9 +59,17 @@ export function prefabPreview(
   placing: PrefabPlacing,
   map: EncounterMap,
 ): PrefabPreview {
-  const cubes = placedBlocks(prefab, at, placing).map((cube) => ({
+  const cubes: GhostCube[] = placedBlocks(prefab, at, placing).map((cube) => ({
     at: cube.at, swatch: cube.swatch, outside: !inMap(map, cube.at),
   }));
+  // And its props, in their finishes, turned and mirrored with it (D-322).
+  for (const prop of placedProps(prefab, at, placing)) {
+    const type = propType(prop.type);
+    const colour = (type?.finishes.find((one) => one.id === prop.finish) ?? type?.finishes[0])?.colour ?? '#9aa3ad';
+    for (const cube of propCubes(prop)) {
+      cubes.push({ at: cube, swatch: '' as SwatchId, outside: !inMap(map, cube), colour });
+    }
+  }
   return {
     cubes,
     box: placedBox(prefab, at, placing),

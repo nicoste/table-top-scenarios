@@ -6,6 +6,7 @@ import type { BlockCoord, EncounterMap, Prefab, SwatchId } from '@tt/domain';
 import {
   createMap, setBlocks, clearBlocks, blockAt, blockKey, searchLibrary,
   capturePrefab, placedBlocks, placedBox, turnedSize, stampPrefab, editPrefab, removePrefab, addPrefab,
+  placedProps, putProp,
   prefabToJSON, prefabFromJSON, NO_PREFABS, MAX_PREFAB_SIDE,
 } from '@tt/domain';
 
@@ -155,5 +156,50 @@ describe('on disk', () => {
     const read = prefabFromJSON({ ...json, name: '   ', tags: ['A b', 7] });
     expect(read?.name).toBe('New prefab');
     expect(read?.tags).toEqual(['a-b']);
+  });
+});
+
+describe('props in a prefab (D-322)', () => {
+  /** A doorway in a short wall along z at x = 4, with a door hung in it, facing 1. */
+  const doorway = () => {
+    const wall = setBlocks(createMap(), [cube(4, 1, 3), cube(4, 2, 3), cube(4, 1, 5), cube(4, 2, 5), cube(4, 3, 4)], STONE);
+    return putProp(wall, { type: 'door', at: cube(4, 1, 4), facing: 1 });
+  };
+  const captured = () => capturePrefab(doorway(), cube(4, 1, 3), cube(4, 3, 5), { name: 'Doorway' }) as Prefab;
+
+  it('takes the props wholly inside the box, at their places in it, and leaves one the box cuts through', () => {
+    expect(captured().props).toEqual([{ type: 'door', at: cube(0, 0, 1), facing: 1, finish: 'wood' }]);
+    const half = capturePrefab(doorway(), cube(4, 1, 3), cube(4, 1, 5)) as Prefab;
+    expect(half.props).toEqual([]);
+  });
+
+  it('puts the door down in the doorway, turned with the blocks', () => {
+    const turnedOnce = placedProps(captured(), cube(10, 1, 10), { facing: 1, mirrored: false });
+    expect(turnedOnce).toHaveLength(1);
+    expect(turnedOnce[0]!.facing).toBe(2);
+    const blocks = placedBlocks(captured(), cube(10, 1, 10), { facing: 1, mirrored: false });
+    const lintel = blocks.find((b) => b.at.y === 3)!.at;
+    // The door stands under its lintel, whichever way the prefab is turned.
+    expect(turnedOnce[0]!.at).toEqual({ x: lintel.x, y: 1, z: lintel.z });
+  });
+
+  it('mirrors a door\'s facing with the blocks', () => {
+    expect(placedProps(captured(), cube(10, 1, 10), { facing: 0, mirrored: true })[0]!.facing).toBe(3);
+  });
+
+  it('stamps the door with the wall, and leaves out a prop that would not fit', () => {
+    const stamped = stampPrefab(createMap(), captured(), cube(10, 1, 10), { facing: 0, mirrored: false, clear: false });
+    expect(stamped.props).toHaveLength(1);
+    expect(stamped.props[0]).toMatchObject({ type: 'door', facing: 1 });
+    // Somebody standing where the door would hang: the wall goes up, the door does not.
+    const where = placedProps(captured(), cube(10, 1, 10), { facing: 0, mirrored: false })[0]!.at;
+    const kept = stampPrefab(createMap(), captured(), cube(10, 1, 10), { facing: 0, mirrored: false, clear: false }, new Set([blockKey(where)]));
+    expect(kept.props).toEqual([]);
+    expect(kept.blocks.size).toBeGreaterThan(createMap().blocks.size);
+  });
+
+  it('round-trips its props on disk', () => {
+    const prefab = captured();
+    expect(prefabFromJSON(JSON.parse(JSON.stringify(prefabToJSON(prefab))))).toEqual(prefab);
   });
 });

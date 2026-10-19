@@ -83,7 +83,8 @@ export type Tool = 'select' | 'paint' | 'cover' | 'height' | 'places' | 'travel'
  */
 /** `spawn` places silver tokens from the Tokens Library (D-307). */
 /** `prefabs` saves a box of the map and places saved ones (D-321). */
-export type MapTool = 'build' | 'paint' | 'move' | 'spawn' | 'prefabs';
+/** `props` places doors, bars and furniture, and changes them (D-328). */
+export type MapTool = 'build' | 'paint' | 'move' | 'spawn' | 'prefabs' | 'props';
 
 export interface ViewState {
   readonly camera: CameraTarget;

@@ -8340,3 +8340,59 @@ The GM's answers before building props (D-321, D-322):
   solved by the GM by adding the item at the moment in need."* A prop the
   party has seen the room of is on the table; nothing is hidden from it by a
   flag. D-321's secret doors are withdrawn.
+
+### D-329 — Props, round one, built · `agreed`
+D-321, D-322 and D-328 as agreed. R-212 is the rule; this is how it was put
+together, and the two places it chose for itself.
+
+**Where the pieces live.** The record of a prop — type, cube, facing, finish
+— is on the map (`EncounterMap.props`), written with the map's file and read
+leniently there, because the map module may not import the props module
+(cycles are forbidden) and a door is part of the building. The catalogue and
+the rules are `domain/props`: `whyNotPut` (outside, solid, taken,
+unsupported), `putProp`, `editProp`, `removeProp`, and `propRules`, which
+answers for a list of props and a set of open ones *which cubes stop sight,
+which stop walking, which are occupied* — cached per pair, both immutable.
+The box arithmetic prefabs already had moved to `domain/boxes`, so props and
+prefabs agree on what a quarter turn does without importing each other.
+
+**Every rule asks through `opened`.** Sight (`partySight`, `memberSight`,
+`eyeOf`), standing (`whyNotStand`, `whyNotPlace`), settling on the way in,
+and the walk each take the save's open set and default to *every door shut* —
+so a caller that forgets it refuses a doorway rather than walking a token
+into a closed door. The host passes it for the console's sight, the table's
+fog and silver, and every move; the console and the table pass it for their
+ghosts and walk previews.
+
+**Chosen here, to be argued with:**
+
+- **A bookcase stops sight**, though D-328 said furniture does not: a wall of
+  books one cube tall is a wall. It is one line in the catalogue to change.
+- **A prop is seen like a block is**: once a cube of it, or one across a face
+  from it, has been explored. A shut door is seen from the room it closes,
+  not from beyond it. Not dimmed by the fog as an explored block is — a
+  small difference on the table, left for now.
+- **Clear box leaves props standing.** It empties a prefab's box of blocks;
+  a door in the way stays, as somebody standing there would.
+
+**Drawing** is `render/props`: each prop a handful of boxes (a barrel
+cylinders) in its finish, built unturned and turned about its box's middle
+by the same facing the rules use; an open door swung flat against the side
+of its cube, a portcullis raised into the wall, a chest's lid up. Picked by
+an invisible box per prop, **only when nothing stands in front of it** — a
+door behind a wall is not clicked through it, unlike a token. The pick also
+says which face of a prop was hit, so a bookcase can be aimed at the top of
+a bookcase. **Prefabs** carry the props wholly inside their box (D-321),
+turned and mirrored with the blocks — a mirrored facing swaps one quarter
+turn for the other — and re-anchored on their new box.
+
+Checked on a copy of the GM's data with the real keyboard and mouse: a
+doorway cut in Tollkeep's east wall, a door placed in it with Z / X; under
+Move the readout said *Open the door* and a click opened it — in the save,
+drawn swung open, and Galion, shut in the building, then had a walk of 20.1
+out through it where before there was *no path*. Two bookcases, a table and a
+barrel placed on the grass; a bookcase stacked on a bookcase by aiming at its
+top; the table selected, turned with Z and refinished in pale wood. On the
+table: the six props and the open door, once the band was widened to include
+them — cut out while it stood at the water level, as the band says. No
+errors on either screen.

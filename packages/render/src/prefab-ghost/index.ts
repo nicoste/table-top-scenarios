@@ -16,6 +16,8 @@ export interface GhostCube {
   readonly swatch: SwatchId;
   /** Outside the map: drawn red, because it will be left out. */
   readonly outside: boolean;
+  /** A colour of its own instead of the swatch's — a prop's finish (D-322). */
+  readonly colour?: string;
 }
 
 /** Where it would be left out. */
@@ -70,7 +72,7 @@ export function buildPrefabGhost(): PrefabGhost {
         // A block is addressed by its corner; a box is centred on its origin.
         matrix.makeTranslation(cube.at.x + 0.5, cube.at.y + 0.5, cube.at.z + 0.5);
         mesh.setMatrixAt(i, matrix);
-        mesh.setColorAt(i, cube.outside ? OUTSIDE : tintOf(cube.swatch));
+        mesh.setColorAt(i, cube.outside ? OUTSIDE : cube.colour ? new Color(cube.colour) : tintOf(cube.swatch));
       });
       mesh.instanceMatrix.needsUpdate = true;
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;

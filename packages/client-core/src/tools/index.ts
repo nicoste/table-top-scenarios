@@ -55,7 +55,7 @@ export interface Context {
  */
 export type ToolPart =
   | 'brush' | 'ground' | 'cover' | 'markers' | 'travel'
-  | 'material' | 'library' | 'prefabs';
+  | 'material' | 'library' | 'prefabs' | 'props';
 
 const WORLD_PARTS: Record<Tool, readonly ToolPart[]> = {
   select: [],
@@ -72,6 +72,7 @@ const MAP_PARTS: Record<MapTool, readonly ToolPart[]> = {
   move: [],
   spawn: ['library'],
   prefabs: ['prefabs'],
+  props: ['props'],
 };
 
 /** Whether this world tool brings this part with it (R-207). */
@@ -276,7 +277,7 @@ export function mapAction(
   // Move and Spawn edit no block: they put people on floors, and their
   // sequences are their own (R-188, R-206). Prefabs edit many at once, and
   // theirs is its own too (D-321).
-  if (!face || tool === 'move' || tool === 'spawn' || tool === 'prefabs') return { kind: 'nothing' };
+  if (!face || tool === 'move' || tool === 'spawn' || tool === 'prefabs' || tool === 'props') return { kind: 'nothing' };
   /** The brush's cells, with the band's say applied (R-164). */
   const patch = (at: BlockCoord, grow: 'up' | 'down' = 'up'): readonly BlockCoord[] => {
     const cells = brushPatch(at, reach.brush, grow);

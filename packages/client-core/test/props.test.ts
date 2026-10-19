@@ -1,0 +1,72 @@
+// The Props tool on the console, and the door a Move click opens (D-322, D-328).
+
+import { describe, it, expect } from 'vitest';
+import type { BlockCoord, EncounterMap, SwatchId } from '@tt/domain';
+import { createMap, setBlocks, putProp, DEFAULT_FLOOR } from '@tt/domain';
+import {
+  EMPTY_HAND, takeProp, turnHand, propAim, propPreview, placePropIntent, propPrompt, toggleIntent, toggleLabel,
+} from '@tt/client-core';
+
+const cube = (x: number, y: number, z: number): BlockCoord => ({ x, y, z });
+const withDoor = (): EncounterMap => putProp(createMap(), { type: 'door', at: cube(5, 1, 7), facing: 1 });
+
+describe('the prop in hand', () => {
+  it('is taken from the catalogue in its first finish, and put back by picking it again', () => {
+    const hand = takeProp(EMPTY_HAND, 'door');
+    expect(hand).toEqual({ type: 'door', facing: 0, finish: null });
+    expect(takeProp(hand, 'door').type).toBeNull();
+    expect(takeProp(hand, 'chest').type).toBe('chest');
+  });
+
+  it('turns with Z / X', () => {
+    expect(turnHand(EMPTY_HAND, 1).facing).toBe(1);
+    expect(turnHand(EMPTY_HAND, -1).facing).toBe(3);
+  });
+
+  it("stands against the face pointed at, or against a prop's, to stack", () => {
+    const floor = { block: cube(3, 0, 3), adjacent: cube(3, 1, 3) };
+    const top = { block: cube(3, 1, 3), adjacent: cube(3, 2, 3) };
+    expect(propAim(floor as never, null)).toEqual(cube(3, 1, 3));
+    expect(propAim(floor as never, top as never)).toEqual(cube(3, 2, 3));
+    expect(propAim(null, null)).toBeNull();
+  });
+});
+
+describe('the preview', () => {
+  it("fills the prop's cubes in its finish, and says why not when it cannot stand there", () => {
+    const map = createMap();
+    const fine = propPreview(map, takeProp(EMPTY_HAND, 'door'), cube(3, 1, 3), new Set())!;
+    expect(fine.why).toBeNull();
+    expect(fine.cubes.map((c) => c.at)).toEqual([cube(3, 1, 3), cube(3, 2, 3)]);
+    expect(fine.cubes[0]!.colour).toBe('#8a5a35');
+    const walled = setBlocks(map, [cube(3, 2, 3)], DEFAULT_FLOOR as SwatchId);
+    expect(propPreview(walled, takeProp(EMPTY_HAND, 'door'), cube(3, 1, 3), new Set())!.why).toBe('a block is in the way');
+    expect(propPreview(map, EMPTY_HAND, cube(3, 1, 3), new Set())).toBeNull();
+  });
+
+  it('sends a placement only with a prop in hand, turned and finished as shown', () => {
+    expect(placePropIntent(EMPTY_HAND, cube(3, 1, 3), 'place_a', 'poi_a')).toBeNull();
+    const hand = { ...turnHand(takeProp(EMPTY_HAND, 'door'), 1), finish: 'iron' };
+    expect(placePropIntent(hand, cube(3, 1, 3), 'place_a', 'poi_a')).toEqual({
+      kind: 'placeProp', placeId: 'place_a', poiId: 'poi_a', type: 'door', at: cube(3, 1, 3), facing: 1, finish: 'iron',
+    });
+    expect(propPrompt('Door', cube(3, 1, 3), null)).toMatch(/Click to place a door/);
+    expect(propPrompt(null, null, null)).toMatch(/Pick a prop/);
+  });
+});
+
+describe('a Move click on a door (D-328)', () => {
+  it('opens a shut one and shuts an open one, and does nothing to a table', () => {
+    const map = withDoor();
+    const id = map.props[0]!.id as string;
+    expect(toggleIntent(map, id, new Set(), 'place_a', 'poi_a')).toEqual({
+      kind: 'setPropOpen', placeId: 'place_a', poiId: 'poi_a', id, open: true,
+    });
+    expect(toggleIntent(map, id, new Set([id]), 'place_a', 'poi_a')).toMatchObject({ open: false });
+    expect(toggleLabel(map, id, new Set())).toBe('Open the door');
+    expect(toggleLabel(map, id, new Set([id]))).toBe('Close the door');
+    const table = putProp(createMap(), { type: 'table', at: cube(3, 1, 3), facing: 0 });
+    expect(toggleIntent(table, table.props[0]!.id, new Set(), 'place_a', 'poi_a')).toBeNull();
+    expect(toggleLabel(table, table.props[0]!.id, new Set())).toBeNull();
+  });
+});

@@ -13,7 +13,7 @@ import {
   DAYLIGHT, clampLighting,
   NO_TOKENS, tokensIn, onRoster, unplaced, tokensInBand, standsInBand, standingAt,
   NO_CELLS, shownBy, memberNotesFromJSON,
-  prefabFromJSON, capturePrefab,
+  prefabFromJSON, capturePrefab, propById, propBox, propType, blockKey,
 } from '@tt/domain';
 import type {
   SwatchId, CoverId, Lighting, Ambience, MemberId, Tokens, BlockCoord, Route, Travelling,
@@ -22,7 +22,7 @@ import type {
 import type { GmView, Intent } from '@tt/protocol';
 import { defaultTarget, worldCentre, SILVER } from '@tt/render';
 import type { Present, Standing, StageFog } from '@tt/render';
-import type { Capture, Carry, PrefabPlacing, SilverMove, Stride, Tool, Travel } from '@tt/client-core';
+import type { Capture, Carry, PrefabPlacing, PropHand, SilverMove, Stride, Tool, Travel } from '@tt/client-core';
 import {
   emptyHanded, pickUp, turnCarried, canSetDown, setDownIntent, placesPrompt,
   worldToolShows, mapToolShows,
@@ -35,6 +35,7 @@ import {
   tokenAction, stridePrompt,
   NOT_PLACING, turnPlacing, mirrorPlacing, prefabAim, prefabPreview, placeIntent, placePrompt,
   NO_CAPTURE, captureCorner, captureClick, captureHeight, captureBack, captureBox, capturePrompt,
+  EMPTY_HAND, turnHand, propAim, propPreview, placePropIntent, propPrompt, toggleIntent, toggleLabel,
 } from '@tt/client-core';
 import type { MapAction, MapReach, MapTool } from '@tt/client-core';
 import { useStage } from '../scene/use-stage.js';
@@ -48,6 +49,7 @@ import { TravelPanel } from '../features/travel/index.js';
 import { LibraryPanel } from '../features/library/index.js';
 import { PrefabsPanel } from '../features/prefabs/index.js';
 import type { PrefabMode } from '../features/prefabs/index.js';
+import { PropsPanel } from '../features/props/index.js';
 import { OnStagePanel } from '../features/on-stage/index.js';
 import { ChunkInspector } from '../features/visibility/index.js';
 import { MapPanel } from '../features/map/index.js';
@@ -99,6 +101,14 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   const [captureHover, setCaptureHover] = useState<BlockCoord | null>(null);
   /** A prefab was just saved: the next one to arrive is put in hand. */
   const awaitingPrefab = useRef<number | null>(null);
+  /**
+   * The Props tool (D-328): the prop in hand, kept between placements as the
+   * brush is; the one clicked on the map when nothing is in hand; and the
+   * cube the pointer would stand a prop in.
+   */
+  const [propHand, setPropHand] = useState<PropHand>(EMPTY_HAND);
+  const [selectedProp, setSelectedProp] = useState<string | null>(null);
+  const [propAt, setPropAt] = useState<BlockCoord | null>(null);
   /**
    * The cell under the pointer while the Places tool is out, so the ghost can
    * be redrawn by a key press as well as by a pointer move. Replaced only when
@@ -369,6 +379,13 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    */
   const silverWire = openMap ? view?.save?.silver?.[openMap.poiId] : undefined;
   const silverHere = useMemo(() => (silverWire ? silverFromJSON(silverWire) : NO_SILVER), [silverWire]);
+  /**
+   * Which props stand open in the open map (D-322), from the save. The view
+   * keeps an unchanged list the same array, so this is the same set until a
+   * door moves.
+   */
+  const openedWire = openMap ? view?.save?.opened?.[openMap.poiId] : undefined;
+  const openedHere = useMemo(() => new Set<string>(openedWire ?? []), [openedWire]);
   const library = view?.library ?? [];
   const silverName = (id: string) => silverHere.find((token) => token.id === id)?.name ?? null;
   /**
@@ -702,6 +719,43 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     stage.showBlockGhost([preview.box.min, preview.box.max], placing.clear ? 0xff9a5a : 0xffffff);
     setHoverLabel(placePrompt(prefab.name, prefabAt, preview.outside));
   }, [stage, openMap, mapTool, prefabMode, capture, captureHover, placing, prefabAt, prefabs, openBody]);
+  // The doors as the save has them, drawn open or shut (D-322).
+  useEffect(() => { stage?.setOpened(openedHere); }, [stage, openedHere]);
+  /** Every cube somebody stands in, gold or silver: a prop keeps out of them (R-186). */
+  const standingCubes = useMemo(
+    () => new Set<string>([...[...present.values()].map(blockKey), ...silverCubes(silverHere)]),
+    [present, silverHere],
+  );
+  /*
+   * The Props tool's ghost, outline and readout (D-328), drawn from state so
+   * a turn by key redraws it without the pointer moving: the prop in hand
+   * where it would stand — red where it cannot — or the selected prop framed.
+   */
+  useEffect(() => {
+    if (!stage || !openMap || mapTool !== 'props' || !openBody) return;
+    if (propHand.type) {
+      const preview = propAt ? propPreview(openBody, propHand, propAt, standingCubes) : null;
+      stage.showPrefabGhost(preview?.cubes ?? null);
+      stage.showBlockGhost(preview ? [preview.box.min, preview.box.max] : [], preview?.why ? 0xff6b6b : 0xffffff);
+      setHoverLabel(propPrompt(propType(propHand.type)?.name ?? null, propAt, preview?.why ?? null));
+      return;
+    }
+    stage.showPrefabGhost(null);
+    const chosen = selectedProp ? propById(openBody.props, selectedProp) : null;
+    if (chosen) {
+      const box = propBox(chosen);
+      stage.showBlockGhost([box.min, box.max], 0x7fd4ff);
+      setHoverLabel(`${propType(chosen.type)?.name ?? 'Prop'} selected — change it in the panel, or Escape to let go.`);
+      return;
+    }
+    stage.showBlockGhost([]);
+    setHoverLabel(propPrompt(null, null, null));
+  }, [stage, openMap, mapTool, openBody, propHand, propAt, selectedProp, standingCubes]);
+  // A prop removed, or undone away, is no longer selected.
+  useEffect(() => {
+    if (selectedProp && openBody && !propById(openBody.props, selectedProp)) setSelectedProp(null);
+  }, [selectedProp, openBody]);
+
   // Putting the tool down, or changing map, drops the ghost and any half-drawn box.
   useEffect(() => {
     stage?.showPrefabGhost(null);
@@ -709,6 +763,8 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     setCapture(NO_CAPTURE);
     setPrefabAt(null);
     setCaptureHover(null);
+    setPropAt(null);
+    setSelectedProp(null);
   }, [mapTool, openMap?.poiId, stage]);
 
   // Changing tool, or map, drops a silver token in hand and the Spawn ghost.
@@ -742,12 +798,12 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   const strideVerdict = (memberId: string, at: BlockCoord) => (openBody
     ? standVerdict(
       openBody, present, memberId, at, banded && openRange ? { band: openRange } : null,
-      null, silverCubes(silverHere),
+      null, silverCubes(silverHere), openedHere,
     )
     : 'outside the map');
   /** Whether a silver token may stand there, or why not (R-206). */
   const silverVerdictAt = (at: BlockCoord, self?: string) => (openBody
-    ? silverVerdict(openBody, present, silverHere, at, banded && openRange ? openRange : null, self)
+    ? silverVerdict(openBody, present, silverHere, at, banded && openRange ? openRange : null, self, openedHere)
     : 'outside the map');
 
   /**
@@ -762,14 +818,14 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       ? (at: BlockCoord) => standsInBand(openRange, at)
       : undefined;
     if (stride.step === 'aiming') {
-      return walkShown(openBody, present.get(stride.memberId as MemberId) ?? null, strideGhost(stride), may);
+      return walkShown(openBody, present.get(stride.memberId as MemberId) ?? null, strideGhost(stride), may, openedHere);
     }
     if (silverMove.step === 'aiming' && mapTool !== 'spawn') {
       const from = silverHere.find((token) => token.id === silverMove.id)?.at ?? null;
-      return walkShown(openBody, from, silverMoveGhost(silverMove), may);
+      return walkShown(openBody, from, silverMoveGhost(silverMove), may, openedHere);
     }
     return null;
-  }, [openBody, stride, silverMove, mapTool, present, silverHere, banded, openRange?.lower, openRange?.upper]);
+  }, [openBody, stride, silverMove, mapTool, present, silverHere, banded, openRange?.lower, openRange?.upper, openedHere]);
   useEffect(() => {
     stage?.showWalk(walk, stride.step === 'aiming' ? memberColour(stride.memberId) : SILVER);
   }, [walk, stage]);
@@ -1067,8 +1123,30 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
         setSilverMove(noSilverMove);
         return;
       }
+      // Nothing to pick up: a door under the pointer opens or shuts (D-328).
+      if (act.kind === 'nothing' && picked.prop && openBody) {
+        const intent = toggleIntent(openBody, picked.prop, openedHere, openMap.placeId, openMap.poiId);
+        if (intent) dispatch(intent);
+        return;
+      }
       if (act.kind === 'pickToken') setStride(grab(act.memberId));
       if (act.kind === 'pickSilver') setSilverMove(grabSilver(act.id));
+      return;
+    }
+    /*
+     * Props (D-328): with one in hand, a click puts it down where the ghost
+     * stands, one per click; with nothing in hand, a click on a prop selects
+     * it, and anywhere else lets go.
+     */
+    if (openMap && mapTool === 'props') {
+      if (propHand.type) {
+        const at = propAim(picked.face, picked.propFace);
+        const preview = at && openBody ? propPreview(openBody, propHand, at, standingCubes) : null;
+        const intent = at && preview && !preview.why ? placePropIntent(propHand, at, openMap.placeId, openMap.poiId) : null;
+        if (intent) dispatch(intent);
+        return;
+      }
+      setSelectedProp(picked.prop);
       return;
     }
     /*
@@ -1252,7 +1330,17 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       const name = picked.token
         ? memberName(picked.token.memberId)
         : picked.silver ? silverName(picked.silver) : null;
-      setHoverLabel(name ? `Pick up ${name}` : null);
+      // A door, when there is no token under the pointer: a click opens it (D-328).
+      const door = !name && picked.prop && openBody ? toggleLabel(openBody, picked.prop, openedHere) : null;
+      setHoverLabel(name ? `Pick up ${name}` : door);
+      return;
+    }
+
+    if (openMap && mapTool === 'props') {
+      lastPointer.current = { x: e.clientX, y: e.clientY };
+      const picked = stage.pick(e.clientX, e.clientY);
+      const at = propAim(picked.face, picked.propFace);
+      setPropAt((now) => (now === at || (now && at && now.x === at.x && now.y === at.y && now.z === at.z) ? now : at));
       return;
     }
 
@@ -1418,6 +1506,11 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       if (capture.step === 'start') setCaptureHover(null);
       return;
     }
+    // The same for props: the ghost goes, the selected prop's outline stays.
+    if (openMap && mapTool === 'props') {
+      setPropAt(null);
+      return;
+    }
     setHoverLabel(null);
     stage?.showBlockGhost([]);
   };
@@ -1474,6 +1567,20 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
         if (digit === '4') { setMapTool('spawn'); return; }
         // The fifth (D-321): pieces of map, saved and stamped.
         if (digit === '5') { setMapTool('prefabs'); return; }
+        // The sixth (D-328): doors, bars and furniture.
+        if (digit === '6') { setMapTool('props'); return; }
+        // Z / X turn the prop in hand, or the one selected (R-203).
+        if (mapTool === 'props' && (e.code === 'KeyZ' || e.code === 'KeyX')) {
+          const step = e.code === 'KeyX' ? 1 : -1;
+          if (propHand.type) setPropHand((now) => turnHand(now, step));
+          else if (selectedProp && openBody && openMap) {
+            const prop = propById(openBody.props, selectedProp);
+            if (prop) {
+              dispatch({ kind: 'editProp', placeId: openMap.placeId, poiId: openMap.poiId, id: prop.id, facing: turned(prop.facing, step) });
+            }
+          }
+          return;
+        }
         // Z / X turn the prefab in hand, as they turn a place (R-203); M mirrors it.
         if (mapTool === 'prefabs' && (e.code === 'KeyZ' || e.code === 'KeyX')) {
           setPlacing((now) => turnPlacing(now, e.code === 'KeyX' ? 1 : -1));
@@ -1483,12 +1590,11 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
           setPlacing(mirrorPlacing);
           return;
         }
-        // The brushes run along the digits from 6, which is where the world's
-        // terrain brushes start — the habit transfers even though the two are
-        // different things (R-164). Five shapes reach 0, which is where the
-        // row ends on the keyboard.
-        const KEYS = ['6', '7', '8', '9', '0'];
-        const picked = digit ? KEYS.indexOf(digit) : -1;
+        // The brushes run along the digits from 7, after the six tools, as the
+        // world's terrain brushes do (R-164) — and the fifth shape is the key
+        // after 0, which is minus (D-328).
+        const KEYS = ['7', '8', '9', '0'];
+        const picked = e.code === 'Minus' ? 4 : digit ? KEYS.indexOf(digit) : -1;
         if (picked >= 0 && picked < BRUSHES.length) {
           setMapBrush(BRUSHES[picked]!.id);
           return;
@@ -1509,6 +1615,9 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
           if (silverMove.step === 'aiming') { setSilverMove(noSilverMove); return; }
           // A half-drawn box, then a prefab in hand, before leaving the map.
           if (mapTool === 'prefabs' && capture.step !== 'start') { setCapture(captureBack); return; }
+          // A prop in hand, then the one selected (D-328).
+          if (mapTool === 'props' && propHand.type) { setPropHand((now) => ({ ...now, type: null })); return; }
+          if (mapTool === 'props' && selectedProp) { setSelectedProp(null); return; }
           if (mapTool === 'prefabs' && placing.id) { setPlacing((now) => ({ ...now, id: null })); return; }
           setOpenMap(null);
           return;
@@ -1580,7 +1689,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     // quietly changed the world tool behind the map instead. `stride.step`
     // for the same reason: Escape has to know whether a move is in progress.
     // `tool` and `hands.step` so Z / X know whether they turn a place in hand.
-  }, [stage, openMap, stride.step, silverMove.step, tool, hands.step, mapTool, capture.step, placing.id]);
+  }, [stage, openMap, stride.step, silverMove.step, tool, hands.step, mapTool, capture.step, placing.id, propHand.type, selectedProp, openBody]);
 
   return (
     <>
@@ -1700,6 +1809,18 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
               library={library}
               chosen={chosenTemplate}
               onChoose={setChosenTemplate}
+              dispatch={dispatch}
+            />
+          )}
+          {mapToolShows(mapTool, 'props') && (
+            <PropsPanel
+              hand={propHand}
+              onHand={setPropHand}
+              selected={selectedProp && openBody ? propById(openBody.props, selectedProp) : null}
+              onSelect={setSelectedProp}
+              opened={openedHere}
+              placeId={openPlace.id}
+              poiId={openPoi.id}
               dispatch={dispatch}
             />
           )}

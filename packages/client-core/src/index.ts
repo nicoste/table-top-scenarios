@@ -50,6 +50,12 @@ export {
 } from './prefabs/index.js';
 export type { PrefabPlacing, PrefabPreview, Capture } from './prefabs/index.js';
 
+export {
+  EMPTY_HAND, takeProp, turnHand, propAim, propWords, propPreview, placePropIntent, propPrompt,
+  toggleIntent, toggleLabel,
+} from './props/index.js';
+export type { PropHand, PropPreview } from './props/index.js';
+
 export { FRAME_WINDOW, keepRecent, summarise, rate } from './metrics/index.js';
 export type { Frames } from './metrics/index.js';
 

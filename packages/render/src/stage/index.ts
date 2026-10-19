@@ -10,7 +10,7 @@ import {
   EdgesGeometry, LineSegments, LineBasicMaterial, Group, BufferGeometry, DoubleSide,
 } from 'three';
 import type {
-  BlockCoord, Campaign, EncounterMap, GlobalCell, Lighting, Material, Placement, WorldCell,
+  BlockCoord, Campaign, EncounterMap, GlobalCell, Lighting, Material, Opened, Placement, WorldCell,
 } from '@tt/domain';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -19,7 +19,7 @@ import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import {
   CHUNK_SIZE, brushCentreOffset, mapCentre, DAYLIGHT, sunDirection, shadowReach, bounceOf,
-  dropBelow, fromGlobal,
+  dropBelow, fromGlobal, NONE_OPEN,
 } from '@tt/domain';
 import type { CameraTarget } from '../camera/index.js';
 import {
@@ -34,6 +34,8 @@ import type { WalkDrawn } from '../walk/index.js';
 import { buildWalkPreview } from '../walk/index.js';
 import type { GhostCube } from '../prefab-ghost/index.js';
 import { buildPrefabGhost } from '../prefab-ghost/index.js';
+import type { PropMeshes } from '../props/index.js';
+import { buildProps } from '../props/index.js';
 import type { Pictures } from '../standee/index.js';
 import type { SilverTokens3D } from '../silver/index.js';
 import { buildSilverTokens } from '../silver/index.js';
@@ -111,6 +113,17 @@ export interface Picked {
   readonly token: TokenRef | null;
   /** The silver token under the pointer, when a map is open (R-206), by id. */
   readonly silver: string | null;
+  /**
+   * The prop under the pointer, when a map is open (D-322), by id — only one
+   * nothing stands in front of: a door behind a wall is not clicked through
+   * it, unlike a token, which a GM picks through walls on purpose (R-36).
+   */
+  readonly prop: string | null;
+  /**
+   * The face of that prop under the pointer: the cube of it hit, and the cube
+   * against that face — so a bookcase can be stood on a bookcase (D-322).
+   */
+  readonly propFace: FacePick | null;
   readonly pawn: PawnRef | null;
   readonly placeId: string | null;
   /** The cell, whatever is standing on it. */
@@ -357,6 +370,9 @@ export class Stage {
   private present: readonly Present[] = [];
   /** Where the silver ghost is, for the same reason as `aimed`. */
   private silverAimed: BlockCoord | null = null;
+  /** Doors, bars, furniture in the open map (D-322), and which stand open. */
+  private props: PropMeshes | null = null;
+  private opened: Opened = NONE_OPEN;
   /** The walk a token being moved would take, and how far (R-209). */
   private readonly walk = buildWalkPreview();
   /** The prefab about to be placed (D-321). */
@@ -716,6 +732,7 @@ export class Stage {
     if (this.grid) this.grid.visible = worldVisible;
     // The other way round: tokens stand in a map and nowhere else (R-148).
     if (this.tokens) this.tokens.group.visible = !worldVisible;
+    if (this.props) this.props.group.visible = !worldVisible;
     if (this.silver) this.silver.group.visible = !worldVisible;
     // Always off: the next pointer move puts it back where it belongs, and an
     // outline left over from the surface before is worse than none.
@@ -780,6 +797,30 @@ export class Stage {
     this.invalidate();
     this.present = present ?? [];
     this.rebuildSilver();
+  }
+
+  /**
+   * Which props in the open map stand open (D-322): a door drawn open, a lid
+   * up. The body's props are drawn with it; this is the session's half.
+   */
+  setOpened(opened: Opened): void {
+    if (opened === this.opened) return;
+    this.opened = opened;
+    this.invalidate();
+    this.rebuildProps();
+  }
+
+  private rebuildProps(): void {
+    if (this.props) {
+      this.scene.remove(this.props.group);
+      this.props.dispose();
+      this.props = null;
+    }
+    const map = this.shownMap;
+    if (!map || map.props.length === 0) return;
+    this.props = buildProps(map.props, this.opened);
+    this.scene.add(this.props.group);
+    this.applySurface();
   }
 
   /** Puts the silver ghost where one would be placed or moved, or takes it off. */
@@ -934,6 +975,7 @@ export class Stage {
     this.shownMaterials = materials;
     this.rebuildTokens();
     this.rebuildSilver();
+    this.rebuildProps();
     this.applySurface();
 
     if (move === 'frame' && map) {
@@ -1210,9 +1252,30 @@ export class Stage {
     // column, no place marker and no chunk slot inside one.
     if (this.blocks) {
       let face: FacePick | null = null;
+      let faceAt = Infinity;
       for (const hit of this.raycaster.intersectObject(this.blocks.group, true)) {
         face = this.blocks.faceOf(hit);
-        if (face) break;
+        if (face) { faceAt = hit.distance; break; }
+      }
+      // A prop only when it is nearer than the block the ray reached (D-322).
+      let prop: string | null = null;
+      let propFace: FacePick | null = null;
+      if (this.props) {
+        const hit = this.raycaster.intersectObjects([...this.props.proxies], false)[0];
+        if (hit && hit.distance <= faceAt + 1e-6) {
+          prop = this.props.propAt(hit.object);
+          // The proxies are never turned, so a face normal is a world axis.
+          const normal = hit.face?.normal;
+          if (normal) {
+            const step = { x: Math.round(normal.x), y: Math.round(normal.y), z: Math.round(normal.z) };
+            const block = {
+              x: Math.floor(hit.point.x - step.x * 1e-3),
+              y: Math.floor(hit.point.y - step.y * 1e-3),
+              z: Math.floor(hit.point.z - step.z * 1e-3),
+            };
+            propFace = { block, adjacent: { x: block.x + step.x, y: block.y + step.y, z: block.z + step.z } };
+          }
+        }
       }
       /*
        * Tested against the tokens' pick volumes alone, not against the scene,
@@ -1236,7 +1299,7 @@ export class Stage {
           if (silver) break;
         }
       }
-      return { face, token, silver, pawn: null, placeId: null, column: null, slot: null };
+      return { face, token, silver, prop, propFace, pawn: null, placeId: null, column: null, slot: null };
     }
 
     // Against the pick volumes, as a map's tokens are, and for the same
@@ -1283,7 +1346,7 @@ export class Stage {
       }
     }
 
-    return { face: null, token: null, silver: null, pawn, placeId, column, slot };
+    return { face: null, token: null, silver: null, prop: null, propFace: null, pawn, placeId, column, slot };
   }
 
   /**
@@ -1653,6 +1716,7 @@ export class Stage {
     (this.routeMesh.material as MeshBasicMaterial).dispose();
     this.walk.dispose();
     this.prefabGhost.dispose();
+    this.props?.dispose();
     this.captions.domElement.remove();
     this.renderer.dispose();
   }

@@ -13,10 +13,13 @@
 import type { PrefabId, SwatchId } from '../ids/index.js';
 import { freshId } from '../ids/index.js';
 import type { BlockCoord, EncounterMap } from '../map/index.js';
-import { blockAt, blockKey, inMap, parseBlockKey } from '../map/index.js';
+import { blockAt, blockKey, inMap, parseBlockKey, propsOfJSON } from '../map/index.js';
 import { cleanTags } from '../library/index.js';
 import type { Size, Turn } from '../boxes/index.js';
-import { boxBetween, placeInBox, placedBox, sizeOfBox } from '../boxes/index.js';
+import { anchorOf, boxBetween, placeInBox, placedBox, sizeOfBox } from '../boxes/index.js';
+import type { Facing } from '../place/index.js';
+import { asFacing, turned } from '../place/index.js';
+import { propCubes, propType, putProp } from '../props/index.js';
 
 export type { Box } from '../boxes/index.js';
 export { boxBetween, sizeOfBox, turnedSize, placedBox } from '../boxes/index.js';
@@ -39,6 +42,20 @@ export interface Prefab {
    * `0,0,0` to `size - 1`. Air is absence, as in a map.
    */
   readonly blocks: ReadonlyMap<string, SwatchId>;
+  /**
+   * The props it holds (D-322): each wholly inside the box when it was
+   * captured, at its place **in the box**, with its facing and finish. Placed
+   * with the blocks, turned and mirrored with them, as new props.
+   */
+  readonly props: readonly PrefabProp[];
+}
+
+/** A prop inside a prefab: its type, the cube it stands at in the box, its facing and finish. */
+export interface PrefabProp {
+  readonly type: string;
+  readonly at: BlockCoord;
+  readonly facing: Facing;
+  readonly finish: string;
 }
 
 /** In the order they were saved; screens sort for themselves. */
@@ -90,14 +107,52 @@ export function capturePrefab(
     if (at.x > box.max.x || at.y > box.max.y || at.z > box.max.z) continue;
     blocks.set(blockKey({ x: at.x - box.min.x, y: at.y - box.min.y, z: at.z - box.min.z }), swatch);
   }
-  if (blocks.size === 0) return 'nothing is built in that box';
+  // The props wholly inside the box come with it; one the box cuts through
+  // does not — half a door is no door (D-322).
+  const inside = (cube: BlockCoord) => cube.x >= box.min.x && cube.y >= box.min.y && cube.z >= box.min.z
+    && cube.x <= box.max.x && cube.y <= box.max.y && cube.z <= box.max.z;
+  const props = map.props
+    .filter((prop) => propCubes(prop).every(inside))
+    .map((prop) => ({
+      type: prop.type,
+      at: { x: prop.at.x - box.min.x, y: prop.at.y - box.min.y, z: prop.at.z - box.min.z },
+      facing: prop.facing,
+      finish: prop.finish,
+    }));
+  if (blocks.size === 0 && props.length === 0) return 'nothing is built in that box';
   return {
     id: freshId<'PrefabId'>('prefab'),
     name: cleanName(fields.name, 'New prefab'),
     tags: cleanTags(fields.tags ?? []),
     size,
     blocks,
+    props,
   };
+}
+
+/**
+ * The props a prefab puts down when placed, turned and mirrored with its
+ * blocks (D-322): each prop's cubes are carried where the blocks' would be,
+ * its facing turns with them — mirrored first, which swaps a quarter turn
+ * one way for one the other — and it is set down at the cube its new box is
+ * centred on.
+ */
+export function placedProps(prefab: Prefab, at: BlockCoord, how: PrefabTurn): readonly PrefabProp[] {
+  const { min } = placedBox(prefab, at, how);
+  return prefab.props.map((prop) => {
+    const cubes = propCubes(prop).map((local) => {
+      const moved = placeInBox(local, prefab.size, how);
+      return { x: min.x + moved.x, y: min.y + moved.y, z: min.z + moved.z };
+    });
+    const box = cubes.reduce((acc, cube) => ({
+      min: { x: Math.min(acc.min.x, cube.x), y: Math.min(acc.min.y, cube.y), z: Math.min(acc.min.z, cube.z) },
+      max: { x: Math.max(acc.max.x, cube.x), y: Math.max(acc.max.y, cube.y), z: Math.max(acc.max.z, cube.z) },
+    }), { min: cubes[0]!, max: cubes[0]! });
+    const mirrored = how.mirrored ? asFacing(4 - prop.facing) : prop.facing;
+    const facing = turned(mirrored, how.facing);
+    const size = propType(prop.type)?.size ?? { x: 1, y: 1, z: 1 };
+    return { type: prop.type, at: anchorOf(box, size, facing), facing, finish: prop.finish };
+  });
 }
 
 /** Every cube a prefab fills when placed, with what it is made of. */
@@ -156,14 +211,19 @@ export function stampPrefab(
     blocks.set(key, cube.swatch);
     touched = true;
   }
-  if (!touched) return map;
   // Only the cubes that differ from the map as it was count as a change: a
   // clear that emptied a cube the prefab then filled with what was there is
   // no change at all.
-  if (blocks.size === map.blocks.size && [...blocks].every(([key, swatch]) => blockAt(map, parseBlockKey(key)!) === swatch)) {
-    return map;
+  const same = !touched
+    || (blocks.size === map.blocks.size && [...blocks].every(([key, swatch]) => blockAt(map, parseBlockKey(key)!) === swatch));
+  let stamped: EncounterMap = same ? map : { ...map, blocks };
+  // Then its props, each where it fits among what is now there, and never on
+  // anybody (R-186). One that does not fit is left out, as a block outside
+  // the map is.
+  for (const prop of placedProps(prefab, at, how)) {
+    stamped = putProp(stamped, prop, keep);
   }
-  return { ...map, blocks };
+  return stamped;
 }
 
 export function prefabById(prefabs: Prefabs, id: PrefabId | string): Prefab | null {
@@ -214,6 +274,8 @@ export interface PrefabJSON {
   size: { x: number; y: number; z: number };
   palette: string[];
   runs: number[];
+  /** Its props (D-322), at their places in the box. Absent before there were props: none. */
+  props?: { type: string; at: { x: number; y: number; z: number }; facing: number; finish: string }[];
 }
 
 export function prefabToJSON(prefab: Prefab): PrefabJSON {
@@ -247,6 +309,11 @@ export function prefabToJSON(prefab: Prefab): PrefabJSON {
     size: { x: prefab.size.x, y: prefab.size.y, z: prefab.size.z },
     palette,
     runs,
+    ...(prefab.props.length > 0 ? {
+      props: prefab.props.map((prop) => ({
+        type: prop.type, at: { x: prop.at.x, y: prop.at.y, z: prop.at.z }, facing: prop.facing, finish: prop.finish,
+      })),
+    } : {}),
   };
 }
 
@@ -289,12 +356,18 @@ export function prefabFromJSON(json: unknown): Prefab | null {
     }
     cursor += count;
   }
-  if (cursor !== volumeOf(box) || blocks.size === 0) return null;
+  // Its props, read as a map's are: an odd entry drops itself (R-137a). One
+  // standing outside the box could not have been captured, so it goes too.
+  const props = propsOfJSON((raw.props as unknown[] | undefined)?.map((prop, i) => ({ ...(prop as object), id: `p${i}` })))
+    .filter((prop) => prop.at.x >= 0 && prop.at.y >= 0 && prop.at.z >= 0 && prop.at.x < box.x && prop.at.y < box.y && prop.at.z < box.z)
+    .map((prop) => ({ type: prop.type, at: prop.at, facing: prop.facing, finish: prop.finish }));
+  if (cursor !== volumeOf(box) || (blocks.size === 0 && props.length === 0)) return null;
   return {
     id: raw.id as PrefabId,
     name: cleanName(typeof raw.name === 'string' ? raw.name : undefined, 'New prefab'),
     tags: cleanTags(Array.isArray(raw.tags) ? raw.tags.filter((t): t is string => typeof t === 'string') : []),
     size: box,
     blocks,
+    props,
   };
 }

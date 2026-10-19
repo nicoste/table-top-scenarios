@@ -51,10 +51,10 @@ export {
 } from './light/index.js';
 export type { Route } from './route/index.js';
 export { routeAcross, daysAcross, ROUTE_BUDGET } from './route/index.js';
-export type { Prefab, Prefabs, PrefabSize, PrefabJSON, Box, PrefabTurn, CaptureRefusal } from './prefab/index.js';
+export type { Prefab, Prefabs, PrefabSize, PrefabJSON, Box, PrefabTurn, CaptureRefusal, PrefabProp } from './prefab/index.js';
 export {
   NO_PREFABS, MAX_PREFAB_NAME, MAX_PREFAB_SIDE, boxBetween, sizeOfBox, capturePrefab, turnedSize,
-  placedBox, placedBlocks, stampPrefab, prefabById, addPrefab, editPrefab, removePrefab,
+  placedBox, placedBlocks, placedProps, stampPrefab, prefabById, addPrefab, editPrefab, removePrefab,
   prefabToJSON, prefabFromJSON,
 } from './prefab/index.js';
 export type { Size, Turn } from './boxes/index.js';

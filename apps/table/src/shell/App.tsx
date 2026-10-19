@@ -271,6 +271,14 @@ export function App({ view, status, rejection, dispatch }: Props) {
       }))
       : null);
   }, [stage, silverWire]);
+  /**
+   * Which of the props this screen holds stand open (D-322): sent by the
+   * host for exactly the props it sent, so a door is drawn open and walked
+   * through here as on the console.
+   */
+  const openedWire = view?.opened ?? null;
+  const opened = useMemo(() => new Set<string>(openedWire ?? []), [openedWire]);
+  useEffect(() => { stage?.setOpened(opened); }, [stage, opened]);
   /** Their cubes, so the party's ghost never stands on a goblin the table can see. */
   const silverCubes = useMemo(
     () => new Set((silverWire ?? []).map((token) => `${token.at.x},${token.at.y},${token.at.z}`)),
@@ -297,7 +305,7 @@ export function App({ view, status, rejection, dispatch }: Props) {
    * worked out from the plane list, since the table is never told its band.
    */
   const strideVerdict = (memberId: string, at: BlockCoord) => (body
-    ? standVerdict(body, standing, memberId, at, { ceiling: tableCeiling(body) }, seen, silverCubes)
+    ? standVerdict(body, standing, memberId, at, { ceiling: tableCeiling(body) }, seen, silverCubes, opened)
     : 'outside the map');
 
   /**
@@ -314,8 +322,9 @@ export function App({ view, status, rejection, dispatch }: Props) {
       standing.get(stride.memberId as MemberId) ?? null,
       strideGhost(stride),
       (at) => at.y < ceiling && (!seen || seen.has(blockKey(at))),
+      opened,
     );
-  }, [stride, body, standing, seen]);
+  }, [stride, body, standing, seen, opened]);
   useEffect(() => {
     stage?.showWalk(walk, stride.step === 'aiming' ? colourOf(stride.memberId) : undefined);
   }, [walk, stage]);

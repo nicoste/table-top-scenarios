@@ -2218,6 +2218,34 @@ apps/host/src/
 >   **one placement, one map edit, one undo step**.
 > - **A stamp, not a link.** Editing or deleting a prefab changes nothing
 >   already placed from it.
+> - **It carries its props** (D-329): those wholly inside the box, turned and
+>   mirrored with the blocks and set down as new props where they fit.
+
+> **R-212.** **A prop is a thing placed in a map one at a time — a door, bars,
+> a chest — and does two things: stops sight or not, and stops walking or
+> not, as it stands now** (D-321, D-322, D-328, D-329). The map's sixth tool,
+> key 6; the brushes moved along to 7, 8, 9, 0 and minus.
+>
+> - **A material is what a whole cube is made of; anything that is not a
+>   whole cube is a prop.** From a built-in catalogue — door, cell door, bars,
+>   portcullis; chest, table, chair, bookcase, barrel, crate — each a box of
+>   whole cubes (a door is 1 × 2), turned with Z / X, in one of a few
+>   finishes. Props stack: a prop stands on a block or on another prop.
+> - **The prop is the map's; its state is the session's.** Placing, turning,
+>   refinishing and removing are building — on the map, saved with it, one
+>   undo step each. Which props stand open is play state in the save
+>   (`opened`), which undo leaves alone (R-140).
+> - **Its rules feed everything that asks.** A shut door or a bookcase stops
+>   sight; a shut door, bars and furniture stop standing and the walk
+>   (R-209). Open, a door is a doorway: the party sees through it and walks
+>   through it. Blocks, prefabs and tokens keep out of a prop's cubes.
+> - **The GM's, every part of it.** In play a door opens and shuts with a
+>   **Move** click; never from the table (D-328). A door is not shut on
+>   somebody in the doorway.
+> - **No secrets** (D-328). The table is sent a prop once a cube of it, or one
+>   beside it, has been seen — cut with the band like the blocks — and which
+>   of the props it holds stand open (`opened`, the seventh piece of save
+>   data it is sent). Nothing else.
 
 ---
 

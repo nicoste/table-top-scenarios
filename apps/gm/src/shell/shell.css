@@ -631,6 +631,17 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
 }
 .sheet-link:hover .link-badge, .sheet-link:focus-visible .link-badge { opacity: 1; }
 .library-url-warn { margin: -4px 0 8px; font-size: 11px; }
+/* Props (D-328): a finish is its colour, so a finish is a chip. */
+.prop-finishes { display: flex; gap: 4px; flex-wrap: wrap; }
+.prop-finishes .chip-button {
+  width: 30px; height: 26px; padding: 0; display: inline-grid; place-items: center;
+  border-radius: 6px; border: 1px solid var(--edge); background: transparent;
+}
+.prop-finishes .chip-button.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.prop-finishes .chip { width: 18px; height: 14px; border-radius: 3px; display: block; }
+.prop-selected { border-bottom: 1px solid var(--edge); padding-bottom: 8px; margin-bottom: 4px; }
+.prop-selected .readout { margin: 0 0 6px; }
+.prop-selected .prop-finishes { margin-top: 6px; }
 /* Said beside the list, where the GM is looking, not only in the readout (D-324). */
 .prefab-pick { margin: 8px 0 0; font-size: 11.5px; }
 .stage-list li.hidden .library-card, .stage-list li.hidden .stage-row > input { opacity: 0.55; }

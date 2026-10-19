@@ -269,6 +269,16 @@ export function MapPanel({
               ⧉ Prefabs
             </button>
           </Tooltip>
+          {/* The sixth (D-328): doors, bars and furniture, one per click. */}
+          <Tooltip
+            label="Place doors, bars and furniture, or change one — key 6"
+            placement="bottom"
+            stretch
+          >
+            <button className={tool === 'props' ? 'on' : ''} onClick={() => onTool('props')}>
+              ⚿ Props
+            </button>
+          </Tooltip>
         </div>
 
         {/*
@@ -287,7 +297,7 @@ export function MapPanel({
                   label={`${shape.rise > 1
                     ? `A column ${shape.rise} blocks tall, growing up — or down while ⌥ alt is held`
                     : shape.span > 1 ? `A flat ${shape.span}×${shape.span} square` : 'One cube'
-                  } — key ${['6', '7', '8', '9', '0'][i]}`}
+                  } — key ${['7', '8', '9', '0', '-'][i]}`}
                   placement="bottom"
                   stretch
                 >
@@ -324,7 +334,8 @@ export function MapPanel({
             <>
               Click a token to pick it up, then the top of a block to stand it there.
               One to a cube, gold or silver, and always on something. Escape or
-              right-click puts it back down where it was.
+              right-click puts it back down where it was. Click a door to open or
+              shut it.
             </>
           )}
           {tool === 'spawn' && (
@@ -332,6 +343,14 @@ export function MapPanel({
               Choose a token from the <b>Tokens Library</b>, then click the top of a block
               to place one there — and again, for as many as you need. Each gets its own
               name, so the table can say which.
+            </>
+          )}
+          {tool === 'props' && (
+            <>
+              Pick a prop from the catalogue and click where it stands — <b>Z / X</b>{' '}
+              turn it first. One per click, and each is one undo. With nothing in hand,
+              click a prop to turn, refinish, open or remove it. During play, a{' '}
+              <b>Move</b> click opens and shuts a door.
             </>
           )}
           {tool === 'prefabs' && (
@@ -344,7 +363,7 @@ export function MapPanel({
           )}
         </p>
         <p className="readout">{hoverLabel ?? '—'}</p>
-        <p className="hint">1–5 tool · 6–0 or [ ] brush · {CAMERA_HINT} · Esc leaves</p>
+        <p className="hint">1–6 tool · 7–0, − or [ ] brush · {CAMERA_HINT} · Esc leaves</p>
       </div>
 
       {/* Build's and Paint's, and nobody else's (R-207). */}
