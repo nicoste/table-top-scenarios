@@ -21,3 +21,30 @@ import type { LevelRange } from '@tt/domain';
 export function grabEnd(range: LevelRange, at: number): 'lower' | 'upper' {
   return Math.abs(at - range.lower) <= Math.abs(at - range.upper) ? 'lower' : 'upper';
 }
+
+/** Where one row of the ladder was drawn, top and bottom, in client pixels. */
+export interface RowBox {
+  readonly top: number;
+  readonly bottom: number;
+}
+
+/**
+ * Which row a pointer is over, from the rows **as they were when the drag
+ * began** — clamped to the first or last past either end, so dragging off the
+ * ladder keeps responding (D-317).
+ *
+ * Not the rows as drawn now, and that was a bug the GM found by dragging: the
+ * band decides whether the party is inside the levels the table is shown, a
+ * card above the ladder says so in a sentence of a different length, and the
+ * ladder moved under a pointer that had not. Read live, the same pointer was
+ * over another row, which moved the band back, which changed the sentence
+ * back — the band flickering as fast as the screen could draw. Read from the
+ * boxes taken at the press, nothing drawn elsewhere can feed back into the
+ * drag. `null` for a ladder with no rows.
+ */
+export function rowAt(rows: readonly RowBox[], clientY: number): number | null {
+  if (rows.length === 0) return null;
+  const hit = rows.findIndex((row) => clientY >= row.top && clientY <= row.bottom);
+  if (hit >= 0) return hit;
+  return clientY < rows[0]!.top ? 0 : rows.length - 1;
+}

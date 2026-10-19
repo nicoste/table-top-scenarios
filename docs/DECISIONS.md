@@ -7940,3 +7940,34 @@ silver token outside read 12.2 in grey; the one inside read *no path* to the
 roof.
 
 R-209 is new.
+
+### D-317 — A ladder drag reads the ladder as it was grabbed · `agreed`
+*"If you … attempt to slide the level range slider from a level with tokens
+present to one that leaves them out (or viceversa), there is a text on the
+party panel that changes and pushes the slider panel and since you are
+dragging, it triggers the level switch like crazy."*
+
+A feedback loop, and the GM's diagnosis was exact. The band decides whether
+the party is inside the levels the table is shown; the party card above the
+ladder says which in a sentence one line longer or shorter; the ladder moved
+17 px under a pointer that had not; and the drag found the stop under the
+pointer by hit-testing the rows **as drawn now** — so the same pointer was
+over the next row, which moved the band back, which changed the sentence
+back, as fast as the screen could draw.
+
+**The fix is in the drag, not the sentence.** The rows' boxes are taken once,
+at the press, and the whole drag reads those (`rowAt`, in `client-core`,
+tested). Nothing drawn elsewhere can feed back into a drag now — not this
+sentence, and not the next card someone adds above the ladder. Holding the
+sentence to one height was the other way, and it would have been a promise
+about every plane name a GM might type.
+
+What remains is cosmetic: the ladder still moves by a line when the sentence
+changes mid-drag, and the drag carries on from where it was grabbed.
+
+Checked on a copy of the GM's data, with the console's left column unscrolled
+as on the GM's screen (a scrolled one hides it: the browser's scroll
+anchoring holds the ladder still). Dragging the top of the band between roof
+2 and the water level moved the ladder 17 px each way, and 40 small moves
+while holding still flipped the band 0 times. Read live, the same held
+pointer was over the water level after the jump instead of roof 2 — the loop.

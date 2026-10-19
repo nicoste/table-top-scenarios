@@ -31,7 +31,8 @@ import { useRef, useState } from 'react';
 import type { Intent, MapWire } from '@tt/protocol';
 import { MAP_MAX_HEIGHT, MAP_MIN_DEPTH, planeSteps, stepLabel } from '@tt/domain';
 import type { LevelRange } from '@tt/domain';
-import { grabEnd } from '@tt/client-core';
+import { grabEnd, rowAt } from '@tt/client-core';
+import type { RowBox } from '@tt/client-core';
 import { ConfirmDelete, DraftInput } from '@tt/ui';
 
 interface Props {
@@ -53,8 +54,11 @@ interface Stop {
 export function LevelLadder({ map, range, placeId, poiId, dispatch }: Props) {
   const [name, setName] = useState('');
   const [y, setY] = useState('');
-  /** Which end is being dragged, and the stop it has reached. */
-  const drag = useRef<{ end: 'lower' | 'upper'; at: number } | null>(null);
+  /**
+   * Which end is being dragged, the stop it has reached, and where the rows
+   * were drawn when it was grabbed (D-317).
+   */
+  const drag = useRef<{ end: 'lower' | 'upper'; at: number; rows: readonly RowBox[] } | null>(null);
   const list = useRef<HTMLUListElement | null>(null);
 
   const planes = map.planes ?? [];
@@ -83,21 +87,16 @@ export function LevelLadder({ map, range, placeId, poiId, dispatch }: Props) {
   };
 
   /**
-   * The stop under a pointer, found by hit-testing rows rather than by
-   * arithmetic — the rows are the truth about where the stops are drawn.
+   * Where each row is drawn, hit-tested rather than worked out — the rows are
+   * the truth about where the stops are. Taken **once, at the press**, and
+   * read for the whole drag: a card above the ladder that changes height as
+   * the band moves would otherwise slide the rows under a still pointer and
+   * throw the band back and forth (D-317).
    */
-  const stopUnder = (clientY: number): number | null => {
-    const rows = list.current?.children;
-    if (!rows || rows.length === 0) return null;
-    for (let i = 0; i < rows.length; i += 1) {
-      const box = rows[i]!.getBoundingClientRect();
-      if (clientY >= box.top && clientY <= box.bottom) return stops[i]!.y;
-    }
-    // Past either end: clamp to the nearest, so dragging off the top does not
-    // simply stop responding.
-    const top = rows[0]!.getBoundingClientRect();
-    return clientY < top.top ? stops[0]!.y : stops[rows.length - 1]!.y;
-  };
+  const rowBoxes = (): readonly RowBox[] => [...(list.current?.children ?? [])].map((row) => {
+    const box = row.getBoundingClientRect();
+    return { top: box.top, bottom: box.bottom };
+  });
 
   /**
    * Pressing anywhere on the rail takes hold of a handle (D-208).
@@ -116,7 +115,7 @@ export function LevelLadder({ map, range, placeId, poiId, dispatch }: Props) {
   const onRowDown = (stop: Stop) => (e: React.PointerEvent) => {
     e.preventDefault();
     const end = grabEnd(range, stop.y);
-    drag.current = { end, at: stop.y };
+    drag.current = { end, at: stop.y, rows: rowBoxes() };
     try {
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     } catch {
@@ -129,7 +128,8 @@ export function LevelLadder({ map, range, placeId, poiId, dispatch }: Props) {
   const onDragMove = (e: React.PointerEvent) => {
     const held = drag.current;
     if (!held) return;
-    const at = stopUnder(e.clientY);
+    const row = rowAt(held.rows, e.clientY);
+    const at = row === null ? null : stops[row]?.y ?? null;
     // Only when the pointer crosses into another row: a drag within one row
     // would otherwise send an intent per pixel.
     if (at === null || at === held.at) return;

@@ -5,7 +5,7 @@
 // gesture, so this now decides the outcome of every press.
 
 import { describe, it, expect } from 'vitest';
-import { grabEnd } from '@tt/client-core';
+import { grabEnd, rowAt } from '@tt/client-core';
 
 const band = { lower: 0, upper: 8 };
 
@@ -42,5 +42,34 @@ describe('grabEnd', () => {
     expect(grabEnd(deep, -16)).toBe('lower');
     expect(grabEnd(deep, 0)).toBe('upper');
     expect(grabEnd(deep, -2)).toBe('upper');
+  });
+});
+
+describe('rowAt (D-317)', () => {
+  // Three rows, 20 px each, from y 100.
+  const rows = [{ top: 100, bottom: 120 }, { top: 120, bottom: 140 }, { top: 140, bottom: 160 }];
+
+  it('finds the row a pointer is over', () => {
+    expect(rowAt(rows, 105)).toBe(0);
+    expect(rowAt(rows, 130)).toBe(1);
+    expect(rowAt(rows, 159)).toBe(2);
+  });
+
+  it('clamps past either end, so dragging off the ladder keeps responding', () => {
+    expect(rowAt(rows, 10)).toBe(0);
+    expect(rowAt(rows, 900)).toBe(2);
+  });
+
+  it('is nothing for a ladder with no rows', () => {
+    expect(rowAt([], 130)).toBeNull();
+  });
+
+  it('answers from the boxes it is handed, so a ladder that moves mid-drag cannot throw the band back', () => {
+    // The ladder slid 20 px down after the press; the pointer did not move.
+    // Read from the boxes taken at the press, it is still over the same row.
+    const atPress = rowAt(rows, 130);
+    const moved = rows.map((row) => ({ top: row.top + 20, bottom: row.bottom + 20 }));
+    expect(rowAt(rows, 130)).toBe(atPress);
+    expect(rowAt(moved, 130)).not.toBe(atPress);
   });
 });
