@@ -7971,3 +7971,23 @@ anchoring holds the ladder still). Dragging the top of the band between roof
 2 and the water level moved the ladder 17 px each way, and 40 small moves
 while holding still flipped the band 0 times. Read live, the same held
 pointer was over the water level after the jump instead of roof 2 — the loop.
+
+### D-318 — A member's row On stage says their name, not where the table is · `agreed`
+*"There is a text saying 'not on the table' … that shows when the player token
+is not on the level range. I think is wrong and we should not show a hint
+there, we should keep the name."*
+
+Beside a member's name the row said *not on the table* when they stood
+outside the levels the table is shown. It was the longest thing in a narrow
+row, and the name gave way to it — down to an ellipsis, which is what the GM
+saw as a stray mark before the words. The party card above already says the
+same thing in a sentence (*"Somebody is outside the levels the table is
+shown…"*), so the row lost nothing by dropping it.
+
+*To place* stays: it is short enough to leave a name whole, and it is the
+row's own news — this member has no floor in this map yet, and Move will
+hand them over next.
+
+Checked on a copy of the GM's data with the band cut to the water level: the
+party card said somebody was outside it, and both rows read their names
+whole, untruncated.

@@ -1559,7 +1559,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
                 name: row.name,
                 colour: row.colour,
                 picture: memberPicture(row.id),
-                status: !row.standing ? 'to place' as const : row.onTable ? 'standing' as const : 'not on the table' as const,
+                toPlace: !row.standing,
                 sight: row.sight,
                 note: memberNotes.get(row.id) ?? '',
               }))

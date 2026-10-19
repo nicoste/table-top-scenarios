@@ -24,8 +24,13 @@ export interface PartyOnStage {
   readonly name: string;
   readonly colour: string;
   readonly picture: string | null;
-  /** Standing in this map, waiting to be placed, or standing outside the table's band. */
-  readonly status: 'standing' | 'to place' | 'not on the table';
+  /**
+   * Not standing anywhere in this map yet. The only thing said beside the
+   * name: a member outside the levels the table is shown used to say so here
+   * too, and squeezed the name down to an ellipsis — the party card above
+   * already says it (D-318).
+   */
+  readonly toPlace: boolean;
   /** How far they see, in cubes (R-46). */
   readonly sight: number;
   /** The GM's note on them, the same in every map (D-315); empty for none. */
@@ -144,7 +149,7 @@ export function OnStagePanel({ party, silver, order, library, placeId, poiId, di
                         behind a wall, or not placed yet (R-188). */}
                     <button className="plain stage-name" onClick={() => onPickMember(member.id)}>
                       <span className="nm">{member.name}</span>
-                      {member.status !== 'standing' && <span className="where">{member.status}</span>}
+                      {member.toPlace && <span className="where">to place</span>}
                     </button>
                     <Tooltip label={`How far ${member.name} sees, in cubes — 12 is 60 ft`} placement="left">
                       <span className="stage-sight">
