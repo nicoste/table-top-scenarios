@@ -8538,3 +8538,19 @@ Galion and Turdorn given torches from On stage. The table drew the torch on
 the wall and Galion's light over the remembered ground. No errors on either
 screen.
 
+### D-336 — One light's far corners are not walls · `agreed`
+*"I can have 100 lights all turned off, and I won't see any glitch. 1 light
+on is ok too. The second starts doing some weird lighting calculations. It's
+like 1 light affects the other."* It did. Each light looks only at the
+cubes within its reach (D-335), and the ones it did not look at were left
+at the value that means *stops light* — so every light said the far corners
+of its box were solid, and the field took them for walls. Where a second
+light shone into those corners, the screen blended its light as if beside a
+wall: holes, and shading that changed with the other light. One light alone
+never shows it, since nothing it lights is outside its own reach.
+
+*Not looked at* is its own value now, and only a block says there is a wall.
+On the test copy's map, with six lights: 10,456 cubes of open air read as
+solid before, none after. A test holds it: one light's box reaching another's
+flame leaves that flame in open air.
+

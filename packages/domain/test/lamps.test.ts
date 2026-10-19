@@ -56,6 +56,19 @@ describe('how bright, how far', () => {
     expect(field.data[air * 4 + 3]).toBe(1);
   });
 
+  it('never takes one light\'s far corners for walls where another light shines', () => {
+    // The first light's box reaches (5,1,5), but its reach does not: that cube
+    // is the second light's flame, open air, and must read as air.
+    const field = lampField(createMap(), NONE_OPEN, [torch(cube(2, 1, 2), 2), torch(cube(5, 1, 5), 4)])!;
+    const air = (at: BlockCoord) => {
+      const f = (at.x - field.origin.x) + field.size.x * ((at.y - field.origin.y) + field.size.y * (at.z - field.origin.z));
+      return field.data[f * 4 + 3];
+    };
+    expect(air(cube(5, 1, 5))).toBe(1);
+    expect(air(cube(4, 1, 5))).toBe(1);
+    expect(air(cube(5, 0, 5))).toBe(0);
+  });
+
   it('adds lights up, in their colours', () => {
     const map = createMap();
     const blue = lightIn(lampField(map, NONE_OPEN, [{ at: cube(8, 1, 8), colour: flameColour('cold'), reach: 4 }]), cube(8, 1, 9));

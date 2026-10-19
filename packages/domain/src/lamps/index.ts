@@ -148,10 +148,16 @@ export interface LampField {
 /** As bright as overlapping lights add up to: three at their flames. The screen eases it further. */
 const BRIGHTEST = 3;
 
-/** What one cube is to light: stops it, passes it on, or takes it and passes none on. */
-const STOPS = 0;
-const PASSES = 1;
-const KEEPS = 2;
+/**
+ * What one cube is to light: not looked at — beyond a light's reach, or the
+ * map's edge — or it stops light, passes it on, or takes it and passes none
+ * on. *Not looked at* is not *stops*: one light's far corners are another's
+ * open air, and only a cube that is a block may say there is a wall.
+ */
+const UNSEEN = 0;
+const STOPS = 1;
+const PASSES = 2;
+const KEEPS = 3;
 
 /** How far one light got, in the box of cubes around it. */
 interface Spread {
@@ -290,7 +296,7 @@ function spread(map: EncounterMap, stops: ReadonlySet<string>, at: BlockCoord, r
   }
   const start = r + side * (r + side * r);
   // A flame inside a block gives nothing; one inside a shut door still burns.
-  if (cubes[start] === STOPS) return null;
+  if (cubes[start] === STOPS || cubes[start] === UNSEEN) return null;
 
   const steps = stepsFor(side);
   const far = new Float64Array(count).fill(Infinity);
@@ -303,7 +309,7 @@ function spread(map: EncounterMap, stops: ReadonlySet<string>, at: BlockCoord, r
     if (cubes[i] === KEEPS && i !== start) continue;
     for (const step of steps) {
       const j = i + step.offset;
-      if (cubes[j] === STOPS) continue;
+      if (cubes[j] === STOPS || cubes[j] === UNSEEN) continue;
       const next = d + step.cost;
       if (next > limit || next >= far[j]!) continue;
       let clear = true;
