@@ -8139,3 +8139,40 @@ draw them.
 
 **Order, proposed:** prefabs first (blocks only — they depend on nothing),
 then items (doors and bars first), then lights, then rulers and areas.
+
+### D-322 — Props: the GM's answers to D-321 · `agreed; not built`
+The open points of D-321, answered. Where an answer differs from what D-321
+proposed, this supersedes it.
+
+**The names.** *Prefabs* are the saved pieces of map — boxes of blocks
+captured and stamped. *Props* are the things placed one at a time: doors,
+chests, bars, bookcases, lights.
+
+**Only the GM opens and closes doors**, on the table as everywhere: *"that
+[is] a GM work, we need to avoid accidents."* A prop's state is the world's,
+not the party's (R-136).
+
+**Players may draw areas from the table, and move them**: *"they will
+play-around to see how can I connect more enemies at once."* The first
+thing the table may create that is not the party's own pawn — so the
+permission line (R-136) gains a second kind of thing open to the table when
+areas are built, and says so then.
+
+**No size limit of one cube.** A prop takes a box of whole cubes, set by
+its catalogue entry — a door is **1 wide × 2 tall**. D-321's "one cube for
+the rules, drawn up to two tall" is superseded: what it is drawn as and
+what it occupies are the same box. Every cube of it carries the prop's
+rules (sight, walking), and its facing turns the box with it. **Props
+stack**: a bookcase is one size, and a tall one is two bookcases, one on
+the other — so a prop may stand on another prop, not only on a block.
+
+**Placed one per click**, never dragged along a line: *"items are
+individual."*
+
+**Bars do not connect themselves** — D-321's proposal, declined as more
+work than it is worth. A bar is a prop with a facing, turned before it is
+placed like any other; a corner is a block of stone or wood between two
+runs. They let sight through and block walking (confirmed).
+
+Still proposed, not answered: a picture for each prefab taken on saving,
+and a few starter prefabs.
