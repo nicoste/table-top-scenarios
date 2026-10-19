@@ -7,7 +7,7 @@ export {
 } from './ids/index.js';
 export type {
   CampaignId, SaveId, MemberId, PlaceId, CoverId, NoteId, PoiId, PlaneId, MarkerId, MaterialId,
-  SwatchId, TemplateId, SilverId, PrefabId,
+  SwatchId, TemplateId, SilverId, PrefabId, PropId,
 } from './ids/index.js';
 
 
@@ -57,6 +57,15 @@ export {
   placedBox, placedBlocks, stampPrefab, prefabById, addPrefab, editPrefab, removePrefab,
   prefabToJSON, prefabFromJSON,
 } from './prefab/index.js';
+export type { Size, Turn } from './boxes/index.js';
+export { boxCubes, placeInBox, anchorOf } from './boxes/index.js';
+export type {
+  Prop, Props, PropType, PropFinish, PropEffect, PropFooting, PropRules, Opened,
+} from './props/index.js';
+export {
+  PROP_TYPES, NO_PROPS, NONE_OPEN, propType, propBox, propCubes, propAt, propById, whyNotPut, putProp, editProp,
+  removeProp, propRules,
+} from './props/index.js';
 export type { Walk } from './walk/index.js';
 export { walkAcross, WALK_BUDGET } from './walk/index.js';
 export type { Material, Cut, Difficulty } from './materials/index.js';
@@ -115,6 +124,7 @@ export {
   tokensFor, tokensIn, withTokens, settleTokens, pruneTokens,
   exploredIn, withExplored, pruneExplored, lookAround, forgetMap,
   silverIn, withSilver, withoutStrays, orderIn, withStageOrder, tidyOrder, withNoteOn,
+  openedIn, withOpen, tidyOpened,
 } from './save/index.js';
 
 export type { MemberNotes, MemberNotesJSON } from './member-notes/index.js';

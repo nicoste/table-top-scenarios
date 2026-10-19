@@ -14,15 +14,17 @@ import type { PrefabId, SwatchId } from '../ids/index.js';
 import { freshId } from '../ids/index.js';
 import type { BlockCoord, EncounterMap } from '../map/index.js';
 import { blockAt, blockKey, inMap, parseBlockKey } from '../map/index.js';
-import type { Facing } from '../place/index.js';
-import { asFacing } from '../place/index.js';
 import { cleanTags } from '../library/index.js';
+import type { Size, Turn } from '../boxes/index.js';
+import { boxBetween, placeInBox, placedBox, sizeOfBox } from '../boxes/index.js';
 
-export interface PrefabSize {
-  readonly x: number;
-  readonly y: number;
-  readonly z: number;
-}
+export type { Box } from '../boxes/index.js';
+export { boxBetween, sizeOfBox, turnedSize, placedBox } from '../boxes/index.js';
+
+/** A prefab's box, in cubes: wide, tall, deep. */
+export type PrefabSize = Size;
+/** How a prefab is put down: turned, and mirrored before it is turned. */
+export type PrefabTurn = Turn;
 
 /** One saved piece: *a watchtower*. */
 export interface Prefab {
@@ -51,24 +53,6 @@ export const MAX_PREFAB_NAME = 40;
  * so the box is the cost, not only what is built inside it.
  */
 export const MAX_PREFAB_SIDE = 64;
-
-/** A box of cubes, both corners included. */
-export interface Box {
-  readonly min: BlockCoord;
-  readonly max: BlockCoord;
-}
-
-/** The box two corners span, whichever way round they were clicked. */
-export function boxBetween(a: BlockCoord, b: BlockCoord): Box {
-  return {
-    min: { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), z: Math.min(a.z, b.z) },
-    max: { x: Math.max(a.x, b.x), y: Math.max(a.y, b.y), z: Math.max(a.z, b.z) },
-  };
-}
-
-export function sizeOfBox(box: Box): PrefabSize {
-  return { x: box.max.x - box.min.x + 1, y: box.max.y - box.min.y + 1, z: box.max.z - box.min.z + 1 };
-}
 
 const volumeOf = (size: PrefabSize) => size.x * size.y * size.z;
 
@@ -114,43 +98,6 @@ export function capturePrefab(
     size,
     blocks,
   };
-}
-
-/** How a prefab is put down: turned, mirrored, and whether it carves its box first. */
-export interface PrefabTurn {
-  /** Quarter turns clockwise, seen from above (R-203's convention). */
-  readonly facing: Facing;
-  /** Flipped left to right before it is turned. */
-  readonly mirrored: boolean;
-}
-
-/** The box's footprint once turned: an odd number of quarter turns swaps its sides. */
-export function turnedSize(size: PrefabSize, facing: Facing): PrefabSize {
-  return facing % 2 === 0 ? size : { x: size.z, y: size.y, z: size.x };
-}
-
-/** Where a cube of the box lands, in the box, once mirrored and turned. */
-function placeInBox(at: BlockCoord, size: PrefabSize, how: PrefabTurn): BlockCoord {
-  const x = how.mirrored ? size.x - 1 - at.x : at.x;
-  const z = at.z;
-  switch (asFacing(how.facing)) {
-    case 1: return { x: size.z - 1 - z, y: at.y, z: x };
-    case 2: return { x: size.x - 1 - x, y: at.y, z: size.z - 1 - z };
-    case 3: return { x: z, y: at.y, z: size.x - 1 - x };
-    default: return { x, y: at.y, z };
-  }
-}
-
-/**
- * The box a prefab fills when placed at a cube: its footprint **centred on
- * that cube**, and its bottom level at that cube's height — so it sits on
- * whatever face was pointed at, as a block placed there would, and turning it
- * turns it about where the pointer is.
- */
-export function placedBox(prefab: { readonly size: PrefabSize }, at: BlockCoord, how: PrefabTurn): Box {
-  const size = turnedSize(prefab.size, asFacing(how.facing));
-  const min = { x: at.x - Math.floor(size.x / 2), y: at.y, z: at.z - Math.floor(size.z / 2) };
-  return { min, max: { x: min.x + size.x - 1, y: min.y + size.y - 1, z: min.z + size.z - 1 } };
 }
 
 /** Every cube a prefab fills when placed, with what it is made of. */

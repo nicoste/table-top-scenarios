@@ -14,7 +14,8 @@
 // space beyond a one-cube wall and so the floor there; two cubes block; and
 // standing one cube higher buys one more cube of wall.
 //
-// Only blocks occlude, and only those whose material says so (R-74, R-75).
+// Only blocks occlude, and only those whose material says so (R-74, R-75) —
+// and props that say so as they stand now: a closed door, a bookcase (D-322).
 // Tokens never do.
 
 import { lineIsClear, cubeGrid, cubeIndex, cubeAt } from '@tt/geometry';
@@ -24,6 +25,8 @@ import { MAP_MAX_HEIGHT, MAP_MIN_DEPTH, parseBlockKey } from '../map/index.js';
 import { DEFAULT_MATERIALS, materialById, materialIn } from '../materials/index.js';
 import type { PartyMember } from '../party/index.js';
 import type { Tokens } from '../tokens/index.js';
+import type { Opened } from '../props/index.js';
+import { NONE_OPEN, propCubes, propRules } from '../props/index.js';
 
 /**
  * Eye height, as a ratio of the cube, above the floor of the token's cube
@@ -81,10 +84,18 @@ const AROUND: readonly (readonly [number, number, number])[] = [
  * (R-165) — the same reasoning, and the same `WeakMap`, as D-219's wire cache.
  * An unknown material stops sight, the way the stage draws one solid.
  */
-const grids = new WeakMap<EncounterMap, CubeGrid>();
+const grids = new WeakMap<EncounterMap, WeakMap<ReadonlySet<string>, CubeGrid>>();
+const NO_STOPS: ReadonlySet<string> = new Set();
 
-function sightGrid(map: EncounterMap): CubeGrid {
-  const cached = grids.get(map);
+/**
+ * The map as sight sees it, with these cubes stopping sight as well — the
+ * props that do, as they stand now (D-322). Per body and per set, both
+ * replaced on change (R-165).
+ */
+function sightGrid(map: EncounterMap, walls: ReadonlySet<string> = NO_STOPS): CubeGrid {
+  let byWalls = grids.get(map);
+  if (!byWalls) { byWalls = new WeakMap(); grids.set(map, byWalls); }
+  const cached = byWalls.get(walls);
   if (cached) return cached;
   const grid = cubeGrid(
     { x: map.origin.x, y: MAP_MIN_DEPTH, z: map.origin.z },
@@ -103,17 +114,27 @@ function sightGrid(map: EncounterMap): CubeGrid {
     }
     grid.cells[index] = blocks ? SOLID : CLEAR;
   }
-  grids.set(map, grid);
+  for (const key of walls) {
+    const at = parseBlockKey(key);
+    if (!at) continue;
+    const index = cubeIndex(grid, at.x, at.y, at.z);
+    if (index >= 0 && grid.cells[index] === EMPTY) grid.cells[index] = SOLID;
+  }
+  byWalls.set(walls, grid);
   return grid;
 }
+
+/** The props that stop sight in this map, open ones aside. */
+const stopsIn = (map: EncounterMap, opened: Opened) =>
+  (map.props.length === 0 ? NO_STOPS : propRules(map.props, opened).sight);
 
 /**
  * Where a member standing in this cube looks from (R-43): the middle of the
  * cube, 1.2 up from its floor — or just under the ceiling, when the cube above
  * stops sight (D-272).
  */
-export function eyeOf(map: EncounterMap, at: BlockCoord): Point {
-  const ceiling = cubeAt(sightGrid(map), at.x, at.y + 1, at.z) === SOLID;
+export function eyeOf(map: EncounterMap, at: BlockCoord, opened: Opened = NONE_OPEN): Point {
+  const ceiling = cubeAt(sightGrid(map, stopsIn(map, opened)), at.x, at.y + 1, at.z) === SOLID;
   return { x: at.x + 0.5, y: at.y + (ceiling ? EYE_UNDER_CEILING : EYE_HEIGHT), z: at.z + 0.5 };
 }
 
@@ -136,11 +157,11 @@ function nearest(eye: Point, x: number, y: number, z: number): number {
  * The range is measured from the eye, as the crow flies, to the point that is
  * seen.
  */
-export function memberSight(map: EncounterMap, at: BlockCoord, range: number): Cells {
+export function memberSight(map: EncounterMap, at: BlockCoord, range: number, opened: Opened = NONE_OPEN): Cells {
   const seen = new Set<string>();
   if (!(range > 0)) return seen;
-  const grid = sightGrid(map);
-  const eye = eyeOf(map, at);
+  const grid = sightGrid(map, stopsIn(map, opened));
+  const eye = eyeOf(map, at, opened);
   const blocks: Blocks = (x, y, z) => cubeAt(grid, x, y, z) === SOLID;
   const reach = range * range;
 
@@ -190,23 +211,34 @@ function seesInto(blocks: Blocks, eye: Point, x: number, y: number, z: number, r
  * intent and the filter sending it to each screen pay for it once — all three
  * are immutable and replaced on change (R-165).
  */
-const sights = new WeakMap<EncounterMap, WeakMap<Tokens, WeakMap<readonly PartyMember[], Cells>>>();
+const sights = new WeakMap<EncounterMap, WeakMap<Tokens, WeakMap<readonly PartyMember[], WeakMap<Opened, Cells>>>>();
 
-export function partySight(map: EncounterMap, tokens: Tokens, party: readonly PartyMember[]): Cells {
+/**
+ * `opened` is which props stand open in this map (D-322): a closed door stops
+ * sight and an open one does not, so the save's answer goes in.
+ */
+export function partySight(
+  map: EncounterMap,
+  tokens: Tokens,
+  party: readonly PartyMember[],
+  opened: Opened = NONE_OPEN,
+): Cells {
   let byTokens = sights.get(map);
   if (!byTokens) { byTokens = new WeakMap(); sights.set(map, byTokens); }
   let byParty = byTokens.get(tokens);
   if (!byParty) { byParty = new WeakMap(); byTokens.set(tokens, byParty); }
-  const cached = byParty.get(party);
+  let byOpened = byParty.get(party);
+  if (!byOpened) { byOpened = new WeakMap(); byParty.set(party, byOpened); }
+  const cached = byOpened.get(opened);
   if (cached) return cached;
 
   const seen = new Set<string>();
   for (const member of party) {
     const at = tokens.get(member.id);
     if (!at) continue;
-    for (const key of memberSight(map, at, member.visionRange)) seen.add(key);
+    for (const key of memberSight(map, at, member.visionRange, opened)) seen.add(key);
   }
-  byParty.set(party, seen);
+  byOpened.set(opened, seen);
   return seen;
 }
 
@@ -273,7 +305,12 @@ export function seenPart(map: EncounterMap, explored: Cells): EncounterMap {
   if (cached) return cached;
   const shown = shownBy(map, explored);
   const blocks = new Map([...map.blocks].filter(([key]) => shown.has(key)));
-  const part: EncounterMap = { ...map, blocks };
+  // A prop is shown as a block is (D-322): once a cube of it, or one across a
+  // face from it, has been seen. A closed door is seen from the room it
+  // closes, not from beyond it.
+  const props = map.props.filter((prop) => propCubes(prop).some((cube) => AROUND.some(([dx, dy, dz]) =>
+    explored.has(`${cube.x + dx},${cube.y + dy},${cube.z + dz}`))));
+  const part: EncounterMap = { ...map, blocks, props: props.length === map.props.length ? map.props : props };
   byCells.set(explored, part);
   return part;
 }

@@ -7,7 +7,7 @@ import {
   OPEN_SKY, sunReaches, litBy, MAP_MAX_HEIGHT,
   tokensFor, onRoster, tokensInBand, tokensToJSON,
   exploredIn, partySight, shownBy, seenPart, inRange, placeById, poiById, ON_FOOT,
-  silverIn, silverShown, templateById, libraryToJSON, prefabToJSON,
+  silverIn, silverShown, templateById, libraryToJSON, prefabToJSON, openedIn, sliceOf,
 } from '@tt/domain';
 import type {
   CampaignWire, SaveWire, PlacementWire, MapWire, LightingWire, TokensWire, CellsWire,
@@ -192,6 +192,14 @@ export interface TableView {
    * whether there are others.
    */
   readonly silver: readonly TableSilverWire[] | null;
+  /**
+   * The **seventh** piece of save data the table is sent (D-322): which of
+   * the props it holds stand open, in the map it is shown — so it draws an
+   * open door open, and walks through it (R-209). Only props the table was
+   * sent, which are only those in rooms the party has seen; a door it does
+   * not hold is not mentioned. `null` out on the world.
+   */
+  readonly opened: readonly string[] | null;
 }
 
 /** One silver token as the table sees it (R-206). */
@@ -267,7 +275,18 @@ export function viewFor(role: Role, state: HostState, connect: readonly string[]
     silver: campaign && state.active && state.activeSave
       ? silverForTheTable(state.active, state.activeSave, state.library)
       : null,
+    opened: campaign && state.active && state.activeSave ? openedForTheTable(state.active, state.activeSave) : null,
   };
+}
+
+/** Which props the table holds stand open (D-322): its body's props, nothing beyond. */
+function openedForTheTable(campaign: Campaign, save: Save): readonly string[] | null {
+  const shown = shownMap(campaign, save);
+  if (!shown?.poi.map) return null;
+  const open = openedIn(save, shown.poi.id);
+  if (open.size === 0) return [];
+  const held = sliceOf(seenPart(shown.poi.map, exploredIn(save, shown.poi.id)), rangeFor(save, shown.poi.id)).props;
+  return held.filter((prop) => open.has(prop.id)).map((prop) => prop.id).sort();
 }
 
 /**
@@ -285,7 +304,7 @@ function silverForTheTable(
   const shown = shownMap(campaign, save);
   if (!shown?.poi.map) return null;
   const range = rangeFor(save, shown.poi.id);
-  const sight = partySight(shown.poi.map, tokensFor(save, shown.poi.id), campaign.party);
+  const sight = partySight(shown.poi.map, tokensFor(save, shown.poi.id), campaign.party, openedIn(save, shown.poi.id));
   // The rule the console's Party's view draws with, so the two cannot differ.
   return silverShown(silverIn(save, shown.poi.id), sight, range)
     .map((token) => ({
@@ -309,7 +328,7 @@ function sightOf(campaign: Campaign, save: Save): CellsWire | null {
   const place = placeById(campaign.places, inside.placeId);
   const map = place ? poiById(place, inside.poiId)?.map : null;
   if (!map) return null;
-  return cellsWire(partySight(map, tokensFor(save, inside.poiId), campaign.party));
+  return cellsWire(partySight(map, tokensFor(save, inside.poiId), campaign.party, openedIn(save, inside.poiId)));
 }
 
 /**
@@ -322,7 +341,7 @@ function fogForTheTable(campaign: Campaign, save: Save): TableFog | null {
   if (!shown?.poi.map) return null;
   const map = shown.poi.map;
   const range = rangeFor(save, shown.poi.id);
-  const sight = partySight(map, tokensFor(save, shown.poi.id), campaign.party);
+  const sight = partySight(map, tokensFor(save, shown.poi.id), campaign.party, openedIn(save, shown.poi.id));
   return {
     seen: inBand(exploredIn(save, shown.poi.id), range),
     lit: inBand(shownBy(map, sight), range),

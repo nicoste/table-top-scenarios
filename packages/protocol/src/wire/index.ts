@@ -222,6 +222,13 @@ export const MapWireSchema = z.object({
     name: z.string(),
     y: z.number().int(),
   })).default([]),
+  /**
+   * Doors, bars, furniture (D-322). Absent before there were props: none, no
+   * bump (D-187). Each read leniently by the domain's own reader, so one odd
+   * entry in a hand-edited file drops itself rather than the map. The table
+   * is sent only those it has seen the room of, cut with the body (R-85).
+   */
+  props: z.array(z.unknown()).optional(),
 });
 export type MapWire = z.infer<typeof MapWireSchema>;
 
@@ -414,6 +421,11 @@ export const SaveWireSchema = z.object({
    * never sent the save (R-85).
    */
   memberNotes: z.record(z.string(), z.unknown()).default({}),
+  /**
+   * Which props stand open in each map, by point of interest (D-322). Absent
+   * before there were props: everything shut — no bump (D-187).
+   */
+  opened: z.record(z.string(), z.array(z.string())).default({}),
 });
 export type SaveWire = z.infer<typeof SaveWireSchema>;
 
@@ -598,6 +610,9 @@ export function encodeSave(save: Save): SaveWire {
       [...save.order.keys()].sort().map((poiId) => [poiId, orderToJSON(save.order.get(poiId)!)]),
     ),
     memberNotes: memberNotesToJSON(save.memberNotes),
+    opened: Object.fromEntries(
+      [...save.opened.keys()].sort().map((poiId) => [poiId, [...save.opened.get(poiId)!].sort()]),
+    ),
   };
 }
 
@@ -679,6 +694,11 @@ export function decodeSave(wire: SaveWire): Save {
         .filter(([, order]) => order.size > 0),
     ),
     memberNotes: memberNotesFromJSON(wire.memberNotes),
+    opened: new Map(
+      Object.entries(wire.opened)
+        .filter(([, ids]) => ids.length > 0)
+        .map(([poiId, ids]) => [poiId, new Set(ids)] as const),
+    ),
   };
 }
 

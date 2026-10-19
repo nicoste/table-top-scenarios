@@ -15,6 +15,8 @@ import type { BlockCoord, EncounterMap } from '../map/index.js';
 import { blockAt, blockKey, inMap, MAP_MIN_DEPTH } from '../map/index.js';
 import type { LevelRange } from '../planes/index.js';
 import { inRange } from '../planes/index.js';
+import type { Opened } from '../props/index.js';
+import { NONE_OPEN, propRules } from '../props/index.js';
 
 /**
  * Where each placed member stands in one map.
@@ -50,11 +52,13 @@ export function standingAt(tokens: Tokens, at: BlockCoord): MemberId | null {
  *   put there.
  * - `taken` — somebody else is standing in it. One to a cube, for R-119's
  *   reason: a click on two tokens in one cube could mean either.
+ * - `blocked` — a prop that stops walking fills it, as it stands now: a
+ *   closed door, bars, a table (D-322). An open door is a doorway.
  *
  * The mover's own cube is not `taken`: moving a member to where they already
  * stand is a no-op, not a collision.
  */
-export type Footing = 'outside' | 'solid' | 'unsupported' | 'taken';
+export type Footing = 'outside' | 'solid' | 'unsupported' | 'taken' | 'blocked';
 
 export function whyNotStand(
   map: EncounterMap,
@@ -66,9 +70,12 @@ export function whyNotStand(
    * tokens (D-307). One to a cube, gold or silver.
    */
   others: ReadonlySet<string> = NO_CUBES,
+  /** Which props stand open in this map (D-322); every one is shut unless said. */
+  opened: Opened = NONE_OPEN,
 ): Footing | null {
   if (!inMap(map, at)) return 'outside';
   if (blockAt(map, at)) return 'solid';
+  if (map.props.length > 0 && propRules(map.props, opened).walking.has(blockKey(at))) return 'blocked';
   if (!blockAt(map, { x: at.x, y: at.y - 1, z: at.z })) return 'unsupported';
   const standing = standingAt(tokens, at);
   if (standing !== null && standing !== memberId) return 'taken';
@@ -93,8 +100,9 @@ export function placeToken(
   memberId: MemberId,
   at: BlockCoord,
   others: ReadonlySet<string> = NO_CUBES,
+  opened: Opened = NONE_OPEN,
 ): Tokens {
-  if (whyNotStand(map, tokens, memberId, at, others) !== null) return tokens;
+  if (whyNotStand(map, tokens, memberId, at, others, opened) !== null) return tokens;
   const current = tokens.get(memberId);
   if (current && sameCube(current, at)) return tokens;
   const next = new Map(tokens);
@@ -185,15 +193,21 @@ export function clearOfTokens(
  *
  * Identity-preserving (R-165).
  */
-export function settled(map: EncounterMap, tokens: Tokens, others: ReadonlySet<string> = NO_CUBES): Tokens {
+export function settled(
+  map: EncounterMap,
+  tokens: Tokens,
+  others: ReadonlySet<string> = NO_CUBES,
+  opened: Opened = NONE_OPEN,
+): Tokens {
   /*
    * And not where somebody else now stands. A goblin placed while the party
    * was elsewhere can be on the cube a member was last remembered in — the
    * memory is no presence, so nothing refused it (D-307). The member is
-   * placed again, as for a cube built over.
+   * placed again, as for a cube built over — and for a prop put there (D-322).
    */
+  const blocked = map.props.length > 0 ? propRules(map.props, opened).walking : NO_CUBES;
   const keep = [...tokens].filter(([, at]) =>
-    inMap(map, at) && !blockAt(map, at) && !others.has(blockKey(at)));
+    inMap(map, at) && !blockAt(map, at) && !others.has(blockKey(at)) && !blocked.has(blockKey(at)));
   return keep.length === tokens.size ? tokens : new Map(keep);
 }
 

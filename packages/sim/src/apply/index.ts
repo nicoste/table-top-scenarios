@@ -34,8 +34,9 @@ import {
   addTemplate, editTemplate, removeTemplate, templateById,
   silverIn, withSilver, withoutStrays, onLibrary, silverCubes, whyNotPlace,
   spawnSilver, moveSilver, renameSilver, hideSilver, removeSilver, noteSilver,
-  withStageOrder, tidyOrder, withNoteOn,
+  withStageOrder, tidyOrder, withNoteOn, openedIn,
   capturePrefab, prefabById, addPrefab, editPrefab, removePrefab, stampPrefab, editPoiMap,
+  propType, propById, propCubes, whyNotPut, putProp, editProp, removeProp, propRules, withOpen, tidyOpened,
 } from '@tt/domain';
 import type { HostState, Intent, Role } from '@tt/protocol';
 import { parseGround, parseCover, parseMarkerId, travellingFromWire } from '@tt/protocol';
@@ -171,7 +172,11 @@ export function openedWith(
    */
   const live = new Set(state.library.map((template) => template.id as string));
   // Then the numbers of anybody no longer on stage there (R-208).
-  const tidied = tidyOrder(withoutStrays(save, poiIds, live), poiIds, memberIds as ReadonlySet<string>);
+  const ordered = tidyOrder(withoutStrays(save, poiIds, live), poiIds, memberIds as ReadonlySet<string>);
+  // And what was open of props that are gone, or of maps that are (D-322).
+  const propsOf = new Map(campaign.places.flatMap((place) => place.pois)
+    .map((poi) => [poi.id as string, new Set((poi.map?.props ?? []).map((prop) => prop.id as string))] as const));
+  const tidied = tidyOpened(ordered, (poiId) => propsOf.get(poiId) ?? null);
   // What was seen of maps that are gone, and then a look around: a save from
   // before vision has seen nothing, and the party standing in a map should
   // see it the moment the campaign opens (D-273).
@@ -595,6 +600,77 @@ function applyToCampaign(state: HostState, role: Role, intent: Intent, now: stri
   }
 }
 
+// -- props --------------------------------------------------------------------
+
+/** Why a prop cannot stand there, in the words a refusal uses (R-18). */
+const PROP_FOOTING = {
+  outside: 'that is outside the map',
+  solid: 'there is a block there',
+  taken: 'something is already there',
+  unsupported: 'there is nothing under it to stand on',
+} as const;
+
+/**
+ * Props in a map (D-322): placed, turned, refinished and removed as building
+ * — a campaign edit, so one undo step each — and opened and closed as play,
+ * in the save, which undo leaves alone (R-140). All the GM's (D-328).
+ *
+ * A prop keeps out of every cube somebody stands in, gold or silver, the way
+ * a block does (R-186); and a door is not shut on somebody in the doorway.
+ */
+function applyToProps(
+  state: HostState,
+  campaign: Campaign,
+  intent: Extract<Intent, { kind: 'placeProp' | 'editProp' | 'removeProp' | 'setPropOpen' }>,
+  withPlaces: (places: readonly Place[]) => Applied,
+  reject_: (reason: string) => Applied,
+  now: string,
+): Applied {
+  const place = placeById(campaign.places, intent.placeId as PlaceId);
+  const poi = place ? poiOfPlace(place, intent.poiId as PoiId) : null;
+  if (!place || !poi?.map) return reject_('no such map');
+  const map = poi.map;
+  const standing = new Set<string>([
+    ...[...presentIn(state, campaign, intent.placeId, intent.poiId).values()].map(blockKey),
+    ...(state.activeSave ? silverCubes(silverIn(state.activeSave, intent.poiId)) : []),
+  ]);
+  const edited = (change: (m: typeof map) => typeof map) => withPlaces(editPoiMap(campaign.places, place.id, poi.id, change));
+
+  if (intent.kind === 'placeProp') {
+    const type = propType(intent.type);
+    if (!type) return reject_('no such prop');
+    const candidate = { type: type.id, at: intent.at, facing: intent.facing as Facing };
+    const why = whyNotPut(map, candidate, standing);
+    if (why) return reject_(PROP_FOOTING[why]);
+    return edited((m) => putProp(m, { ...candidate, ...(intent.finish !== undefined ? { finish: intent.finish } : {}) }, standing));
+  }
+
+  const prop = propById(map.props, intent.id);
+  if (!prop) return reject_('no such prop in this map');
+
+  if (intent.kind === 'removeProp') return edited((m) => removeProp(m, prop.id));
+
+  if (intent.kind === 'editProp') {
+    if (intent.facing !== undefined) {
+      const why = whyNotPut(map, { ...prop, facing: intent.facing as Facing }, standing, prop.id);
+      if (why) return reject_(PROP_FOOTING[why]);
+    }
+    return edited((m) => editProp(m, prop.id, {
+      ...(intent.facing !== undefined ? { facing: intent.facing as Facing } : {}),
+      ...(intent.finish !== undefined ? { finish: intent.finish } : {}),
+    }, standing));
+  }
+
+  // Opening and closing: play, not building (R-140).
+  const save = state.activeSave;
+  if (!save) return reject_('no save is open');
+  if (!propType(prop.type)?.opens) return reject_('that does not open');
+  if (!intent.open && propCubes(prop).some((cube) => standing.has(blockKey(cube)))) {
+    return reject_('somebody is standing in the way');
+  }
+  return commitSave(state, save, withOpen(save, poi.id, prop.id, intent.open), now);
+}
+
 // -- where the party stands inside a map ------------------------------------
 
 /** Why a member cannot stand there, in the words a refusal uses (R-18). */
@@ -603,6 +679,7 @@ const FOOTING: Record<Footing, string> = {
   solid: 'there is a block there',
   unsupported: 'there is nothing there to stand on',
   taken: 'somebody is already standing there',
+  blocked: 'something is in the way there',
 };
 
 /**
@@ -666,10 +743,12 @@ function applyToTokens(
    * dark is the fiction.
    */
   const others = silverCubes(silverIn(save, poi.id));
-  const why = whyNotStand(poi.map, standing, memberId, intent.at, others);
+  // An open door is a doorway; a shut one is in the way (D-322).
+  const opened = openedIn(save, poi.id);
+  const why = whyNotStand(poi.map, standing, memberId, intent.at, others, opened);
   if (why) return reject(state, FOOTING[why]);
   return commitSave(
-    state, save, withTokens(save, poi.id, placeToken(poi.map, standing, memberId, intent.at, others)), now,
+    state, save, withTokens(save, poi.id, placeToken(poi.map, standing, memberId, intent.at, others, opened)), now,
   );
 }
 
@@ -703,23 +782,24 @@ function applyToSilver(
   const map = poi.map;
   const silver = silverIn(save, poi.id);
   const party = presentIn(state, campaign, place.id, poi.id);
+  const opened = openedIn(save, poi.id);
   const commitSilver = (next: typeof silver): Applied =>
     commitSave(state, save, withSilver(save, poi.id, next), now);
 
   if (intent.kind === 'spawnSilver') {
     const template = templateById(state.library, intent.templateId);
     if (!template) return reject(state, 'no such token in the library');
-    const why = whyNotPlace(map, party, silver, intent.at);
+    const why = whyNotPlace(map, party, silver, intent.at, undefined, opened);
     if (why) return reject(state, FOOTING[why]);
-    return commitSilver(spawnSilver(map, party, silver, template, intent.at));
+    return commitSilver(spawnSilver(map, party, silver, template, intent.at, undefined, opened));
   }
 
   if (!silver.some((token) => token.id === intent.id)) return reject(state, 'no such token in this map');
   switch (intent.kind) {
     case 'moveSilver': {
-      const why = whyNotPlace(map, party, silver, intent.at, intent.id);
+      const why = whyNotPlace(map, party, silver, intent.at, intent.id, opened);
       if (why) return reject(state, FOOTING[why]);
-      return commitSilver(moveSilver(map, party, silver, intent.id, intent.at));
+      return commitSilver(moveSilver(map, party, silver, intent.id, intent.at, opened));
     }
     case 'renameSilver':
       return commitSilver(renameSilver(silver, intent.id, intent.name));
@@ -866,6 +946,12 @@ function applyToPois(
       }
     }
 
+    case 'placeProp':
+    case 'editProp':
+    case 'removeProp':
+    case 'setPropOpen':
+      return applyToProps(state, campaign, intent, withPlaces, reject_, now);
+
     case 'savePrefab': {
       // Reads a box of a map into the library (D-321). Not a campaign edit:
       // nothing in the campaign changes, so undo has nothing to take back.
@@ -895,6 +981,8 @@ function applyToPois(
       const keep = new Set<string>([
         ...[...presentIn(state, campaign, intent.placeId, intent.poiId).values()].map(blockKey),
         ...(state.activeSave ? silverCubes(silverIn(state.activeSave, intent.poiId)) : []),
+        // A prefab's blocks win over blocks, not over a door (D-322).
+        ...(poi.map.props.length > 0 ? propRules(poi.map.props).occupied : []),
       ]);
       const places = editPoiMap(campaign.places, place.id, poi.id, (map) => stampPrefab(map, prefab, intent.at, {
         facing: intent.facing as Facing, mirrored: intent.mirrored, clear: intent.clear,
@@ -1197,12 +1285,17 @@ function applyToMap(
   if (intent.kind === 'setBlock') {
     const empty = (at: (typeof cells)[number]) => inMap(map, at) && !blockAt(map, at);
     if (!cells.some(empty)) return reject_('there is already a block there');
+    // Never into a prop's cube (D-322): a brush clips round a door the way it
+    // clips round the party, and refuses only when a prop was all it had left.
+    const propped = map.props.length > 0 ? propRules(map.props).occupied : null;
+    const unpropped = propped ? cells.filter((at) => !propped.has(blockKey(at))) : cells;
+    if (!unpropped.some(empty)) return reject_('a prop is there');
     /*
      * Never into somebody's cube (R-186). A brush clips around the party the
      * way it clips around blocks already standing (R-162) — it lands where it
      * can — and refuses only when a standing token's cube was all it had left.
      */
-    const unsilvered = silverAt.size === 0 ? cells : cells.filter((at) => !silverAt.has(blockKey(at)));
+    const unsilvered = silverAt.size === 0 ? unpropped : unpropped.filter((at) => !silverAt.has(blockKey(at)));
     const clear = clearOfTokens(unsilvered, present);
     if (!clear.some(empty)) return reject_('somebody is standing there');
     return withPlaces(setMapBlocks(campaign.places, placeId, poiId, clear, swatch));

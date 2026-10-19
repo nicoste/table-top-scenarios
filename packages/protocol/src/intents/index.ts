@@ -224,6 +224,36 @@ export const IntentSchema = z.discriminatedUnion('kind', [
     tags: z.array(z.string().max(MAX_TAG)).max(MAX_TAGS).optional(),
   }),
   z.object({ kind: z.literal('removePrefab'), id: z.string().min(1) }),
+
+  /*
+   * Props (D-322, D-328): a door, bars, a table, one per click. Placing,
+   * turning, refinishing and removing one is building — the GM's, and under
+   * undo, as a block is. Opening and closing is play: the GM's too, never the
+   * table's (D-328, "we need to avoid accidents"), and not under undo (R-140).
+   */
+  z.object({
+    kind: z.literal('placeProp'),
+    placeId: z.string().min(1), poiId: z.string().min(1),
+    type: z.string().min(1).max(40),
+    at: CubeWireSchema,
+    facing: z.number().int().min(0).max(3),
+    finish: z.string().max(40).optional(),
+  }),
+  z.object({
+    kind: z.literal('editProp'),
+    placeId: z.string().min(1), poiId: z.string().min(1), id: z.string().min(1),
+    facing: z.number().int().min(0).max(3).optional(),
+    finish: z.string().max(40).optional(),
+  }),
+  z.object({
+    kind: z.literal('removeProp'),
+    placeId: z.string().min(1), poiId: z.string().min(1), id: z.string().min(1),
+  }),
+  z.object({
+    kind: z.literal('setPropOpen'),
+    placeId: z.string().min(1), poiId: z.string().min(1), id: z.string().min(1),
+    open: z.boolean(),
+  }),
   z.object({
     kind: z.literal('placePrefab'),
     placeId: z.string().min(1), poiId: z.string().min(1),

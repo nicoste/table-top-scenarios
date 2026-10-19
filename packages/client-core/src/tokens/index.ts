@@ -8,8 +8,9 @@
 import type { Intent } from '@tt/protocol';
 import type { BlockCoord, Cells, EncounterMap, LevelRange, MemberId, Tokens } from '@tt/domain';
 import {
-  whyNotStand, standsInBand, topOfMap, planeSteps, MAP_MAX_HEIGHT, MAP_MIN_DEPTH,
+  whyNotStand, standsInBand, topOfMap, planeSteps, MAP_MAX_HEIGHT, MAP_MIN_DEPTH, NONE_OPEN,
 } from '@tt/domain';
+import type { Opened } from '@tt/domain';
 import type { FacePick, TokenRef } from '@tt/render';
 
 export type Stride =
@@ -156,6 +157,8 @@ export function standVerdict(
    * the table only the ones it was sent. One to a cube, gold or silver.
    */
   others: ReadonlySet<string> = new Set(),
+  /** Which props stand open in this map (D-322), from the save. */
+  opened: Opened = NONE_OPEN,
 ): string | null {
   if (headroom && 'band' in headroom && !standsInBand(headroom.band, at)) {
     return 'outside the levels being shown';
@@ -164,9 +167,10 @@ export function standVerdict(
     return 'above the levels being shown';
   }
   if (seen && !seen.has(`${at.x},${at.y},${at.z}`)) return 'the party has not seen it';
-  switch (whyNotStand(map, tokens, memberId as MemberId, at, others)) {
+  switch (whyNotStand(map, tokens, memberId as MemberId, at, others, opened)) {
     case 'outside': return 'outside the map';
     case 'solid': return 'a block is there';
+    case 'blocked': return 'something is in the way';
     case 'unsupported': return 'nothing to stand on';
     case 'taken': return 'somebody is standing there';
     default: return null;

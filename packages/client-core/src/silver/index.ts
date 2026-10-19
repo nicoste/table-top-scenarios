@@ -8,7 +8,8 @@
 
 import type { Intent } from '@tt/protocol';
 import type { BlockCoord, EncounterMap, LevelRange, SilverTokens, Tokens } from '@tt/domain';
-import { standsInBand, whyNotPlace } from '@tt/domain';
+import { NONE_OPEN, standsInBand, whyNotPlace } from '@tt/domain';
+import type { Opened } from '@tt/domain';
 
 /** A silver token being moved, if one is. */
 export type SilverMove =
@@ -58,11 +59,13 @@ export function silverVerdict(
   at: BlockCoord,
   band: LevelRange | null,
   self?: string,
+  opened: Opened = NONE_OPEN,
 ): string | null {
   if (band && !standsInBand(band, at)) return 'outside the levels being shown';
-  switch (whyNotPlace(map, party, silver, at, self)) {
+  switch (whyNotPlace(map, party, silver, at, self, opened)) {
     case 'outside': return 'outside the map';
     case 'solid': return 'a block is there';
+    case 'blocked': return 'something is in the way';
     case 'unsupported': return 'nothing to stand on';
     case 'taken': return 'somebody is standing there';
     default: return null;

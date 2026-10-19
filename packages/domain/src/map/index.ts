@@ -9,7 +9,7 @@
 // by reference and silently hold duplicates of the same cell, which is the trap
 // R-123 already names for chunk coordinates.
 
-import type { SwatchId } from '../ids/index.js';
+import type { PropId, SwatchId } from '../ids/index.js';
 import { freshId } from '../ids/index.js';
 import { DEFAULT_FLOOR } from '../materials/index.js';
 import type { CuttingPlane, LevelRange, PlaneJSON } from '../planes/index.js';
@@ -63,6 +63,24 @@ export interface BlockCoord {
   readonly z: number;
 }
 
+/**
+ * A prop standing in a map (D-322): which catalogue entry, the cube it was set
+ * down at, how it is turned and what it is finished in. The record only — what
+ * a prop is and what it does are `props`'s, which knows the catalogue.
+ *
+ * On the map rather than beside it because it is part of the building: a
+ * tavern has its door whether or not anybody is playing in it. Whether the
+ * door is open is the session's (D-321).
+ */
+export interface Prop {
+  readonly id: PropId;
+  readonly type: string;
+  readonly at: BlockCoord;
+  /** Quarter turns clockwise from above (R-203). */
+  readonly facing: 0 | 1 | 2 | 3;
+  readonly finish: string;
+}
+
 export interface EncounterMap {
   /**
    * The lowest cell the map owns in X and Z (R-150).
@@ -86,6 +104,8 @@ export interface EncounterMap {
    * the party's attention sits *between* them is play state.
    */
   readonly planes: readonly CuttingPlane[];
+  /** Doors, bars, furniture (D-322), in the order they were placed. */
+  readonly props: readonly Prop[];
 }
 
 /**
@@ -311,6 +331,7 @@ export function createMap(swatch: SwatchId = DEFAULT_FLOOR): EncounterMap {
     // step: the GM may rename it, move it or delete it, and a dungeon that
     // never sees daylight has no use for it.
     planes: [{ id: freshId<'PlaneId'>('plane'), name: WATER_LEVEL, y: 0 }],
+    props: [],
   };
 }
 
@@ -471,7 +492,10 @@ export function sliceOf(map: EncounterMap, range: LevelRange): EncounterMap {
     const at = parseBlockKey(key);
     if (at && inRange(range, at.y)) blocks.set(key, swatch);
   }
-  return { ...map, blocks };
+  // A prop goes with the level it stands on (D-322): a door on the ground
+  // floor is in the ground floor's slice, however tall it is.
+  const props = map.props.filter((prop) => inRange(range, prop.at.y));
+  return { ...map, blocks, props: props.length === map.props.length ? map.props : props };
 }
 
 /**
@@ -521,6 +545,54 @@ export interface MapJSON {
    */
   runs: number[];
   planes: PlaneJSON[];
+  /** The map's props (D-322). Written only when there are any. */
+  props?: PropJSON[];
+}
+
+/** A prop as written. */
+export interface PropJSON {
+  id: string;
+  type: string;
+  at: { x: number; y: number; z: number };
+  facing: number;
+  finish: string;
+}
+
+const isWhole = (n: unknown): n is number => typeof n === 'number' && Number.isInteger(n);
+
+/**
+ * A map's props, read leniently (R-137a): one without an id, a type or a whole
+ * cube is dropped; a facing is brought into range. Not checked against the
+ * catalogue here — a type nobody knows still stands where it stood, as one
+ * cube that stops walking, which is safer than a wall that vanished.
+ */
+export function propsOfJSON(json: unknown): readonly Prop[] {
+  if (!Array.isArray(json)) return [];
+  const out: Prop[] = [];
+  for (const raw of json as unknown[]) {
+    if (!raw || typeof raw !== 'object') continue;
+    const entry = raw as Record<string, unknown>;
+    const at = entry.at as Record<string, unknown> | undefined;
+    if (typeof entry.id !== 'string' || !entry.id || typeof entry.type !== 'string' || !entry.type) continue;
+    if (!at || !isWhole(at.x) || !isWhole(at.y) || !isWhole(at.z)) continue;
+    if (out.some((prop) => prop.id === entry.id)) continue;
+    const facing = isWhole(entry.facing) ? (((entry.facing % 4) + 4) % 4) as Prop['facing'] : 0;
+    out.push({
+      id: entry.id as PropId,
+      type: entry.type,
+      at: { x: at.x, y: at.y, z: at.z },
+      facing,
+      finish: typeof entry.finish === 'string' ? entry.finish : '',
+    });
+  }
+  return out;
+}
+
+export function propsAsJSON(props: readonly Prop[]): PropJSON[] {
+  return props.map((prop) => ({
+    id: prop.id, type: prop.type, at: { x: prop.at.x, y: prop.at.y, z: prop.at.z },
+    facing: prop.facing, finish: prop.finish,
+  }));
 }
 
 /** How many cells a map's box holds: its footprint by the full height. */
@@ -630,6 +702,7 @@ export function mapToJSON(map: EncounterMap): MapJSON {
     ...box,
     ...packBlocks(box.origin, box.size, map.blocks),
     planes: planesToJSON(map.planes),
+    ...(map.props.length > 0 ? { props: propsAsJSON(map.props) } : {}),
   };
 }
 
@@ -650,6 +723,8 @@ export type MapJSONIn = {
   origin?: { x: number; z: number } | undefined;
   size: { x: number; z: number };
   planes?: PlaneJSON[] | undefined;
+  /** Absent before there were props: none (D-187). */
+  props?: unknown;
   /** The packed body (D-217). */
   palette?: string[] | undefined;
   runs?: number[] | undefined;
@@ -710,5 +785,6 @@ export function mapFromJSON(json: MapJSONIn | undefined | null): EncounterMap | 
     ...enclosing(declared.origin, declared.size, blocks),
     blocks,
     planes: planesFromJSON(json.planes),
+    props: propsOfJSON(json.props),
   };
 }

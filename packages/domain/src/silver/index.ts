@@ -18,6 +18,8 @@ import type { LevelRange } from '../planes/index.js';
 import type { Footing, Tokens } from '../tokens/index.js';
 import { sameCube, standingAt, standsInBand } from '../tokens/index.js';
 import type { TokenTemplate } from '../library/index.js';
+import type { Opened } from '../props/index.js';
+import { NONE_OPEN, propRules } from '../props/index.js';
 
 export interface SilverToken {
   readonly id: SilverId;
@@ -109,9 +111,12 @@ export function whyNotPlace(
   silver: SilverTokens,
   at: BlockCoord,
   self?: SilverId | string,
+  /** Which props stand open in this map (D-322); every one is shut unless said. */
+  opened: Opened = NONE_OPEN,
 ): Footing | null {
   if (!inMap(map, at)) return 'outside';
   if (blockAt(map, at)) return 'solid';
+  if (map.props.length > 0 && propRules(map.props, opened).walking.has(blockKey(at))) return 'blocked';
   if (!blockAt(map, { x: at.x, y: at.y - 1, z: at.z })) return 'unsupported';
   if (standingAt(party, at) !== null) return 'taken';
   const there = silverAt(silver, at);
@@ -131,8 +136,9 @@ export function spawnSilver(
   template: TokenTemplate,
   at: BlockCoord,
   random: () => number = Math.random,
+  opened: Opened = NONE_OPEN,
 ): SilverTokens {
-  if (whyNotPlace(map, party, silver, at) !== null) return silver;
+  if (whyNotPlace(map, party, silver, at, undefined, opened) !== null) return silver;
   const token: SilverToken = {
     id: freshId<'SilverId'>('silver'),
     templateId: template.id,
@@ -166,8 +172,9 @@ export function moveSilver(
   silver: SilverTokens,
   id: SilverId | string,
   at: BlockCoord,
+  opened: Opened = NONE_OPEN,
 ): SilverTokens {
-  if (whyNotPlace(map, party, silver, at, id) !== null) return silver;
+  if (whyNotPlace(map, party, silver, at, id, opened) !== null) return silver;
   return mapToken(silver, id, (token) => (sameCube(token.at, at)
     ? token
     : { ...token, at: { x: at.x, y: at.y, z: at.z } }));

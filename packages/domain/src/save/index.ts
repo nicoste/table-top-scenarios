@@ -18,6 +18,8 @@ import type { StageOrder } from '../order/index.js';
 import { NO_ORDER, onStage, withOrder } from '../order/index.js';
 import { NO_SILVER, onLibrary, settledSilver, silverCubes } from '../silver/index.js';
 import type { MemberNotes } from '../member-notes/index.js';
+import type { Opened } from '../props/index.js';
+import { NONE_OPEN } from '../props/index.js';
 import { NO_MEMBER_NOTES, notesOnRoster, withMemberNote } from '../member-notes/index.js';
 import type { Campaign } from '../campaign/index.js';
 import type { CuttingPlane, LevelRange } from '../planes/index.js';
@@ -162,6 +164,13 @@ export interface Save {
    * which is not sent the save at all (R-85).
    */
   readonly memberNotes: MemberNotes;
+  /**
+   * Which props stand open in each map, by point of interest (D-322). The
+   * door is the building's; whether it is open is the session's, so undo
+   * leaves it alone (R-140). Closed is the default, so a map whose doors are
+   * all shut carries no entry.
+   */
+  readonly opened: ReadonlyMap<string, Opened>;
 }
 
 /** Which map the party has gone into. Where they are, and nothing else. */
@@ -200,6 +209,7 @@ export function createLiveSave(campaign: Campaign, savedAt: string): Save {
     silver: new Map(),
     order: new Map(),
     memberNotes: NO_MEMBER_NOTES,
+    opened: new Map(),
   };
 }
 
@@ -334,7 +344,7 @@ export function settleTokens(save: Save, poiId: PoiId | string, map: EncounterMa
   // remembered where a goblin now stands is placed again (D-307).
   const silver = settledSilver(map, silverIn(save, poiId));
   const kept = withSilver(save, poiId, silver);
-  return withTokens(kept, poiId, settled(map, tokensFor(kept, poiId), silverCubes(silver)));
+  return withTokens(kept, poiId, settled(map, tokensFor(kept, poiId), silverCubes(silver), openedIn(kept, poiId)));
 }
 
 /**
@@ -393,7 +403,7 @@ export function lookAround(save: Save, campaign: Campaign): Save {
   const place = placeById(campaign.places, inside.placeId);
   const map = place ? poiById(place, inside.poiId)?.map : null;
   if (!map) return save;
-  const seen = partySight(map, tokensFor(save, inside.poiId), campaign.party);
+  const seen = partySight(map, tokensFor(save, inside.poiId), campaign.party, openedIn(save, inside.poiId));
   return withExplored(save, inside.poiId, explore(exploredIn(save, inside.poiId), seen));
 }
 
@@ -604,3 +614,41 @@ export function tidyOrder(save: Save, livePoiIds: ReadonlySet<string>, memberIds
   return touched ? { ...save, order: next } : save;
 }
 
+/** Which props stand open in one map: none, unless the GM has opened some (D-322). */
+export function openedIn(save: Save, poiId: PoiId | string): Opened {
+  return save.opened.get(poiId as string) ?? NONE_OPEN;
+}
+
+/**
+ * Opens or closes one prop in one map. Identity-preserving (R-165), and a map
+ * left with nothing open loses its entry.
+ */
+export function withOpen(save: Save, poiId: PoiId | string, propId: string, open: boolean): Save {
+  const now = openedIn(save, poiId);
+  if (now.has(propId) === open) return save;
+  const next = new Set(now);
+  if (open) next.add(propId);
+  else next.delete(propId);
+  const all = new Map(save.opened);
+  if (next.size === 0) all.delete(poiId as string);
+  else all.set(poiId as string, next);
+  return { ...save, opened: all };
+}
+
+/**
+ * Forgets what was open of props that are gone, and of maps that are gone —
+ * on the way in, the tolerance `tidyOrder` gives a number nobody is wearing.
+ * Read through until then: an open door that no longer exists opens nothing.
+ */
+export function tidyOpened(save: Save, liveProps: (poiId: string) => ReadonlySet<string> | null): Save {
+  let touched = false;
+  const next = new Map<string, Opened>();
+  for (const [poiId, open] of save.opened) {
+    const live = liveProps(poiId);
+    if (!live) { touched = true; continue; }
+    const kept = [...open].filter((id) => live.has(id));
+    if (kept.length !== open.size) touched = true;
+    if (kept.length > 0) next.set(poiId, kept.length === open.size ? open : new Set(kept));
+  }
+  return touched ? { ...save, opened: next } : save;
+}

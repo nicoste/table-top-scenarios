@@ -5,7 +5,7 @@
 // A preview, never a rule (R-133): a move with no path is allowed all the
 // same, and the readout says so in two words.
 
-import type { BlockCoord, EncounterMap } from '@tt/domain';
+import type { BlockCoord, EncounterMap, Opened } from '@tt/domain';
 import { walkAcross } from '@tt/domain';
 import type { WalkDrawn } from '@tt/render';
 
@@ -35,10 +35,12 @@ export function walkShown(
   from: BlockCoord | null,
   to: BlockCoord | null,
   may?: (at: BlockCoord) => boolean,
+  /** Which props stand open (D-322): a walk goes through an open door and round a shut one. */
+  opened?: Opened,
 ): WalkDrawn | null {
   if (!map || !from || !to) return null;
   if (from.x === to.x && from.y === to.y && from.z === to.z) return null;
-  const walk = walkAcross(map, from, to, may);
+  const walk = walkAcross(map, from, to, may, undefined, opened);
   return walk
     ? { to, cubes: walk.cubes, label: walkLength(walk.length) }
     : { to, cubes: [], label: NO_PATH };

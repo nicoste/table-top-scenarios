@@ -25,7 +25,7 @@ function field(extra: readonly [BlockCoord, SwatchId][] = [], size = 24): Encoun
   const blocks = new Map<string, SwatchId>();
   for (let x = 0; x < size; x += 1) for (let z = 0; z < size; z += 1) blocks.set(key(x, 0, z), STONE);
   for (const [at, swatch] of extra) blocks.set(blockKey(at), swatch);
-  return { origin: { x: 0, z: 0 }, size: { x: size, z: size }, blocks, planes: [] };
+  return { origin: { x: 0, z: 0 }, size: { x: size, z: size }, blocks, planes: [], props: [] };
 }
 
 /** A wall along x = `at`, `high` cubes tall, the whole width of the field. */

@@ -29,6 +29,8 @@ export type SwatchId = Brand<string, 'SwatchId'>;
 export type TemplateId = Brand<string, 'TemplateId'>;
 /** One silver token standing in a map: *goblin N7* (D-307). */
 export type SilverId = Brand<string, 'SilverId'>;
+/** A prop standing in a map (D-322): *the cellar door*. */
+export type PropId = Brand<string, 'PropId'>;
 /** A saved piece of map in the shared Prefabs library (D-321): *a watchtower*. */
 export type PrefabId = Brand<string, 'PrefabId'>;
 

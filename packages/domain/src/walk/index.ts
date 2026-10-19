@@ -16,8 +16,10 @@
 // round, and a wall with no way round has no path.
 
 import type { BlockCoord, EncounterMap } from '../map/index.js';
-import { blockAt, inMap, MAP_MIN_DEPTH } from '../map/index.js';
+import { blockAt, blockKey, inMap, MAP_MIN_DEPTH } from '../map/index.js';
 import { Frontier } from '../route/index.js';
+import type { Opened } from '../props/index.js';
+import { NONE_OPEN, propRules } from '../props/index.js';
 
 /** A walk, in the order it is taken. */
 export interface Walk {
@@ -67,13 +69,19 @@ function estimate(a: BlockCoord, b: BlockCoord): number {
  * The same answer either way along a step, so a walk back is as long as the
  * walk there.
  */
-function clear(map: EncounterMap, a: BlockCoord, dx: number, dy: number, dz: number): boolean {
+function clear(
+  solid: (at: BlockCoord) => boolean,
+  a: BlockCoord,
+  dx: number,
+  dy: number,
+  dz: number,
+): boolean {
   const top = a.y + Math.max(0, dy);
-  if (dy > 0 && blockAt(map, { x: a.x, y: top, z: a.z })) return false;
-  if (dy < 0 && blockAt(map, { x: a.x + dx, y: top, z: a.z + dz })) return false;
+  if (dy > 0 && solid({ x: a.x, y: top, z: a.z })) return false;
+  if (dy < 0 && solid({ x: a.x + dx, y: top, z: a.z + dz })) return false;
   if (dx !== 0 && dz !== 0) {
-    if (blockAt(map, { x: a.x + dx, y: top, z: a.z })) return false;
-    if (blockAt(map, { x: a.x, y: top, z: a.z + dz })) return false;
+    if (solid({ x: a.x + dx, y: top, z: a.z })) return false;
+    if (solid({ x: a.x, y: top, z: a.z + dz })) return false;
   }
   return true;
 }
@@ -85,7 +93,8 @@ function clear(map: EncounterMap, a: BlockCoord, dx: number, dy: number, dz: num
  * says *no path* for all of them, and the move is allowed regardless.
  *
  * Every cube on the way is one somebody could stand in: empty, with a block
- * under it, and allowed by `may` — the screen's own limits, which are the
+ * under it, no prop in it that stops walking as it stands now (`opened` says
+ * which doors are open, D-322), and allowed by `may` — the screen's own limits, which are the
  * levels it is showing and, on the table, only floors the party has seen, so
  * a path never draws the shape of a room nobody has looked into. Other tokens
  * are walked through, not round: a path may pass anybody, and only the cube a
@@ -97,9 +106,14 @@ export function walkAcross(
   to: BlockCoord,
   may: (at: BlockCoord) => boolean = () => true,
   budget: number = WALK_BUDGET,
+  opened: Opened = NONE_OPEN,
 ): Walk | null {
+  // A prop that stops walking is as solid as a block to a walk: nobody stands
+  // in it, and nobody squeezes past its corner (D-322).
+  const blocked = map.props.length > 0 ? propRules(map.props, opened).walking : null;
+  const solid = (at: BlockCoord) => !!blockAt(map, at) || (!!blocked && blocked.has(blockKey(at)));
   const stands = (at: BlockCoord) => inMap(map, at)
-    && !blockAt(map, at)
+    && !solid(at)
     && blockAt(map, { x: at.x, y: at.y - 1, z: at.z }) !== null
     && may(at);
   // The start is wherever the token is, floor or not: a trapdoor opened under
@@ -140,7 +154,7 @@ export function walkAcross(
       if (!stands(next)) continue;
       const nextKey = keyOf(next);
       if (settled.has(nextKey)) continue;
-      if (!clear(map, here, dx, dy, dz)) continue;
+      if (!clear(solid, here, dx, dy, dz)) continue;
       const cost = soFar + span;
       const known = best.get(nextKey);
       if (known !== undefined && known <= cost) continue;
