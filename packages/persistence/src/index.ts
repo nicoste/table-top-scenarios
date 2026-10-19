@@ -11,3 +11,5 @@ export type { ImageStore } from './image-store/index.js';
 
 export { fileLibraryStore, memoryLibraryStore } from './library-store/index.js';
 export type { LibraryStore } from './library-store/index.js';
+
+export { backUpData, pruneBackups, backupName, BACKED_UP, BACKUPS } from './backups/index.js';

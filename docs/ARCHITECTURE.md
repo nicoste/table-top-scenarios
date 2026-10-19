@@ -1305,6 +1305,20 @@ D-035. Numbers are not reused; decisions cite them.
 > exists to prevent, and the test uses a diagonal stripe because a sheared
 > diagonal is obvious and a sheared blob is not.
 
+> **R-210.** **The host copies the data aside every time it starts, before it
+> reads any of it** (D-320): the campaigns, the saves and the Tokens Library,
+> into `data/backups/<when>/`, the newest 20 kept. Not the pictures — stored by
+> what they are and never rewritten (R-204), every one a backup names is still
+> in `images/` — and not the trash, which is already a copy (D-108).
+>
+> A backup that fails is said on the console and the host starts anyway. The
+> folder is ignored by git: the data itself is tracked (D-134), and twenty
+> copies of it would bury its diff.
+>
+> **To go back to one:** stop the host, copy that backup's `campaigns`, `saves`
+> and `library.json` over the ones in `data/`, and start it again — which
+> backs up the state being replaced first, so going back is undoable too.
+
 ---
 
 ## 8c. The pattern

@@ -8037,3 +8037,43 @@ order in it stands (restart the host before verifying a change under
   Left as the GM's call.
 
 No open questions remain.
+
+### D-320 — A backup every time the host starts · `agreed`
+From the "what are we missing" list, and the GM chose it next.
+
+The reasons, all of them the tool's own design: everything is written the
+moment it changes; play state has no undo (R-140); deleting a point of
+interest deletes its map's file; and the data's git history (D-134) only
+holds what was last committed, which a session's work rarely is. A wrong
+click mid-session had nothing to go back to but the last commit.
+
+**When: at start-up, before anything reads the data.** Nothing is writing
+then, so a copy can never catch a file half-written, and it is the moment
+just before a session — the state worth having back if the session goes
+wrong. Restarting the host is also how the GM already asks for a fresh one.
+
+**What: the campaigns, the saves and the Tokens Library.** Not the pictures:
+they are stored under the hash of what they are, never deleted, never
+rewritten, so a backup that names one can always find it in `images/` —
+copying them would cost disk and protect nothing. Not the trash either,
+which is the deleted campaigns already moved aside (D-108). On the GM's data
+a backup is about 40 KB, so twenty of them are a megabyte.
+
+**How many: the newest 20.** Older ones are deleted at the next start — only
+folders the host named, so a copy the GM made by hand in `backups/` and named
+*"before the big fight"* is left alone.
+
+**Restoring is by hand** — stop, copy the folders back, start — and written
+down in R-210. Starting again backs up the state being replaced, so a restore
+cannot lose anything either. A button for it would be a second way to destroy
+a session from a menu; this one needs a person to mean it.
+
+The folder is ignored by git, for the reason the trash is: a copy of what is
+already tracked.
+
+Checked on a copy of the GM's data: the host printed the backup's folder on
+start and served the console; the backup's campaigns, saves and library were
+identical to the data, without the thirteen trashed campaigns; the console
+loaded as usual.
+
+R-210 is new.

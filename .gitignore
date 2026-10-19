@@ -15,6 +15,9 @@ dist/
 #
 # Only the trash is ignored, since the app already moves deletions aside.
 data/**/.trash-*
+# And the host's start-up backups (D-320): copies of what is tracked, taken
+# on every start, which would bury the diff they exist to back up.
+data/backups/
 
 # Local tool state
 .claude/settings.local.json
