@@ -8396,3 +8396,10 @@ top; the table selected, turned with Z and refinished in pale wood. On the
 table: the six props and the open door, once the band was widened to include
 them — cut out while it stood at the water level, as the band says. No
 errors on either screen.
+
+### D-330 — Backspace removes the prop selected · `agreed`
+*"Let give the backspace the remove action shortcut."* With the Props tool in
+hand and a prop selected, Backspace — or Delete, on a keyboard that has one —
+does what the panel's Remove button does. No confirmation: removing a prop is
+building, and one undo brings it back (R-212). A field being typed in keeps
+its own Backspace; the console's shortcuts never see a key meant for a field.

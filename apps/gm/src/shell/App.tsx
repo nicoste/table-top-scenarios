@@ -1569,6 +1569,14 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
         if (digit === '5') { setMapTool('prefabs'); return; }
         // The sixth (D-328): doors, bars and furniture.
         if (digit === '6') { setMapTool('props'); return; }
+        // Backspace — or Delete, where there is one — removes the prop selected
+        // (D-330). A field being typed in never gets here (the guard above).
+        if (mapTool === 'props' && (e.code === 'Backspace' || e.code === 'Delete') && selectedProp && openMap) {
+          e.preventDefault();
+          dispatch({ kind: 'removeProp', placeId: openMap.placeId, poiId: openMap.poiId, id: selectedProp });
+          setSelectedProp(null);
+          return;
+        }
         // Z / X turn the prop in hand, or the one selected (R-203).
         if (mapTool === 'props' && (e.code === 'KeyZ' || e.code === 'KeyX')) {
           const step = e.code === 'KeyX' ? 1 : -1;

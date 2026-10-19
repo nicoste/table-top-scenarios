@@ -349,7 +349,8 @@ export function MapPanel({
             <>
               Pick a prop from the catalogue and click where it stands — <b>Z / X</b>{' '}
               turn it first. One per click, and each is one undo. With nothing in hand,
-              click a prop to turn, refinish, open or remove it. During play, a{' '}
+              click a prop to turn, refinish, open or remove it — <b>Backspace</b>{' '}
+              removes the one selected. During play, a{' '}
               <b>Move</b> click opens and shuts a door.
             </>
           )}

@@ -2239,6 +2239,8 @@ apps/host/src/
 >   sight; a shut door, bars and furniture stop standing and the walk
 >   (R-209). Open, a door is a doorway: the party sees through it and walks
 >   through it. Blocks, prefabs and tokens keep out of a prop's cubes.
+> - **Backspace removes the prop selected** (D-330), or Delete where there is
+>   one; the Remove button does the same, and one undo brings it back.
 > - **The GM's, every part of it.** In play a door opens and shuts with a
 >   **Move** click; never from the table (D-328). A door is not shut on
 >   somebody in the doorway.

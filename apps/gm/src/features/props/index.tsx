@@ -92,19 +92,21 @@ export function PropsPanel({ hand, onHand, selected, onSelect, opened, placeId, 
                 </button>
               </Tooltip>
             )}
-            <button
-              className="wide quiet"
-              onClick={() => { dispatch({ kind: 'removeProp', ...where, id: selected.id }); onSelect(null); }}
-            >
-              Remove
-            </button>
+            <Tooltip label="Take it away — Backspace. One undo brings it back." placement="bottom" stretch>
+              <button
+                className="wide quiet"
+                onClick={() => { dispatch({ kind: 'removeProp', ...where, id: selected.id }); onSelect(null); }}
+              >
+                Remove
+              </button>
+            </Tooltip>
           </div>
           <Finishes
             type={selectedType}
             chosen={selected.finish}
             onPick={(finish) => dispatch({ kind: 'editProp', ...where, id: selected.id, finish })}
           />
-          <p className="hint">{rulesOf(selectedType)}. Escape lets go of it.</p>
+          <p className="hint">{rulesOf(selectedType)}. Backspace removes it; Escape lets go of it.</p>
         </div>
       )}
 
