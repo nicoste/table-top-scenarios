@@ -12,6 +12,8 @@
 // costs a boolean.
 
 import { useEffect, useState } from 'react';
+import type { LightShadows } from '@tt/domain';
+import { nextShadows } from '@tt/domain';
 import type { Stage } from '@tt/render';
 import { FRAME_BUDGET_MS } from '@tt/render';
 import { rate, summarise } from '@tt/client-core';
@@ -30,7 +32,7 @@ const SAMPLE_MS = 250;
  * of the console already follows for its digits and brackets.
  */
 export const COST_CODE = 'Backquote';
-export const COST_HINT = 'backtick closes this · shift+backtick occlusion · T surface figure · L light shadows';
+export const COST_HINT = 'backtick closes this · shift+backtick occlusion · T surface figure · L light shadows: soft, real, none';
 
 /*
  * Traffic is recorded where the socket is and read where the overlay is, and
@@ -84,11 +86,12 @@ export function useCost(
   /** The figure in a material's surface (R-177), on T. On, like occlusion. */
   const [figures, setFigures] = useState(true);
   /**
-   * Real shadows from lights (D-338), on L. **Off by default**: every lamp is
-   * six more passes over the scene each time something it lights moves, and
-   * this screen's computer is the one to say whether it can afford them.
+   * How lights are shaded (D-339), stepped by L: soft, real, none, and round
+   * again. **Soft to start, never real**: every real lamp is six more passes
+   * over the scene each time something it lights moves, and this screen's
+   * computer is the one to say whether it can afford them (D-338).
    */
-  const [lampShadows, setLampShadows] = useState(false);
+  const [lampShadows, setLampShadows] = useState<LightShadows>('soft');
   const [reading, setReading] = useState<Reading | null>(null);
 
   useEffect(() => {
@@ -97,7 +100,7 @@ export function useCost(
       const typing = (e.target as HTMLElement | null)?.tagName;
       if (typing && /^(INPUT|TEXTAREA|SELECT)$/.test(typing)) return;
       if (e.code === 'KeyT') { setFigures((drawn) => !drawn); return; }
-      if (e.code === 'KeyL') { setLampShadows((cast) => !cast); return; }
+      if (e.code === 'KeyL') { setLampShadows(nextShadows); return; }
       if (e.code !== COST_CODE) return;
       // Not while the GM is naming something: a backtick belongs to the field.
       const to = e.target as HTMLElement | null;

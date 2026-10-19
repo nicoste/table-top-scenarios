@@ -7,7 +7,7 @@ import type { BlockCoord, EncounterMap, SwatchId } from '@tt/domain';
 import {
   createMap, setBlocks, DEFAULT_FLOOR, putProp, propLights, carriedAt, lampField, lightIn, glow, TORCH,
   NONE_OPEN, withCarried, NO_CARRIED, carriedOnRoster, carriedToJSON, carriedFromJSON, carriedLightFromJSON,
-  MAX_LIGHT_REACH, flameColour, lightSilver, silverToJSON, silverFromJSON,
+  MAX_LIGHT_REACH, flameColour, lightSilver, silverToJSON, silverFromJSON, nextShadows, LIGHT_SHADOWS,
 } from '@tt/domain';
 import type { SilverToken } from '@tt/domain';
 
@@ -132,6 +132,27 @@ describe('shadows (D-337)', () => {
     const aside = brightness(map, sources, cube(6, 1, 10));
     expect(aside).toBeGreaterThan(0);
     expect(aside).toBeLessThan(glow(5, 8) * 0.5);
+  });
+});
+
+describe('a screen\'s choice of shadows (D-339)', () => {
+  it('steps soft, real, none and round again, starting soft', () => {
+    expect(LIGHT_SHADOWS[0]).toBe('soft');
+    expect(nextShadows('soft')).toBe('real');
+    expect(nextShadows('real')).toBe('none');
+    expect(nextShadows('none')).toBe('soft');
+  });
+
+  it('with none, a pillar throws no shadow: the light finds its way round, as at first (D-335)', () => {
+    const pillar = [1, 2, 3, 4, 5, 6].map((y) => cube(8, y, 8));
+    const map = setBlocks(createMap(), pillar, STONE);
+    const sources = [torch(cube(5, 1, 8), 8)];
+    const soft = lightIn(lampField(map, NONE_OPEN, sources, 'soft'), cube(11, 1, 8))[0];
+    const none = lightIn(lampField(map, NONE_OPEN, sources, 'none'), cube(11, 1, 8))[0];
+    expect(none).toBeGreaterThan(soft * 2);
+    // Walls still stop it.
+    expect(brightness(walled(), [torch(cube(3, 1, 7))], cube(7, 1, 7))).toBe(0);
+    expect(lightIn(lampField(walled(), NONE_OPEN, [torch(cube(3, 1, 7))], 'none'), cube(7, 1, 7))[0]).toBe(0);
   });
 });
 

@@ -8636,3 +8636,18 @@ on, the campfire threw the column's shadow up Tollkeep's wall, the brazier's
 legs and the table's long shadows across the grass, and with the lantern and
 Galion's torch lit too, three lamps at once. No shader errors.
 
+### D-339 — Three ways to shade the lights, one key · `agreed`
+*"Is there a way to have the 3 options serialized? I mean, to be able to
+toggle between the 3."* The three are D-335's light that finds its way round
+everything, D-337's soft shadows, and D-338's real ones. **L steps through
+them — soft, real, none, and round again** — and the cost overlay says which.
+
+Soft to start, as every screen has drawn since D-337, so one press is still
+real shadows and real is never the default (D-338). Still a screen's own and
+not saved, like occlusion and the surface figure: the console and the table
+each have theirs, and a reload is soft again.
+
+Each light already carried all three in its box — its flood, its straight-line
+light, its bounce — so a step is the field put together again from what is
+cached, nothing worked out afresh.
+

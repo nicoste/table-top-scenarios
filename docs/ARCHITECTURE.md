@@ -2281,13 +2281,15 @@ apps/host/src/
 >   wedge of light into the room beyond, and nowhere light reaches is black.
 >   What casts a shadow is what stops light: blocks, and what stops sight —
 >   not furniture, and not tokens.
-> - **Real shadows are a switch on each screen, off by default** (D-338): **L**,
->   beside occlusion and the surface figure in the cost overlay, for that
->   screen only and until it reloads. On, the six lights nearest the middle
->   of the view each get a three.js lamp at the top of its flame, casting a
+> - **Each screen chooses how lights are shaded, on L** (D-338, D-339):
+>   *soft* to start, then *real*, then *none*, and round again — beside
+>   occlusion and the surface figure in the cost overlay, for that screen only
+>   and until it reloads. *None* lets the light find its way round everything
+>   (D-335); *soft* is the line above. *Real* gives the six lights nearest the
+>   middle of the view each a three.js lamp at the top of its flame, casting a
 >   shadow map — every block and prop casts, furniture included — and the
->   field keeps only what bounced round for them. The others stay the
->   field's, and the six follow the view.
+>   field keeps only what bounced round for them; the others stay soft, and
+>   the six follow the view.
 > - **Worked out on change, read per frame** (R-170): when the body, a door,
 >   a light or a carrier changes, never per frame — no flicker. Any number of
 >   lights; one texture every surface reads, the cube in front of each face.

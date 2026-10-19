@@ -67,10 +67,10 @@ export {
   removeProp, propRules, statesOf, isLit, reachOf, flameColour,
 } from './props/index.js';
 export type {
-  CarriedLight, CarriedLightJSON, CarriedLights, LightSource, LampField,
+  CarriedLight, CarriedLightJSON, CarriedLights, LightSource, LampField, LightShadows,
 } from './lamps/index.js';
 export {
-  TORCH, NO_CARRIED, carriedLightFromJSON, carriedLightToJSON, cleanCarried, sameLight, withCarried,
+  LIGHT_SHADOWS, nextShadows, TORCH, NO_CARRIED, carriedLightFromJSON, carriedLightToJSON, cleanCarried, sameLight, withCarried,
   carriedOnRoster, carriedToJSON, carriedFromJSON, propLights, carriedAt, glow, lampField, lightIn,
 } from './lamps/index.js';
 export type { Walk } from './walk/index.js';

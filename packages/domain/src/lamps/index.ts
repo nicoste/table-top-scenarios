@@ -188,6 +188,24 @@ interface Spread {
   readonly level: Float32Array;
   /** Only what bounced round, for a light whose lamp casts its own shadows (D-338). */
   readonly bounce: Float32Array;
+  /** All the light that found its way round, as if nothing threw a shadow (D-335, D-339). */
+  readonly flood: Float32Array;
+}
+
+/**
+ * How a screen shades the lights (D-339), its own choice: `none`, the light
+ * finding its way round everything (D-335); `soft`, what the flame cannot see
+ * gets only what bounced (D-337); `real`, the lights nearest the view get
+ * lamps casting shadow maps and the rest are soft (D-338).
+ */
+export type LightShadows = 'none' | 'soft' | 'real';
+
+/** The order a screen's switch steps through them, starting where a screen starts. */
+export const LIGHT_SHADOWS: readonly LightShadows[] = ['soft', 'real', 'none'];
+
+/** The next one along. */
+export function nextShadows(now: LightShadows): LightShadows {
+  return LIGHT_SHADOWS[(LIGHT_SHADOWS.indexOf(now) + 1) % LIGHT_SHADOWS.length]!;
 }
 
 /** The 26 steps, each with what it costs and the cubes it passes between. */
@@ -344,6 +362,7 @@ function spread(map: EncounterMap, stops: ReadonlySet<string>, at: BlockCoord, r
   }
   const level = new Float32Array(count);
   const bounce = new Float32Array(count);
+  const flood = new Float32Array(count);
   for (let z = 0; z < side; z += 1) {
     for (let y = 0; y < side; y += 1) {
       for (let x = 0; x < side; x += 1) {
@@ -352,11 +371,12 @@ function spread(map: EncounterMap, stops: ReadonlySet<string>, at: BlockCoord, r
         const bounced = BOUNCE * glow(far[i]!, reach);
         const straight = Math.hypot(x - r, y - r, z - r);
         bounce[i] = bounced;
+        flood[i] = glow(far[i]!, reach);
         level[i] = inView(cubes, side, r, x, y, z) ? Math.max(glow(straight, reach), bounced) : bounced;
       }
     }
   }
-  return { min, side, cubes, level, bounce };
+  return { min, side, cubes, level, bounce, flood };
 }
 
 /** How much of a light reaches a cube its flame cannot see: what bounced round (D-337). */
@@ -442,7 +462,13 @@ function channels(colour: string): readonly [number, number, number] {
  * map, so a map with one candle in a corner is not a texture the size of the
  * map. Lights that overlap add up, to three flames and no further.
  */
-export function lampField(map: EncounterMap, opened: Opened, sources: readonly LightSource[]): LampField | null {
+export function lampField(
+  map: EncounterMap,
+  opened: Opened,
+  sources: readonly LightSource[],
+  /** `none` lets every light round everything; otherwise what a flame cannot see gets only the bounce (D-339). */
+  shadows: LightShadows = 'soft',
+): LampField | null {
   const stops = map.props.length > 0 ? propRules(map.props, opened).sight : NO_STOPS;
   const lit = sources
     .filter((source) => inMap(map, source.at) && source.reach > 0)
@@ -481,7 +507,7 @@ export function lampField(map: EncounterMap, opened: Opened, sources: readonly L
           const i = x + one.side * (y + one.side * z);
           const f = fx + size.x * (fy + size.y * fz);
           if (one.cubes[i] === STOPS) { solid[f] = 1; continue; }
-          const level = source.shadowed ? one.bounce[i]! : one.level[i]!;
+          const level = source.shadowed ? one.bounce[i]! : shadows === 'none' ? one.flood[i]! : one.level[i]!;
           if (level === 0) continue;
           light[f * 3] = light[f * 3]! + level * red;
           light[f * 3 + 1] = light[f * 3 + 1]! + level * green;

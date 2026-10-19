@@ -10,8 +10,8 @@ import {
   EdgesGeometry, LineSegments, LineBasicMaterial, Group, BufferGeometry, DoubleSide,
 } from 'three';
 import type {
-  BlockCoord, Campaign, CarriedLight, EncounterMap, GlobalCell, LightSource, Lighting, Material, Opened, Placement,
-  WorldCell,
+  BlockCoord, Campaign, CarriedLight, EncounterMap, GlobalCell, LightShadows, LightSource, Lighting, Material, Opened,
+  Placement, WorldCell,
 } from '@tt/domain';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -396,12 +396,12 @@ export class Stage {
   private readonly lamps = buildLamplight();
   private lit: { map: EncounterMap; opened: Opened; sources: string } | null = null;
   /**
-   * Real shadows from lights (D-338): off unless this screen turns them on.
-   * Then the lights nearest the middle of the view get a lamp of three.js's
+   * How this screen shades the lights (D-339): soft unless it says otherwise.
+   * Real, the lights nearest the middle of the view get a lamp of three.js's
    * own, casting shadow maps, and the field keeps only what bounced round for
-   * them. The rest stay the field's.
+   * them; the rest stay the field's (D-338).
    */
-  private lampShadows = false;
+  private lampShadows: LightShadows = 'soft';
   private readonly lampGroup = new Group();
   private lampPool: PointLight[] = [];
   /** Where the view was looking when the lamps were last handed out. */
@@ -865,28 +865,28 @@ export class Stage {
       ...this.standing.flatMap((one) => (one.light ? [carriedAt(one.at, one.light)] : [])),
       ...this.present.flatMap((one) => (one.light ? [carriedAt(one.at, one.light)] : [])),
     ];
-    const lamped = this.lampShadows ? this.nearestLights(all) : new Set<number>();
+    const lamped = this.lampShadows === 'real' ? this.nearestLights(all) : new Set<number>();
     const sources = all.map((one, i) => (lamped.has(i) ? { ...one, shadowed: true } : one));
-    const said = sources
+    const said = `${this.lampShadows}|${sources
       .map((one) => `${one.at.x},${one.at.y},${one.at.z}:${one.colour}:${one.reach}${one.shadowed ? ':lamp' : ''}`)
-      .join('|');
+      .join('|')}`;
     const was = this.lit;
     if (was && was.map === map && was.opened === this.opened && was.sources === said) return;
     this.lit = { map, opened: this.opened, sources: said };
-    this.lamps.set(lampField(map, this.opened, sources));
+    this.lamps.set(lampField(map, this.opened, sources, this.lampShadows));
     this.setLamps(sources.filter((one) => one.shadowed));
     this.invalidate();
   }
 
   /**
-   * Real shadows from lights, or none (D-338). A switch for this screen, off
-   * unless turned on: each lamp redraws the scene six more times whenever
+   * How this screen shades the lights (D-339): none, soft or real. Real is
+   * never the default: each lamp redraws the scene six more times whenever
    * something it lights changes, and the table's computer is the one that
-   * has to afford it.
+   * has to afford it (D-338).
    */
-  setLampShadows(on: boolean): void {
-    if (on === this.lampShadows) return;
-    this.lampShadows = on;
+  setLampShadows(shadows: LightShadows): void {
+    if (shadows === this.lampShadows) return;
+    this.lampShadows = shadows;
     this.relight();
   }
 
@@ -1776,7 +1776,7 @@ export class Stage {
      * Lamps follow the view (D-338): when it has moved a few cubes from where
      * they were handed out, the lights nearest its middle may be others.
      */
-    if (this.lampShadows && this.lampFocus) {
+    if (this.lampShadows === 'real' && this.lampFocus) {
       const focus = this.target.focus;
       if (Math.hypot(focus.x - this.lampFocus.x, focus.z - this.lampFocus.z) > 4) this.relight();
     }
