@@ -8461,3 +8461,10 @@ stamp. Open toward the front of its facing; turned with Z / X like any prop.
 
 Only the drawing changed. It still stops sight (D-329): a bookcase full of
 books is a wall to look through.
+
+### D-334 — The bookcase's shelves are empty · `agreed`
+*"Keep it blocking sight, but remove the books, I like to use it in different
+ways and having book is too much detail."* The frame and the shelves stay
+(D-333); the books go. An empty set of shelves is a library, a pantry or an
+armoury as the GM says it is — the fiction is the table's to fill. It still
+stops sight (D-329).

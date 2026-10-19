@@ -20,7 +20,7 @@ import { propBox, propType, turnedSize } from '@tt/domain';
 interface Part {
   readonly size: readonly [number, number, number];
   readonly at: readonly [number, number, number];
-  readonly tone?: 'base' | 'dark' | 'light' | 'books' | 'booksBlue' | 'booksGreen' | 'brass';
+  readonly tone?: 'base' | 'dark' | 'light' | 'brass';
   readonly round?: boolean;
 }
 
@@ -39,24 +39,6 @@ const rods = (count: number, width: number, height: number, thick = 0.06): Part[
 
 const rails = (width: number, heights: readonly number[], thick = 0.07): Part[] =>
   heights.map((y) => ({ size: [width - 0.04, thick, thick] as const, at: [width / 2, y, 0.5] as const }));
-
-/** The books along one shelf of a bookcase, standing from `floor`; `row` varies the run. */
-function books(floor: number, row: number): Part[] {
-  const TONES = ['books', 'booksBlue', 'booksGreen', 'dark'] as const;
-  const widths = [0.1, 0.07, 0.12, 0.08, 0.09, 0.11, 0.06, 0.1];
-  const heights = [0.22, 0.25, 0.2, 0.24, 0.18, 0.23, 0.21, 0.19];
-  const out: Part[] = [];
-  let x = 0.1;
-  for (let i = 0; x < 0.86; i += 1) {
-    const k = (i + row * 3) % widths.length;
-    const width = Math.min(widths[k]!, 0.9 - x);
-    if (width < 0.04) break;
-    const height = heights[k]!;
-    out.push({ size: [width - 0.01, height, 0.3], at: [x + width / 2, floor + height / 2, 0.27], tone: TONES[(i + row) % TONES.length]! });
-    x += width;
-  }
-  return out;
-}
 
 /** What each prop is made of, unturned, shut or open. */
 function partsOf(type: string, open: boolean): readonly Part[] {
@@ -103,8 +85,9 @@ function partsOf(type: string, open: boolean): readonly Part[] {
         })),
       ];
     case 'bookcase':
-      // Open at the front (D-333): a back, two sides, a top and a bottom,
-      // two shelves, and the books standing on each — not a closed box.
+      // Open at the front (D-333): a back, two sides, a top and a bottom and
+      // two shelves — empty, so it can be a pantry, an armoury or a library as
+      // the GM likes (D-334).
       return [
         { size: [0.94, 0.98, 0.04], at: [0.5, 0.49, 0.09] },
         { size: [0.05, 0.98, 0.44], at: [0.055, 0.49, 0.29] },
@@ -112,7 +95,6 @@ function partsOf(type: string, open: boolean): readonly Part[] {
         { size: [0.94, 0.05, 0.44], at: [0.5, 0.955, 0.29] },
         { size: [0.94, 0.05, 0.44], at: [0.5, 0.025, 0.29] },
         ...[0.33, 0.66].map((y) => ({ size: [0.84, 0.035, 0.42] as const, at: [0.5, y, 0.29] as const })),
-        ...books(0.05, 0), ...books(0.35, 1), ...books(0.68, 2),
       ];
     case 'barrel':
       return [
@@ -140,9 +122,6 @@ export interface PropMeshes {
   dispose(): void;
 }
 
-const BOOKS = '#7b3d33';
-const BOOKS_BLUE = '#3e5776';
-const BOOKS_GREEN = '#4f6340';
 const BRASS = '#c9a24f';
 /**
  * Out of sight, a prop is greyed as an explored block is (R-45, D-332): most
@@ -170,9 +149,6 @@ function tonesOf(colour: string): Record<NonNullable<Part['tone']>, string> {
     base: colour,
     dark: `#${base.clone().multiplyScalar(0.62).getHexString()}`,
     light: `#${base.clone().lerp(new Color('#ffffff'), 0.25).getHexString()}`,
-    books: BOOKS,
-    booksBlue: BOOKS_BLUE,
-    booksGreen: BOOKS_GREEN,
     brass: BRASS,
   };
 }
