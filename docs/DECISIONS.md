@@ -8220,3 +8220,27 @@ original had them; one ⌘Z took all 13 back; X turned it, M mirrored it; the
 console logged no errors.
 
 R-211 is new; D-321's "two corner blocks" is superseded.
+
+### D-324 — The Prefabs tool never looks dead · `agreed`
+*"I'm clicking around with the Prefabs tool and nothing happens."*
+
+Reproduced on a copy of the GM's data with real clicks. Capturing worked;
+the tool did not say how to get there. It opened on **Place**, and with an
+empty library Place has nothing in hand, so every click on the map did
+nothing — said only in the Tool card's readout, across the screen from the
+panel the GM was looking at. Two smaller faults showed on the way.
+
+- **An empty library opens on Capture**, and Place is greyed out until
+  something is saved: a mode with nothing to do is not a mode to start in.
+- **Before the first corner, the cube under the pointer is outlined** — the
+  cube a click would take. Capture drew nothing until the first click, so
+  hovering looked like a tool that was not listening.
+- **With prefabs saved and none picked, the panel says so beside the list**:
+  a click on the map does nothing until one is.
+- **The box's size was printed from the corners as clicked**, so a box
+  clicked from its far corner read *29 × 1 × −11*. It is printed from the box
+  now, as the readout already was.
+
+Checked again: the tool opened on Capture with Place greyed out; a blue cube
+followed the pointer before any click; the same two corners read 29 × 1 × 13;
+saved, and with the prefab put down, the panel asked for one to be picked.

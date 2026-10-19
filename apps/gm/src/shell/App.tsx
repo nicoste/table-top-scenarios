@@ -657,6 +657,11 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     () => (prefabWires ?? []).map((wire) => prefabFromJSON(wire)).filter((one): one is NonNullable<typeof one> => !!one),
     [prefabWires],
   );
+  // With nothing saved there is nothing to place, so the tool opens on Capture
+  // — a Place mode with an empty list is a tool where every click does nothing (D-324).
+  useEffect(() => {
+    if (mapTool === 'prefabs' && prefabs.length === 0) setPrefabMode('capture');
+  }, [mapTool, prefabs.length]);
   // A prefab just saved is put in hand when it arrives: that is why it was made.
   useEffect(() => {
     if (awaitingPrefab.current === null || prefabs.length <= awaitingPrefab.current) return;

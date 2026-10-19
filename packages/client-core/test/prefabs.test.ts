@@ -28,7 +28,9 @@ describe('capturing a box', () => {
   it('outlines the box to the pointer until the second corner is down', () => {
     const capture = captureClick(NO_CAPTURE, cube(4, 3, 2));
     expect(captureBox(capture, cube(1, 1, 1))).toEqual({ min: cube(1, 1, 1), max: cube(4, 3, 2) });
-    expect(captureBox(NO_CAPTURE, cube(1, 1, 1))).toBeNull();
+    // Before any corner, the cube a click would take — so the tool never looks dead (D-324).
+    expect(captureBox(NO_CAPTURE, cube(1, 1, 1))).toEqual({ min: cube(1, 1, 1), max: cube(1, 1, 1) });
+    expect(captureBox(NO_CAPTURE, null)).toBeNull();
   });
 
   it('says the size as bare numbers, wide by tall by deep (D-316)', () => {

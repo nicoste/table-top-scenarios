@@ -631,4 +631,6 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
 }
 .sheet-link:hover .link-badge, .sheet-link:focus-visible .link-badge { opacity: 1; }
 .library-url-warn { margin: -4px 0 8px; font-size: 11px; }
+/* Said beside the list, where the GM is looking, not only in the readout (D-324). */
+.prefab-pick { margin: 8px 0 0; font-size: 11.5px; }
 .stage-list li.hidden .library-card, .stage-list li.hidden .stage-row > input { opacity: 0.55; }

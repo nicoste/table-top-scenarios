@@ -126,9 +126,14 @@ export function captureClick(capture: Capture, at: BlockCoord): Capture {
   return { first: capture.first, second: at };
 }
 
-/** The box to outline: both corners, or the first and the block under the pointer. */
+/**
+ * The box to outline: both corners, or the first and the cube under the
+ * pointer — and before any corner, the cube under the pointer alone, so the
+ * GM sees where a click would put the first one rather than a tool that
+ * seems to do nothing (D-324).
+ */
 export function captureBox(capture: Capture, hover: BlockCoord | null): Box | null {
-  if (!capture.first) return null;
+  if (!capture.first) return hover ? boxBetween(hover, hover) : null;
   const other = capture.second ?? hover;
   return other ? boxBetween(capture.first, other) : null;
 }

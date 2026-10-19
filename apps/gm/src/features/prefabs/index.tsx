@@ -11,7 +11,7 @@ import type { Intent, PrefabWire } from '@tt/protocol';
 import type { Prefab } from '@tt/domain';
 import { searchLibrary, tagsFromText } from '@tt/domain';
 import type { Capture, PrefabPlacing } from '@tt/client-core';
-import { describeBox, mirrorPlacing, saveIntent, turnPlacing } from '@tt/client-core';
+import { captureBox, describeBox, mirrorPlacing, saveIntent, turnPlacing } from '@tt/client-core';
 import { Tooltip } from '@tt/ui';
 
 export type PrefabMode = 'place' | 'capture';
@@ -124,8 +124,17 @@ export function PrefabsPanel({
     <div className="card library prefabs">
       <h2>Prefabs</h2>
       <div className="reveal" style={{ marginBottom: 8 }}>
-        <Tooltip label="Pick a saved prefab and click where it goes" placement="left">
-          <button className={mode === 'place' ? 'on' : ''} onClick={() => onMode('place')}>Place</button>
+        <Tooltip
+          label={prefabs.length === 0 ? 'Nothing saved yet — capture one first' : 'Pick a saved prefab and click where it goes'}
+          placement="left"
+        >
+          <button
+            className={mode === 'place' ? 'on' : ''}
+            disabled={prefabs.length === 0}
+            onClick={() => onMode('place')}
+          >
+            Place
+          </button>
         </Tooltip>
         <Tooltip label="Save a piece of this map: click two corner blocks" placement="left">
           <button className={mode === 'capture' ? 'on' : ''} onClick={() => onMode('capture')}>Capture</button>
@@ -147,7 +156,7 @@ export function PrefabsPanel({
             <>
               {captured && (
                 <p className="readout">
-                  {describeBox({ min: capture.first!, max: capture.second })} · {captured.blocks.size} blocks
+                  {describeBox(captureBox(capture, null)!)} · {captured.blocks.size} blocks
                 </p>
               )}
               <label className="lbl" htmlFor="prefab-name">Name</label>
@@ -222,6 +231,9 @@ export function PrefabsPanel({
                 </li>
               ))}
             </ul>
+          )}
+          {!chosen && found.length > 0 && (
+            <p className="warn prefab-pick">Pick one to place it — a click on the map does nothing until you do.</p>
           )}
           {chosen && (
             <>
