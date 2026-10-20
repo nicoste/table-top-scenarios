@@ -19,19 +19,12 @@
 // Face picking is the reason this exists separately from the world's mesh: the
 // world stores a height per cell and never needs to know *which side* was hit,
 // while placing a block does (R-147).
-//
-// **Stairs are a second mesh per material** (D-349): the same block, drawn as
-// three steps instead of a cube and turned the way it climbs. Nothing else
-// about it differs — it is the same block to every rule — so it shares the
-// material, the colour, the fog and the picking; a hit on a step is a hit on
-// its block, with the face turned back into the world.
 
 import {
   BoxGeometry, Color, DynamicDrawUsage, Group, InstancedMesh, Matrix4, MeshStandardMaterial,
   Object3D, Vector3,
 } from 'three';
-import type { BufferGeometry, Intersection } from 'three';
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import type { Intersection } from 'three';
 import type { BlockCoord, EncounterMap, Material, SwatchId } from '@tt/domain';
 import { parseBlockKey, materialIn, cutIdIn, colourOf } from '@tt/domain';
 import { grainAt } from '../grain/index.js';
@@ -79,38 +72,6 @@ export interface BlockBody {
 }
 
 const CUBE = 1;
-
-/** How many steps a stair is drawn with (D-349): enough to read as stairs, few enough to stay blocky. */
-export const STAIR_STEPS = 3;
-
-/**
- * A stair's shape, centred as the cube is: steps rising toward −z, which is a
- * prop's back (R-203) and where a stair's facing points it to climb. Each step
- * runs the full width; the tallest is at the back.
- */
-export function stairGeometry(): BufferGeometry {
-  const steps: BufferGeometry[] = [];
-  for (let k = 1; k <= STAIR_STEPS; k += 1) {
-    const high = k / STAIR_STEPS;
-    const deep = 1 / STAIR_STEPS;
-    const step = new BoxGeometry(CUBE, high, deep);
-    // Its bottom on the cube's, and its depth the k-th from the front.
-    step.translate(0, -0.5 + high / 2, 0.5 - (k - 0.5) * deep);
-    steps.push(step);
-  }
-  const merged = mergeGeometries(steps)!;
-  for (const step of steps) step.dispose();
-  return merged;
-}
-
-/** Where an instance sits and how it is turned: a block's middle, and a stair's climb. */
-function poseOf(pose: Object3D, at: BlockCoord, facing: number | null): Matrix4 {
-  pose.position.set(at.x + 0.5, at.y + 0.5, at.z + 0.5);
-  // Turned as a prop is (R-203): a quarter turn clockwise from above per step.
-  pose.rotation.set(0, facing === null ? 0 : -facing * (Math.PI / 2), 0);
-  pose.updateMatrix();
-  return pose.matrix;
-}
 /** A hidden block's instance: the cube scaled to nothing. */
 const NOWHERE = new Matrix4().makeScale(0, 0, 0);
 /**
@@ -124,7 +85,6 @@ const DIMMED = 0.55;
 export function buildBlockBody(map: EncounterMap, materials: readonly Material[]): BlockBody {
   const group = new Group();
   const geometry = new BoxGeometry(CUBE, CUBE, CUBE);
-  const stairShape = stairGeometry();
   const known = new Map(materials.map((m) => [m.id as string, m]));
   const unknown: Material = {
     id: 'material:unknown' as Material['id'],
@@ -158,28 +118,18 @@ export function buildBlockBody(map: EncounterMap, materials: readonly Material[]
   // Grouped first, because a mesh is per material and its size has to be known
   // before it is made. Keyed on the **material**, not the swatch: the shades of
   // one stone differ only in a per-instance colour and share everything else.
-  // Stairs in a pile of their own beside the cubes (D-349): another shape,
-  // the same material.
-  type Pile = { blocks: BlockCoord[]; tints: Color[]; facings: (number | null)[] };
-  const piles = new Map<string, { material: Material; cubes: Pile; stairs: Pile }>();
+  const piles = new Map<string, { material: Material; blocks: BlockCoord[]; tints: Color[] }>();
   for (const [key, swatch] of map.blocks) {
     const at = parseBlockKey(key);
     if (!at) continue;
     const { material, tint } = cutOf(swatch);
     let pile = piles.get(material.id as string);
     if (!pile) {
-      pile = {
-        material,
-        cubes: { blocks: [], tints: [], facings: [] },
-        stairs: { blocks: [], tints: [], facings: [] },
-      };
+      pile = { material, blocks: [], tints: [] };
       piles.set(material.id as string, pile);
     }
-    const facing = map.stairs?.get(key);
-    const into = facing === undefined ? pile.cubes : pile.stairs;
-    into.blocks.push(at);
-    into.tints.push(tint);
-    into.facings.push(facing ?? null);
+    pile.blocks.push(at);
+    pile.tints.push(tint);
   }
 
   /*
@@ -200,7 +150,6 @@ export function buildBlockBody(map: EncounterMap, materials: readonly Material[]
   const fogged: {
     mesh: InstancedMesh;
     blocks: BlockCoord[];
-    facings: (number | null)[];
     keys: string[];
     lit: Float32Array;
     hidden: Uint8Array;
@@ -209,7 +158,7 @@ export function buildBlockBody(map: EncounterMap, materials: readonly Material[]
   const figures: ((on: boolean) => void)[] = [];
   let count = 0;
 
-  for (const { material, cubes, stairs } of piles.values()) {
+  for (const { material, blocks, tints } of piles.values()) {
     base.set(material.cuts[0]!.colour);
     const surface = new MeshStandardMaterial({
       roughness: material.roughness,
@@ -246,47 +195,44 @@ export function buildBlockBody(map: EncounterMap, materials: readonly Material[]
     used.push(surface);
     figures.push(figure(surface, material));
 
-    for (const [shape, { blocks, tints, facings }] of [[geometry, cubes], [stairShape, stairs]] as const) {
-      if (blocks.length === 0) continue;
-      const mesh = new InstancedMesh(shape, surface, blocks.length);
-      mesh.instanceMatrix.setUsage(DynamicDrawUsage);
-      mesh.count = blocks.length;
-      const lit = new Float32Array(blocks.length * 3);
-      blocks.forEach((at, index) => {
-        // Blocks are addressed by their corner; the mesh is centred, so add a
-        // half — and a stair is turned the way it climbs (D-349).
-        mesh.setMatrixAt(index, poseOf(pose, at, facings[index] ?? null));
-        /*
-         * Lightness rather than a plain multiply: scaling r, g and b together
-         * drags a colour toward black or past white and changes how saturated
-         * it looks, where a nudge in HSL keeps the material's own hue (R-172).
-         */
-        // The shade is already in the tint; grain nudges it from there (R-176).
-        shade.copy(tints[index] ?? base);
-        if (material.grain > 0) {
-          shade.getHSL(hsl);
-          const drift = grainAt(at.x, at.y, at.z) * material.grain;
-          shade.setHSL(hsl.h, hsl.s, Math.min(1, Math.max(0, hsl.l + drift)));
-        }
-        mesh.setColorAt(index, shade);
-        lit[index * 3] = shade.r;
-        lit[index * 3 + 1] = shade.g;
-        lit[index * 3 + 2] = shade.b;
-      });
-      mesh.instanceMatrix.needsUpdate = true;
-      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-      group.add(mesh);
-      byMesh.set(mesh, blocks);
-      fogged.push({
-        mesh,
-        blocks,
-        facings,
-        keys: blocks.map((at) => `${at.x},${at.y},${at.z}`),
-        lit,
-        hidden: new Uint8Array(blocks.length),
-      });
-      count += blocks.length;
-    }
+    const mesh = new InstancedMesh(geometry, surface, Math.max(1, blocks.length));
+    mesh.instanceMatrix.setUsage(DynamicDrawUsage);
+    mesh.count = blocks.length;
+    const lit = new Float32Array(blocks.length * 3);
+    blocks.forEach((at, index) => {
+      // Blocks are addressed by their corner; the mesh is centred, so add a half.
+      pose.position.set(at.x + 0.5, at.y + 0.5, at.z + 0.5);
+      pose.updateMatrix();
+      mesh.setMatrixAt(index, pose.matrix);
+      /*
+       * Lightness rather than a plain multiply: scaling r, g and b together
+       * drags a colour toward black or past white and changes how saturated
+       * it looks, where a nudge in HSL keeps the material's own hue (R-172).
+       */
+      // The shade is already in the tint; grain nudges it from there (R-176).
+      shade.copy(tints[index] ?? base);
+      if (material.grain > 0) {
+        shade.getHSL(hsl);
+        const drift = grainAt(at.x, at.y, at.z) * material.grain;
+        shade.setHSL(hsl.h, hsl.s, Math.min(1, Math.max(0, hsl.l + drift)));
+      }
+      mesh.setColorAt(index, shade);
+      lit[index * 3] = shade.r;
+      lit[index * 3 + 1] = shade.g;
+      lit[index * 3 + 2] = shade.b;
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    group.add(mesh);
+    byMesh.set(mesh, blocks);
+    fogged.push({
+      mesh,
+      blocks,
+      keys: blocks.map((at) => `${at.x},${at.y},${at.z}`),
+      lit,
+      hidden: new Uint8Array(blocks.length),
+    });
+    count += blocks.length;
   }
 
   return {
@@ -297,7 +243,7 @@ export function buildBlockBody(map: EncounterMap, materials: readonly Material[]
     },
     setFog(fogOf) {
       let reshaped = false;
-      for (const { mesh, blocks, facings, keys, lit, hidden } of fogged) {
+      for (const { mesh, blocks, keys, lit, hidden } of fogged) {
         let moved = false;
         for (let index = 0; index < keys.length; index += 1) {
           const state = fogOf ? fogOf(keys[index]!) : 'inSight';
@@ -308,7 +254,10 @@ export function buildBlockBody(map: EncounterMap, materials: readonly Material[]
             if (hide) {
               mesh.setMatrixAt(index, NOWHERE);
             } else {
-              mesh.setMatrixAt(index, poseOf(pose, blocks[index]!, facings[index] ?? null));
+              const at = blocks[index]!;
+              pose.position.set(at.x + 0.5, at.y + 0.5, at.z + 0.5);
+              pose.updateMatrix();
+              mesh.setMatrixAt(index, pose.matrix);
             }
           }
           const r = lit[index * 3]!;
@@ -341,15 +290,11 @@ export function buildBlockBody(map: EncounterMap, materials: readonly Material[]
       if (!block) return null;
       const normal = hit.face?.normal;
       if (!normal) return null;
-      // The normal arrives in the shape's own space: a cube's is the world's,
-      // and a stair's is turned with it (D-349), so it is turned back by the
-      // instance's own matrix — and rounded, because a face normal is one of
-      // six unit vectors and floating point should not be allowed to invent a
-      // seventh.
-      const placed = new Matrix4();
-      (hit.object as InstancedMesh).getMatrixAt(hit.instanceId, placed);
-      const world = normal.clone().transformDirection(placed);
-      const step = new Vector3(Math.round(world.x), Math.round(world.y), Math.round(world.z));
+      // The normal arrives in the mesh's local space. Every instance shares the
+      // cube's orientation and none of them rotate, so it is already the world
+      // direction — rounded, because a face normal is one of six unit vectors and
+      // floating point should not be allowed to invent a seventh.
+      const step = new Vector3(Math.round(normal.x), Math.round(normal.y), Math.round(normal.z));
       return {
         block,
         adjacent: { x: block.x + step.x, y: block.y + step.y, z: block.z + step.z },
@@ -357,7 +302,6 @@ export function buildBlockBody(map: EncounterMap, materials: readonly Material[]
     },
     dispose() {
       geometry.dispose();
-      stairShape.dispose();
       for (const surface of used) surface.dispose();
       for (const mesh of byMesh.keys()) mesh.dispose();
     },

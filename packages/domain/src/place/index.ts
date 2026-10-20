@@ -4,7 +4,7 @@
 import type { MarkerId, NoteId, PlaceId, PoiId } from '../ids/index.js';
 import { freshId } from '../ids/index.js';
 import { DEFAULT_MARKER, isKnownMarker } from '../markers/index.js';
-import type { EncounterMap, StairFacing } from '../map/index.js';
+import type { EncounterMap } from '../map/index.js';
 import type { Ambience } from '../light/index.js';
 import { OPEN_SKY, clampAmbience } from '../light/index.js';
 import {
@@ -485,10 +485,8 @@ export function setMapBlocks(
   poiId: PoiId,
   cells: readonly BlockCoord[],
   swatch: SwatchId,
-  /** Lay them as stairs climbing this way (D-349). */
-  stairs: StairFacing | null = null,
 ): readonly Place[] {
-  return mapOfPoi(places, placeId, poiId, (map) => setBlocks(map, cells, swatch, stairs));
+  return mapOfPoi(places, placeId, poiId, (map) => setBlocks(map, cells, swatch));
 }
 
 export function paintMapBlocks(

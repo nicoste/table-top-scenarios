@@ -5,7 +5,7 @@ import { describe, it, expect } from 'vitest';
 import type { Cell, Pointed } from '@tt/client-core';
 import {
   clickAction, holdsSelection, tableAction, mapAction, mapHover, mapDrags, mapAllowed,
-  cameraAction, wheelZoom, CAMERA_HINT, mapToolShows, worldToolShows, stairsFacing } from '@tt/client-core';
+  cameraAction, wheelZoom, CAMERA_HINT, mapToolShows, worldToolShows } from '@tt/client-core';
 import type { MapAction, MapAim, MapReach } from '@tt/client-core';
 import { brushById } from '@tt/domain';
 import type { Tool } from '@tt/client-core';
@@ -656,27 +656,5 @@ describe('the parts a tool brings with it (R-207)', () => {
     for (const part of ['brush', 'ground', 'cover', 'markers', 'travel'] as const) {
       expect(worldToolShows('select', part), part).toBe(false);
     }
-  });
-});
-
-describe('the Stairs brush (D-349)', () => {
-  const stairs = brushById('stairs');
-  const reach = (stairFacing: 0 | 1 | 2 | 3): MapReach => ({ brush: stairs, alt: false, shift: false, within: null, stairFacing });
-
-  it('lays one stair, climbing toward the wall it is set against, or the hand\'s turn on a floor', () => {
-    // Against the side of a block at x = 6, from x = 5: its high side to the wall, toward +x — facing 1.
-    const wall = { block: { x: 6, y: 1, z: 3 }, adjacent: { x: 5, y: 1, z: 3 } };
-    const floor = { block: { x: 5, y: 0, z: 3 }, adjacent: { x: 5, y: 1, z: 3 } };
-    expect(stairsFacing(wall as never, 0)).toBe(1);
-    expect(stairsFacing(floor as never, 2)).toBe(2);
-    expect(mapAction('build', wall as never, reach(0))).toMatchObject({ kind: 'place', at: { x: 5, y: 1, z: 3 }, stairs: 1 });
-    const placed = mapAction('build', floor as never, reach(3));
-    expect(placed).toMatchObject({ kind: 'place', stairs: 3 });
-    expect(placed.kind === 'place' ? placed.cells : []).toHaveLength(1);
-  });
-
-  it('is a plain block with any other brush', () => {
-    const floor = { block: { x: 5, y: 0, z: 3 }, adjacent: { x: 5, y: 1, z: 3 } };
-    expect(mapAction('build', floor as never, { ...reach(1), brush: brushById('cube') })).not.toHaveProperty('stairs');
   });
 });

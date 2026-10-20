@@ -120,53 +120,6 @@ export interface EncounterMap {
   readonly planes: readonly CuttingPlane[];
   /** Doors, bars, furniture (D-322), in the order they were placed. */
   readonly props: readonly Prop[];
-  /**
-   * Which blocks are stairs, and which way they climb (D-349) — by `blockKey`.
-   * **A drawing, not a rule**: a stair is a block in every rule there is —
-   * standing, walking, sight, building — and only looks like steps. Absent, or
-   * an entry with no block under it, is a plain cube.
-   */
-  readonly stairs?: ReadonlyMap<string, StairFacing>;
-}
-
-/**
- * Which way a stair climbs (D-349): quarter turns clockwise from above, as a
- * prop's facing — its high side is where a prop's back would be.
- */
-export type StairFacing = 0 | 1 | 2 | 3;
-
-/** Which way the block in a cube climbs, if it is a stair; `null` for a plain block or none. */
-export function stairsAt(map: EncounterMap, at: BlockCoord): StairFacing | null {
-  const key = blockKey(at);
-  if (!map.blocks.has(key)) return null;
-  return map.stairs?.get(key) ?? null;
-}
-
-/**
- * The stairs with these cells marked, or unmarked with `null`: a new map's
- * worth, or the same one when nothing changed (R-165).
- */
-function withStairsAt(
-  stairs: ReadonlyMap<string, StairFacing> | undefined,
-  keys: readonly string[],
-  facing: StairFacing | null,
-): ReadonlyMap<string, StairFacing> | undefined {
-  if (keys.length === 0) return stairs;
-  if (facing === null && !keys.some((key) => stairs?.has(key))) return stairs;
-  if (facing !== null && keys.every((key) => stairs?.get(key) === facing)) return stairs;
-  const next = new Map(stairs ?? []);
-  for (const key of keys) {
-    if (facing === null) next.delete(key);
-    else next.set(key, facing);
-  }
-  return next.size === 0 ? undefined : next;
-}
-
-/** A map with its stairs replaced, dropping the field when there are none. */
-function withStairs(map: EncounterMap, stairs: ReadonlyMap<string, StairFacing> | undefined): EncounterMap {
-  if (stairs === map.stairs) return map;
-  const { stairs: _, ...rest } = map;
-  return stairs ? { ...rest, stairs } : rest;
 }
 
 /**
@@ -241,8 +194,6 @@ export interface Brush {
   readonly span: number;
   /** Cells tall, growing from the anchor. */
   readonly rise: number;
-  /** Lays stairs rather than plain blocks (D-349). */
-  readonly stairs?: true;
 }
 
 export const BRUSHES: readonly Brush[] = [
@@ -251,8 +202,6 @@ export const BRUSHES: readonly Brush[] = [
   { id: 'flat5', name: 'Flat 5×5', span: 5, rise: 1 },
   { id: 'column2', name: 'Column 2', span: 1, rise: 2 },
   { id: 'column3', name: 'Column 3', span: 1, rise: 3 },
-  // One stair at a time, turned to the wall it is set against or by Z / X (D-349).
-  { id: 'stairs', name: 'Stairs', span: 1, rise: 1, stairs: true },
 ];
 
 export const DEFAULT_BRUSH = BRUSHES[0]!;
@@ -320,21 +269,17 @@ export function setBlocks(
   map: EncounterMap,
   cells: readonly BlockCoord[],
   swatch: SwatchId,
-  /** Lay them as stairs climbing this way (D-349), or as plain blocks. */
-  stairs: StairFacing | null = null,
 ): EncounterMap {
   const blocks = new Map(map.blocks);
-  const placed: string[] = [];
+  let touched = false;
   for (const at of cells) {
     if (!inMap(map, at)) continue;
     const key = blockKey(at);
     if (blocks.has(key)) continue;
     blocks.set(key, swatch);
-    placed.push(key);
+    touched = true;
   }
-  if (placed.length === 0) return map;
-  // A plain block where a stair once stood is a plain block (D-349).
-  return withStairs({ ...map, blocks }, withStairsAt(map.stairs, placed, stairs));
+  return touched ? { ...map, blocks } : map;
 }
 
 /** Erases every cell of a patch that holds a block. Identity-preserving (R-165). */
@@ -343,15 +288,14 @@ export function clearBlocks(
   cells: readonly BlockCoord[],
 ): EncounterMap {
   const blocks = new Map(map.blocks);
-  const erased: string[] = [];
+  let touched = false;
   for (const at of cells) {
     const key = blockKey(at);
     if (!blocks.has(key)) continue;
     blocks.delete(key);
-    erased.push(key);
+    touched = true;
   }
-  // An erased stair goes with its block (D-349).
-  return erased.length > 0 ? withStairs({ ...map, blocks }, withStairsAt(map.stairs, erased, null)) : map;
+  return touched ? { ...map, blocks } : map;
 }
 
 /**
@@ -420,7 +364,11 @@ export function setBlock(
 }
 
 export function clearBlock(map: EncounterMap, at: BlockCoord): EncounterMap {
-  return clearBlocks(map, [at]);
+  const key = blockKey(at);
+  if (!map.blocks.has(key)) return map;
+  const blocks = new Map(map.blocks);
+  blocks.delete(key);
+  return { ...map, blocks };
 }
 
 /**
@@ -613,8 +561,6 @@ export interface MapJSON {
   planes: PlaneJSON[];
   /** The map's props (D-322). Written only when there are any. */
   props?: PropJSON[];
-  /** Which blocks are stairs (D-349). Written only when there are any. */
-  stairs?: StairJSON[];
 }
 
 /** A prop as written. */
@@ -775,47 +721,7 @@ export function mapToJSON(map: EncounterMap): MapJSON {
     ...packBlocks(box.origin, box.size, map.blocks),
     planes: planesToJSON(map.planes),
     ...(map.props.length > 0 ? { props: propsAsJSON(map.props) } : {}),
-    ...stairsAsJSON(map),
   };
-}
-
-/**
- * A map's stairs as written (D-349): only those with a block under them — a
- * slice or the part the party has seen carries the marks of blocks it does
- * not hold, and a mark written for a block not sent would say one is there
- * (R-85). Absent when there are none.
- */
-function stairsAsJSON(map: EncounterMap): { stairs?: StairJSON[] } {
-  if (!map.stairs || map.stairs.size === 0) return {};
-  const out: StairJSON[] = [];
-  for (const [key, facing] of map.stairs) {
-    if (!map.blocks.has(key)) continue;
-    const at = parseBlockKey(key);
-    if (at) out.push({ x: at.x, y: at.y, z: at.z, facing });
-  }
-  out.sort((a, b) => a.y - b.y || a.z - b.z || a.x - b.x);
-  return out.length > 0 ? { stairs: out } : {};
-}
-
-/** One stair as written: its cube and which way it climbs. */
-export interface StairJSON {
-  x: number;
-  y: number;
-  z: number;
-  facing: number;
-}
-
-/** Read leniently (R-137a): an entry without a whole cube is dropped, a facing brought round. */
-function stairsOfJSON(json: unknown): ReadonlyMap<string, StairFacing> | undefined {
-  if (!Array.isArray(json)) return undefined;
-  const out = new Map<string, StairFacing>();
-  for (const raw of json as unknown[]) {
-    const entry = raw as Record<string, unknown> | null;
-    if (!entry || !isWhole(entry.x) || !isWhole(entry.y) || !isWhole(entry.z)) continue;
-    const facing = isWhole(entry.facing) ? ((((entry.facing % 4) + 4) % 4) as StairFacing) : 0;
-    out.set(blockKey({ x: entry.x, y: entry.y, z: entry.z }), facing);
-  }
-  return out.size > 0 ? out : undefined;
 }
 
 /**
@@ -837,8 +743,6 @@ export type MapJSONIn = {
   planes?: PlaneJSON[] | undefined;
   /** Absent before there were props: none (D-187). */
   props?: unknown;
-  /** Absent before there were stairs: none (D-349). */
-  stairs?: unknown;
   /** The packed body (D-217). */
   palette?: string[] | undefined;
   runs?: number[] | undefined;
@@ -892,7 +796,6 @@ export function mapFromJSON(json: MapJSONIn | undefined | null): EncounterMap | 
   // `unpackBlocks`. Null reads as "that map could not be loaded", which the
   // store already knows how to say.
   if (!blocks) return null;
-  const stairs = stairsOfJSON(json.stairs);
   return {
     // Whatever the file claims, the footprint is widened to hold what is in
     // it. A packed body cannot stray outside its box, but one written before
@@ -901,6 +804,5 @@ export function mapFromJSON(json: MapJSONIn | undefined | null): EncounterMap | 
     blocks,
     planes: planesFromJSON(json.planes),
     props: propsOfJSON(json.props),
-    ...(stairs ? { stairs } : {}),
   };
 }

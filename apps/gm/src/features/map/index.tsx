@@ -304,12 +304,10 @@ export function MapPanel({
               {BRUSHES.map((shape, i) => (
                 <Tooltip
                   key={shape.id}
-                  label={shape.stairs
-                    ? 'Stairs, one at a time: against a wall they climb toward it, on a floor Z / X turn them — [ ]'
-                    : `${shape.rise > 1
-                      ? `A column ${shape.rise} blocks tall, growing up — or down while ⌥ alt is held`
-                      : shape.span > 1 ? `A flat ${shape.span}×${shape.span} square` : 'One cube'
-                    } — key ${['8', '9', '0', '-', '='][i]}`}
+                  label={`${shape.rise > 1
+                    ? `A column ${shape.rise} blocks tall, growing up — or down while ⌥ alt is held`
+                    : shape.span > 1 ? `A flat ${shape.span}×${shape.span} square` : 'One cube'
+                  } — key ${['8', '9', '0', '-', '='][i]}`}
                   placement="bottom"
                   stretch
                 >
@@ -384,7 +382,7 @@ export function MapPanel({
           )}
         </p>
         <p className="readout">{hoverLabel ?? '—'}</p>
-        <p className="hint">1–7 tool · 8–0, −, = or [ ] brush · Z / X turn stairs · {CAMERA_HINT}</p>
+        <p className="hint">1–7 tool · 8–0, −, = or [ ] brush · {CAMERA_HINT}</p>
       </div>
 
       {/* Build's and Paint's, and nobody else's (R-207). */}

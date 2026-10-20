@@ -85,7 +85,7 @@ export {
   swatchOf, swatchFor, materialIn, cutIdIn, cutOf, colourOf, isKnownSwatch, difficultyOf,
   familyOf,
 } from './materials/index.js';
-export type { EncounterMap, BlockCoord, Brush, Expand, MapJSON, MapJSONIn, StairFacing, StairJSON } from './map/index.js';
+export type { EncounterMap, BlockCoord, Brush, Expand, MapJSON, MapJSONIn } from './map/index.js';
 
 export { withPoiAmbience } from './place/index.js';
 export {
@@ -100,7 +100,7 @@ export {
   BRUSHES, DEFAULT_BRUSH, MAP_BRUSH_CELLS, brushById, brushPatch,
   setBlocks, paintBlocks, clearBlocks,
   createMap, setBlock, clearBlock, growMap, topOfMap, bottomOfMap, mapToJSON, mapFromJSON, packBlocks, unpackBlocks,
-  fillRegion, fillMaterial, mapCentre, enclosing, sliceOf, MIN_LIGHT_REACH, MAX_LIGHT_REACH, cleanReach, stairsAt,
+  fillRegion, fillMaterial, mapCentre, enclosing, sliceOf, MIN_LIGHT_REACH, MAX_LIGHT_REACH, cleanReach,
 } from './map/index.js';
 export {
   MAX_PLACE_NAME, MAX_NOTE_TEXT, sameCell, placeGlobal, placeCellFromGlobal, isValidPlaceCell,
