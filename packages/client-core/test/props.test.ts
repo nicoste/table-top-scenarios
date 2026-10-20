@@ -33,14 +33,17 @@ describe('the prop in hand', () => {
 });
 
 describe('the preview', () => {
-  it("fills the prop's cubes in its finish, and says why not when it cannot stand there", () => {
+  it('is the prop itself, turned as it will stand, framed by its box, and says why not when it cannot stand there (D-351)', () => {
     const map = createMap();
-    const fine = propPreview(map, takeProp(EMPTY_HAND, 'door'), cube(3, 1, 3), new Set())!;
+    const hand = turnHand(takeProp(EMPTY_HAND, 'door'), 1);
+    const fine = propPreview(map, hand, cube(3, 1, 3), new Set())!;
     expect(fine.why).toBeNull();
-    expect(fine.cubes.map((c) => c.at)).toEqual([cube(3, 1, 3), cube(3, 2, 3)]);
-    expect(fine.cubes[0]!.colour).toBe('#8a5a35');
+    expect(fine.box).toEqual({ min: cube(3, 1, 3), max: cube(3, 2, 3) });
+    expect(fine.ghost).toEqual({ type: 'door', at: cube(3, 1, 3), facing: 1, finish: null, refused: false });
     const walled = setBlocks(map, [cube(3, 2, 3)], DEFAULT_FLOOR as SwatchId);
-    expect(propPreview(walled, takeProp(EMPTY_HAND, 'door'), cube(3, 1, 3), new Set())!.why).toBe('a block is in the way');
+    const refused = propPreview(walled, hand, cube(3, 1, 3), new Set())!;
+    expect(refused.why).toBe('a block is in the way');
+    expect(refused.ghost.refused).toBe(true);
     expect(propPreview(map, EMPTY_HAND, cube(3, 1, 3), new Set())).toBeNull();
   });
 

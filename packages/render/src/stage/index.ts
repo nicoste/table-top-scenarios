@@ -35,8 +35,8 @@ import type { WalkDrawn } from '../walk/index.js';
 import { buildWalkPreview } from '../walk/index.js';
 import type { GhostCube } from '../prefab-ghost/index.js';
 import { buildPrefabGhost } from '../prefab-ghost/index.js';
-import type { PropMeshes } from '../props/index.js';
-import { buildProps } from '../props/index.js';
+import type { PropGhostDrawn, PropMeshes } from '../props/index.js';
+import { buildPropGhost, buildProps } from '../props/index.js';
 import { buildLamplight } from '../lamplight/index.js';
 import type { AreaDrawn, AreaMeshes, RulerDrawn } from '../areas/index.js';
 import { buildAreas, buildRuler } from '../areas/index.js';
@@ -418,6 +418,8 @@ export class Stage {
   private readonly ruler = buildRuler();
   /** The prefab about to be placed (D-321). */
   private readonly prefabGhost = buildPrefabGhost();
+  /** The prop about to be placed, as itself (D-351). */
+  private readonly propGhost = buildPropGhost();
   /** The party's fog, kept so a rebuilt body is drawn under it too (R-69). */
   private partyFog: StageFog | null = null;
   /**
@@ -768,6 +770,7 @@ export class Stage {
     if (worldVisible) {
       this.walk.show(null);
       this.prefabGhost.show(null);
+      this.propGhost.show(null);
       this.ruler.show(null);
     }
     if (this.areaMeshes) this.areaMeshes.group.visible = !worldVisible;
@@ -1008,6 +1011,17 @@ export class Stage {
     this.invalidate();
     const mesh = this.prefabGhost.show(this.showingMap ? cubes : null);
     if (mesh) this.scene.add(mesh);
+  }
+
+  /**
+   * The prop about to be placed (D-351): itself, see-through, turned as it
+   * will stand and red where it cannot — or nothing. Its box is framed by
+   * `showBlockGhost`. Only inside a map.
+   */
+  showPropGhost(ghost: PropGhostDrawn | null): void {
+    this.invalidate();
+    const group = this.propGhost.show(this.showingMap ? ghost : null);
+    if (group) this.scene.add(group);
   }
 
   /**
@@ -1906,6 +1920,7 @@ export class Stage {
     this.areaMeshes?.dispose();
     this.ruler.dispose();
     this.prefabGhost.dispose();
+    this.propGhost.dispose();
     this.props?.dispose();
     this.lamps.dispose();
     for (const lamp of this.lampPool) lamp.dispose();

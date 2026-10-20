@@ -14,6 +14,7 @@ export { routePatches, ROUTE_PATCH, ROUTE_LIFT } from './route/index.js';
 export type { WalkDrawn } from './walk/index.js';
 export type { AreaDrawn, RulerDrawn, RulerPoint } from './areas/index.js';
 export type { GhostCube } from './prefab-ghost/index.js';
+export type { PropGhostDrawn } from './props/index.js';
 export type { CoverField } from './covers/index.js';
 
 export { MARKER_ZOOM, buildPlaceMarkers, markerSignature } from './places/index.js';

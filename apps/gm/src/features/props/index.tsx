@@ -48,7 +48,7 @@ function rulesOf(type: PropType): string {
 /** What the catalogue's tooltip says of an entry: its size, or for a light how far it reaches (D-335). */
 function aboutOf(type: PropType): string {
   if (type.light) return `lights ${type.light.reach}${type.hangs ? ', hangs on a wall' : ''} — ${rulesOf(type)}`;
-  if (type.holds) return `${type.size.x} × ${type.size.y} — ${rulesOf(type)}; stood on as a block is, climbing toward the back`;
+  if (type.holds) return `${type.size.x} × ${type.size.y} — ${rulesOf(type)}; stood on as a block is${type.turnsToWall ? ', climbing toward the back' : ''}`;
   return `${type.size.x} × ${type.size.y} — ${rulesOf(type)}`;
 }
 

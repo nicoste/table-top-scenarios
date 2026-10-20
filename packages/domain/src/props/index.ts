@@ -82,7 +82,8 @@ export interface PropType {
   readonly hangs?: boolean;
   /**
    * Somebody stands on it as on a block (D-350): its cubes are a floor to the
-   * cube above, for standing, placing and the walk. Stairs.
+   * cube above, for standing, placing and the walk. Stairs, and the furniture
+   * a whole cube tall — a table, a bookcase, a barrel, a crate (D-351).
    */
   readonly holds?: boolean;
   /** Turned to the wall pointed at when it is put down, its back to it, as a torch hangs (D-350). */
@@ -154,12 +155,14 @@ export const PROP_TYPES: readonly PropType[] = [
     id: 'chest', name: 'Chest', group: 'furniture', size: { x: 1, y: 1, z: 1 },
     opens: true, closed: STOPS_WALKING, open: STOPS_WALKING, finishes: [WOOD, DARK_WOOD, IRON],
   },
-  { id: 'table', name: 'Table', group: 'furniture', size: { x: 1, y: 1, z: 1 }, ...fixed(STOPS_WALKING), finishes: [WOOD, DARK_WOOD, PALE_WOOD] },
+  // A table, a bookcase, a barrel and a crate are a whole cube tall and are
+  // stood on (D-351): crates piled up to a balcony are a way up.
+  { id: 'table', name: 'Table', group: 'furniture', size: { x: 1, y: 1, z: 1 }, ...fixed(STOPS_WALKING), holds: true, finishes: [WOOD, DARK_WOOD, PALE_WOOD] },
   { id: 'chair', name: 'Chair', group: 'furniture', size: { x: 1, y: 1, z: 1 }, ...fixed(STOPS_WALKING), finishes: [WOOD, DARK_WOOD, PALE_WOOD] },
   // A wall of books: the one piece of furniture you cannot see past.
-  { id: 'bookcase', name: 'Bookcase', group: 'furniture', size: { x: 1, y: 1, z: 1 }, ...fixed(STOPS_BOTH), finishes: [WOOD, DARK_WOOD, PALE_WOOD] },
-  { id: 'barrel', name: 'Barrel', group: 'furniture', size: { x: 1, y: 1, z: 1 }, ...fixed(STOPS_WALKING), finishes: [WOOD, DARK_WOOD] },
-  { id: 'crate', name: 'Crate', group: 'furniture', size: { x: 1, y: 1, z: 1 }, ...fixed(STOPS_WALKING), finishes: [WOOD, PALE_WOOD, DARK_WOOD] },
+  { id: 'bookcase', name: 'Bookcase', group: 'furniture', size: { x: 1, y: 1, z: 1 }, ...fixed(STOPS_BOTH), holds: true, finishes: [WOOD, DARK_WOOD, PALE_WOOD] },
+  { id: 'barrel', name: 'Barrel', group: 'furniture', size: { x: 1, y: 1, z: 1 }, ...fixed(STOPS_WALKING), holds: true, finishes: [WOOD, DARK_WOOD] },
+  { id: 'crate', name: 'Crate', group: 'furniture', size: { x: 1, y: 1, z: 1 }, ...fixed(STOPS_WALKING), holds: true, finishes: [WOOD, PALE_WOOD, DARK_WOOD] },
   // Lights (D-335). A torch hangs on the wall behind it; the rest stand.
   // A brazier and a campfire are in the way; the others are not.
   {

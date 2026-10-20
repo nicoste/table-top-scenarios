@@ -7,9 +7,9 @@
 // refinish, open or remove.
 
 import type { Intent } from '@tt/protocol';
-import type { BlockCoord, Box, EncounterMap, Facing, Opened, PropFooting, PropType, SwatchId } from '@tt/domain';
-import { facingWithBack, propBox, propById, propCubes, propType, statesOf, turned, whyNotPut } from '@tt/domain';
-import type { FacePick, GhostCube } from '@tt/render';
+import type { BlockCoord, Box, EncounterMap, Facing, Opened, PropFooting, PropType } from '@tt/domain';
+import { facingWithBack, propBox, propById, propType, statesOf, turned, whyNotPut } from '@tt/domain';
+import type { FacePick, PropGhostDrawn } from '@tt/render';
 
 /** The prop in hand: which catalogue entry, turned how, in which finish. */
 export interface PropHand {
@@ -70,10 +70,13 @@ export function propWords(why: PropFooting): string {
   }
 }
 
-/** What a click would do here: the box it would fill, drawn as cubes, and why not if it cannot. */
+/**
+ * What a click would do here: the box it would fill, the prop itself as it
+ * would stand there (D-351), and why not if it cannot.
+ */
 export interface PropPreview {
   readonly box: Box;
-  readonly cubes: readonly GhostCube[];
+  readonly ghost: PropGhostDrawn;
   readonly why: string | null;
 }
 
@@ -88,14 +91,10 @@ export function propPreview(
   const type = hand.type ? propType(hand.type) : null;
   if (!type) return null;
   const candidate = { type: type.id, at, facing: facingHere(hand, wall) };
-  const finish = type.finishes.find((one) => one.id === hand.finish) ?? type.finishes[0]!;
   const why = whyNotPut(map, candidate, standing);
   return {
     box: propBox(candidate),
-    cubes: propCubes(candidate).map((cube) => ({
-      // Its finish, not a material: a prop is not made of blocks.
-      at: cube, swatch: '' as SwatchId, outside: why !== null, colour: finish.colour,
-    })),
+    ghost: { ...candidate, finish: hand.finish, refused: why !== null },
     why: why ? propWords(why) : null,
   };
 }

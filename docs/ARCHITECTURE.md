@@ -2243,6 +2243,12 @@ apps/host/src/
 >   sight; a shut door, bars and furniture stop standing and the walk
 >   (R-209). Open, a door is a doorway: the party sees through it and walks
 >   through it. Blocks, prefabs and tokens keep out of a prop's cubes.
+> - **A table, a bookcase, a barrel and a crate are a whole cube tall and are
+>   stood on** (D-351), as stairs are (R-215): crates piled up are a way up
+>   to a balcony. A chair and a chest are not.
+> - **The prop in hand is its own ghost** (D-351): the prop itself,
+>   see-through, turned as it will stand and red where it cannot, its box
+>   framed — so which way it faces shows before the click.
 > - **Backspace removes the prop selected** (D-330), or Delete where there is
 >   one; the Remove button does the same, and one undo brings it back.
 > - **The GM's, every part of it.** In play a door opens and shuts with a
@@ -2355,7 +2361,8 @@ apps/host/src/
 > above it.
 >
 > - **One question asks for a floor**: `floorUnder` — a block below, or a
->   prop whose type `holds`. Standing, placing a silver token, the walk
+>   prop whose type `holds`: stairs, and the furniture a whole cube tall
+>   (D-351). Standing, placing a silver token, the walk
 >   (R-209) and a fall all ask it, so a stair is stood on, climbed and landed
 >   on wherever a block would be.
 > - **Turned to the wall pointed at**, climbing toward it, its back to the

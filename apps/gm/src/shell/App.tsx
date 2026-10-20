@@ -800,13 +800,13 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     if (!stage || !openMap || mapTool !== 'props' || !openBody) return;
     if (propHand.type) {
       const preview = propAt ? propPreview(openBody, propHand, propAt, standingCubes, propWallAt) : null;
-      stage.showPrefabGhost(preview?.cubes ?? null);
+      stage.showPropGhost(preview?.ghost ?? null);
       stage.showBlockGhost(preview ? [preview.box.min, preview.box.max] : [], preview?.why ? 0xff6b6b : 0xffffff);
       const type = propType(propHand.type);
       setHoverLabel(propPrompt(type ?? null, propAt, preview?.why ?? null));
       return;
     }
-    stage.showPrefabGhost(null);
+    stage.showPropGhost(null);
     const chosen = selectedProp ? propById(openBody.props, selectedProp) : null;
     if (chosen) {
       const box = propBox(chosen);
@@ -825,6 +825,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   // Putting the tool down, or changing map, drops the ghost and any half-drawn box.
   useEffect(() => {
     stage?.showPrefabGhost(null);
+    stage?.showPropGhost(null);
     stage?.showBlockGhost([]);
     setCapture(NO_CAPTURE);
     setPrefabAt(null);

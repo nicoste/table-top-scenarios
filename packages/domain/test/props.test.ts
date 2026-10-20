@@ -258,10 +258,10 @@ describe('stairs (D-350)', () => {
     expect(whyNotPlace(map, NO_TOKENS, NO_SILVER, cube(3, 2, 3))).toBeNull();
     // A fall from above stops on them.
     expect(dropBelow(map, cube(3, 5, 3))).toBe(3);
-    // A table is in the way, but nobody stands on it.
-    const table = putProp(createMap(), { type: 'table', at: cube(3, 1, 3), facing: 0 });
-    expect(propRules(table.props).floors.size).toBe(0);
-    expect(whyNotStand(table, nobody, 'member_a' as MemberId, cube(3, 2, 3))).toBe('unsupported');
+    // A chair is in the way, but nobody stands on it.
+    const chair = putProp(createMap(), { type: 'chair', at: cube(3, 1, 3), facing: 0 });
+    expect(propRules(chair.props).floors.size).toBe(0);
+    expect(whyNotStand(chair, nobody, 'member_a' as MemberId, cube(3, 2, 3))).toBe('unsupported');
   });
 
   it('are the way up a ledge the walk cannot climb from the floor', () => {
@@ -274,6 +274,33 @@ describe('stairs (D-350)', () => {
   it('stand on stairs, for a flight', () => {
     const map = putProp(createMap(), { type: 'stairs', at: cube(3, 1, 3), facing: 1 });
     expect(whyNotPut(map, { type: 'stairs', at: cube(3, 2, 3), facing: 1 })).toBeNull();
+  });
+});
+
+describe('furniture a whole cube tall (D-351)', () => {
+  const nobody = new Map<MemberId, BlockCoord>();
+
+  it('is stood on: a table, a bookcase, a barrel, a crate — not a chair or a chest', () => {
+    const holds = PROP_TYPES.filter((type) => type.holds).map((type) => type.id);
+    expect(holds).toEqual(['table', 'bookcase', 'barrel', 'crate', 'stairs']);
+    for (const type of ['table', 'bookcase', 'barrel', 'crate']) {
+      const map = putProp(createMap(), { type, at: cube(3, 1, 3), facing: 0 });
+      expect(whyNotStand(map, nobody, 'member_a' as MemberId, cube(3, 2, 3))).toBeNull();
+    }
+  });
+
+  it('piled up, is a way up to a ledge', () => {
+    // A balcony three high across x = 6: nothing climbs it from the floor.
+    const wall: BlockCoord[] = [];
+    for (let z = 0; z < 16; z += 1) wall.push(cube(6, 1, z), cube(6, 2, z), cube(6, 3, z));
+    let map = setBlocks(createMap(), wall, STONE);
+    expect(walkAcross(map, cube(2, 1, 3), cube(6, 4, 3))).toBeNull();
+    // A crate, two crates on a crate beside it: a step, then two.
+    for (const at of [cube(4, 1, 3), cube(5, 1, 3), cube(5, 2, 3)]) map = putProp(map, { type: 'crate', at, facing: 0 });
+    expect(map.props).toHaveLength(3);
+    const walk = walkAcross(map, cube(2, 1, 3), cube(6, 4, 3));
+    expect(walk?.cubes).toContainEqual(cube(4, 2, 3));
+    expect(walk?.cubes).toContainEqual(cube(5, 3, 3));
   });
 });
 

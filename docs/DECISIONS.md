@@ -8955,3 +8955,43 @@ Checked on the test copy: stairs put down on the grass and against Tollkeep's
 wall, climbing toward it; Turdorn aimed at the top of one and stood there; the
 table drew both.
 
+### D-351 — Furniture to stand on, and the prop as its own ghost · `agreed`
+Three refinements, in the user's words:
+
+- *"The barrel, crates and table should be 1 square height, like the
+  bookcase. All stackable, we should ignore a little bit real proportions in
+  order to accomplish this... They all (including the bookcase) should be
+  walkable on top, this also adds gameplay experiences, users piling up
+  crates to reach a balcony, etc."*
+- *"Placing props it's not showing the item phantom, it's a block phantom,
+  this doesn't give the GM a clue about which is the actual rotation it has."*
+- *"The bookcase must be a little bit deeper... I think right now is 50% of
+  the block, lets do it 75%."*
+
+So a **table, a bookcase, a barrel and a crate hold people up** — the flag
+stairs brought in (D-350), so standing, a silver token, the walk and a fall
+all treat their tops as a floor — and each is **drawn a whole cube tall**,
+so a token on one stands on its top: the table's top at the top of its cube
+on long legs, the barrel and the crate filling it. Props already stacked
+(D-322), so two crates on a crate beside a balcony three high are a way up
+it, one diagonal step at a time. The **bookcase is three quarters of its cube
+deep**, from its back.
+
+**The prop in hand is drawn as itself**, where the cubes of its box were: its
+parts, in its finish, see-through, turned as it will stand, and red where it
+cannot go; the box is still framed. The ghost is lit by nothing — it must show
+in a dark cellar — so its faces are shaded by hand by the way they face, top
+brightest, which is enough to tell a stair's treads from its risers.
+
+**Chosen here, to be argued with:**
+
+- **A chair and a chest stay low, and are not stood on.** The user named the
+  table, the barrel, the crate and the bookcase.
+- **A chest gets a brass lock on its front**, so which way it faces shows —
+  in the ghost and on the map. A table, a barrel and a crate look the same
+  every way round.
+
+Checked on the test copy: the stairs' ghost turning with X, the bookcase's
+ghost and the bookcase put down three quarters deep, and Turdorn moved from
+the stairs onto its top.
+

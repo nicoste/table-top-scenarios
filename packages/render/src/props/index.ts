@@ -16,8 +16,9 @@
 import {
   BoxGeometry, Color, CylinderGeometry, Group, Mesh, MeshBasicMaterial, MeshStandardMaterial,
 } from 'three';
+import { Float32BufferAttribute } from 'three';
 import type { BufferGeometry, Material } from 'three';
-import type { Opened, Prop } from '@tt/domain';
+import type { BlockCoord, Facing, Opened, Prop } from '@tt/domain';
 import { propBox, propType, turnedSize } from '@tt/domain';
 
 /**
@@ -96,12 +97,16 @@ function partsOf(type: string, open: boolean): readonly Part[] {
         open
           ? { size: [0.82, 0.56, 0.1], at: [0.5, 0.7, 0.2] }
           : { size: [0.82, 0.12, 0.58], at: [0.5, 0.48, 0.5] },
+        // The lock is its front, so which way it faces shows (D-351).
+        { size: [0.1, 0.12, 0.04], at: [0.5, 0.36, 0.79], tone: 'brass' },
       ];
+    // A table, a bookcase, a barrel and a crate are a whole cube tall, so
+    // somebody standing on one stands on its top (D-351).
     case 'table':
       return [
-        { size: [0.94, 0.08, 0.94], at: [0.5, 0.54, 0.5] },
-        ...[[0.12, 0.12], [0.88, 0.12], [0.12, 0.88], [0.88, 0.88]].map(([x, z]) => ({
-          size: [0.08, 0.5, 0.08] as const, at: [x!, 0.25, z!] as const, tone: 'dark' as const,
+        { size: [0.96, 0.08, 0.96], at: [0.5, 0.96, 0.5] },
+        ...[[0.1, 0.1], [0.9, 0.1], [0.1, 0.9], [0.9, 0.9]].map(([x, z]) => ({
+          size: [0.08, 0.92, 0.08] as const, at: [x!, 0.46, z!] as const, tone: 'dark' as const,
         })),
       ];
     case 'chair':
@@ -115,25 +120,26 @@ function partsOf(type: string, open: boolean): readonly Part[] {
     case 'bookcase':
       // Open at the front (D-333): a back, two sides, a top and a bottom and
       // two shelves — empty, so it can be a pantry, an armoury or a library as
-      // the GM likes (D-334).
+      // the GM likes (D-334). Three quarters of its cube deep, from the back,
+      // so its top is somewhere to stand (D-351).
       return [
-        { size: [0.94, 0.98, 0.04], at: [0.5, 0.49, 0.09] },
-        { size: [0.05, 0.98, 0.44], at: [0.055, 0.49, 0.29] },
-        { size: [0.05, 0.98, 0.44], at: [0.945, 0.49, 0.29] },
-        { size: [0.94, 0.05, 0.44], at: [0.5, 0.955, 0.29] },
-        { size: [0.94, 0.05, 0.44], at: [0.5, 0.025, 0.29] },
-        ...[0.33, 0.66].map((y) => ({ size: [0.84, 0.035, 0.42] as const, at: [0.5, y, 0.29] as const })),
+        { size: [0.94, 1, 0.04], at: [0.5, 0.5, 0.05] },
+        { size: [0.05, 1, 0.75], at: [0.055, 0.5, 0.405] },
+        { size: [0.05, 1, 0.75], at: [0.945, 0.5, 0.405] },
+        { size: [0.94, 0.05, 0.75], at: [0.5, 0.975, 0.405] },
+        { size: [0.94, 0.05, 0.75], at: [0.5, 0.025, 0.405] },
+        ...[0.34, 0.67].map((y) => ({ size: [0.84, 0.035, 0.71] as const, at: [0.5, y, 0.425] as const })),
       ];
     case 'barrel':
       return [
-        { size: [0.68, 0.84, 0.68], at: [0.5, 0.42, 0.5], round: true },
-        ...[0.18, 0.66].map((y) => ({ size: [0.71, 0.05, 0.71] as const, at: [0.5, y, 0.5] as const, tone: 'dark' as const, round: true })),
+        { size: [0.76, 1, 0.76], at: [0.5, 0.5, 0.5], round: true },
+        ...[0.16, 0.84].map((y) => ({ size: [0.79, 0.06, 0.79] as const, at: [0.5, y, 0.5] as const, tone: 'dark' as const, round: true })),
       ];
     case 'crate':
       return [
-        { size: [0.84, 0.84, 0.84], at: [0.5, 0.42, 0.5] },
-        ...[[0.1, 0.1], [0.9, 0.1], [0.1, 0.9], [0.9, 0.9]].map(([x, z]) => ({
-          size: [0.08, 0.86, 0.08] as const, at: [x!, 0.43, z!] as const, tone: 'dark' as const,
+        { size: [0.88, 0.98, 0.88], at: [0.5, 0.49, 0.5] },
+        ...[[0.08, 0.08], [0.92, 0.08], [0.08, 0.92], [0.92, 0.92]].map(([x, z]) => ({
+          size: [0.1, 1, 0.1] as const, at: [x!, 0.5, z!] as const, tone: 'dark' as const,
         })),
       ];
     case 'stairs':
@@ -249,6 +255,28 @@ function tonesOf(colour: string): Record<NonNullable<Part['tone']>, string> {
   };
 }
 
+/** A part's shape: a box, or a cylinder for what is round. */
+const shapeOf = (part: Part): BufferGeometry => (part.round
+  ? new CylinderGeometry(part.size[0] / 2, part.size[0] / 2, part.size[1], 14)
+  : new BoxGeometry(part.size[0], part.size[1], part.size[2]));
+
+/**
+ * Where a prop's parts hang: a group turned about the middle of its box, with
+ * an inner group at its unturned corner that the parts are placed in.
+ */
+function holderFor(prop: Pick<Prop, 'type' | 'at' | 'facing'>): { holder: Group; inner: Group } {
+  const size = propType(prop.type)?.size ?? { x: 1, y: 1, z: 1 };
+  const box = propBox(prop);
+  const turned = turnedSize(size, prop.facing);
+  const holder = new Group();
+  holder.position.set(box.min.x + turned.x / 2, box.min.y, box.min.z + turned.z / 2);
+  holder.rotation.y = -prop.facing * (Math.PI / 2);
+  const inner = new Group();
+  inner.position.set(-size.x / 2, 0, -size.z / 2);
+  holder.add(inner);
+  return { holder, inner };
+}
+
 /**
  * `inSight` says whether the party sees a prop now — `null` when nobody is
  * asking, the GM's own view, where nothing is greyed.
@@ -289,17 +317,10 @@ export function buildProps(
     const turned = turnedSize(size, prop.facing);
 
     // Turned about the middle of its box, built from its unturned corner.
-    const holder = new Group();
-    holder.position.set(box.min.x + turned.x / 2, box.min.y, box.min.z + turned.z / 2);
-    holder.rotation.y = -prop.facing * (Math.PI / 2);
-    const inner = new Group();
-    inner.position.set(-size.x / 2, 0, -size.z / 2);
-    holder.add(inner);
+    const { holder, inner } = holderFor(prop);
 
     for (const part of partsOf(prop.type, !!type?.opens && opened.has(prop.id))) {
-      const geometry = part.round
-        ? new CylinderGeometry(part.size[0] / 2, part.size[0] / 2, part.size[1], 14)
-        : new BoxGeometry(part.size[0], part.size[1], part.size[2]);
+      const geometry = shapeOf(part);
       geometries.push(geometry);
       const tone = part.tone ?? 'base';
       const flat = BURNING.has(tone);
@@ -333,3 +354,99 @@ export function buildProps(
     },
   };
 }
+
+/**
+ * A prop about to be put down (D-351): the prop itself, turned as it will be
+ * and in its finish, so the GM sees which way it faces before the click.
+ */
+export interface PropGhostDrawn {
+  readonly type: string;
+  readonly at: BlockCoord;
+  readonly facing: Facing;
+  readonly finish: string | null;
+  /** It cannot go there: drawn red. */
+  readonly refused: boolean;
+}
+
+export interface PropGhost {
+  /** Draws this one, or nothing. The caller adds the group to its scene. */
+  show(ghost: PropGhostDrawn | null): Group | null;
+  dispose(): void;
+}
+
+/** Where it cannot go — the prefab ghost's red. */
+const REFUSED = '#ff5a5a';
+
+/**
+ * How bright a face of the ghost is, by which way it faces in the world: the
+ * top brightest, the sides less, one pair less again. The ghost is lit by
+ * nothing — it must show in a dark cellar — so its shape is shaded by hand,
+ * enough to read a stair's treads from its risers.
+ */
+function shadeFaces(geometry: BufferGeometry, turn: number): void {
+  const normals = geometry.getAttribute('normal');
+  const shades: number[] = [];
+  const cos = Math.cos(turn);
+  const sin = Math.sin(turn);
+  for (let i = 0; i < normals.count; i += 1) {
+    const [x, y, z] = [normals.getX(i), normals.getY(i), normals.getZ(i)];
+    const worldX = x * cos + z * sin;
+    const shade = y > 0.5 ? 1 : y < -0.5 ? 0.45 : Math.abs(worldX) > 0.5 ? 0.8 : 0.62;
+    shades.push(shade, shade, shade);
+  }
+  geometry.setAttribute('color', new Float32BufferAttribute(shades, 3));
+}
+
+export function buildPropGhost(): PropGhost {
+  const materials = new Map<string, MeshBasicMaterial>();
+  const material = (colour: string) => {
+    let made = materials.get(colour);
+    if (!made) {
+      // See-through, as every ghost is, and writing no depth, so it hides
+      // nothing behind it (`prefab-ghost`).
+      made = new MeshBasicMaterial({ color: colour, vertexColors: true, transparent: true, opacity: 0.6, depthWrite: false });
+      materials.set(colour, made);
+    }
+    return made;
+  };
+  let current: { group: Group; geometries: BufferGeometry[] } | null = null;
+  const drop = () => {
+    if (!current) return;
+    current.group.removeFromParent();
+    for (const geometry of current.geometries) geometry.dispose();
+    current = null;
+  };
+
+  return {
+    show(ghost) {
+      drop();
+      const type = ghost ? propType(ghost.type) : undefined;
+      if (!ghost || !type) return null;
+      const finish = type.finishes.find((one) => one.id === ghost.finish) ?? type.finishes[0];
+      const tones = tonesOf(finish?.colour ?? '#9aa3ad');
+      const { holder, inner } = holderFor(ghost);
+      const geometries: BufferGeometry[] = [];
+      // Shut and lit: as it is put down.
+      for (const part of partsOf(ghost.type, false)) {
+        const geometry = shapeOf(part);
+        shadeFaces(geometry, holder.rotation.y);
+        geometries.push(geometry);
+        const mesh = new Mesh(geometry, material(ghost.refused ? REFUSED : tones[part.tone ?? 'base']));
+        mesh.position.set(part.at[0], part.at[1], part.at[2]);
+        mesh.raycast = () => {};
+        // Over the body's own cubes, under the outline that frames it.
+        mesh.renderOrder = 10;
+        inner.add(mesh);
+      }
+      const group = new Group();
+      group.add(holder);
+      current = { group, geometries };
+      return group;
+    },
+    dispose() {
+      drop();
+      for (const made of materials.values()) made.dispose();
+    },
+  };
+}
+
