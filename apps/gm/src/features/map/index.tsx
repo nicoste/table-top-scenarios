@@ -382,7 +382,7 @@ export function MapPanel({
           )}
         </p>
         <p className="readout">{hoverLabel ?? '—'}</p>
-        <p className="hint">1–7 tool · 8–0, −, = or [ ] brush · {CAMERA_HINT} · Esc leaves</p>
+        <p className="hint">1–7 tool · 8–0, −, = or [ ] brush · {CAMERA_HINT}</p>
       </div>
 
       {/* Build's and Paint's, and nobody else's (R-207). */}

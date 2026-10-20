@@ -8796,3 +8796,17 @@ drawn from the table on ground the party has seen, listed as the players'
 own; moved by its handle (*Drag to move this area.*); a ruler of 10.1 that
 stayed through a right-drag pan; the sphere taken away with its ×.
 
+### D-345 — Escape never leaves the map · `agreed`
+*"The escape key is moving the GM out of the scene, remove that, it gets in
+conflict with actions like unselect measure area. I don't want a shortcut to
+leave the scene."* Inside a map, Escape stepped back through whatever was
+under way — a move, a half-drawn box, a prop in hand, the ruler — and when
+there was nothing left, it left the map. One press too many to let go of a
+ruler and the GM was out on the world.
+
+Escape now only cancels, and with nothing to cancel does nothing (R-139).
+Leaving a map is the map card's **Back to the world** button and nothing
+else; the hint no longer says *Esc leaves*. On the world, Escape still puts a
+place back and closes what is selected — there is nothing further out to
+leave to.
+

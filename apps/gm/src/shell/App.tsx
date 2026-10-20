@@ -1745,7 +1745,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
           // A move in progress is the nearer thing to back out of (R-139).
           if (stride.step === 'aiming') { setStride(still); return; }
           if (silverMove.step === 'aiming') { setSilverMove(noSilverMove); return; }
-          // A half-drawn box, then a prefab in hand, before leaving the map.
+          // A half-drawn box, then a prefab in hand.
           if (mapTool === 'prefabs' && capture.step !== 'start') { setCapture(captureBack); return; }
           // A prop in hand, then the one selected (D-328).
           if (mapTool === 'props' && propHand.type) { setPropHand((now) => ({ ...now, type: null })); return; }
@@ -1753,7 +1753,8 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
           if (mapTool === 'prefabs' && placing.id) { setPlacing((now) => ({ ...now, id: null })); return; }
           // The ruler standing, or a drag under way (D-341).
           if (mapTool === 'measure' && measureRef.current.from) { setMeasure(measureCleared(measureRef.current)); return; }
-          setOpenMap(null);
+          // And nothing else: Escape never leaves the map (D-345). Leaving is the
+          // map card's button — one Escape too many must not drop the GM out.
           return;
         }
       } else {

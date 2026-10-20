@@ -1891,6 +1891,10 @@ apps/host/src/
 > Escape is the keyboard's "never mind" and right-click is the mouse's; a gesture
 > driven by the mouse should not require the other hand. Right-click during a
 > gesture cancels instead of doing its usual job (R-133's pan).
+>
+> **Escape only ever cancels** (D-345). With nothing to cancel it does nothing:
+> it never leaves a map, so pressing it once too many to let go of a ruler or
+> a prop does not drop the GM out to the world.
 
 ---
 
