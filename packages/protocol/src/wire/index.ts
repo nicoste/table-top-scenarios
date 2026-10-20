@@ -230,6 +230,12 @@ export const MapWireSchema = z.object({
    * is sent only those it has seen the room of, cut with the body (R-85).
    */
   props: z.array(z.unknown()).optional(),
+  /**
+   * Which blocks are stairs (D-349). Absent before there were stairs: none,
+   * no bump (D-187). Only the stairs of blocks the map carries are written,
+   * so the table is told of none it was not sent (R-85).
+   */
+  stairs: z.array(z.unknown()).optional(),
 });
 export type MapWire = z.infer<typeof MapWireSchema>;
 

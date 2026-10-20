@@ -51,7 +51,7 @@ import { buildMarkerGhost, buildPlaceMarkers, facingAngle, MARKER_ZOOM } from '.
 import type { PartyPawns, PawnRef } from '../pawns/index.js';
 import { buildPartyPawns } from '../pawns/index.js';
 import type { BlockBody, FacePick } from '../blocks/index.js';
-import { buildBlockBody } from '../blocks/index.js';
+import { buildBlockBody, stairGeometry } from '../blocks/index.js';
 import type { PartyTokens, TokenRef } from '../tokens/index.js';
 import { buildPartyTokens } from '../tokens/index.js';
 import { intendedCell } from '../picking/index.js';
@@ -418,6 +418,11 @@ export class Stage {
   private readonly ruler = buildRuler();
   /** The prefab about to be placed (D-321). */
   private readonly prefabGhost = buildPrefabGhost();
+  /** Stairs about to be laid (D-349): their steps, see-through, turned the way they will climb. */
+  private readonly stairGhost = new Mesh(
+    stairGeometry(),
+    new MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.45, depthWrite: false }),
+  );
   /** The party's fog, kept so a rebuilt body is drawn under it too (R-69). */
   private partyFog: StageFog | null = null;
   /**
@@ -582,6 +587,10 @@ export class Stage {
     // the route only says what the journey would be.
     this.routeMesh.renderOrder = 4;
     this.scene.add(this.highlight, this.blockGhost, this.slots, this.fog, this.routeMesh, this.walk.group, this.ruler.group);
+    this.stairGhost.visible = false;
+    this.stairGhost.renderOrder = 10;
+    this.stairGhost.raycast = () => {};
+    this.scene.add(this.stairGhost);
 
     /*
      * Ambient occlusion, as a post-process (R-168).
@@ -764,11 +773,12 @@ export class Stage {
     // A world route has no meaning inside a map (R-148), and the ribbon is
     // only ever shown while aiming anyway.
     if (!worldVisible) this.routeMesh.visible = false;
-    // And a walk has none outside one, nor a prefab's ghost, nor a ruler.
+    // And a walk has none outside one, nor a prefab's ghost, nor a ruler, nor stairs.
     if (worldVisible) {
       this.walk.show(null);
       this.prefabGhost.show(null);
       this.ruler.show(null);
+      this.stairGhost.visible = false;
     }
     if (this.areaMeshes) this.areaMeshes.group.visible = !worldVisible;
     this.fog.visible = worldVisible;
@@ -1039,6 +1049,16 @@ export class Stage {
   showRuler(ruler: RulerDrawn | null): void {
     this.invalidate();
     this.ruler.show(this.showingMap ? ruler : null);
+  }
+
+  /** Shows the stairs a click would lay, in the cube and turned the way they would climb, or none (D-349). */
+  showStairGhost(stairs: { readonly at: BlockCoord; readonly facing: number } | null): void {
+    this.invalidate();
+    const shown = !!stairs && this.showingMap;
+    this.stairGhost.visible = shown;
+    if (!stairs || !shown) return;
+    this.stairGhost.position.set(stairs.at.x + 0.5, stairs.at.y + 0.5, stairs.at.z + 0.5);
+    this.stairGhost.rotation.set(0, -stairs.facing * (Math.PI / 2), 0);
   }
 
   /** Puts the move ghost on a cube, in the mover's colour, or takes it off. */
@@ -1903,6 +1923,8 @@ export class Stage {
     this.routeMesh.geometry.dispose();
     (this.routeMesh.material as MeshBasicMaterial).dispose();
     this.walk.dispose();
+    this.stairGhost.geometry.dispose();
+    (this.stairGhost.material as MeshBasicMaterial).dispose();
     this.areaMeshes?.dispose();
     this.ruler.dispose();
     this.prefabGhost.dispose();

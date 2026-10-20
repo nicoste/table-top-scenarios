@@ -8872,3 +8872,47 @@ Checked on the test copy: the band brought down from roof 1 to the water
 level and the console set to show it; the areas on the ground went with the
 ground.
 
+### D-349 — Stairs · `agreed`
+*"We are missing stairs! But we gonna target the normal stairs, the one that
+move you up or down in a diagonal, not vertical ladders. These stairs will be
+just get a better representation of 'this block is not a block, is a stair'
+but does the same a block will do."*
+
+R-215 is the rule. A stair is **a mark on a block**, kept beside the blocks
+(`EncounterMap.stairs`, by `blockKey`, the way it climbs) — not a material,
+since a material is what a cube is made of (D-321), and not a prop, since a
+prop is something placed *in* a cube that the walk stands beside, where a stair
+is the cube somebody stands *on*. Every rule reads the blocks and never the
+mark, so nothing about walking, sight, standing or building changed: a
+staircase of blocks was already climbed one diagonal step at a time (R-209).
+
+**Chosen here, to be argued with:**
+
+- **A sixth brush in Build, Stairs**, one cube at a time. The number keys run
+  out at equals, so it is reached with **[ ]** or a click.
+- **Its facing comes from what it is set against**: against the side of a
+  block the stair climbs toward it — its high side to the wall, as a torch
+  hangs on the wall pointed at (D-335); on a floor it is the hand's own turn,
+  **Z / X**. A see-through ghost of the steps follows the pointer.
+- **Three steps.** Enough to read as stairs at the table's distance, few
+  enough to stay blocky. One number (`STAIR_STEPS`).
+- **Somebody standing on a stair stands on top of it**, a whole cube up, as on
+  any block — over the lower steps. That is the rule being the block's; the
+  drawing does not move anybody.
+- **The mark follows its block everywhere**: erased with it, kept by paint and
+  fill, carried by a prefab and turned and mirrored with it (a mirrored facing
+  swaps one quarter turn for the other, as a prop's does), dropped when a
+  prefab's plain block lands on it. Written only for blocks the map holds, so
+  the table is told of none it was not sent.
+
+**Drawn** as a second instanced mesh per material beside the cubes: the same
+material and colour, each stair turned to its facing, under the fog as any
+block. A hit on a step is turned back into the world by its instance's own
+matrix, so aiming at a stair's lower step builds on top of the stair, as on a
+block.
+
+Checked on the test copy: stairs laid against Tollkeep's brick wall climbing
+toward it, a second turned with X on the grass, the ghost showing the steps
+before each click; aiming at a step aimed at the cube above; the table drew
+both as steps.
+

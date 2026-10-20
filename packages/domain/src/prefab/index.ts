@@ -12,7 +12,7 @@
 
 import type { PrefabId, SwatchId } from '../ids/index.js';
 import { freshId } from '../ids/index.js';
-import type { BlockCoord, EncounterMap } from '../map/index.js';
+import type { BlockCoord, EncounterMap, StairFacing } from '../map/index.js';
 import { blockAt, blockKey, inMap, parseBlockKey, propsOfJSON } from '../map/index.js';
 import { cleanTags } from '../library/index.js';
 import type { Size, Turn } from '../boxes/index.js';
@@ -48,6 +48,8 @@ export interface Prefab {
    * with the blocks, turned and mirrored with them, as new props.
    */
   readonly props: readonly PrefabProp[];
+  /** Which of its blocks are stairs, by their place in the box, and which way they climb (D-349). */
+  readonly stairs?: ReadonlyMap<string, StairFacing>;
 }
 
 /** A prop inside a prefab: its type, the cube it stands at in the box, its facing and finish. */
@@ -111,6 +113,13 @@ export function capturePrefab(
   // does not — half a door is no door (D-322).
   const inside = (cube: BlockCoord) => cube.x >= box.min.x && cube.y >= box.min.y && cube.z >= box.min.z
     && cube.x <= box.max.x && cube.y <= box.max.y && cube.z <= box.max.z;
+  // Its stairs, with the blocks they are (D-349).
+  const stairs = new Map<string, StairFacing>();
+  for (const [key, facing] of map.stairs ?? []) {
+    const at = parseBlockKey(key);
+    if (!at || !inside(at) || !map.blocks.has(key)) continue;
+    stairs.set(blockKey({ x: at.x - box.min.x, y: at.y - box.min.y, z: at.z - box.min.z }), facing);
+  }
   const props = map.props
     .filter((prop) => propCubes(prop).every(inside))
     .map((prop) => ({
@@ -127,8 +136,13 @@ export function capturePrefab(
     size,
     blocks,
     props,
+    ...(stairs.size > 0 ? { stairs } : {}),
   };
 }
+
+/** A facing carried through a placement: mirrored first, then turned (D-322's rule, for stairs too). */
+const facingPlaced = (facing: Facing, how: PrefabTurn): Facing =>
+  turned(how.mirrored ? asFacing(4 - facing) : facing, how.facing);
 
 /**
  * The props a prefab puts down when placed, turned and mirrored with its
@@ -155,19 +169,24 @@ export function placedProps(prefab: Prefab, at: BlockCoord, how: PrefabTurn): re
   });
 }
 
-/** Every cube a prefab fills when placed, with what it is made of. */
+/** Every cube a prefab fills when placed, with what it is made of — and, for a stair, which way it climbs now. */
 export function placedBlocks(
   prefab: Prefab,
   at: BlockCoord,
   how: PrefabTurn,
-): readonly { readonly at: BlockCoord; readonly swatch: SwatchId }[] {
+): readonly { readonly at: BlockCoord; readonly swatch: SwatchId; readonly stairs: StairFacing | null }[] {
   const { min } = placedBox(prefab, at, how);
-  const out: { at: BlockCoord; swatch: SwatchId }[] = [];
+  const out: { at: BlockCoord; swatch: SwatchId; stairs: StairFacing | null }[] = [];
   for (const [key, swatch] of prefab.blocks) {
     const local = parseBlockKey(key);
     if (!local) continue;
     const moved = placeInBox(local, prefab.size, how);
-    out.push({ at: { x: min.x + moved.x, y: min.y + moved.y, z: min.z + moved.z }, swatch });
+    const stair = prefab.stairs?.get(key);
+    out.push({
+      at: { x: min.x + moved.x, y: min.y + moved.y, z: min.z + moved.z },
+      swatch,
+      stairs: stair === undefined ? null : facingPlaced(stair, how) as StairFacing,
+    });
   }
   return out;
 }
@@ -192,13 +211,16 @@ export function stampPrefab(
   keep: ReadonlySet<string> = new Set(),
 ): EncounterMap {
   const blocks = new Map(map.blocks);
+  const stairs = new Map(map.stairs ?? []);
   let touched = false;
   if (how.clear) {
     const { min, max } = placedBox(prefab, at, how);
     for (let y = min.y; y <= max.y; y += 1) {
       for (let z = min.z; z <= max.z; z += 1) {
         for (let x = min.x; x <= max.x; x += 1) {
-          if (blocks.delete(blockKey({ x, y, z }))) touched = true;
+          const key = blockKey({ x, y, z });
+          if (blocks.delete(key)) touched = true;
+          stairs.delete(key);
         }
       }
     }
@@ -207,16 +229,24 @@ export function stampPrefab(
     if (!inMap(map, cube.at)) continue;
     const key = blockKey(cube.at);
     if (keep.has(key)) continue;
+    // The prefab's block wins, and so does what shape it is (D-349).
+    if (cube.stairs === null) stairs.delete(key);
+    else stairs.set(key, cube.stairs);
     if (blocks.get(key) === cube.swatch) continue;
     blocks.set(key, cube.swatch);
     touched = true;
   }
+  const sameStairs = stairs.size === (map.stairs?.size ?? 0) && [...stairs].every(([key, facing]) => map.stairs?.get(key) === facing);
   // Only the cubes that differ from the map as it was count as a change: a
   // clear that emptied a cube the prefab then filled with what was there is
   // no change at all.
-  const same = !touched
-    || (blocks.size === map.blocks.size && [...blocks].every(([key, swatch]) => blockAt(map, parseBlockKey(key)!) === swatch));
-  let stamped: EncounterMap = same ? map : { ...map, blocks };
+  const same = sameStairs && (!touched
+    || (blocks.size === map.blocks.size && [...blocks].every(([key, swatch]) => blockAt(map, parseBlockKey(key)!) === swatch)));
+  let stamped: EncounterMap = same ? map : { ...map, blocks, ...(stairs.size > 0 ? { stairs } : {}) };
+  if (!same && stairs.size === 0 && stamped.stairs) {
+    const { stairs: _, ...rest } = stamped;
+    stamped = rest;
+  }
   // Then its props, each where it fits among what is now there, and never on
   // anybody (R-186). One that does not fit is left out, as a block outside
   // the map is.
@@ -276,6 +306,8 @@ export interface PrefabJSON {
   runs: number[];
   /** Its props (D-322), at their places in the box. Absent before there were props: none. */
   props?: { type: string; at: { x: number; y: number; z: number }; facing: number; finish: string }[];
+  /** Its stairs (D-349), at their places in the box. Absent before there were stairs: none. */
+  stairs?: { x: number; y: number; z: number; facing: number }[];
 }
 
 export function prefabToJSON(prefab: Prefab): PrefabJSON {
@@ -313,6 +345,9 @@ export function prefabToJSON(prefab: Prefab): PrefabJSON {
       props: prefab.props.map((prop) => ({
         type: prop.type, at: { x: prop.at.x, y: prop.at.y, z: prop.at.z }, facing: prop.facing, finish: prop.finish,
       })),
+    } : {}),
+    ...(prefab.stairs && prefab.stairs.size > 0 ? {
+      stairs: [...prefab.stairs].map(([key, facing]) => ({ ...parseBlockKey(key)!, facing })),
     } : {}),
   };
 }
@@ -362,6 +397,16 @@ export function prefabFromJSON(json: unknown): Prefab | null {
     .filter((prop) => prop.at.x >= 0 && prop.at.y >= 0 && prop.at.z >= 0 && prop.at.x < box.x && prop.at.y < box.y && prop.at.z < box.z)
     .map((prop) => ({ type: prop.type, at: prop.at, facing: prop.facing, finish: prop.finish }));
   if (cursor !== volumeOf(box) || (blocks.size === 0 && props.length === 0)) return null;
+  // Its stairs, each on one of its blocks (D-349).
+  const stairs = new Map<string, StairFacing>();
+  for (const item of Array.isArray(raw.stairs) ? raw.stairs as unknown[] : []) {
+    const entry = item as Record<string, unknown> | null;
+    if (!entry || typeof entry.x !== 'number' || typeof entry.y !== 'number' || typeof entry.z !== 'number') continue;
+    const key = blockKey({ x: entry.x, y: entry.y, z: entry.z });
+    if (!blocks.has(key)) continue;
+    const facing = typeof entry.facing === 'number' && Number.isInteger(entry.facing) ? asFacing(entry.facing) : 0;
+    stairs.set(key, facing as StairFacing);
+  }
   return {
     id: raw.id as PrefabId,
     name: cleanName(typeof raw.name === 'string' ? raw.name : undefined, 'New prefab'),
@@ -369,5 +414,6 @@ export function prefabFromJSON(json: unknown): Prefab | null {
     size: box,
     blocks,
     props,
+    ...(stairs.size > 0 ? { stairs } : {}),
   };
 }

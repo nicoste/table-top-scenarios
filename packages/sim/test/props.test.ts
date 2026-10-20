@@ -7,7 +7,7 @@ import { apply, emptyHistory } from '@tt/sim';
 import { viewFor, cellsFromWire } from '@tt/protocol';
 import type { GmView, HostState, Intent, TableView } from '@tt/protocol';
 import {
-  createCampaign, createLiveSave, DEFAULT_MATERIALS, swatchOf, ORIGIN, EMPTY_LIBRARY, openedIn, blockAt,
+  createCampaign, createLiveSave, DEFAULT_MATERIALS, swatchOf, ORIGIN, EMPTY_LIBRARY, openedIn, blockAt, stairsAt,
 } from '@tt/domain';
 
 const NOW = '2026-01-01T00:00:00.000Z';
@@ -148,5 +148,20 @@ describe('what the party remembers of props (D-331)', () => {
     // Stood in the room again, they see the table again.
     state = run(state, { kind: 'moveToken', placeId: t.placeId, poiId: t.poiId, memberId: t.aldra, at: { x: 2, y: 1, z: 7 } }).state;
     expect(tableProps(state)).toHaveLength(1);
+  });
+});
+
+describe('stairs through the host (D-349)', () => {
+  it('are laid as blocks with a facing, are building — one undo step — and are blocks in the way of a prop', () => {
+    const t = tavern();
+    const lay: Intent = { kind: 'setBlock', placeId: t.placeId, poiId: t.poiId, cells: [{ x: 3, y: 1, z: 3 }], swatch: STONE, stairs: 2 };
+    let state = run(t.state, lay).state;
+    expect(stairsAt(mapOf(state), { x: 3, y: 1, z: 3 })).toBe(2);
+    expect(blockAt(mapOf(state), { x: 3, y: 1, z: 3 })).toBe(STONE);
+    expect(run(state, { kind: 'placeProp', placeId: t.placeId, poiId: t.poiId, type: 'table', at: { x: 3, y: 1, z: 3 }, facing: 0 }).rejected)
+      .toBe('there is a block there');
+    state = run(state, { kind: 'undo' }).state;
+    expect(blockAt(mapOf(state), { x: 3, y: 1, z: 3 })).toBeNull();
+    expect(stairsAt(mapOf(state), { x: 3, y: 1, z: 3 })).toBeNull();
   });
 });

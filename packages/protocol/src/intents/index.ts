@@ -154,7 +154,11 @@ export const IntentSchema = z.discriminatedUnion('kind', [
 
   // A point of interest's map (D-183). Authored content, so GM only. `stroke`
   // ties one drag into a single undo, exactly as it does for terrain (R-140b).
-  z.object({ kind: z.literal('setBlock'), placeId: z.string().min(1), poiId: z.string().min(1), cells, swatch: z.string().min(1), stroke }),
+  z.object({
+    kind: z.literal('setBlock'), placeId: z.string().min(1), poiId: z.string().min(1), cells, swatch: z.string().min(1), stroke,
+    /** Lay them as stairs climbing this way (D-349): a quarter-turn facing. Absent: plain blocks. */
+    stairs: facing,
+  }),
   z.object({ kind: z.literal('paintBlock'), placeId: z.string().min(1), poiId: z.string().min(1), cells, swatch: z.string().min(1), stroke }),
   z.object({ kind: z.literal('clearBlock'), placeId: z.string().min(1), poiId: z.string().min(1), cells, stroke }),
   /** The world's hour and sun (R-181). The whole description, every time. */

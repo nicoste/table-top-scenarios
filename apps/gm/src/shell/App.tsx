@@ -17,7 +17,7 @@ import {
 } from '@tt/domain';
 import type {
   SwatchId, CoverId, Lighting, Ambience, MemberId, Tokens, BlockCoord, Route, Travelling,
-  TravelModeId, Facing,
+  TravelModeId, Facing, StairFacing,
 } from '@tt/domain';
 import type { GmView, Intent } from '@tt/protocol';
 import { defaultTarget, worldCentre, SILVER } from '@tt/render';
@@ -215,6 +215,8 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    * about the campaign.
    */
   const [mapBrush, setMapBrush] = useState(DEFAULT_BRUSH.id);
+  /** Which way the Stairs brush lays stairs on a floor (D-349), turned with Z / X. Against a wall, the wall decides. */
+  const [stairFacing, setStairFacing] = useState<StairFacing>(0);
   /**
    * Where the pointer last was over the canvas.
    *
@@ -617,12 +619,14 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     if (!at) return;
     const picked = stage.pick(at.x, at.y);
     const action = mapAction(mapTool, picked.face, reach);
-    const hover = mapHover(action, undefined, aimAt(action));
+    const verdict = aimAt(action);
+    const hover = mapHover(action, undefined, verdict);
     setHoverLabel(hover.label);
     stage.showBlockGhost(hover.ghost, ghostTint(action));
-    // Only what a still hand can change: the modifiers and the brush. A re-aim
-    // on every render would fight the pointer.
-  }, [digging, shifting, mapBrush]);
+    stage.showStairGhost(stairsShown(action, verdict));
+    // Only what a still hand can change: the modifiers, the brush and the
+    // stairs' turn. A re-aim on every render would fight the pointer.
+  }, [digging, shifting, mapBrush, stairFacing]);
 
   // The compass follows the camera, on both surfaces (R-152, R-155).
   useEffect(() => {
@@ -824,6 +828,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
 
   // Putting the tool down, or changing map, drops the ghost and any half-drawn box.
   useEffect(() => {
+    stage?.showStairGhost(null);
     stage?.showPrefabGhost(null);
     stage?.showBlockGhost([]);
     setCapture(NO_CAPTURE);
@@ -1082,7 +1087,13 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     alt: digging,
     shift: shifting,
     within: banded ? openRange ?? WHOLE_MAP : null,
+    stairFacing,
   };
+  /** The stairs a click would lay, for their ghost — none when it would be refused (D-349). */
+  const stairsShown = (action: MapAction, verdict: ReturnType<typeof mapAllowed>) =>
+    (action.kind === 'place' && action.stairs !== undefined && verdict.kind !== 'stop'
+      ? { at: action.at, facing: action.stairs }
+      : null);
 
   /**
    * What colour the outline takes, which is the whole of how a mode announces
@@ -1119,7 +1130,10 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       case 'place':
         // The whole patch in one intent: one undo, one write, one broadcast,
         // however wide the brush (R-162).
-        dispatch({ kind: 'setBlock', ...which, cells: action.cells, swatch, ...tagged });
+        dispatch({
+          kind: 'setBlock', ...which, cells: action.cells, swatch, ...tagged,
+          ...(action.stairs !== undefined ? { stairs: action.stairs } : {}),
+        });
         return;
       case 'paint':
         // Its own intent, not `setBlock` with different cells. The two are
@@ -1513,6 +1527,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       const hover = mapHover(action, fill, verdict);
       setHoverLabel(hover.label);
       stage.showBlockGhost(hover.ghost, ghostTint(action));
+      stage.showStairGhost(stairsShown(action, verdict));
 
       // Build and erase only ever *show* what a click would do (R-153): they
       // move their own target, so a hand that drifts mid-click would climb.
@@ -1645,6 +1660,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     }
     setHoverLabel(null);
     stage?.showBlockGhost([]);
+    stage?.showStairGhost(null);
   };
 
   /*
@@ -1721,6 +1737,11 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
               dispatch({ kind: 'editProp', placeId: openMap.placeId, poiId: openMap.poiId, id: prop.id, facing: turned(prop.facing, step) });
             }
           }
+          return;
+        }
+        // Z / X turn the stairs the Stairs brush lays on a floor (D-349).
+        if (mapTool === 'build' && brushById(mapBrush).stairs && (e.code === 'KeyZ' || e.code === 'KeyX')) {
+          setStairFacing((now) => turned(now, e.code === 'KeyX' ? 1 : -1) as StairFacing);
           return;
         }
         // Z / X turn the prefab in hand, as they turn a place (R-203); M mirrors it.

@@ -9,8 +9,8 @@
 // Neither of them may assume the other's precedence.
 
 import type { MapTool, Tool } from '../store/index.js';
-import type { BlockCoord, Brush, LevelRange } from '@tt/domain';
-import { brushPatch, inRange } from '@tt/domain';
+import type { BlockCoord, Brush, LevelRange, StairFacing } from '@tt/domain';
+import { brushPatch, facingWithBack, inRange } from '@tt/domain';
 import type { FacePick } from '@tt/render';
 
 export interface Cell { readonly cx: number; readonly cz: number; readonly x: number; readonly z: number }
@@ -200,6 +200,8 @@ export type MapAction =
     readonly at: BlockCoord;
     readonly cells: readonly BlockCoord[];
     readonly under: boolean;
+    /** With the Stairs brush: which way they climb (D-349). */
+    readonly stairs?: StairFacing;
   }
   | { readonly kind: 'erase'; readonly at: BlockCoord; readonly cells: readonly BlockCoord[] }
   | { readonly kind: 'paint'; readonly at: BlockCoord; readonly cells: readonly BlockCoord[] }
@@ -251,6 +253,18 @@ export interface MapReach {
    * into the band from outside it.
    */
   readonly within: LevelRange | null;
+  /** Which way stairs climb when nothing says otherwise — turned with Z / X (D-349). */
+  readonly stairFacing?: StairFacing;
+}
+
+/**
+ * Which way stairs laid against this face climb (D-349): set against the
+ * side of a block, they climb toward it — their high side to the wall, as a
+ * torch hangs from one; on a floor, the hand's own turn.
+ */
+export function stairsFacing(face: FacePick, hand: StairFacing): StairFacing {
+  if (face.adjacent.y !== face.block.y) return hand;
+  return (facingWithBack({ x: face.block.x - face.adjacent.x, z: face.block.z - face.adjacent.z }) ?? hand) as StairFacing;
 }
 
 /**
@@ -281,6 +295,9 @@ export function mapAction(
   if (!face || tool === 'move' || tool === 'spawn' || tool === 'prefabs' || tool === 'props' || tool === 'measure') {
     return { kind: 'nothing' };
   }
+  /** With the Stairs brush, which way they climb (D-349). */
+  const stairsOf = (aimed: FacePick) =>
+    (reach.brush.stairs ? { stairs: stairsFacing(aimed, reach.stairFacing ?? 0) } : {});
   /** The brush's cells, with the band's say applied (R-164). */
   const patch = (at: BlockCoord, grow: 'up' | 'down' = 'up'): readonly BlockCoord[] => {
     const cells = brushPatch(at, reach.brush, grow);
@@ -296,9 +313,9 @@ export function mapAction(
       // Down, so that a column digs a shaft rather than building up into the
       // cube that was pointed at. Alt means *downward*, and it means it for
       // the brush's shape as much as for where the first cube lands.
-      return { kind: 'place', at, cells: patch(at, 'down'), under: true };
+      return { kind: 'place', at, cells: patch(at, 'down'), under: true, ...stairsOf(face) };
     }
-    return { kind: 'place', at: face.adjacent, cells: patch(face.adjacent), under: false };
+    return { kind: 'place', at: face.adjacent, cells: patch(face.adjacent), under: false, ...stairsOf(face) };
   }
 
   if (reach.shift) return { kind: 'fill', at: face.block };

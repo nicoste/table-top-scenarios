@@ -486,9 +486,9 @@ const patchOf = (x: number, y: number, z: number, brush = CUBE, grow: 'up' | 'do
 
 describe('the brush (R-162, R-164)', () => {
   describe('the registry', () => {
-    it('offers the five shapes the GM named', () => {
+    it('offers the five shapes the GM named, and stairs (D-349)', () => {
       expect(BRUSHES.map((b) => b.name))
-        .toEqual(['Cube', 'Flat 3×3', 'Flat 5×5', 'Column 2', 'Column 3']);
+        .toEqual(['Cube', 'Flat 3×3', 'Flat 5×5', 'Column 2', 'Column 3', 'Stairs']);
     });
 
     it('spans an odd number of cells, so the centre cube is always covered', () => {

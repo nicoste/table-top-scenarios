@@ -40,8 +40,9 @@ describe('brush footprints', () => {
     expect(WORLD_BRUSHES.every((n) => n % 2 === 1)).toBe(true);
     expect([...WORLD_BRUSHES]).toEqual([1, 3, 5]);
     // The same three the map offers as flats, which is the point of it.
+    // Stairs are one cube of a shape, not a flat (D-349).
     expect([...WORLD_BRUSHES]).toEqual(
-      BRUSHES.filter((brush) => brush.rise === 1).map((brush) => brush.span),
+      BRUSHES.filter((brush) => brush.rise === 1 && !brush.stairs).map((brush) => brush.span),
     );
   });
 

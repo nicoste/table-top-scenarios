@@ -5,7 +5,7 @@
 import type { Campaign, ChunkCoord, WorldCell } from '@tt/domain';
 import type {
   PartyMember, PlaceId, NoteId, PoiId, PlaneId, MemberId, SwatchId, Save, Place, Footing, Tokens,
-  TokensLibrary, ImageId, Prefab, Prefabs, Facing, BlockCoord,
+  TokensLibrary, ImageId, Prefab, Prefabs, Facing, BlockCoord, StairFacing,
 } from '@tt/domain';
 import {
   createCampaign, duplicateCampaign, uniqueCampaignName, createMember, editMember, removeMember,
@@ -1407,7 +1407,10 @@ function applyToMap(
     const unsilvered = silverAt.size === 0 ? unpropped : unpropped.filter((at) => !silverAt.has(blockKey(at)));
     const clear = clearOfTokens(unsilvered, present);
     if (!clear.some(empty)) return reject_('somebody is standing there');
-    return withPlaces(setMapBlocks(campaign.places, placeId, poiId, clear, swatch));
+    return withPlaces(setMapBlocks(
+      campaign.places, placeId, poiId, clear, swatch,
+      intent.stairs === undefined ? null : intent.stairs as StairFacing,
+    ));
   }
   if (!standing) return reject_('there is nothing there to paint');
   return withPlaces(paintMapBlocks(campaign.places, placeId, poiId, cells, swatch));

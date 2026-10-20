@@ -2348,6 +2348,23 @@ apps/host/src/
 >   leaves alone, and of a hidden one it knows nothing. The first thing the table may make that is not the party's
 >   own pawn (R-136). Right-drag pans the table's view, as on the console.
 
+> **R-215.** **A stair is a block drawn as steps** (D-349). A mark beside the
+> block — which way it climbs — and never a rule: standing, walking, sight,
+> building and props see a block, as they always did. A staircase of blocks
+> was already climbed by the walk's diagonal steps (R-209); stairs make it look
+> like one.
+>
+> - **Laid by the Build tool's Stairs brush**, one at a time. Against the side
+>   of a block they climb toward it, their high side to the wall; on a floor,
+>   **Z / X** turn them. A see-through ghost shows the steps before the click.
+> - **The mark goes where the block goes**: laid with it, erased with it, kept
+>   when it is repainted, carried and turned and mirrored in a prefab, cut with
+>   the band. A plain block laid where a stair was is plain.
+> - **Written only for blocks the map holds**, so a slice or the part the party
+>   has seen tells the table of no stair it was not sent (R-85).
+> - Drawn as three steps, in its block's material and colour, under the fog
+>   like any block; a click on a step is a click on its block.
+
 ---
 
 ## 6i. Knowing which way you are facing

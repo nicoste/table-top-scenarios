@@ -36,7 +36,7 @@ export type { Carry } from './places/index.js';
 
 export {
   worldToolShows, mapToolShows,
-  clickAction, holdsSelection, tableAction, mapAction, mapHover, mapDrags, mapAllowed,
+  clickAction, holdsSelection, tableAction, mapAction, mapHover, mapDrags, mapAllowed, stairsFacing,
 } from './tools/index.js';
 
 export { grabEnd, rowAt } from './levels/index.js';
