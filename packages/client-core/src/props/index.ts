@@ -92,11 +92,18 @@ export function propPreview(
   standing: ReadonlySet<string>,
   /** The wall pointed at, for one that hangs (`propWall`). */
   wall: Facing | null = null,
+  /**
+   * Aimed from another prop's face rather than a block's (D-356). A prop's
+   * face only offers a cube the prop in hand could stand in: one it could not
+   * is no preview at all, where a block's face says why in red.
+   */
+  onProp = false,
 ): PropPreview | null {
   const type = hand.type ? propType(hand.type) : null;
   if (!type) return null;
   const candidate = { type: type.id, at, facing: facingHere(hand, wall) };
   const why = whyNotPut(map, candidate, standing);
+  if (why && onProp) return null;
   return {
     box: propBox(candidate),
     ghost: { ...candidate, paint: hand.paint, flame: hand.flame, refused: why !== null },
@@ -129,6 +136,8 @@ export interface PropDrag {
   readonly id: string;
   /** The cube it would stand at, as a prop in hand would; null until the pointer finds one. */
   readonly at: BlockCoord | null;
+  /** Aimed from another prop's face (D-356): offered only where it could stand. */
+  readonly onProp?: boolean;
 }
 
 /** What letting go would do: everything carried, where it would land, the box round it, and why not. */
@@ -150,6 +159,7 @@ export function propMovePreview(
   const prop = stack[0];
   if (!prop || !drag.at || sameCube(prop.at, drag.at)) return null;
   const why = whyNotMove(map, drag.id, drag.at, standing);
+  if (why && drag.onProp) return null;
   const step = { x: drag.at.x - prop.at.x, y: drag.at.y - prop.at.y, z: drag.at.z - prop.at.z };
   const landed = stack.map((one) => ({ ...one, at: { x: one.at.x + step.x, y: one.at.y + step.y, z: one.at.z + step.z } }));
   const boxes = landed.map(propBox);

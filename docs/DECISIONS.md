@@ -9141,3 +9141,17 @@ nothing; the one prop held from behind is one that hangs, on its wall. The
 door already standing in the dungeon is left where it is — the rule is asked
 when a prop is put down or moved — for the GM to drag down or take away.
 
+### D-356 — A prop's face offers only what fits · `agreed`
+*"This position now is invalid, that's correct, but still offered while about
+to instance it, as non-valid snapping position."* Pointing at the face of a
+row of bars still drew a cell door in red in front of them, a cube up — the
+cube against the face, which since D-355 nothing holds.
+
+A **prop's face** now offers only a cube the prop could stand in: where it
+could not, there is no ghost at all and the readout asks for somewhere it
+should stand. A **block's face** still shows red and says why, as it always
+has — a floor or a wall is where a GM aims on purpose, and the reason is worth
+reading; the face of a prop is often only what the pointer crossed on its way.
+The same for a prop being dragged (D-354): over another prop's face, it is
+offered only where it could land.
+

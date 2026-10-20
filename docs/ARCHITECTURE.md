@@ -2242,6 +2242,9 @@ apps/host/src/
 >   it goes along — the candles on the barrel. A ghost shows where they all
 >   land, red where they cannot; letting go is one undo step, Escape or
 >   leaving the map leaves it where it was.
+> - **Another prop's face offers only what fits** (D-356): aimed from it, a
+>   cube the prop could not stand in is no ghost at all; a block's face still
+>   shows red and says why.
 > - **Painted with any block material** (D-352), on the parts that take
 >   paint; the parts that do not — a knob, a lock, a barrel's hoops, wax,
 >   embers — keep their own colour. Each painted part is a few percent off

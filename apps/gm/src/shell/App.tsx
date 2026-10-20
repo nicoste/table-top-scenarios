@@ -130,6 +130,8 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   /** Whether the pointer is over an area's handle, for the readout. */
   const [overHandle, setOverHandle] = useState(false);
   const [propAt, setPropAt] = useState<BlockCoord | null>(null);
+  /** Whether `propAt` was aimed from another prop's face, which offers only what fits (D-356). */
+  const [propAtOnProp, setPropAtOnProp] = useState(false);
   /** The wall a torch would hang on there, when the pointer is on one (D-335). */
   const [propWallAt, setPropWallAt] = useState<0 | 1 | 2 | 3 | null>(null);
   /**
@@ -814,11 +816,11 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       return;
     }
     if (propHand.type) {
-      const preview = propAt ? propPreview(openBody, propHand, propAt, standingCubes, propWallAt) : null;
+      const preview = propAt ? propPreview(openBody, propHand, propAt, standingCubes, propWallAt, propAtOnProp) : null;
       stage.showPropGhost(preview ? [preview.ghost] : null);
       stage.showBlockGhost(preview ? [preview.box.min, preview.box.max] : [], preview?.why ? 0xff6b6b : 0xffffff);
       const type = propType(propHand.type);
-      setHoverLabel(propPrompt(type ?? null, propAt, preview?.why ?? null));
+      setHoverLabel(propPrompt(type ?? null, preview ? propAt : null, preview?.why ?? null));
       return;
     }
     stage.showPropGhost(null);
@@ -833,7 +835,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     }
     stage.showBlockGhost([]);
     setHoverLabel(propPrompt(null, null, null));
-  }, [stage, openMap, mapTool, openBody, propHand, propAt, propWallAt, selectedProp, propDrag, standingCubes]);
+  }, [stage, openMap, mapTool, openBody, propHand, propAt, propAtOnProp, propWallAt, selectedProp, propDrag, standingCubes]);
   // A prop removed, or undone away, is no longer selected.
   useEffect(() => {
     if (selectedProp && openBody && !propById(openBody.props, selectedProp)) setSelectedProp(null);
@@ -1262,7 +1264,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       if (propHand.type) {
         const at = propAim(picked.face, picked.propFace);
         const wall = propWall(picked.face, picked.propFace);
-        const preview = at && openBody ? propPreview(openBody, propHand, at, standingCubes, wall) : null;
+        const preview = at && openBody ? propPreview(openBody, propHand, at, standingCubes, wall, !!picked.propFace) : null;
         const intent = at && preview && !preview.why ? placePropIntent(propHand, at, openMap.placeId, openMap.poiId, wall) : null;
         if (intent) dispatch(intent);
         return;
@@ -1486,8 +1488,10 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       const carried = new Set(stackOf(openBody.props, propDrag.id).map((one) => one.id as string));
       const picked = stage.pick(e.clientX, e.clientY, carried);
       const at = propAim(picked.face, picked.propFace);
-      setPropDrag((now) => (!now || now.at === at || (now.at && at && now.at.x === at.x && now.at.y === at.y && now.at.z === at.z)
-        ? now : { ...now, at }));
+      const onProp = !!picked.propFace;
+      setPropDrag((now) => (!now || (now.onProp === onProp
+        && (now.at === at || (now.at && at && now.at.x === at.x && now.at.y === at.y && now.at.z === at.z)))
+        ? now : { ...now, at, onProp }));
       return;
     }
     if (openMap && mapTool === 'props') {
@@ -1495,6 +1499,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       const picked = stage.pick(e.clientX, e.clientY);
       const at = propAim(picked.face, picked.propFace);
       setPropAt((now) => (now === at || (now && at && now.x === at.x && now.y === at.y && now.z === at.z) ? now : at));
+      setPropAtOnProp(!!picked.propFace);
       setPropWallAt(propWall(picked.face, picked.propFace));
       return;
     }

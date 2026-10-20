@@ -157,3 +157,24 @@ describe('dragging a prop (D-354)', () => {
   });
 });
 
+describe('a prop\'s face offers only what fits (D-356)', () => {
+  it('in hand: no preview where it could not stand, where a block\'s face says why', () => {
+    // Bars on the floor; the cube in front of their upper half is air.
+    const map = putProp(createMap(), { type: 'bars', at: cube(8, 1, 5), facing: 1 });
+    const hand = takeProp(EMPTY_HAND, 'cell-door');
+    expect(propPreview(map, hand, cube(9, 2, 5), new Set(), null, true)).toBeNull();
+    expect(propPreview(map, hand, cube(9, 2, 5), new Set())!.why).toBe('nothing under it or beside it to hold it');
+    // In front of them on the floor, it fits, and is offered from their face too.
+    expect(propPreview(map, hand, cube(9, 1, 5), new Set(), null, true)!.why).toBeNull();
+  });
+
+  it('dragged: no ghost where it could not land', () => {
+    let map = putProp(createMap(), { type: 'bars', at: cube(8, 1, 5), facing: 1 });
+    map = putProp(map, { type: 'chair', at: cube(3, 1, 3), facing: 0 });
+    const id = map.props[1]!.id as string;
+    expect(propMovePreview(map, { id, at: cube(9, 2, 5), onProp: true }, new Set())).toBeNull();
+    expect(propMovePreview(map, { id, at: cube(9, 2, 5) }, new Set())!.why).not.toBeNull();
+    expect(propMovePreview(map, { id, at: cube(9, 1, 5), onProp: true }, new Set())!.why).toBeNull();
+  });
+});
+
