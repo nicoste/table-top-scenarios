@@ -15,6 +15,12 @@
 // and two chests painted alike look alike. The parts that do not — a door's
 // knob, a chest's lock, a barrel's hoops, wax, embers — keep their own.
 //
+// The large painted parts take the paint's figure too (D-353) — a wooden
+// door's grain, a brick chest's courses — in the world's own coordinates, as
+// a block's does, so a brick door's courses run on from the wall beside it.
+// Small ones — a leg, a rod, a rim — stay plain: a figure a cube across reads
+// as nothing on a part a tenth of one.
+//
 // A light (D-335) is painted on what holds the flame, and its flame is its
 // own: a blocky flame in that colour, unlit by anything — it is the light —
 // and gone when the light is out. What it lights is `lamplight`'s.
@@ -24,9 +30,10 @@ import {
 } from 'three';
 import { Float32BufferAttribute } from 'three';
 import type { BufferGeometry, Material } from 'three';
-import type { BlockCoord, Facing, Opened, Prop, SwatchId } from '@tt/domain';
-import { flameColour, flameOf, paintOf, propBox, propType, swatchColour, turnedSize } from '@tt/domain';
+import type { BlockCoord, Facing, Material as Family, Opened, Prop, SwatchId } from '@tt/domain';
+import { familyOf, flameColour, flameOf, paintOf, propBox, propType, swatchColour, turnedSize } from '@tt/domain';
 import { grainAt } from '../grain/index.js';
+import { figure, isFigured } from '../patterns/index.js';
 
 /**
  * What a part is coloured: its paint (`base`), darker or lighter (D-352); a
@@ -102,14 +109,24 @@ function partsOf(type: string, open: boolean): readonly Part[] {
       return open ? gate.map((part) => ({ ...part, at: [part.at[0], part.at[1] + 1.7, part.at[2]] as const })) : gate;
     }
     case 'chest':
+      // Hollow (D-353): a floor and four walls, so open it is a box with
+      // nothing in it rather than a block with its lid up. The rim runs round
+      // the outside, and the lock is its front, so which way it faces shows
+      // (D-351).
       return [
-        { size: [0.8, 0.42, 0.56], at: [0.5, 0.21, 0.5] },
-        { size: [0.84, 0.06, 0.6], at: [0.5, 0.3, 0.5], tone: 'dark' },
+        { size: [0.8, 0.05, 0.56], at: [0.5, 0.025, 0.5], tone: 'dark' },
+        { size: [0.8, 0.42, 0.05], at: [0.5, 0.21, 0.245] },
+        { size: [0.8, 0.42, 0.05], at: [0.5, 0.21, 0.755] },
+        { size: [0.05, 0.42, 0.46], at: [0.125, 0.21, 0.5] },
+        { size: [0.05, 0.42, 0.46], at: [0.875, 0.21, 0.5] },
+        { size: [0.84, 0.06, 0.03], at: [0.5, 0.3, 0.205], tone: 'dark' },
+        { size: [0.84, 0.06, 0.03], at: [0.5, 0.3, 0.795], tone: 'dark' },
+        { size: [0.03, 0.06, 0.6], at: [0.085, 0.3, 0.5], tone: 'dark' },
+        { size: [0.03, 0.06, 0.6], at: [0.915, 0.3, 0.5], tone: 'dark' },
         open
           ? { size: [0.82, 0.56, 0.1], at: [0.5, 0.7, 0.2] }
           : { size: [0.82, 0.12, 0.58], at: [0.5, 0.48, 0.5] },
-        // The lock is its front, so which way it faces shows (D-351).
-        { size: [0.1, 0.12, 0.04], at: [0.5, 0.36, 0.79], tone: 'brass' },
+        { size: [0.1, 0.12, 0.04], at: [0.5, 0.36, 0.8], tone: 'brass' },
       ];
     // A table, a bookcase, a barrel and a crate are a whole cube tall, so
     // somebody standing on one stands on its top (D-351).
@@ -225,6 +242,8 @@ export interface PropMeshes {
   /** What a ray is tested against: a box per prop, the size of its cubes. */
   readonly proxies: readonly Mesh[];
   propAt(object: object): string | null;
+  /** Draws the paint's figure on the large parts, or does not — the screen's switch (R-177). */
+  setFigures(on: boolean): void;
   dispose(): void;
 }
 
@@ -293,6 +312,15 @@ function lookOf(prop: { readonly type: string; readonly paint?: SwatchId; readon
   return tonesOf(swatchColour(paintOf(prop)) ?? '#9aa3ad', flame ? flameColour(flame) : '#ff9440');
 }
 
+/**
+ * How wide a part's middle side must be to take its paint's figure (D-353):
+ * a door, a chest's wall, a table's top, a stair's step — not a leg or a rod.
+ */
+const FIGURED_FROM = 0.3;
+
+/** Whether a part is large enough for a figure: its middle side, at least `FIGURED_FROM`. */
+const takesFigure = (part: Part) => [...part.size].sort((a, b) => a - b)[1]! >= FIGURED_FROM;
+
 /** A part's shape: a box, or a cylinder for what is round. */
 const shapeOf = (part: Part): BufferGeometry => (part.round
   ? new CylinderGeometry(part.size[0] / 2, part.size[0] / 2, part.size[1], 14)
@@ -323,20 +351,40 @@ export function buildProps(
   props: readonly Prop[],
   opened: Opened,
   inSight: ((prop: Prop) => boolean) | null = null,
+  /** Whether the large parts draw their paint's figure, as the screen's switch says (R-177). */
+  figures = true,
 ): PropMeshes {
   const group = new Group();
   const proxies: Mesh[] = [];
   const owners = new Map<object, string>();
   const geometries: BufferGeometry[] = [];
   const materials = new Map<string, Material>();
-  /** One material a colour — flat for a flame, which is the light and is lit by none. */
-  const material = (colour: string, flat: boolean) => {
-    const key = `${flat ? 'flat' : 'lit'}:${colour}`;
+  const switches: ((on: boolean) => void)[] = [];
+  /**
+   * One material a colour — flat for a flame, which is the light and is lit
+   * by none. A painted part is its paint's family's (D-352, D-353): as rough
+   * as a block of it, glowing as one does, and on a large part, figured.
+   */
+  const material = (colour: string, flat: boolean, family: Family | null = null, figured = false, glows = false) => {
+    const drawn = figured && !!family && isFigured(family);
+    const key = `${flat ? 'flat' : 'lit'}:${colour}:${family?.id ?? ''}:${drawn}:${glows}`;
     let made = materials.get(key);
     if (!made) {
-      made = flat
-        ? new MeshBasicMaterial({ color: colour })
-        : new MeshStandardMaterial({ color: colour, roughness: 0.85, metalness: 0.05 });
+      if (flat) {
+        made = new MeshBasicMaterial({ color: colour });
+      } else {
+        const surface = new MeshStandardMaterial({ color: colour, roughness: family?.roughness ?? 0.85, metalness: family ? 0 : 0.05 });
+        if (family && glows && family.glow > 0) {
+          surface.emissive = new Color(colour);
+          surface.emissiveIntensity = family.glow;
+        }
+        if (drawn) {
+          const set = figure(surface, family!);
+          set(figures);
+          switches.push(set);
+        }
+        made = surface;
+      }
       materials.set(key, made);
     }
     return made;
@@ -349,6 +397,7 @@ export function buildProps(
     const tones = lookOf(prop);
     const seen = !inSight || inSight(prop);
     const seed = seedOf(prop.type);
+    const family = familyOf(paintOf(prop));
     const box = propBox(prop);
     const turned = turnedSize(size, prop.facing);
 
@@ -361,7 +410,10 @@ export function buildProps(
       const tone = part.tone ?? 'base';
       const flat = BURNING.has(tone);
       const colour = partColour(tones, tone, i, seed);
-      const mesh = new Mesh(geometry, material(seen ? colour : greyed(colour), flat));
+      const painted = PAINTED.has(tone);
+      const mesh = new Mesh(geometry, material(
+        seen ? colour : greyed(colour), flat, painted ? family : null, painted && takesFigure(part), seen,
+      ));
       mesh.position.set(part.at[0], part.at[1], part.at[2]);
       mesh.castShadow = !flat;
       mesh.receiveShadow = !flat;
@@ -384,6 +436,9 @@ export function buildProps(
     group,
     proxies,
     propAt: (object) => owners.get(object) ?? null,
+    setFigures(on) {
+      for (const set of switches) set(on);
+    },
     dispose() {
       for (const geometry of geometries) geometry.dispose();
       for (const made of materials.values()) made.dispose();

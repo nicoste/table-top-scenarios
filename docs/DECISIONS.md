@@ -9048,3 +9048,34 @@ Checked on the test copy: the old props read in their nearest materials; the
 barrel painted Clay with a Paint click, its hoops still iron; the brazier made
 copper from the panel and lit.
 
+### D-353 — Props carry their material's figure, and a chest is hollow · `agreed`
+*"Lets add the figures now! And please, can you 'empty' the inside of the
+chest? Right now is a solid block, it doesn't give the impression it's a
+container."*
+
+**Figures.** A painted part draws its paint's figure (R-177) — the wood's
+stripes, the brick's courses, the rock's plates — with the very shader patch a
+block uses, so it costs what a block's costs and goes on and off with the same
+**Figures** switch on each screen. Only parts large enough to show one take
+it: a part whose middle side is **at least 0.3** of a cube — a door, a chest's
+wall or lid, a table's top, a bookcase's side, a crate, a barrel, a stair's
+step, a brazier's bowl. A leg, a rod, a rim or a tread edge stays plain; a
+figure a cube across reads as nothing on a part a tenth of one.
+
+- **In the world's coordinates, as a block's.** A brick door's courses run on
+  from the brick wall beside it, and a wooden door's grain runs up it whichever
+  way it is turned. The patch now turns the surface's normal into the world
+  too — a prop's part is turned with its prop, where a cube never is; for
+  blocks nothing changes.
+- **A painted part is its material's**, beyond the colour: as rough as a block
+  of it, and glowing as one does in sight — a lava chest glows. Not see-through:
+  a glass crate is a pale crate.
+
+**The chest is hollow**: a floor, four walls and the lid, with the rim run
+round the outside instead of through it. Shut, it looks as it did; open, it is
+a box with nothing in it. Its floor is a shade darker, so the inside reads as
+an inside.
+
+Checked on the test copy: a chest put down by the campfire and opened, empty
+inside; the bookcases' and the barrel's oak grained.
+

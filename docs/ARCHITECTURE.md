@@ -2243,6 +2243,10 @@ apps/host/src/
 >   **Paint** tool paints a prop with a click, one prop a click whatever its
 >   brush — a fill included — and a stroke across the map paints blocks only.
 >   Saved before paint, a finish is read as the nearest material.
+> - **The large painted parts carry their paint's figure** (D-353) — a door's
+>   grain, a brick chest's courses — in world coordinates as a block's does,
+>   behind the same Figures switch (R-177); a leg, a rod or a rim stays plain.
+>   A painted part is as rough as a block of its material, and glows as one.
 > - **The prop is the map's; its state is the session's.** Placing, turning,
 >   repainting and removing are building — on the map, saved with it, one
 >   undo step each. Which props stand open is play state in the save

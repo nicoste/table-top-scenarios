@@ -58,8 +58,8 @@ const HELPERS = /* glsl */ `
 /*
   The face's own two axes: whichever pair the normal is not pointing along, so
   a pattern drawn on a wall is upright and the same pattern on a floor lies
-  flat. Cubes are axis-aligned and never rotate, so the object normal is the
-  world normal and this is six cases collapsed to three.
+  flat. The normal is the world's — a prop's part is turned with its prop
+  (D-353), where a cube never is — and this is six cases collapsed to three.
 */
 vec2 ttFaceUv(vec3 p, vec3 n) {
   vec3 a = abs(n);
@@ -256,7 +256,13 @@ export function figure(
         ttWorld = instanceMatrix * ttWorld;
       #endif
       ttSurface = (modelMatrix * ttWorld).xyz;
-      ttNormal = objectNormal;`,
+      // Turned into the world as the surface is: a prop's part is turned with
+      // its prop (D-353), and its figure must lie on the face it is drawn on.
+      vec3 ttTurned = objectNormal;
+      #ifdef USE_INSTANCING
+        ttTurned = mat3(instanceMatrix) * ttTurned;
+      #endif
+      ttNormal = mat3(modelMatrix) * ttTurned;`,
     );
 
     shader.fragmentShader = COMMON + HELPERS + body + shader.fragmentShader.replace(

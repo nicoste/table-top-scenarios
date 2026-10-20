@@ -962,7 +962,7 @@ export class Stage {
     const fog = this.partyFog;
     this.props = buildProps(map.props, this.opened, fog
       ? (prop) => propCubes(prop).some((cube) => fog.lit.has(`${cube.x},${cube.y},${cube.z}`))
-      : null);
+      : null, this.figuring);
     this.lamps.light(this.props.group);
     this.scene.add(this.props.group);
     this.applySurface();
@@ -1804,6 +1804,7 @@ export class Stage {
     this.invalidate();
     this.figuring = on;
     this.blocks?.setFigures(on);
+    this.props?.setFigures(on);
     this.world?.setFigures(on);
   }
 
