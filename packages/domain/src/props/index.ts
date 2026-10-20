@@ -238,17 +238,26 @@ export function propById(props: Props, id: PropId | string): Prop | null {
  * - `solid` — a block is in one of its cubes.
  * - `taken` — another prop is, or somebody is standing there.
  * - `unsupported` — nothing holds it: something under its bottom is air, and
- *   nothing stands beside it either. A prop stands on a block or on another
- *   prop (D-322: they stack — a tall bookcase is two), or is held by one
- *   beside it (D-354): bars across the top of a doorway, between its posts.
+ *   nothing is at its ends either. A prop stands on a block or on another
+ *   prop (D-322: they stack — a tall bookcase is two), or is held at its ends
+ *   — left and right, along its width (D-354, D-355): bars across the top of
+ *   a doorway, between its posts. Never by what is in front of it or behind
+ *   it; one that hangs is the one held from behind.
  * - `unhung` — one that hangs has no block behind it to hang on (D-335).
  *
  * `self` is the prop being turned or moved, which does not get in its own way.
  */
 export type PropFooting = 'outside' | 'solid' | 'taken' | 'unsupported' | 'unhung';
 
-/** The four cubes beside one, across the floor. */
-const SIDES: readonly (readonly [number, number])[] = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+/**
+ * The two cubes at a prop's ends, along its width, as it is turned (D-355): a
+ * door's width runs across its back, so across x unturned and across z a
+ * quarter turn on.
+ */
+function endsOf(facing: Facing): readonly (readonly [number, number])[] {
+  const back = backOf(facing);
+  return back.x !== 0 ? [[0, 1], [0, -1]] : [[1, 0], [-1, 0]];
+}
 
 export function whyNotPut(
   map: EncounterMap,
@@ -272,9 +281,10 @@ export function whyNotPut(
     .filter((cube) => cube.y === bottom)
     .every((cube) => solidAt({ x: cube.x, y: cube.y - 1, z: cube.z }));
   if (stands) return null;
-  // Or held from the side (D-354): a block or a prop against any of its cubes.
+  // Or held at its ends (D-354, D-355): a block or a prop beyond its left or
+  // right, along its width — what is in front or behind holds nothing.
   const own = new Set(cubes.map(blockKey));
-  const beside = cubes.some((cube) => SIDES.some(([dx, dz]) => {
+  const beside = cubes.some((cube) => endsOf(prop.facing).some(([dx, dz]) => {
     const next = { x: cube.x + dx, y: cube.y, z: cube.z + dz };
     return !own.has(blockKey(next)) && solidAt(next);
   }));

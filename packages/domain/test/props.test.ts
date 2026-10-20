@@ -86,6 +86,19 @@ describe('putting one down', () => {
     expect(whyNotPut(gate, { type: 'bars', at: cube(4, 3, 3), facing: 0 })).toBe('unsupported');
   });
 
+  it('is held at its ends only, never by what is in front of it or behind it (D-355)', () => {
+    // The same bars, a quarter turn on: the cell door is behind them now.
+    const gate = putProp(createMap(), { type: 'cell-door', at: cube(3, 1, 3), facing: 0 });
+    expect(whyNotPut(gate, { type: 'bars', at: cube(4, 2, 3), facing: 1 })).toBe('unsupported');
+    // A cell door a cube up in front of a row of bars, held by nothing but them.
+    let row = createMap();
+    for (const y of [1, 2, 3]) row = putProp(row, { type: 'bars', at: cube(8, y, 5), facing: 1 });
+    expect(row.props).toHaveLength(3);
+    expect(whyNotPut(row, { type: 'cell-door', at: cube(9, 2, 5), facing: 1 })).toBe('unsupported');
+    // In line with them, it is held.
+    expect(whyNotPut(row, { type: 'bars', at: cube(8, 2, 6), facing: 1 })).toBeNull();
+  });
+
   it('stacks: a bookcase stands on a bookcase (D-322)', () => {
     let map = putProp(createMap(), { type: 'bookcase', at: cube(3, 1, 3), facing: 0 });
     map = putProp(map, { type: 'bookcase', at: cube(3, 2, 3), facing: 0 });

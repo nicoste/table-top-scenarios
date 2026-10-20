@@ -9125,3 +9125,19 @@ Checked on the test copy: the tool card and the Party card say Play; bars put
 up against Tollkeep's wall a cube off the ground, selected, and dragged down
 onto the grass.
 
+### D-355 — A prop is held at its ends, not from in front or behind · `agreed`
+*"Look at this issue, how did I was able to put the door there??"* — a cell
+door in the dungeon under Tollkeep, apparently standing in a line of bars.
+It was not in the line: it stood **a cube in front of it and a cube up**,
+which from that camera lines up exactly with the floor, and the only thing
+holding it was the bars **behind** it. D-354 let any block or prop against any
+of a prop's four sides hold it; aiming at the face of the bars put the door
+against them, and that was enough.
+
+Now a prop is held from the side **only at its ends — left and right, along
+its width**, as it is turned: bars across the top of a doorway between its
+posts, a gate between two walls. What is in front of it or behind it holds
+nothing; the one prop held from behind is one that hangs, on its wall. The
+door already standing in the dungeon is left where it is — the rule is asked
+when a prop is put down or moved — for the GM to drag down or take away.
+

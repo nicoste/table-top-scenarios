@@ -2234,8 +2234,10 @@ apps/host/src/
 >   whole cube is a prop.** From a built-in catalogue — door, cell door, bars,
 >   portcullis; chest, table, chair, bookcase, barrel, crate — each a box of
 >   whole cubes (a door is 1 × 2), turned with Z / X. Props stack: a prop
->   stands on a block or on another prop, or is held by one beside it
->   (D-354) — bars across the top of a doorway, between its posts.
+>   stands on a block or on another prop, or is held at its ends — left and
+>   right, along its width — by a block or a prop (D-354, D-355): bars across
+>   the top of a doorway, between its posts. Never by what is in front of it
+>   or behind it; only one that hangs is held from behind.
 > - **The prop selected is moved by dragging it** (D-354), and what rests on
 >   it goes along — the candles on the barrel. A ghost shows where they all
 >   land, red where they cannot; letting go is one undo step, Escape or
