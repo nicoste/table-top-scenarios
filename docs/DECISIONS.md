@@ -8853,3 +8853,22 @@ Checked on the test copy: a sphere drawn from the table renamed *Bless*, set
 to 3, turned orange and given to Galion to carry, from the table's own list —
 and drawn round him.
 
+### D-348 — The band cuts areas · `agreed`
+*"A bug I found: the measure 'wires' are drawn even when the level cuts them
+out."* The tint was cut already — it only falls on floors that are drawn —
+but the outline and the handle were drawn wherever the area stood: a sphere
+on the ground floated in the dark over a cellar shown alone.
+
+Now an area is cut as a token is (R-185): **one that starts on a level the
+band leaves out is not drawn** — on the console while levelling or in the
+Party's view, and on the table it is **not sent at all**, since the table
+holds only its slice. And **every outline stops at the top of the levels
+drawn**: a segment above the cut is dropped and one that crosses it is cut
+where it crosses, so a sphere whose middle is in the band does not raise its
+arcs into the floors cut away. The console's cut is its band's upper level;
+the table's is the ceiling it already works out from its slice.
+
+Checked on the test copy: the band brought down from roof 1 to the water
+level and the console set to show it; the areas on the ground went with the
+ground.
+

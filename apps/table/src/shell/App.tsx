@@ -309,9 +309,13 @@ export function App({ view, status, rejection, dispatch }: Props) {
   /** The ones drawn from this screen: the only ones it may move or take away (D-344). */
   const mine = useMemo(() => areasHere.filter((area) => area.byTable), [areasHere]);
   useEffect(() => {
-    // Each where the host put it — one that follows somebody arrives where they stand.
-    stage?.setAreas(insideWire ? areasShown(areasHere, measuring ? hand : null, () => null) : null);
-  }, [stage, insideWire, areasHere, measuring, hand]);
+    // Each where the host put it — one that follows somebody arrives where they stand —
+    // and only ones on the levels this screen was sent; outlines stop where those do (D-348).
+    stage?.setAreas(
+      insideWire ? areasShown(areasHere, measuring ? hand : null, () => null) : null,
+      body ? tableCeiling(body) : null,
+    );
+  }, [stage, insideWire, areasHere, measuring, hand, body]);
   // The ruler: this screen's alone, never sent (D-341).
   useEffect(() => {
     stage?.showRuler(insideWire && measuring ? rulerShown(hand) : null);

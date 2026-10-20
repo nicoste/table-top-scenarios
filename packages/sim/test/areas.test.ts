@@ -95,6 +95,18 @@ describe('areas on the host (D-341)', () => {
     state = run(state, { kind: 'leaveMap' }).state;
     expect(table(state).areas).toBeNull();
   });
+
+  it('the table is sent none on a level the band cuts away (D-348)', () => {
+    const t = tavern();
+    let state = run(t.state, fireball(t)).state;
+    // Down in the rock under the floor: a cellar's level.
+    state = run(state, fireball(t, cube(4, -3, 4))).state;
+    const [above, below] = areasOf(t, state);
+    expect(table(state).areas!.map((area) => area.id).sort()).toEqual([above!.id, below!.id].sort());
+    state = run(state, { kind: 'setRange', placeId: t.placeId, poiId: t.poiId, lower: 0, upper: 32 }).state;
+    expect(table(state).areas!.map((area) => area.id)).toEqual([above!.id]);
+    expect(JSON.stringify(table(state))).not.toContain(below!.id);
+  });
 });
 
 describe('the players\' own areas (D-344)', () => {

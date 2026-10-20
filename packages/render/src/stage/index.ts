@@ -413,6 +413,8 @@ export class Stage {
   /** The areas drawn on the open map (D-341), and the ruler (local to this screen). */
   private areaMeshes: AreaMeshes | null = null;
   private areasDrawn: readonly AreaDrawn[] = [];
+  /** Where the drawn levels stop, when they are cut: outlines stop there too (D-348). */
+  private areaCeiling: number | null = null;
   private readonly ruler = buildRuler();
   /** The prefab about to be placed (D-321). */
   private readonly prefabGhost = buildPrefabGhost();
@@ -1013,9 +1015,10 @@ export class Stage {
    * again whenever these change or the body does — the floors they tint are
    * the body's — and never per frame.
    */
-  setAreas(areas: readonly AreaDrawn[] | null): void {
+  setAreas(areas: readonly AreaDrawn[] | null, ceiling: number | null = null): void {
     this.invalidate();
     this.areasDrawn = areas ?? [];
+    this.areaCeiling = ceiling;
     this.rebuildAreas();
   }
 
@@ -1027,7 +1030,7 @@ export class Stage {
     }
     const map = this.shownMap;
     if (!map || this.areasDrawn.length === 0) return;
-    this.areaMeshes = buildAreas(map, this.areasDrawn);
+    this.areaMeshes = buildAreas(map, this.areasDrawn, this.areaCeiling);
     this.scene.add(this.areaMeshes.group);
     this.applySurface();
   }

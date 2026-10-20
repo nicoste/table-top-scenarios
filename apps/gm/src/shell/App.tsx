@@ -12,7 +12,7 @@ import {
   bottomOfMap, cutOf, cutIdIn, familyOf, sunReaches, litBy, MAP_MAX_HEIGHT,
   DAYLIGHT, clampLighting,
   NO_TOKENS, tokensIn, onRoster, unplaced, tokensInBand, standsInBand, standingAt,
-  NO_CELLS, shownBy, memberNotesFromJSON, carriedFromJSON, areasFromJSON,
+  NO_CELLS, shownBy, memberNotesFromJSON, carriedFromJSON, areasFromJSON, areaAt,
   prefabFromJSON, capturePrefab, propById, propBox, propType, blockKey, propsSeen, sightShows,
 } from '@tt/domain';
 import type {
@@ -766,9 +766,19 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    */
   useEffect(() => {
     if (!stage) return;
-    const shown = previewing ? areasHere.filter((area) => !area.hidden) : areasHere;
-    stage.setAreas(openMap ? areasShown(shown, mapTool === 'measure' ? measure : null, standingById) : null);
-  }, [stage, openMap, areasHere, measure, mapTool, standingById, previewing]);
+    const seen = previewing ? areasHere.filter((area) => !area.hidden) : areasHere;
+    /*
+     * While levelling, or in the Party's view, only the areas that start on a
+     * level being drawn, and their outlines cut where the levels are (D-348):
+     * an area on a level cut away is cut away with it, as a token is (R-185).
+     */
+    const range = banded && openRange ? openRange : null;
+    const shown = range ? seen.filter((area) => standsInBand(range, areaAt(area, standingById))) : seen;
+    stage.setAreas(
+      openMap ? areasShown(shown, mapTool === 'measure' ? measure : null, standingById) : null,
+      range ? range.upper : null,
+    );
+  }, [stage, openMap, areasHere, measure, mapTool, standingById, previewing, banded, openRange?.lower, openRange?.upper]);
   // The ruler: this screen's alone (D-341).
   useEffect(() => {
     stage?.showRuler(openMap && mapTool === 'measure' ? rulerShown(measure) : null);

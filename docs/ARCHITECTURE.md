@@ -2332,7 +2332,11 @@ apps/host/src/
 >   panel.
 > - **The table is sent the areas not hidden** (`areas`, the ninth piece of
 >   save data it is sent), each where it is now — and none that follows
->   somebody the table is not sent, which would say where they are (R-85).
+>   somebody the table is not sent, which would say where they are (R-85),
+>   nor any that starts on a level the band cuts away (D-348).
+> - **The band cuts areas as it cuts tokens** (R-185, D-348): one starting on
+>   a level that is not drawn is not drawn, and every outline stops at the top
+>   of the levels that are.
 > - **The players draw areas too** (D-322, D-344): inside a map the table
 >   has the console's layout in small (D-346) — a **Tool** card on the left
 >   with Move and Measure, and with Measure in hand a **Measure** card on the

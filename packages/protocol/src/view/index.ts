@@ -8,7 +8,7 @@ import {
   tokensFor, onRoster, tokensInBand, tokensToJSON,
   exploredIn, partySight, seenPart, inRange, placeById, poiById, ON_FOOT,
   silverIn, silverShown, templateById, libraryToJSON, prefabToJSON, openedIn, sliceOf, sightShows,
-  carriedLightToJSON, areasIn, areasToJSON,
+  carriedLightToJSON, areasIn, areasToJSON, standsInBand,
 } from '@tt/domain';
 import type { CarriedLightJSON } from '@tt/domain';
 import type {
@@ -331,11 +331,13 @@ function areasForTheTable(campaign: Campaign, save: Save, library: TokensLibrary
   const members = tokensInBand(onRoster(tokensFor(save, shown.poi.id), campaign.party), rangeFor(save, shown.poi.id));
   const silver = silverForTheTable(campaign, save, library) ?? [];
   const where = (id: string) => members.get(id as never) ?? silver.find((token) => token.id === id)?.at ?? null;
+  const range = rangeFor(save, shown.poi.id);
   const out: TableAreaWire[] = [];
   for (const area of areasToJSON(areasIn(save, shown.poi.id))) {
     if (area.hidden) continue;
     const at = area.follows ? where(area.follows) : area.at;
-    if (!at) continue;
+    // On a level the table is not shown, as a token there is not sent (R-185, D-348).
+    if (!at || !standsInBand(range, at)) continue;
     out.push({
       id: area.id,
       shape: area.shape as TableAreaWire['shape'],

@@ -105,8 +105,32 @@ function outlineOf(area: AreaDrawn): number[] {
   return out;
 }
 
-/** Draws these areas over this body: built when the areas or the body change, never per frame. */
-export function buildAreas(map: EncounterMap, areas: readonly AreaDrawn[]): AreaMeshes {
+/**
+ * An outline cut at the top of what is drawn (D-348): a segment wholly above
+ * it is dropped, and one that crosses it is cut where it crosses — so a
+ * sphere's arcs stop at the cut, as the blocks do.
+ */
+function clipped(points: readonly number[], ceiling: number | null): number[] {
+  if (ceiling === null) return [...points];
+  const out: number[] = [];
+  for (let i = 0; i < points.length; i += 6) {
+    const a = [points[i]!, points[i + 1]!, points[i + 2]!] as const;
+    const b = [points[i + 3]!, points[i + 4]!, points[i + 5]!] as const;
+    if (a[1] > ceiling && b[1] > ceiling) continue;
+    if (a[1] <= ceiling && b[1] <= ceiling) { out.push(...a, ...b); continue; }
+    const [low, high] = a[1] <= ceiling ? [a, b] : [b, a];
+    const t = (ceiling - low[1]) / (high[1] - low[1]);
+    out.push(...low, low[0] + (high[0] - low[0]) * t, ceiling, low[2] + (high[2] - low[2]) * t);
+  }
+  return out;
+}
+
+/**
+ * Draws these areas over this body: built when the areas or the body change,
+ * never per frame. `ceiling` is the height the drawn levels stop at, when they
+ * are cut (D-348): outlines stop there too.
+ */
+export function buildAreas(map: EncounterMap, areas: readonly AreaDrawn[], ceiling: number | null = null): AreaMeshes {
   const group = new Group();
   const geometries: BufferGeometry[] = [];
   const materials: (MeshBasicMaterial | LineBasicMaterial)[] = [];
@@ -128,7 +152,7 @@ export function buildAreas(map: EncounterMap, areas: readonly AreaDrawn[]): Area
     mesh.raycast = () => {};
 
     const lines = new BufferGeometry();
-    lines.setAttribute('position', new Float32BufferAttribute(outlineOf(area), 3));
+    lines.setAttribute('position', new Float32BufferAttribute(clipped(outlineOf(area), ceiling), 3));
     const edge = new LineBasicMaterial({ color: area.colour, transparent: true, opacity: area.faint ? 0.35 : 0.8 });
     const outline = new LineSegments(lines, edge);
     outline.renderOrder = 3;
