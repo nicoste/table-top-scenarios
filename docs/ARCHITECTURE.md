@@ -2337,10 +2337,11 @@ apps/host/src/
 >   has the console's layout in small (D-346) — a **Tool** card on the left
 >   with Move and Measure, and with Measure in hand a **Measure** card on the
 >   right with the ruler and the four shapes, in the console's order. The table may
->   draw, move and take away **its own** areas — in the map the party is in,
->   on ground the party has seen, inside the band — and nothing else about
->   them; the GM's areas it draws and leaves alone, and of a hidden one it
->   knows nothing. The first thing the table may make that is not the party's
+>   do with **its own** areas what the GM does with any (D-347) — draw, move,
+>   rename, recolour, resize, have one of the party carry it, take it away —
+>   all but hide it; in the map the party is in, on ground the party has seen,
+>   inside the band, and following only the party. The GM's areas it draws and
+>   leaves alone, and of a hidden one it knows nothing. The first thing the table may make that is not the party's
 >   own pawn (R-136). Right-drag pans the table's view, as on the console.
 
 ---

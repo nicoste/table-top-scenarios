@@ -5,14 +5,16 @@
 // a GM can say "Measure, then Cone" and the players find it where the GM does.
 //
 // Move is what a click always was — the party's own tokens. The ruler
-// measures, and the shapes draw the players' own areas (D-341): theirs to drag
-// by their handle and take away. The GM's they see and leave alone. Kept as
-// small as it can be (R-94).
+// measures, and the shapes draw the players' own areas (D-341): theirs to do
+// with as the GM does with any (D-347) — drag by the handle, rename, recolour,
+// resize, have one of the party carry it, take it away — all but hide it.
+// The GM's they see and leave alone. Kept as small as it can be (R-94).
 
-import type { Areas } from '@tt/domain';
-import { AREA_COLOURS, AREA_SHAPES, areaColour } from '@tt/domain';
+import type { AreaPatch, Areas } from '@tt/domain';
+import { AREA_COLOURS, AREA_SHAPES, MAX_AREA_SIZE, MIN_AREA_SIZE, areaColour } from '@tt/domain';
 import type { MeasureHand, MeasureMode } from '@tt/client-core';
 import { chooseAreaColour, chooseMeasure } from '@tt/client-core';
+import { DraftInput } from '@tt/ui';
 
 interface Props {
   /** Measure in hand — or not, which is Move. */
@@ -21,10 +23,27 @@ interface Props {
   readonly onMove: () => void;
   readonly onMeasure: () => void;
   readonly onHand: (hand: MeasureHand) => void;
-  /** The areas drawn from this screen, which it may take away. */
+  /** The areas drawn from this screen: the players' own, to change and take away. */
   readonly mine: Areas;
+  /** The party standing here, for an area to follow (D-347). */
+  readonly party: readonly { readonly id: string; readonly name: string }[];
+  readonly onEdit: (id: string, patch: AreaPatch) => void;
   readonly onRemove: (id: string) => void;
 }
+
+/** What an area's size is, in its shape's words. */
+const SIZE_WORD = { sphere: 'radius', cone: 'length', line: 'length', cube: 'side' } as const;
+
+/** A size the field will take: whole cubes, in bounds. */
+const isSize = (draft: string) => {
+  const text = draft.trim();
+  if (!/^\d{1,2}$/.test(text)) return false;
+  const value = Number(text);
+  return value >= MIN_AREA_SIZE && value <= MAX_AREA_SIZE;
+};
+
+const nextColour = (id: string) =>
+  AREA_COLOURS[(AREA_COLOURS.findIndex((one) => one.id === id) + 1) % AREA_COLOURS.length]!.id;
 
 /** In the console's order: the ruler, then the shapes (D-341). */
 const MODES: readonly { readonly id: MeasureMode; readonly name: string }[] = [
@@ -32,7 +51,7 @@ const MODES: readonly { readonly id: MeasureMode; readonly name: string }[] = [
   ...AREA_SHAPES.map((shape) => ({ id: shape.id, name: shape.name })),
 ];
 
-export function TableTools({ measuring, hand, onMove, onMeasure, onHand, mine, onRemove }: Props) {
+export function TableTools({ measuring, hand, onMove, onMeasure, onHand, mine, party, onEdit, onRemove }: Props) {
   return (
     <>
       <div className="dock">
@@ -93,16 +112,50 @@ export function TableTools({ measuring, hand, onMove, onMeasure, onHand, mine, o
                 <ul className="area-list">
                   {mine.map((area) => (
                     <li key={area.id}>
-                      <span className="chip" style={{ background: areaColour(area.colour) }} />
-                      <span className="nm">{area.name}</span>
-                      <button
-                        className="quiet"
-                        aria-label={`Take ${area.name} away`}
-                        title="Take it away"
-                        onClick={() => onRemove(area.id)}
-                      >
-                        ×
-                      </button>
+                      <div className="area-row">
+                        <button
+                          className="chip-button"
+                          title="Its colour — click for the next"
+                          aria-label={`${area.name}'s colour`}
+                          onClick={() => onEdit(area.id, { colour: nextColour(area.colour) })}
+                        >
+                          <span className="chip" style={{ background: areaColour(area.colour) }} />
+                        </button>
+                        <DraftInput
+                          value={area.name}
+                          aria-label={`${area.name}'s name`}
+                          valid={(name) => name.trim().length > 0}
+                          onCommit={(name) => onEdit(area.id, { name })}
+                        />
+                        <DraftInput
+                          className="size"
+                          title={`Its ${SIZE_WORD[area.shape]}, in cubes`}
+                          aria-label={`${area.name}'s ${SIZE_WORD[area.shape]}`}
+                          inputMode="numeric"
+                          value={String(area.size)}
+                          valid={isSize}
+                          onCommit={(draft) => onEdit(area.id, { size: Number(draft.trim()) })}
+                        />
+                        <button
+                          className="quiet"
+                          aria-label={`Take ${area.name} away`}
+                          title="Take it away"
+                          onClick={() => onRemove(area.id)}
+                        >
+                          ×
+                        </button>
+                      </div>
+                      <label className="area-follow">
+                        <span className="lbl">follows</span>
+                        <select
+                          value={area.follows ?? ''}
+                          aria-label={`Whom ${area.name} follows`}
+                          onChange={(e) => onEdit(area.id, { follows: e.target.value || null })}
+                        >
+                          <option value="">nobody</option>
+                          {party.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}
+                        </select>
+                      </label>
                     </li>
                   ))}
                 </ul>

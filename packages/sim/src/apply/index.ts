@@ -673,10 +673,15 @@ function applyToAreas(
   const area = areas.find((one) => one.id === intent.id && (!byTable || (one.byTable && !one.hidden)));
   if (!area) return reject(state, 'no such area in this map');
   if (intent.kind === 'removeArea') return commitAreas(removeArea(areas, area.id));
-  // The table moves its areas and nothing else about them: the rest is the GM's.
-  if (byTable && (intent.aim || intent.size !== undefined || intent.colour !== undefined || intent.name !== undefined
-    || intent.hidden !== undefined || intent.follows !== undefined)) {
-    return reject(state, 'only the GM can do that');
+  /*
+   * The table does with its own areas what the GM does (D-347) — moves,
+   * renames, recolours, resizes them, and has them follow somebody — except
+   * hide one, which would hide it from the players themselves; and it follows
+   * only one of the party, never somebody else on stage.
+   */
+  if (byTable && intent.hidden !== undefined) return reject(state, 'only the GM can do that');
+  if (byTable && intent.follows && !campaign.party.some((member) => member.id === intent.follows)) {
+    return reject(state, 'an area can only follow one of the party');
   }
   if (byTable && intent.at) {
     const unseen = seenFromTable(intent.at);

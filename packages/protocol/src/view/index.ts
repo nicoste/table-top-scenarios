@@ -227,8 +227,10 @@ export interface TableAreaWire {
   readonly size: number;
   readonly colour: string;
   readonly name: string;
-  /** Drawn from the table, so the table may move it and take it away (D-344). */
+  /** Drawn from the table, so the table may change it and take it away (D-344, D-347). */
   readonly byTable?: true;
+  /** Whom one of the table's own areas follows (D-347): one of the party. Never said of the GM's. */
+  readonly follows?: string;
 }
 
 /** One silver token as the table sees it (R-206). */
@@ -343,6 +345,7 @@ function areasForTheTable(campaign: Campaign, save: Save, library: TokensLibrary
       colour: area.colour,
       name: area.name,
       ...(area.byTable ? { byTable: true as const } : {}),
+      ...(area.byTable && area.follows ? { follows: area.follows } : {}),
     });
   }
   return out;

@@ -8825,3 +8825,31 @@ order, the colours, a line of hint, and the players' own areas. With Move in
 hand the right side is empty, as the console's is with nothing to show. A GM
 can say *"Measure, then Cone"* and the players find both where the GM does.
 
+### D-347 — The players do with their own areas what the GM does · `agreed`
+*"They should be able to do all the actions the GM can do with the areas, I
+want them capable of renaming, switching color, selecting a target (only
+players listed), anything else. Do you think this changes our structure?"*
+
+It does not. The line R-136 draws moved in D-344, when the table first made
+something that is not the party's own pawn, and every request from it has
+been checked since: the map the party is in, ground it has seen, its own
+areas. This widens one of those checks, from *move it* to *anything but hide
+it*.
+
+So the players' list in the Measure card is the GM's row for row: the colour,
+stepped by a click; the name; the size; a × to take it away; and **follows**,
+listing only the party standing in the map. Three lines stay where they were:
+
+- **Only their own areas.** The GM's stay the GM's (D-344).
+- **Never hidden from the table.** Hiding one would hide it from the players
+  themselves, and the eye is the GM's tool for secrets.
+- **Following only the party** — the GM's word — which also keeps the ids of
+  whoever else is on stage off the players' screen. The host refuses anybody
+  else: *"an area can only follow one of the party."*
+
+The table is told whom its own areas follow; never whom the GM's do.
+
+Checked on the test copy: a sphere drawn from the table renamed *Bless*, set
+to 3, turned orange and given to Galion to carry, from the table's own list —
+and drawn round him.
+

@@ -107,7 +107,7 @@ describe('the players\' own areas (D-344)', () => {
     expect(table(state).areas![0]).toMatchObject({ byTable: true });
   });
 
-  it('may be moved and taken away from the table, and nothing else about them changed there', () => {
+  it('may be changed from the table as the GM changes any — all but hidden — and taken away (D-347)', () => {
     const t = tavern();
     let state = run(t.state, fireball(t), 'table').state;
     const id = areasOf(t, state)[0]!.id as string;
@@ -115,11 +115,18 @@ describe('the players\' own areas (D-344)', () => {
     state = run(state, edit({ at: cube(3, 1, 5) }), 'table').state;
     expect(areasOf(t, state)[0]!.at).toEqual(cube(3, 1, 5));
     expect(run(state, edit({ at: cube(12, 1, 5) }), 'table').rejected).toBe('the party has not seen that');
-    expect(run(state, edit({ size: 9 }), 'table').rejected).toBe('only the GM can do that');
+    state = run(state, edit({ size: 6, name: 'Our fireball', colour: 'blue' }), 'table').state;
+    expect(areasOf(t, state)[0]).toMatchObject({ size: 6, name: 'Our fireball', colour: 'blue', byTable: true });
     expect(run(state, edit({ hidden: true }), 'table').rejected).toBe('only the GM can do that');
-    // The GM may do anything to it.
-    state = run(state, edit({ size: 9, name: 'Their fireball' })).state;
-    expect(areasOf(t, state)[0]).toMatchObject({ size: 9, name: 'Their fireball', byTable: true });
+    // It follows one of the party, and nobody else on stage.
+    state = run(state, edit({ follows: t.aldra }), 'table').state;
+    expect(table(state).areas![0]).toMatchObject({ follows: t.aldra, at: cube(2, 1, 2) });
+    state = run(state, { kind: 'spawnSilver', placeId: t.placeId, poiId: t.poiId, templateId: t.goblin, at: cube(5, 1, 5) }).state;
+    const goblin = silverIn(state.activeSave!, t.poiId)[0]!.id as string;
+    expect(run(state, edit({ follows: goblin }), 'table').rejected).toBe('an area can only follow one of the party');
+    // The GM may do anything to it, hiding included.
+    state = run(state, edit({ size: 9 })).state;
+    expect(areasOf(t, state)[0]).toMatchObject({ size: 9, byTable: true });
     state = run(state, { kind: 'removeArea', placeId: t.placeId, poiId: t.poiId, id }, 'table').state;
     expect(areasOf(t, state)).toEqual([]);
   });

@@ -610,6 +610,14 @@ export function App({ view, status, rejection, dispatch }: Props) {
           onMeasure={() => { setMeasuring(true); setStride(still); }}
           onHand={(next) => { setMeasuring(true); setStride(still); setHand(next); }}
           mine={mine}
+          party={[...standing.keys()].map((id) => ({ id: id as string, name: nameOf(id) ?? 'member' }))}
+          onEdit={(id, patch) => dispatch({
+            kind: 'editArea', placeId: insideWire.place.id, poiId: insideWire.poi.id, id,
+            ...(patch.size !== undefined ? { size: patch.size } : {}),
+            ...(patch.colour !== undefined ? { colour: patch.colour } : {}),
+            ...(patch.name !== undefined ? { name: patch.name } : {}),
+            ...(patch.follows !== undefined ? { follows: patch.follows } : {}),
+          })}
           onRemove={(id) => dispatch({ kind: 'removeArea', placeId: insideWire.place.id, poiId: insideWire.poi.id, id })}
         />
       )}
