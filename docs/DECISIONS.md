@@ -8729,3 +8729,28 @@ two. Pressed on somebody, the end is the middle of the floor they stand on.
 Between two floors at one height the number is what it was; to a wall it is
 to the wall itself. Areas still start from the cube, which is what they are.
 
+### D-343 — A cube is in an area when half its floor is · `agreed`
+*"When do you consider a cube to be tinted? How much percentage do a spell
+need to cover? I'm seeing some weird edge cases."* It was the cube's middle:
+inside the shape, tinted. Checked on the GM's own map, every tinted cube of
+the cone in the picture had its middle inside — and still it looked wrong,
+for three reasons: a cube the edge cut through flipped on its middle, 55% in
+tinted and 45% in not; the outline was drawn half a cube longer than the
+tint went (9.5 for a cone of 9), so its far corners looked empty; and a cone
+started from the middle of its cube, so its first cubes were thin.
+
+The GM's choice of three — at least half, any part, or the middle as it was:
+**at least half.** Sixteen points across each cube's floor, at its middle
+height, and the cube is in when eight or more are inside the shape. The
+usual grid rule for a spell's template.
+
+With it, regardless of the rule: **a cone or a line starts at the edge of
+its cube** the way it aims, not the middle — a cone of 3 covers the three
+cubes ahead of whoever casts it, the first of them half, as the table's cone
+does — and **every outline is the shape at exactly its size**: a sphere's
+ring at its radius, a cone's and a line's far edge at their length.
+
+The cubes worth the asking are now looked up by column — the floors of each
+column, worked out once per map — rather than every cube of the shape's box:
+a sphere of 40 takes 1.6 ms on the GM's map, sixteen samples a cube and all.
+

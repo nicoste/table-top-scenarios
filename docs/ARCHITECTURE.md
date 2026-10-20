@@ -2311,8 +2311,12 @@ apps/host/src/
 > - **An area** is a sphere, a cone, a line or a cube, drawn by a drag: a
 >   sphere as far round as the drag is long, a cone or a line the way it went,
 >   a cube from corner to corner, as tall as it is wide. Sizes are whole
->   cubes, 1 to 40. A cube is in it when its middle is: a sphere's radius, a
->   cone as wide at any distance as that distance, a line one cube wide.
+>   cubes, 1 to 40. **A cube is in it when at least half its floor is**
+>   (D-343), sampled across the square at the cube's middle height: a
+>   sphere's radius from the middle of its cube; a cone, from the edge of its
+>   cube the way it aims, as wide at any distance as that distance; a line
+>   from that edge, one cube wide. The outline is the shape at exactly its
+>   size, so a cube the outline crosses is tinted when it is mostly inside.
 > - **Drawn as the floors it covers, tinted, and a faint outline**: a
 >   sphere's ring and two arcs, a cone's and a line's shape on the floor, a
 >   cube's box. Nothing lists who is caught (R-1).

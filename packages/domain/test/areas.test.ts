@@ -4,7 +4,7 @@
 import { describe, it, expect } from 'vitest';
 import type { BlockCoord, SwatchId } from '@tt/domain';
 import {
-  createMap, setBlocks, DEFAULT_FLOOR, areaFromDrag, inArea, areaFloors, areaAt, drawArea, editArea, removeArea,
+  createMap, setBlocks, DEFAULT_FLOOR, areaFromDrag, inArea, areaCoverage, areaFloors, areaAt, drawArea, editArea, removeArea,
   nameForArea, areaStartingAt, areasToJSON, areasFromJSON, NO_AREAS, MAX_AREA_SIZE,
 } from '@tt/domain';
 
@@ -27,22 +27,29 @@ describe('drawn by a drag', () => {
   });
 });
 
-describe('which cubes are in one', () => {
+describe('which cubes are in one: at least half the floor covered (D-343)', () => {
   const at = cube(5, 1, 5);
 
-  it('a sphere: no further than its radius, middle to middle', () => {
+  it('a sphere: its radius from the middle of the cube it starts from', () => {
     const sphere = { shape: 'sphere' as const, aim: { x: 0, y: 0, z: 0 }, size: 2 };
+    // Two along: the ring passes through its middle, so half of it is inside.
+    expect(areaCoverage(sphere, at, cube(7, 1, 5))).toBe(0.5);
     expect(inArea(sphere, at, cube(7, 1, 5))).toBe(true);
     expect(inArea(sphere, at, cube(7, 1, 6))).toBe(false);
-    expect(inArea(sphere, at, cube(5, 3, 5))).toBe(true);
+    // A level up, a narrower ring; two up, the sphere only touches it.
+    expect(inArea(sphere, at, cube(5, 2, 5))).toBe(true);
+    expect(inArea(sphere, at, cube(5, 3, 5))).toBe(false);
   });
 
-  it('a cone: ahead of its point, as wide at any distance as that distance, and not its own point', () => {
+  it('a cone: from the edge of its cube, as wide at any distance as that distance — a cube a quarter in is out', () => {
     const cone = { shape: 'cone' as const, aim: { x: 1, y: 0, z: 0 }, size: 4 };
     expect(inArea(cone, at, at)).toBe(false);
+    // The first cube ahead is half covered: the cone opens from its near edge.
+    expect(areaCoverage(cone, at, cube(6, 1, 5))).toBe(0.5);
     expect(inArea(cone, at, cube(9, 1, 5))).toBe(true);
-    expect(inArea(cone, at, cube(9, 1, 7))).toBe(true);
-    expect(inArea(cone, at, cube(9, 1, 8))).toBe(false);
+    expect(inArea(cone, at, cube(9, 1, 6))).toBe(true);
+    expect(areaCoverage(cone, at, cube(9, 1, 7))).toBe(0.25);
+    expect(inArea(cone, at, cube(9, 1, 7))).toBe(false);
     expect(inArea(cone, at, cube(4, 1, 5))).toBe(false);
     expect(inArea(cone, at, cube(10, 1, 5))).toBe(false);
   });

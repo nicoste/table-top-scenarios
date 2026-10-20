@@ -136,7 +136,7 @@ export {
 export type { Area, Areas, AreaShape, AreaColour, Aim, AreaJSON, AreaPatch } from './areas/index.js';
 export {
   AREA_SHAPES, AREA_COLOURS, MIN_AREA_SIZE, MAX_AREA_SIZE, MAX_AREA_NAME, NO_AREAS, areaColour, cleanSize,
-  areaFromDrag, areaAt, inArea, areaFloors, nameForArea, drawArea, editArea, removeArea, areaStartingAt,
+  areaFromDrag, areaAt, inArea, areaCoverage, COVERED, areaFloors, nameForArea, drawArea, editArea, removeArea, areaStartingAt,
   areasToJSON, areasFromJSON,
 } from './areas/index.js';
 

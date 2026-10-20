@@ -50,7 +50,8 @@ function outlineOf(area: AreaDrawn): number[] {
     for (let i = 0; i < points.length - 1; i += 1) segment(points[i]!, points[i + 1]!);
   };
   if (area.shape === 'sphere') {
-    const r = area.size + 0.5;
+    // The shape itself (D-343): a cube is tinted when half its floor is inside this ring.
+    const r = area.size;
     const steps = 64;
     ring(Array.from({ length: steps + 1 }, (_, i) => {
       const turn = (i / steps) * Math.PI * 2;
@@ -78,22 +79,22 @@ function outlineOf(area: AreaDrawn): number[] {
     box.dispose();
     return out;
   }
-  // A cone or a line, on the floor, the way it points across it.
+  // A cone or a line, on the floor, the way it points across it — from the
+  // edge of the cube it starts from, and exactly as long as it is (D-343).
   const flat = Math.hypot(area.aim.x, area.aim.z);
   const a = flat > 0 ? { x: area.aim.x / flat, z: area.aim.z / flat } : { x: 1, z: 0 };
   const p = { x: -a.z, z: a.x };
-  const long = area.size + 0.5;
-  const end = { x: c.x + a.x * long, z: c.z + a.z * long };
+  const start = { x: c.x + a.x * 0.5, z: c.z + a.z * 0.5 };
+  const end = { x: start.x + a.x * area.size, z: start.z + a.z * area.size };
   if (area.shape === 'cone') {
-    const half = long / 2;
+    const half = area.size / 2;
     const left = [end.x + p.x * half, y, end.z + p.z * half] as const;
     const right = [end.x - p.x * half, y, end.z - p.z * half] as const;
-    segment([c.x, y, c.z], left);
-    segment([c.x, y, c.z], right);
+    segment([start.x, y, start.z], left);
+    segment([start.x, y, start.z], right);
     segment(left, right);
     return out;
   }
-  const start = { x: c.x + a.x * 0.5, z: c.z + a.z * 0.5 };
   const corners = [
     [start.x + p.x * 0.5, y, start.z + p.z * 0.5],
     [end.x + p.x * 0.5, y, end.z + p.z * 0.5],

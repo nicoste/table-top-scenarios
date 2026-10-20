@@ -17,7 +17,7 @@
 import type { AreaId } from '../ids/index.js';
 import { freshId } from '../ids/index.js';
 import type { BlockCoord, EncounterMap } from '../map/index.js';
-import { blockKey, inMap } from '../map/index.js';
+import { blockKey, inMap, parseBlockKey } from '../map/index.js';
 
 export type AreaShape = 'sphere' | 'cone' | 'line' | 'cube';
 
@@ -137,40 +137,79 @@ function along(aim: Aim): Aim {
   return { x: aim.x / length, y: aim.y / length, z: aim.z / length };
 }
 
+/** The point inside a cube's floor square, as a fraction of it, that a sample is taken at. */
+const SAMPLES = [0.125, 0.375, 0.625, 0.875] as const;
+
+/** How much of a cube's floor an area must cover for the cube to be in it (D-343): half. */
+export const COVERED = 0.5;
+
 /**
- * Whether a cube is in an area set down at `at`: its middle inside the
- * shape, measured from the middle of `at`.
+ * Whether a point is inside an area set down at `at`, in the shape's own
+ * terms (D-341, D-343):
  *
- * - **Sphere**: no further than its radius.
+ * - **Sphere**: no further than its radius from the middle of `at`.
  * - **Cone**: ahead of its point, no further than its length, and as wide at
- *   any distance as that distance — the table's usual cone. Not its own point.
- * - **Line**: ahead, no further than its length, and a cube wide.
+ *   any distance as that distance — the table's usual cone. Its point is the
+ *   edge of `at` the way it aims, not the middle: a cone of 3 covers the three
+ *   cubes ahead of whoever casts it.
+ * - **Line**: from that same edge, as long as it is, a cube wide.
  * - **Cube**: from its corner, `size` cubes along x and z the ways it was
  *   drawn, and `size` up.
  */
-export function inArea(
+function holds(
   area: { readonly shape: AreaShape; readonly aim: Aim; readonly size: number },
   at: BlockCoord,
-  cube: BlockCoord,
+  p: { readonly x: number; readonly y: number; readonly z: number },
 ): boolean {
-  const v = { x: cube.x - at.x, y: cube.y - at.y, z: cube.z - at.z };
+  const middle = { x: at.x + 0.5, y: at.y + 0.5, z: at.z + 0.5 };
   switch (area.shape) {
     case 'sphere':
-      return Math.hypot(v.x, v.y, v.z) <= area.size + 1e-9;
+      return Math.hypot(p.x - middle.x, p.y - middle.y, p.z - middle.z) <= area.size + 1e-9;
     case 'cube': {
       const sx = sign(area.aim.x) || 1;
       const sz = sign(area.aim.z) || 1;
-      return v.x * sx >= 0 && v.x * sx < area.size && v.z * sz >= 0 && v.z * sz < area.size
-        && v.y >= 0 && v.y < area.size;
+      const x0 = sx > 0 ? at.x : at.x - area.size + 1;
+      const z0 = sz > 0 ? at.z : at.z - area.size + 1;
+      return p.x >= x0 && p.x <= x0 + area.size && p.z >= z0 && p.z <= z0 + area.size
+        && p.y >= at.y && p.y <= at.y + area.size;
     }
     default: {
       const a = along(area.aim);
+      const tip = { x: middle.x + a.x / 2, y: middle.y + a.y / 2, z: middle.z + a.z / 2 };
+      const v = { x: p.x - tip.x, y: p.y - tip.y, z: p.z - tip.z };
       const t = v.x * a.x + v.y * a.y + v.z * a.z;
       if (t <= 1e-9 || t > area.size + 1e-9) return false;
       const off = Math.hypot(v.x - t * a.x, v.y - t * a.y, v.z - t * a.z);
       return off <= (area.shape === 'cone' ? t / 2 : 0.5) + 1e-9;
     }
   }
+}
+
+/**
+ * How much of a cube's floor an area covers, 0 to 1 (D-343): sixteen points
+ * across the square at the cube's middle height, and the share of them inside.
+ */
+export function areaCoverage(
+  area: { readonly shape: AreaShape; readonly aim: Aim; readonly size: number },
+  at: BlockCoord,
+  cube: BlockCoord,
+): number {
+  let inside = 0;
+  for (const dx of SAMPLES) {
+    for (const dz of SAMPLES) {
+      if (holds(area, at, { x: cube.x + dx, y: cube.y + 0.5, z: cube.z + dz })) inside += 1;
+    }
+  }
+  return inside / (SAMPLES.length * SAMPLES.length);
+}
+
+/** Whether a cube is in an area set down at `at`: at least half its floor covered (D-343). */
+export function inArea(
+  area: { readonly shape: AreaShape; readonly aim: Aim; readonly size: number },
+  at: BlockCoord,
+  cube: BlockCoord,
+): boolean {
+  return areaCoverage(area, at, cube) >= COVERED;
 }
 
 /** The box of cubes an area could reach, set down at `at`. */
@@ -189,7 +228,7 @@ function reachOf(area: { readonly shape: AreaShape; readonly aim: Aim; readonly 
     };
   }
   const a = along(area.aim);
-  const end = { x: at.x + a.x * s, y: at.y + a.y * s, z: at.z + a.z * s };
+  const end = { x: at.x + a.x * (s + 1), y: at.y + a.y * (s + 1), z: at.z + a.z * (s + 1) };
   const wide = area.shape === 'cone' ? Math.ceil(s / 2) + 1 : 1;
   return {
     min: { x: Math.floor(Math.min(at.x, end.x)) - wide, y: Math.floor(Math.min(at.y, end.y)) - wide, z: Math.floor(Math.min(at.z, end.z)) - wide },
@@ -198,9 +237,35 @@ function reachOf(area: { readonly shape: AreaShape; readonly aim: Aim; readonly 
 }
 
 /**
- * The floors an area covers, set down at `at` in this map (D-341): every cube
- * in it that somebody could stand in — air, with a block under it. What is
- * tinted. A cube in the air, or inside a wall, is in the shape and on nobody's
+ * Every floor of a map, by column: the heights somebody could stand at — air,
+ * with a block under it, inside the map. Worked out once per map (R-165), so
+ * an area need only ask the columns under it rather than every cube of its
+ * box: a sphere of 40 is half a million cubes and a few thousand columns.
+ */
+const floorsOf = new WeakMap<EncounterMap, ReadonlyMap<string, readonly number[]>>();
+
+function floorsByColumn(map: EncounterMap): ReadonlyMap<string, readonly number[]> {
+  const known = floorsOf.get(map);
+  if (known) return known;
+  const columns = new Map<string, number[]>();
+  for (const key of map.blocks.keys()) {
+    const block = parseBlockKey(key);
+    if (!block) continue;
+    const above = { x: block.x, y: block.y + 1, z: block.z };
+    if (!inMap(map, above) || map.blocks.has(blockKey(above))) continue;
+    const column = `${block.x},${block.z}`;
+    const heights = columns.get(column);
+    if (heights) heights.push(above.y);
+    else columns.set(column, [above.y]);
+  }
+  floorsOf.set(map, columns);
+  return columns;
+}
+
+/**
+ * The floors an area covers, set down at `at` in this map (D-341, D-343):
+ * every cube somebody could stand in with at least half its floor inside the
+ * shape. What is tinted. A cube in the air, or inside a wall, is on nobody's
  * floor, so it is not drawn.
  */
 export function areaFloors(
@@ -209,13 +274,13 @@ export function areaFloors(
   at: BlockCoord,
 ): readonly BlockCoord[] {
   const box = reachOf(area, at);
+  const floors = floorsByColumn(map);
   const out: BlockCoord[] = [];
   for (let x = box.min.x; x <= box.max.x; x += 1) {
     for (let z = box.min.z; z <= box.max.z; z += 1) {
-      for (let y = box.min.y; y <= box.max.y; y += 1) {
+      for (const y of floors.get(`${x},${z}`) ?? []) {
+        if (y < box.min.y || y > box.max.y) continue;
         const cube = { x, y, z };
-        if (!inMap(map, cube) || map.blocks.has(blockKey(cube))) continue;
-        if (!map.blocks.has(blockKey({ x, y: y - 1, z }))) continue;
         if (inArea(area, at, cube)) out.push(cube);
       }
     }
