@@ -762,9 +762,9 @@ function applyToProps(
 
   // Moved, with what rests on it (D-354).
   if (intent.kind === 'moveProp') {
-    const why = whyNotMove(map, prop.id, intent.at, standing);
+    const why = whyNotMove(map, prop.id, intent.at, standing, intent.turns ?? 0);
     if (why) return reject_(PROP_FOOTING[why]);
-    return edited((m) => moveProp(m, prop.id, intent.at, standing));
+    return edited((m) => moveProp(m, prop.id, intent.at, standing, intent.turns ?? 0));
   }
 
   if (intent.kind === 'editProp') {
@@ -779,6 +779,7 @@ function applyToProps(
       ...(intent.paint !== undefined ? { paint: intent.paint } : {}),
       ...(intent.flame !== undefined ? { flame: intent.flame } : {}),
       ...(intent.reach !== undefined ? { reach: intent.reach } : {}),
+      ...(intent.note !== undefined ? { note: intent.note } : {}),
     }, standing));
   }
 

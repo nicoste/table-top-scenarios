@@ -184,3 +184,20 @@ describe('moving a prop (D-354)', () => {
   });
 });
 
+describe('the GM\'s note on a prop (D-357)', () => {
+  it('is the GM\'s to write, one undo step, and never sent to the table', () => {
+    const t = tavern();
+    let state = run(t.state, { kind: 'placeProp', placeId: t.placeId, poiId: t.poiId, type: 'chest', at: { x: 3, y: 1, z: 7 }, facing: 0 }).state;
+    const id = mapOf(state).props[0]!.id as string;
+    const note: Intent = { kind: 'editProp', placeId: t.placeId, poiId: t.poiId, id, note: 'a mimic, hungry' };
+    expect(run(state, note, 'table').rejected).toBe('only the GM can do that');
+    state = run(state, note).state;
+    expect(mapOf(state).props[0]!.note).toBe('a mimic, hungry');
+    // The chest is beside Aldra, so the table holds it — and nothing of the note.
+    expect(JSON.stringify(viewFor('table', state))).toContain(id);
+    expect(JSON.stringify(viewFor('table', state))).not.toContain('mimic');
+    expect(JSON.stringify(viewFor('gm', state))).toContain('mimic');
+    expect(mapOf(run(state, { kind: 'undo' }).state).props[0]!.note).toBeUndefined();
+  });
+});
+

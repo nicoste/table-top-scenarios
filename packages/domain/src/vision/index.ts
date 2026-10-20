@@ -348,7 +348,12 @@ export function seenPart(map: EncounterMap, explored: Cells): EncounterMap {
   if (cached) return cached;
   const shown = shownBy(map, explored);
   const blocks = new Map([...map.blocks].filter(([key]) => shown.has(key)));
-  const part: EncounterMap = { ...map, blocks, props: propsSeen(map.props, explored) };
+  // The GM's notes on props stay the GM's (D-357): the party sees the chest, not what is written on it.
+  const seen = propsSeen(map.props, explored);
+  const props = seen.some((prop) => prop.note !== undefined)
+    ? seen.map((prop) => { const { note: _, ...rest } = prop; return rest; })
+    : seen;
+  const part: EncounterMap = { ...map, blocks, props };
   byCells.set(explored, part);
   return part;
 }

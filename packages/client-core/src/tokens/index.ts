@@ -8,7 +8,7 @@
 import type { Intent } from '@tt/protocol';
 import type { BlockCoord, Cells, EncounterMap, LevelRange, MemberId, Tokens } from '@tt/domain';
 import {
-  whyNotStand, standsInBand, topOfMap, planeSteps, MAP_MAX_HEIGHT, MAP_MIN_DEPTH, NONE_OPEN,
+  whyNotStand, standsInBand, topOfMap, planeSteps, MAP_MAX_HEIGHT, MAP_MIN_DEPTH, NONE_OPEN, propById, propType,
 } from '@tt/domain';
 import type { Opened } from '@tt/domain';
 import type { FacePick, TokenRef } from '@tt/render';
@@ -62,8 +62,12 @@ export function armedStride(stride: Stride, moveActive: boolean, next: string | 
  * The top of a prop, when one is nearer than the block behind it, is pointed
  * at in its own right (D-350): the cube above stairs is stood in. Above any
  * other prop the stand rules say why not, as they would over a wall.
+ *
+ * A ladder is pointed at in its own cube (D-357), whichever face of it is
+ * under the pointer: a token is put on a rung, not above the ladder.
  */
-export function tokenAim(face: FacePick | null, propFace: FacePick | null = null): BlockCoord | null {
+export function tokenAim(face: FacePick | null, propFace: FacePick | null = null, rung = false): BlockCoord | null {
+  if (rung && propFace) return propFace.block;
   const on = propFace ?? face;
   if (!on) return null;
   const { block, adjacent } = on;
@@ -71,6 +75,13 @@ export function tokenAim(face: FacePick | null, propFace: FacePick | null = null
   if (up) return adjacent;
   // The side of a prop: the floor behind it, as before props were pointed at.
   return propFace ? tokenAim(face) : null;
+}
+
+/** Whether the prop under the pointer holds somebody in its own cube — a ladder (D-357) — for `tokenAim`. */
+export function onRung(map: EncounterMap | null, prop: string | null): boolean {
+  if (!map || !prop) return false;
+  const found = propById(map.props, prop);
+  return !!found && !!propType(found.type)?.climbable;
 }
 
 /** Identity-preserving, so a pointer that has not changed cube re-renders nothing. */

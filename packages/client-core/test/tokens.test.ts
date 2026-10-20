@@ -34,6 +34,12 @@ describe('a token is aimed by a block\'s top face (R-184)', () => {
     expect(tokenAim(null)).toBeNull();
   });
 
+  it('puts somebody on a ladder\'s rung, whichever face of it is pointed at (D-357)', () => {
+    const ladderFace = face(cube(5, 2, 3), cube(-1, 0, 0));
+    expect(tokenAim(face(cube(6, 2, 3), cube(-1, 0, 0)), ladderFace, true)).toEqual(cube(5, 2, 3));
+    expect(tokenAim(face(cube(6, 2, 3), cube(-1, 0, 0)), face(cube(5, 2, 3), cube(0, 1, 0)), true)).toEqual(cube(5, 2, 3));
+  });
+
   it('stands on the top of a prop nearer than the floor behind it, and past its side on that floor (D-350)', () => {
     const floor = face(cube(3, 0, 3), cube(0, 1, 0));
     expect(tokenAim(floor, face(cube(3, 1, 3), cube(0, 1, 0)))).toEqual(cube(3, 2, 3));

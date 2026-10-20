@@ -27,9 +27,9 @@ import type { PropId, SwatchId } from '../ids/index.js';
 import { freshId, registryId } from '../ids/index.js';
 import { isKnownSwatch, swatchOf } from '../materials/index.js';
 import type { BlockCoord, EncounterMap, Prop } from '../map/index.js';
-import { blockAt, blockKey, cleanReach, inMap } from '../map/index.js';
+import { blockAt, blockKey, cleanPropNote, cleanReach, inMap } from '../map/index.js';
 import type { Facing } from '../place/index.js';
-import { asFacing } from '../place/index.js';
+import { asFacing, turned } from '../place/index.js';
 import type { Box, Size } from '../boxes/index.js';
 import { backOf, boxCubes, placedBox } from '../boxes/index.js';
 
@@ -97,6 +97,15 @@ export interface PropType {
   readonly turnsToWall?: boolean;
   /** Its name is a plural — bars, candles, stairs — so it is never "a" one. */
   readonly plural?: boolean;
+  /**
+   * Somebody may be in its cube with nothing under them — on its rungs
+   * (D-357). A ladder. No rule of moving goes with it: a token is put on a
+   * rung as on a floor, by the GM or a confirmed move, and the walk does not
+   * climb it.
+   */
+  readonly climbable?: boolean;
+  /** Held by the block behind it, as well as by what is under it or at its ends: a ladder against a wall (D-357). */
+  readonly leans?: boolean;
   /**
    * The light it gives while lit (D-335): how far, unless the GM sets its own,
    * and how high over its cube's floor the light comes from — the top of the
@@ -197,6 +206,12 @@ export const PROP_TYPES: readonly PropType[] = [
     id: 'stairs', name: 'Stairs', group: 'stairs', size: { x: 1, y: 1, z: 1 }, ...fixed(STOPS_BOTH),
     holds: true, turnsToWall: true, plural: true, paints: [ROCK, DARK_ROCK, OAK, DARK_OAK],
   },
+  // A ladder (D-357): in nobody's way and no wall to sight, set against a wall
+  // or stacked rung over rung, and somebody may be anywhere up it.
+  {
+    id: 'ladder', name: 'Ladder', group: 'stairs', size: { x: 1, y: 1, z: 1 }, ...fixed(STOPS_NOTHING),
+    climbable: true, leans: true, turnsToWall: true, paints: [OAK, DARK_OAK, BIRCH, IRON],
+  },
 ];
 
 export function propType(id: string): PropType | null {
@@ -281,6 +296,11 @@ export function whyNotPut(
     .filter((cube) => cube.y === bottom)
     .every((cube) => solidAt({ x: cube.x, y: cube.y - 1, z: cube.z }));
   if (stands) return null;
+  // A ladder against a wall (D-357): the block behind it holds it.
+  if (propType(prop.type)?.leans) {
+    const back = backOf(prop.facing);
+    if (cubes.some((cube) => !!blockAt(map, { x: cube.x + back.x, y: cube.y, z: cube.z + back.z }))) return null;
+  }
   // Or held at its ends (D-354, D-355): a block or a prop beyond its left or
   // right, along its width — what is in front or behind holds nothing.
   const own = new Set(cubes.map(blockKey));
@@ -336,6 +356,8 @@ export function editProp(
   id: PropId | string,
   patch: {
     readonly facing?: Facing; readonly paint?: SwatchId | string; readonly flame?: string; readonly reach?: number;
+    /** The GM's note (D-357); an empty one takes it away. */
+    readonly note?: string;
   },
   standing: ReadonlySet<string> = new Set(),
 ): EncounterMap {
@@ -348,12 +370,14 @@ export function editProp(
     ? patch.flame : prop.flame;
   const asked = patch.reach !== undefined && type.light && Number.isFinite(patch.reach) ? cleanReach(patch.reach) : null;
   const reach = asked === null ? prop.reach : asked === type.light!.reach ? undefined : asked;
-  if (facing === prop.facing && paint === prop.paint && flame === prop.flame && reach === prop.reach) return map;
-  const { reach: _, paint: _paint, flame: _flame, ...rest } = prop;
+  const note = patch.note === undefined ? prop.note : cleanPropNote(patch.note) ?? undefined;
+  if (facing === prop.facing && paint === prop.paint && flame === prop.flame && reach === prop.reach && note === prop.note) return map;
+  const { reach: _, paint: _paint, flame: _flame, note: _note, ...rest } = prop;
   const next: Prop = {
     ...rest, facing,
     ...(paint !== undefined ? { paint } : {}),
     ...(flame !== undefined ? { flame } : {}),
+    ...(note !== undefined ? { note } : {}),
     ...(reach !== undefined ? { reach } : {}),
   };
   if (facing !== prop.facing && whyNotPut(map, next, standing, prop.id) !== null) return map;
@@ -390,27 +414,54 @@ export function stackOf(props: readonly Prop[], id: PropId | string): readonly P
   return stack;
 }
 
+/** An offset across the floor turned by quarter turns clockwise from above, as a facing turns (R-203). */
+function turnedOffset(x: number, z: number, turns: number): { readonly x: number; readonly z: number } {
+  let at = { x, z };
+  for (let i = 0; i < ((turns % 4) + 4) % 4; i += 1) at = { x: -at.z, z: at.x };
+  return at;
+}
+
+/**
+ * A prop and everything resting on it (`stackOf`) as they would stand moved
+ * to `to` and turned by `turns` quarter turns about the prop's own cube
+ * (D-354, D-357): each keeps its id and paint, and its place above the one
+ * below. The prop first, as `stackOf` gives them. Not judged — `whyNotMove`.
+ */
+export function landedStack(props: readonly Prop[], id: PropId | string, to: BlockCoord, turns = 0): readonly Prop[] {
+  const stack = stackOf(props, id);
+  const prop = stack[0];
+  if (!prop) return [];
+  const turn = ((turns % 4) + 4) % 4;
+  return stack.map((one) => {
+    const off = turnedOffset(one.at.x - prop.at.x, one.at.z - prop.at.z, turn);
+    return {
+      ...one,
+      at: { x: to.x + off.x, y: to.y + (one.at.y - prop.at.y), z: to.z + off.z },
+      facing: turned(one.facing, turn),
+    };
+  });
+}
+
 /**
  * The map with a prop moved so it stands at `to`, everything resting on it
- * carried along (D-354) — or `null` with the reason it cannot go there: the
- * first of them, from the bottom up, that would not stand where it lands.
- * Each keeps its id, turn and paint.
+ * carried along (D-354) and all of it turned by `turns` (D-357) — or the
+ * reason it cannot go there: the first of them, from the bottom up, that
+ * would not stand where it lands.
  */
 function moved(
   map: EncounterMap,
   id: PropId | string,
   to: BlockCoord,
   standing: ReadonlySet<string>,
+  turns: number,
 ): { readonly map: EncounterMap } | { readonly why: PropFooting } {
-  const stack = stackOf(map.props, id);
-  const prop = stack[0];
+  const prop = propById(map.props, id);
   if (!prop) return { map };
-  const step = { x: to.x - prop.at.x, y: to.y - prop.at.y, z: to.z - prop.at.z };
-  if (step.x === 0 && step.y === 0 && step.z === 0) return { map };
-  const carried = new Set(stack.map((one) => one.id));
+  if (to.x === prop.at.x && to.y === prop.at.y && to.z === prop.at.z && ((turns % 4) + 4) % 4 === 0) return { map };
+  const landed = landedStack(map.props, id, to, turns);
+  const carried = new Set(landed.map((one) => one.id));
   let next: EncounterMap = { ...map, props: map.props.filter((one) => !carried.has(one.id)) };
-  for (const one of [...stack].sort((a, b) => a.at.y - b.at.y)) {
-    const there = { ...one, at: { x: one.at.x + step.x, y: one.at.y + step.y, z: one.at.z + step.z } };
+  for (const there of [...landed].sort((a, b) => a.at.y - b.at.y)) {
     const why = whyNotPut(next, there, standing);
     if (why) return { why };
     next = { ...next, props: [...next.props, there] };
@@ -420,14 +471,15 @@ function moved(
   return { map: { ...map, props: map.props.map((one) => placed.get(one.id) ?? one) } };
 }
 
-/** Why a prop could not be moved to `to`, everything on it with it (D-354), or `null` if it can. */
+/** Why a prop could not be moved to `to` and turned, everything on it with it (D-354), or `null` if it can. */
 export function whyNotMove(
   map: EncounterMap,
   id: PropId | string,
   to: BlockCoord,
   standing: ReadonlySet<string> = new Set(),
+  turns = 0,
 ): PropFooting | null {
-  const result = moved(map, id, to, standing);
+  const result = moved(map, id, to, standing, turns);
   return 'why' in result ? result.why : null;
 }
 
@@ -440,8 +492,9 @@ export function moveProp(
   id: PropId | string,
   to: BlockCoord,
   standing: ReadonlySet<string> = new Set(),
+  turns = 0,
 ): EncounterMap {
-  const result = moved(map, id, to, standing);
+  const result = moved(map, id, to, standing, turns);
   return 'why' in result ? map : result.map;
 }
 
@@ -465,6 +518,8 @@ export interface PropRules {
   readonly occupied: ReadonlySet<string>;
   /** Cubes somebody may stand on top of, as on a block: stairs (D-350). */
   readonly floors: ReadonlySet<string>;
+  /** Cubes somebody may be in with nothing under them: a ladder's (D-357). */
+  readonly rungs: ReadonlySet<string>;
 }
 
 /** Worked out once per list of props and set of open ones: an edit makes new ones (R-165). */
@@ -479,6 +534,7 @@ export function propRules(props: Props, opened: Opened = NONE_OPEN): PropRules {
   const walking = new Set<string>();
   const occupied = new Set<string>();
   const floors = new Set<string>();
+  const rungs = new Set<string>();
   for (const prop of props) {
     const type = propType(prop.type);
     const effect = type ? (type.opens && opened.has(prop.id) ? type.open : type.closed) : STOPS_WALKING;
@@ -488,9 +544,10 @@ export function propRules(props: Props, opened: Opened = NONE_OPEN): PropRules {
       if (effect.blocksSight) sight.add(key);
       if (effect.blocksWalking) walking.add(key);
       if (type?.holds) floors.add(key);
+      if (type?.climbable) rungs.add(key);
     }
   }
-  const rules = { sight, walking, occupied, floors };
+  const rules = { sight, walking, occupied, floors, rungs };
   byOpened.set(opened, rules);
   return rules;
 }
@@ -532,12 +589,15 @@ export function flameOf(prop: { readonly type: string; readonly flame?: string }
 
 /**
  * Whether there is something to stand on under a cube (D-350): a block, or a
- * prop that holds people up — stairs. Every rule that asks for a floor asks
+ * prop that holds people up — stairs — or a ladder's rung in it (D-357). Every rule that asks for a floor asks
  * this, so a stair is stood on wherever a block would be.
  */
 export function floorUnder(map: EncounterMap, at: BlockCoord): boolean {
   const below = { x: at.x, y: at.y - 1, z: at.z };
   if (blockAt(map, below)) return true;
-  return map.props.length > 0 && propRules(map.props).floors.has(blockKey(below));
+  if (map.props.length === 0) return false;
+  const rules = propRules(map.props);
+  // Stairs under it (D-350), or a ladder's rung in it (D-357).
+  return rules.floors.has(blockKey(below)) || rules.rungs.has(blockKey(at));
 }
 

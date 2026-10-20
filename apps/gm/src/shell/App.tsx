@@ -13,7 +13,7 @@ import {
   DAYLIGHT, clampLighting,
   NO_TOKENS, tokensIn, onRoster, unplaced, tokensInBand, standsInBand, standingAt,
   NO_CELLS, shownBy, memberNotesFromJSON, carriedFromJSON, areasFromJSON, areaAt,
-  prefabFromJSON, capturePrefab, propById, propBox, propType, stackOf, blockKey, propsSeen, sightShows,
+  prefabFromJSON, capturePrefab, propById, propBox, propType, stackOf, editProp, blockKey, propsSeen, sightShows,
 } from '@tt/domain';
 import type {
   SwatchId, CoverId, Lighting, Ambience, MemberId, Tokens, BlockCoord, Route, Travelling,
@@ -33,12 +33,12 @@ import {
   idle, pick, armed, aim, choose, ghostCell, aimedAt, travelIntent, travelPrompt,
   clickAction, holdsSelection, mapAction, mapHover, mapDrags, mapAllowed,
   cameraAction, wheelZoom, CAMERA_HINT,
-  still, grab, armedStride, tokenAim, aimStride, strideGhost, strideIntent, standVerdict, walkShown,
+  still, grab, armedStride, tokenAim, onRung, aimStride, strideGhost, strideIntent, standVerdict, walkShown,
   tokenAction, stridePrompt,
   NOT_PLACING, turnPlacing, mirrorPlacing, prefabAim, prefabPreview, placeIntent, placePrompt,
   NO_CAPTURE, captureCorner, captureClick, captureHeight, captureBack, captureBox, capturePrompt,
-  EMPTY_HAND, turnHand, propAim, propWall, propPreview, placePropIntent, propPrompt, toggleIntent, toggleLabel,
-  paintPropIntent, paintPropPrompt, propMovePreview, propMoveIntent, propMovePrompt,
+  EMPTY_HAND, turnHand, propAim, propWall, propPreview, placePropIntent, propPrompt, toggleIntent,
+  paintPropIntent, paintPropPrompt, propMovePreview, propMoveIntent, propMovePrompt, turnDrag, propHoverLabel,
   MEASURE_START, measureCleared, measurePress, measureDrag, measureRelease, rulerShown, areasShown, handleAt,
   measurePrompt, faceCentre, floorCentre,
 } from '@tt/client-core';
@@ -1220,7 +1220,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
         picked.token, stride.step === 'aiming' || silverMove.step === 'aiming', picked.silver,
       );
       if (act.kind === 'confirm' && stride.step === 'aiming') {
-        const at = tokenAim(picked.face, picked.propFace);
+        const at = tokenAim(picked.face, picked.propFace, onRung(openBody, picked.prop));
         if (at && strideVerdict(stride.memberId, at) === null) {
           dispatch(strideIntent(stride, at, openMap.placeId, openMap.poiId));
         }
@@ -1228,7 +1228,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
         return;
       }
       if (act.kind === 'confirm' && silverMove.step === 'aiming') {
-        const at = tokenAim(picked.face, picked.propFace);
+        const at = tokenAim(picked.face, picked.propFace, onRung(openBody, picked.prop));
         if (at && silverVerdictAt(at, silverMove.id) === null) {
           dispatch(silverMoveIntent(silverMove, at, openMap.placeId, openMap.poiId));
         }
@@ -1305,7 +1305,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
      * cannot stand on does nothing; the readout has already said why.
      */
     if (openMap && mapTool === 'spawn') {
-      const at = tokenAim(picked.face, picked.propFace);
+      const at = tokenAim(picked.face, picked.propFace, onRung(openBody, picked.prop));
       if (chosenTemplate && at && silverVerdictAt(at) === null) {
         dispatch(spawnIntent(chosenTemplate, at, openMap.placeId, openMap.poiId));
       }
@@ -1314,7 +1314,11 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     // A Paint click on a prop paints that prop and nothing else (D-352).
     if (openMap && mapTool === 'paint' && picked.prop && openBody) {
       const intent = paintPropIntent(openBody, picked.prop, swatch, openMap.placeId, openMap.poiId);
-      if (intent) dispatch(intent);
+      if (intent) {
+        dispatch(intent);
+        // The readout says what it is now, before the pointer moves again.
+        setHoverLabel(paintPropPrompt(editProp(openBody, picked.prop, { paint: swatch }), picked.prop, swatch));
+      }
       return;
     }
     if (openMap) {
@@ -1448,7 +1452,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       if (stride.step === 'aiming') {
         // The ghost follows the pointer only onto a floor the member may stand
         // on; anywhere else the prompt says why (R-138).
-        const at = tokenAim(picked.face, picked.propFace);
+        const at = tokenAim(picked.face, picked.propFace, onRung(openBody, picked.prop));
         setStride((current) => (current.step === 'aiming'
           ? aimStride(current, at, at ? strideVerdict(current.memberId, at) : null)
           : current));
@@ -1456,7 +1460,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
         return;
       }
       if (silverMove.step === 'aiming') {
-        const at = tokenAim(picked.face, picked.propFace);
+        const at = tokenAim(picked.face, picked.propFace, onRung(openBody, picked.prop));
         setSilverMove((current) => (current.step === 'aiming'
           ? aimSilverMove(current, at, at ? silverVerdictAt(at, current.id) : null)
           : current));
@@ -1466,9 +1470,10 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       const name = picked.token
         ? memberName(picked.token.memberId)
         : picked.silver ? silverName(picked.silver) : null;
-      // A door, when there is no token under the pointer: a click opens it (D-328).
-      const door = !name && picked.prop && openBody ? toggleLabel(openBody, picked.prop, openedHere) : null;
-      setHoverLabel(name ? `Pick up ${name}` : door);
+      // A prop, when there is no token under the pointer: what a click does
+      // to it (D-328), and the GM's note on it (D-357).
+      const prop = !name && picked.prop && openBody ? propHoverLabel(openBody, picked.prop, openedHere) : null;
+      setHoverLabel(name ? `Pick up ${name}` : prop);
       return;
     }
 
@@ -1531,7 +1536,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       lastPointer.current = { x: e.clientX, y: e.clientY };
       stage.showBlockGhost([]);
       const spot = stage.pick(e.clientX, e.clientY);
-      const at = tokenAim(spot.face, spot.propFace);
+      const at = tokenAim(spot.face, spot.propFace, onRung(openBody, spot.prop));
       const why = at ? silverVerdictAt(at) : null;
       stage.aimSilver(chosenTemplate && at && why === null ? at : null);
       const entry = chosenTemplate ? library.find((one) => one.id === chosenTemplate)?.name ?? null : null;
@@ -1778,7 +1783,9 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
         // Z / X turn the prop in hand, or the one selected (R-203).
         if (mapTool === 'props' && (e.code === 'KeyZ' || e.code === 'KeyX')) {
           const step = e.code === 'KeyX' ? 1 : -1;
-          if (propHand.type) setPropHand((now) => turnHand(now, step));
+          // A prop being dragged turns, with all it carries (D-357).
+          if (propDrag) setPropDrag((now) => (now ? turnDrag(now, step) : now));
+          else if (propHand.type) setPropHand((now) => turnHand(now, step));
           else if (selectedProp && openBody && openMap) {
             const prop = propById(openBody.props, selectedProp);
             if (prop) {

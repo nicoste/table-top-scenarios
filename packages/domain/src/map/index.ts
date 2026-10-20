@@ -87,6 +87,11 @@ export interface Prop {
   /** A light's flame, by id (D-335): the colour of what it gives. Only a light has one. */
   readonly flame?: string;
   /**
+   * The GM's note on it (D-357): what is in the chest, what the bookcase
+   * hides. The GM's alone — never in what the table is sent.
+   */
+  readonly note?: string;
+  /**
    * How far a light reaches, when the GM has set it (D-335): absent means
    * its type's own. Only a light has one; on anything else it means nothing.
    */
@@ -580,8 +585,20 @@ export interface PropJSON {
   paint?: string;
   /** A light's flame (D-335). */
   flame?: string;
+  /** The GM's note (D-357). Written only when there is one. */
+  note?: string;
   /** A light's own reach (D-335). Written only when the GM set one. */
   reach?: number;
+}
+
+/** How long a note on a prop may be (D-357): as long as one on somebody (`MAX_MEMBER_NOTE`). */
+export const MAX_PROP_NOTE = 500;
+
+/** A note as kept: trimmed, in bounds, and none at all when empty. */
+export function cleanPropNote(note: unknown): string | null {
+  if (typeof note !== 'string') return null;
+  const clean = note.trim().slice(0, MAX_PROP_NOTE);
+  return clean ? clean : null;
 }
 
 /**
@@ -636,6 +653,7 @@ export function propsOfJSON(json: unknown): readonly Prop[] {
       at: { x: at.x, y: at.y, z: at.z },
       facing,
       ...lookOfJSON(entry),
+      ...(cleanPropNote(entry.note) ? { note: cleanPropNote(entry.note)! } : {}),
       ...(typeof entry.reach === 'number' && Number.isFinite(entry.reach) ? { reach: cleanReach(entry.reach) } : {}),
     });
   }
@@ -648,6 +666,7 @@ export function propsAsJSON(props: readonly Prop[]): PropJSON[] {
     facing: prop.facing,
     ...(prop.paint !== undefined ? { paint: prop.paint as string } : {}),
     ...(prop.flame !== undefined ? { flame: prop.flame } : {}),
+    ...(prop.note !== undefined ? { note: prop.note } : {}),
     ...(prop.reach !== undefined ? { reach: prop.reach } : {}),
   }));
 }

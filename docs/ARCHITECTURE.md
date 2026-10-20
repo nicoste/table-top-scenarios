@@ -2238,10 +2238,15 @@ apps/host/src/
 >   right, along its width — by a block or a prop (D-354, D-355): bars across
 >   the top of a doorway, between its posts. Never by what is in front of it
 >   or behind it; only one that hangs is held from behind.
-> - **The prop selected is moved by dragging it** (D-354), and what rests on
->   it goes along — the candles on the barrel. A ghost shows where they all
->   land, red where they cannot; letting go is one undo step, Escape or
->   leaving the map leaves it where it was.
+> - **The prop selected is moved by dragging it** (D-354), and everything
+>   resting on it goes along, however much — the candles on the barrel, a
+>   tower of crates. **Z / X turn it on the way**, all it carries turned about
+>   its cube (D-357). A ghost shows where they all land, red where they
+>   cannot; letting go is one undo step, Escape or leaving the map leaves it
+>   where it was.
+> - **The GM's note on a prop** (D-357): what is in the chest, what the
+>   bookcase hides — written in the Props panel, shown with Play under the
+>   pointer, and taken out of everything the party is sent.
 > - **Another prop's face offers only what fits** (D-356): aimed from it, a
 >   cube the prop could not stand in is no ghost at all; a block's face still
 >   shows red and says why.
@@ -2394,6 +2399,11 @@ apps/host/src/
 >   it, so the cube above a stair is pointed at directly; the stand rules
 >   refuse the top of any prop that does not hold people.
 > - Drawn as three steps climbing toward the back, a paler edge to each tread.
+> - **A ladder** (D-357) is in nobody's way and no wall to sight. It leans on
+>   the block behind it, or stands on the floor or on another ladder, and
+>   **somebody may be in its cube with nothing under them** — on a rung. No
+>   rule of moving goes with it: the walk does not climb it; a token is put
+>   on a rung by a confirmed move, aimed at the ladder itself.
 
 ---
 

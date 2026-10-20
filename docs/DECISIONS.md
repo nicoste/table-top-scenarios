@@ -9155,3 +9155,38 @@ reading; the face of a prop is often only what the pointer crossed on its way.
 The same for a prop being dragged (D-354): over another prop's face, it is
 offered only where it could land.
 
+### D-357 — Ladders, the GM's note on a prop, and turning what is dragged · `agreed`
+The GM's answers to what was left (D-321, D-322, D-354):
+
+- **Secret doors — discarded.** *"The GM is in charge of opening a wall if
+  that's needed."*
+- **A note on a prop — wanted.** Private text on a prop, as on a token
+  (R-208): written in the Props panel with the prop selected, the same box
+  (`GmNote`), and shown with **Play** under the pointer beside what a click
+  would do — *"Open the chest — 30 gp and a cursed ring"*. It is the map's,
+  kept with the prop and under undo, and **cut out of everything the party is
+  sent**: the part of a map they have seen (`seenPart`) holds the chest and
+  never the note. Not carried into prefabs; a stamp is a new chest.
+- **Ladders — wanted, with no rule of moving.** *"Don't add any particular
+  movement rule while on them, the players will 'use it' by just confirming
+  the invalid movement (if that's a thing) or the GM will act and move their
+  tokens."* A ladder is a prop in **Stairs & ladders**: in nobody's way and no
+  wall to sight, leaning on the block behind it or standing on the floor or
+  another ladder, turned to the wall pointed at. The one rule it needs is so
+  that a token can be put on it at all: **somebody may be in its cube with
+  nothing under them**, as on a floor. The walk does not climb it — over a
+  rung it says *no path* — and the move is confirmed anyway, by the GM or the
+  players, which is exactly the use described. Pointing at a ladder aims at
+  its own cube, the rung, whichever face is under the pointer.
+- **Moving carries everything on top** — *"no matter if it's alone or has 1k
+  props on top"* — as D-354 built it; what is only held at its side stays.
+- **Z / X turn a prop while it is dragged**, and everything it carries with
+  it, each about the dragged prop's own cube; turned where it stands, it is a
+  move too. One undo step either way.
+- **The Paint readout** says what the prop is now as soon as it is painted,
+  not after the pointer moves.
+
+Checked on the test copy: a ladder hung on Tollkeep's wall a cube up, Turdorn
+moved onto it past the walk's *no path*; a note written on the open chest
+and read back under the pointer with Play.
+

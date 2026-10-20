@@ -9,7 +9,7 @@ import {
   editProp, removeProp, propRules, NONE_OPEN, whyNotStand, walkAcross, partySight, mapToJSON, mapFromJSON,
   sliceOf, seenPart, propsSeen, sightShows, shownBy, createCampaign, createLiveSave, openedIn, withOpen, tidyOpened,
   statesOf, isLit, reachOf, backOf, facingWithBack, MAX_LIGHT_REACH, floorUnder, dropBelow, whyNotPlace, paintOf, flameOf,
-  isKnownSwatch, prefabFromJSON, prefabToJSON, stackOf, whyNotMove, moveProp,
+  isKnownSwatch, prefabFromJSON, prefabToJSON, stackOf, whyNotMove, moveProp, landedStack,
   NO_SILVER, NO_TOKENS,
 } from '@tt/domain';
 
@@ -32,10 +32,10 @@ const door = (map: EncounterMap) => putProp(map, { type: 'door', at: cube(5, 1, 
 const doorId = (map: EncounterMap) => map.props[0]!.id as string;
 
 describe('the catalogue (D-328)', () => {
-  it('has the doors and bars, the furniture, the lights (D-335) and stairs (D-350)', () => {
+  it('has the doors and bars, the furniture, the lights (D-335), stairs (D-350) and a ladder (D-357)', () => {
     expect(PROP_TYPES.map((type) => type.id)).toEqual([
       'door', 'cell-door', 'bars', 'portcullis', 'chest', 'table', 'chair', 'bookcase', 'barrel', 'crate',
-      'torch', 'lantern', 'candles', 'brazier', 'campfire', 'stairs',
+      'torch', 'lantern', 'candles', 'brazier', 'campfire', 'stairs', 'ladder',
     ]);
   });
 
@@ -431,6 +431,78 @@ describe('moving a prop (D-354)', () => {
     expect(whyNotMove(map, bookcase, cube(7, 1, 6))).toBeNull();
     // Moving onto its own old place, one along, is no collision with itself.
     expect(whyNotMove(map, barrel, cube(3, 1, 4))).toBeNull();
+  });
+});
+
+describe('a ladder (D-357)', () => {
+  const nobody = new Map<MemberId, BlockCoord>();
+  /** A wall three high across x = 6. */
+  const wall = () => {
+    const blocks: BlockCoord[] = [];
+    for (let z = 0; z < 16; z += 1) blocks.push(cube(6, 1, z), cube(6, 2, z), cube(6, 3, z));
+    return setBlocks(createMap(), blocks, STONE);
+  };
+
+  it('leans on the wall behind it, or stands on the floor or on another ladder', () => {
+    // Its back to the wall at x = 6 is facing 1; a cube up, nothing under it.
+    expect(whyNotPut(wall(), { type: 'ladder', at: cube(5, 2, 3), facing: 1 })).toBeNull();
+    expect(whyNotPut(wall(), { type: 'ladder', at: cube(5, 2, 3), facing: 3 })).toBe('unsupported');
+    let map = putProp(createMap(), { type: 'ladder', at: cube(3, 1, 3), facing: 0 });
+    expect(whyNotPut(map, { type: 'ladder', at: cube(3, 2, 3), facing: 0 })).toBeNull();
+    map = putProp(map, { type: 'ladder', at: cube(3, 2, 3), facing: 0 });
+    expect(map.props).toHaveLength(2);
+  });
+
+  it('is in nobody\'s way, and somebody may be anywhere up it — with no rule of moving', () => {
+    let map = wall();
+    for (const y of [1, 2, 3]) map = putProp(map, { type: 'ladder', at: cube(5, y, 3), facing: 1 });
+    const rules = propRules(map.props);
+    expect(rules.sight.size + rules.walking.size).toBe(0);
+    // On the second rung, with air under it.
+    expect(whyNotStand(map, nobody, 'member_a' as MemberId, cube(5, 3, 3))).toBeNull();
+    expect(whyNotPlace(map, NO_TOKENS, NO_SILVER, cube(5, 2, 3))).toBeNull();
+    expect(dropBelow(map, cube(5, 3, 3))).toBe(0);
+    // Beside it, still nothing.
+    expect(whyNotStand(map, nobody, 'member_a' as MemberId, cube(4, 3, 3))).toBe('unsupported');
+    // The walk does not climb it: up a rung is the GM's, or a confirmed move.
+    expect(walkAcross(map, cube(3, 1, 3), cube(5, 3, 3))).toBeNull();
+  });
+});
+
+describe('the GM\'s note on a prop (D-357)', () => {
+  it('is written, kept with the map, and taken away by an empty one', () => {
+    let map = putProp(createMap(), { type: 'chest', at: cube(3, 1, 3), facing: 0 });
+    const id = map.props[0]!.id;
+    map = editProp(map, id, { note: '  30 gp and a cursed ring  ' });
+    expect(map.props[0]!.note).toBe('30 gp and a cursed ring');
+    expect(mapFromJSON(mapToJSON(map))!.props[0]!.note).toBe('30 gp and a cursed ring');
+    expect(editProp(map, id, { note: '30 gp and a cursed ring' })).toBe(map);
+    expect(editProp(map, id, { note: '   ' }).props[0]).not.toHaveProperty('note');
+  });
+
+  it('never reaches the party: what they have seen holds the chest, not the note', () => {
+    const map = putProp(createMap(), { type: 'chest', at: cube(3, 1, 3), facing: 0 });
+    const noted = editProp(map, map.props[0]!.id, { note: 'a mimic' });
+    const seen = seenPart(noted, new Set(['3,1,3']));
+    expect(seen.props).toHaveLength(1);
+    expect(seen.props[0]).not.toHaveProperty('note');
+    expect(JSON.stringify(mapToJSON(seen))).not.toContain('mimic');
+  });
+});
+
+describe('a prop turned as it is moved (D-357)', () => {
+  it('turns with all it carries, each about the prop\'s own cube', () => {
+    let map = putProp(createMap(), { type: 'portcullis', at: cube(5, 1, 5), facing: 0 });
+    map = putProp(map, { type: 'candles', at: cube(4, 3, 5), facing: 0 });
+    const id = map.props[0]!.id;
+    // The candles stand on its far end; a quarter turn puts that end toward −z.
+    expect(landedStack(map.props, id, cube(5, 1, 5), 1).map((one) => [one.at, one.facing])).toEqual([
+      [cube(5, 1, 5), 1], [cube(5, 3, 4), 1],
+    ]);
+    const turned = moveProp(map, id, cube(5, 1, 5), new Set(), 1);
+    expect(turned.props.map((one) => one.facing)).toEqual([1, 1]);
+    expect(whyNotMove(map, id, cube(5, 1, 5), new Set(), 0)).toBeNull();
+    expect(moveProp(map, id, cube(5, 1, 5), new Set(), 0)).toBe(map);
   });
 });
 

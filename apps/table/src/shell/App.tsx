@@ -21,7 +21,7 @@ import {
   idle, pick, aim, ghostCell, canConfirm, movingFrom, aimedAt, travelIntent, travelPrompt,
   tableAction,
   cameraAction, wheelZoom, CAMERA_HINT,
-  still, grab, tokenAim, aimStride, strideGhost, strideIntent, standVerdict, tableCeiling, walkShown,
+  still, grab, tokenAim, onRung, aimStride, strideGhost, strideIntent, standVerdict, tableCeiling, walkShown,
   tokenAction, stridePrompt,
   MEASURE_START, measureCleared, measurePress, measureDrag, measureRelease, rulerShown, areasShown, handleAt,
   measurePrompt, faceCentre, floorCentre,
@@ -457,7 +457,7 @@ export function App({ view, status, rejection, dispatch }: Props) {
     if (insideWire) {
       if (stride.step !== 'aiming' || !stage) return;
       const spot = stage.pick(event.clientX, event.clientY);
-      const at = tokenAim(spot.face, spot.propFace);
+      const at = tokenAim(spot.face, spot.propFace, onRung(body, spot.prop));
       setStride((current) => (current.step === 'aiming'
         ? aimStride(current, at, at ? strideVerdict(current.memberId, at) : null)
         : current));
@@ -482,7 +482,7 @@ export function App({ view, status, rejection, dispatch }: Props) {
     if (insideWire) {
       const act = tokenAction(hit.token, stride.step === 'aiming');
       if (act.kind === 'confirm' && stride.step === 'aiming') {
-        const at = tokenAim(hit.face, hit.propFace);
+        const at = tokenAim(hit.face, hit.propFace, onRung(body, hit.prop));
         if (at && strideVerdict(stride.memberId, at) === null) {
           dispatch(strideIntent(stride, at, insideWire.place.id, insideWire.poi.id));
         }

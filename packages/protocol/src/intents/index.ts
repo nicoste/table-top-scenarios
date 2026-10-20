@@ -265,6 +265,8 @@ export const IntentSchema = z.discriminatedUnion('kind', [
     flame: z.string().max(40).optional(),
     /** A light's reach (D-335); one equal to its type's own clears its own. */
     reach: reach.optional(),
+    /** The GM's note on it (D-357); empty takes it away. Never sent to the table. */
+    note: z.string().max(2000).optional(),
   }),
   z.object({
     kind: z.literal('removeProp'),
@@ -278,6 +280,8 @@ export const IntentSchema = z.discriminatedUnion('kind', [
     kind: z.literal('moveProp'),
     placeId: z.string().min(1), poiId: z.string().min(1), id: z.string().min(1),
     at: CubeWireSchema,
+    /** Quarter turns clockwise from above, given to it and all it carries on the way (D-357). */
+    turns: z.number().int().min(0).max(3).optional(),
   }),
   /**
    * Sets a prop as placed (`open: false`) or the other way (`open: true`):

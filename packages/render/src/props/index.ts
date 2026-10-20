@@ -181,6 +181,13 @@ function partsOf(type: string, open: boolean): readonly Part[] {
           { size: [1, 0.03, 0.07] as const, at: [0.5, k / 3 + 0.015, front - 0.035] as const, tone: 'light' as const },
         ];
       });
+    case 'ladder':
+      // Against the wall behind it (D-357): two rails and three rungs, a
+      // cube tall, so ladders stacked one on another run on unbroken.
+      return [
+        ...[0.15, 0.85].map((x) => ({ size: [0.07, 1, 0.07] as const, at: [x, 0.5, 0.12] as const })),
+        ...[1 / 6, 1 / 2, 5 / 6].map((y) => ({ size: [0.66, 0.05, 0.05] as const, at: [0.5, y, 0.12] as const, tone: 'light' as const })),
+      ];
     // Lights (D-335): `open` is out.
     case 'torch':
       // Hung on the wall behind it, which is toward −z unturned.

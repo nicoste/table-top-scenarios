@@ -10,7 +10,8 @@
 import type { Intent } from '@tt/protocol';
 import type { BlockCoord, Box, EncounterMap, Facing, Opened, PropFooting, PropType, SwatchId } from '@tt/domain';
 import {
-  facingWithBack, paintOf, propBox, propById, propType, stackOf, statesOf, swatchName, turned, whyNotMove, whyNotPut,
+  facingWithBack, landedStack, paintOf, propBox, propById, propType, stackOf, statesOf, swatchName, turned, whyNotMove,
+  whyNotPut,
 } from '@tt/domain';
 import type { FacePick, PropGhostDrawn } from '@tt/render';
 
@@ -138,6 +139,13 @@ export interface PropDrag {
   readonly at: BlockCoord | null;
   /** Aimed from another prop's face (D-356): offered only where it could stand. */
   readonly onProp?: boolean;
+  /** Quarter turns given to it on the way, with Z / X (D-357). */
+  readonly turns?: number;
+}
+
+/** Z / X while a prop is dragged: it, and all it carries, a quarter turn (D-357). */
+export function turnDrag(drag: PropDrag, step: number): PropDrag {
+  return { ...drag, turns: ((((drag.turns ?? 0) + step) % 4) + 4) % 4 };
 }
 
 /** What letting go would do: everything carried, where it would land, the box round it, and why not. */
@@ -155,13 +163,14 @@ export function propMovePreview(
   drag: PropDrag,
   standing: ReadonlySet<string>,
 ): PropMovePreview | null {
-  const stack = stackOf(map.props, drag.id);
-  const prop = stack[0];
-  if (!prop || !drag.at || sameCube(prop.at, drag.at)) return null;
-  const why = whyNotMove(map, drag.id, drag.at, standing);
+  const prop = propById(map.props, drag.id);
+  const turns = drag.turns ?? 0;
+  // Where it is, as it is: nothing to show. Turned where it is, there is.
+  const at = drag.at ?? (turns !== 0 && prop ? prop.at : null);
+  if (!prop || !at || (sameCube(prop.at, at) && turns === 0)) return null;
+  const why = whyNotMove(map, drag.id, at, standing, turns);
   if (why && drag.onProp) return null;
-  const step = { x: drag.at.x - prop.at.x, y: drag.at.y - prop.at.y, z: drag.at.z - prop.at.z };
-  const landed = stack.map((one) => ({ ...one, at: { x: one.at.x + step.x, y: one.at.y + step.y, z: one.at.z + step.z } }));
+  const landed = landedStack(map.props, drag.id, at, turns);
   const boxes = landed.map(propBox);
   return {
     box: {
@@ -184,8 +193,13 @@ export function propMoveIntent(
   poiId: string,
 ): Intent | null {
   const preview = propMovePreview(map, drag, standing);
-  if (!preview || preview.why || !drag.at) return null;
-  return { kind: 'moveProp', placeId, poiId, id: drag.id, at: drag.at };
+  const prop = propById(map.props, drag.id);
+  if (!preview || preview.why || !prop) return null;
+  const turns = drag.turns ?? 0;
+  return {
+    kind: 'moveProp', placeId, poiId, id: drag.id, at: drag.at ?? prop.at,
+    ...(turns !== 0 ? { turns } : {}),
+  };
 }
 
 /** What the readout says while a prop is dragged: where it would go, or why not. */
@@ -195,9 +209,9 @@ export function propMovePrompt(map: EncounterMap, drag: PropDrag, standing: Read
   if (!type) return '';
   const what = `the ${type.name.toLowerCase()}${stack.length > 1 ? ' and what is on it' : ''}`;
   const preview = propMovePreview(map, drag, standing);
-  if (!preview) return `Moving ${what} — drag it where it should stand; Escape leaves it.`;
+  if (!preview) return `Moving ${what} — drag it where it should stand, Z / X turn it; Escape leaves it.`;
   if (preview.why) return `${type.name}: ${preview.why}.`;
-  return `Let go to move ${what} here.`;
+  return `Let go to move ${what} here. Z / X turn it.`;
 }
 
 /**
@@ -266,4 +280,16 @@ export function toggleLabel(map: EncounterMap, id: string, opened: Opened): stri
   if (!prop || !type?.opens) return null;
   const states = statesOf(type);
   return `${opened.has(prop.id) ? states.toPlaced : states.toOther} the ${type.name.toLowerCase()}`;
+}
+
+/**
+ * What Play's readout says over a prop on the console (D-328, D-357): what a
+ * click does to it, and the GM's note on it — which only the console has.
+ */
+export function propHoverLabel(map: EncounterMap, id: string, opened: Opened): string | null {
+  const prop = propById(map.props, id);
+  if (!prop) return null;
+  const toggle = toggleLabel(map, id, opened);
+  if (!prop.note) return toggle;
+  return toggle ? `${toggle} — ${prop.note}` : `${propType(prop.type)?.name ?? 'Prop'}: ${prop.note}`;
 }

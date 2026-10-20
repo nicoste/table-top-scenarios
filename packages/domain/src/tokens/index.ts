@@ -220,8 +220,10 @@ export function settled(
  * it, the stalk runs to bedrock, which is as far down as a map goes (R-161).
  */
 export function dropBelow(map: EncounterMap, at: BlockCoord): number {
-  // Stairs stop a fall as a block does (D-350).
-  const floors = map.props.length > 0 ? propRules(map.props).floors : null;
+  // Stairs stop a fall as a block does (D-350); somebody on a ladder is not falling (D-357).
+  const rules = map.props.length > 0 ? propRules(map.props) : null;
+  if (rules?.rungs.has(blockKey(at))) return 0;
+  const floors = rules?.floors ?? null;
   for (let y = at.y - 1; y >= MAP_MIN_DEPTH; y -= 1) {
     const cube = { x: at.x, y, z: at.z };
     if (blockAt(map, cube) || floors?.has(blockKey(cube))) return at.y - (y + 1);

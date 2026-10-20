@@ -19,6 +19,7 @@ import type { PropHand } from '@tt/client-core';
 import { takeProp, turnHand } from '@tt/client-core';
 import { DraftInput, Tooltip } from '@tt/ui';
 import { isReach } from '../carried/index.js';
+import { GmNote } from '../note/index.js';
 
 interface Props {
   hand: PropHand;
@@ -38,7 +39,7 @@ const GROUPS: readonly { readonly id: PropType['group']; readonly name: string }
   { id: 'doors', name: 'Doors & bars' },
   { id: 'furniture', name: 'Furniture' },
   { id: 'lights', name: 'Lights' },
-  { id: 'stairs', name: 'Stairs' },
+  { id: 'stairs', name: 'Stairs & ladders' },
 ];
 
 
@@ -55,6 +56,7 @@ function rulesOf(type: PropType): string {
 function aboutOf(type: PropType): string {
   if (type.light) return `lights ${type.light.reach}${type.hangs ? ', hangs on a wall' : ''} — ${rulesOf(type)}`;
   if (type.holds) return `${type.size.x} × ${type.size.y} — ${rulesOf(type)}; stood on as a block is${type.turnsToWall ? ', climbing toward the back' : ''}`;
+  if (type.climbable) return `${type.size.x} × ${type.size.y} — ${rulesOf(type)}; somebody may be anywhere up it, set against a wall or on another`;
   return `${type.size.x} × ${type.size.y} — ${rulesOf(type)}`;
 }
 
@@ -119,6 +121,12 @@ export function PropsPanel({ hand, onHand, selected, onSelect, opened, placeId, 
             {selectedType.name}
             {selectedType.opens && ` · ${opened.has(selected.id) ? statesOf(selectedType).other : statesOf(selectedType).placed}`}
           </p>
+          {/* The GM's own (D-357): what is in it, what it hides. Never on the table. */}
+          <GmNote
+            note={selected.note ?? ''}
+            name={`the ${selectedType.name.toLowerCase()}`}
+            onCommit={(note) => dispatch({ kind: 'editProp', ...where, id: selected.id, note })}
+          />
           <div className="btn-grid tools">
             {/* One that hangs faces out from its wall, and has no other way to turn (D-335). */}
             {!selectedType.hangs && (

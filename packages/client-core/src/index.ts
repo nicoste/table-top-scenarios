@@ -18,7 +18,7 @@ export {
 export type { Travel } from './travel/index.js';
 
 export {
-  still, grab, armedStride, tokenAim, aimStride, strideGhost, canStride, strideIntent,
+  still, grab, armedStride, tokenAim, onRung, aimStride, strideGhost, canStride, strideIntent,
   tableCeiling, standVerdict, tokenAction, stridePrompt,
 } from './tokens/index.js';
 export type { Stride, Headroom, TokenAction } from './tokens/index.js';
@@ -52,7 +52,8 @@ export type { PrefabPlacing, PrefabPreview, Capture } from './prefabs/index.js';
 
 export {
   EMPTY_HAND, takeProp, turnHand, propAim, propWall, propWords, propPreview, placePropIntent, propPrompt,
-  toggleIntent, toggleLabel, paintPropIntent, paintPropPrompt, propMovePreview, propMoveIntent, propMovePrompt,
+  toggleIntent, toggleLabel, paintPropIntent, paintPropPrompt, propMovePreview, propMoveIntent, propMovePrompt, turnDrag,
+  propHoverLabel,
 } from './props/index.js';
 export type { PropHand, PropPreview, PropDrag, PropMovePreview } from './props/index.js';
 

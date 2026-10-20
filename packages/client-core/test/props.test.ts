@@ -2,10 +2,10 @@
 
 import { describe, it, expect } from 'vitest';
 import type { BlockCoord, EncounterMap, SwatchId } from '@tt/domain';
-import { createMap, setBlocks, putProp, propType, DEFAULT_FLOOR } from '@tt/domain';
+import { createMap, setBlocks, putProp, editProp, propType, DEFAULT_FLOOR } from '@tt/domain';
 import {
   EMPTY_HAND, takeProp, turnHand, propAim, propWall, propPreview, placePropIntent, propPrompt, toggleIntent, toggleLabel,
-  paintPropIntent, paintPropPrompt, propMovePreview, propMoveIntent, propMovePrompt,
+  paintPropIntent, paintPropPrompt, propMovePreview, propMoveIntent, propMovePrompt, turnDrag, propHoverLabel,
 } from '@tt/client-core';
 
 const cube = (x: number, y: number, z: number): BlockCoord => ({ x, y, z });
@@ -149,7 +149,7 @@ describe('dragging a prop (D-354)', () => {
     expect(propMoveIntent(map, { id, at: cube(4, 1, 5) }, none, 'place_a', 'poi_a')).toEqual({
       kind: 'moveProp', placeId: 'place_a', poiId: 'poi_a', id, at: cube(4, 1, 5),
     });
-    expect(propMovePrompt(map, { id, at: cube(4, 1, 5) }, none)).toBe('Let go to move the barrel and what is on it here.');
+    expect(propMovePrompt(map, { id, at: cube(4, 1, 5) }, none)).toBe('Let go to move the barrel and what is on it here. Z / X turn it.');
     const walled = propMovePreview(map, { id, at: cube(6, 1, 3) }, none)!;
     expect(walled.why).toBe('a block is in the way');
     expect(walled.ghosts.every((ghost) => ghost.refused)).toBe(true);
@@ -175,6 +175,38 @@ describe('a prop\'s face offers only what fits (D-356)', () => {
     expect(propMovePreview(map, { id, at: cube(9, 2, 5), onProp: true }, new Set())).toBeNull();
     expect(propMovePreview(map, { id, at: cube(9, 2, 5) }, new Set())!.why).not.toBeNull();
     expect(propMovePreview(map, { id, at: cube(9, 1, 5), onProp: true }, new Set())!.why).toBeNull();
+  });
+});
+
+describe('turning a prop as it is dragged (D-357)', () => {
+  it('Z / X turn it and all it carries, where it is or where it lands, and the move says so', () => {
+    let map = putProp(createMap(), { type: 'table', at: cube(3, 1, 3), facing: 0 });
+    map = putProp(map, { type: 'chair', at: cube(3, 2, 3), facing: 0 });
+    const id = map.props[0]!.id as string;
+    const none = new Set<string>();
+    const drag = turnDrag({ id, at: null }, 1);
+    expect(drag.turns).toBe(1);
+    expect(turnDrag(turnDrag(drag, -1), -1).turns).toBe(3);
+    // Turned where it stands: shown, and sent.
+    expect(propMovePreview(map, drag, none)!.ghosts.map((ghost) => ghost.facing)).toEqual([1, 1]);
+    expect(propMoveIntent(map, drag, none, 'place_a', 'poi_a')).toEqual({
+      kind: 'moveProp', placeId: 'place_a', poiId: 'poi_a', id, at: cube(3, 1, 3), turns: 1,
+    });
+    expect(propMoveIntent(map, { id, at: cube(5, 1, 5) }, none, 'place_a', 'poi_a')).not.toHaveProperty('turns');
+  });
+});
+
+describe('the GM\'s note on a prop, under the pointer (D-357)', () => {
+  it('follows what a click would do, or stands alone', () => {
+    const chest = putProp(createMap(), { type: 'chest', at: cube(3, 1, 3), facing: 0 });
+    const id = chest.props[0]!.id as string;
+    expect(propHoverLabel(chest, id, new Set())).toBe('Open the chest');
+    const noted = editProp(chest, id, { note: 'a mimic' });
+    expect(propHoverLabel(noted, id, new Set())).toBe('Open the chest — a mimic');
+    const table = putProp(createMap(), { type: 'table', at: cube(3, 1, 3), facing: 0 });
+    const tid = table.props[0]!.id as string;
+    expect(propHoverLabel(table, tid, new Set())).toBeNull();
+    expect(propHoverLabel(editProp(table, tid, { note: 'wobbly' }), tid, new Set())).toBe('Table: wobbly');
   });
 });
 
