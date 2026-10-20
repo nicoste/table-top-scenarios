@@ -513,14 +513,19 @@ describe('more ways up (D-358)', () => {
     return setBlocks(createMap(), blocks, STONE);
   };
 
-  it('a rope hangs from what is above it, and from nothing else', () => {
+  it('a rope is held as a ladder is — or from what is above it (D-359)', () => {
     let map = cliff();
+    // Under the beam, in the air.
     expect(whyNotPut(map, { type: 'rope', at: cube(3, 5, 3), facing: 0 })).toBeNull();
-    expect(whyNotPut(map, { type: 'rope', at: cube(2, 5, 3), facing: 0 })).toBe('untied');
-    // On the floor, with nothing over it: not a rope, a heap.
-    expect(whyNotPut(map, { type: 'rope', at: cube(2, 1, 2), facing: 0 })).toBe('untied');
+    // Against the ledge's face, a cube up, its back to it.
+    expect(whyNotPut(map, { type: 'rope', at: cube(5, 3, 7), facing: 1 })).toBeNull();
+    // On the floor, and on another rope.
+    expect(whyNotPut(map, { type: 'rope', at: cube(2, 1, 2), facing: 0 })).toBeNull();
+    map = putProp(map, { type: 'rope', at: cube(2, 1, 2), facing: 0 });
+    expect(whyNotPut(map, { type: 'rope', at: cube(2, 2, 2), facing: 0 })).toBeNull();
+    // Out in the air with nothing over, under or behind it: held by nothing.
+    expect(whyNotPut(map, { type: 'rope', at: cube(2, 5, 9), facing: 0 })).toBe('unsupported');
     for (const y of [5, 4, 3, 2]) map = putProp(map, { type: 'rope', at: cube(3, y, 3), facing: 0 });
-    expect(map.props).toHaveLength(4);
     expect(whyNotStand(map, nobody, 'member_a' as MemberId, cube(3, 4, 3))).toBeNull();
   });
 

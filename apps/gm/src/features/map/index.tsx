@@ -361,7 +361,7 @@ export function MapPanel({
             <>
               Pick a prop from the catalogue and click where it stands — <b>Z / X</b>{' '}
               turn it first; a torch, holds and vines hang on the wall you point at,
-              a rope from what is above it, and stairs and ladders face the wall. One per click, and
+              and stairs, ladders and ropes face it — a rope hangs from a ledge too. One per click, and
               each is one undo. With nothing in hand, click a prop to turn, refinish,
               open or remove it, or to set how far a light reaches — <b>Backspace</b>{' '}
               removes the one selected; drag the one selected to move it. With{' '}

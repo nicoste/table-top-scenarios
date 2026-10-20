@@ -107,8 +107,8 @@ export interface PropType {
   /** Held by the block behind it, as well as by what is under it or at its ends: a ladder against a wall (D-357). */
   readonly leans?: boolean;
   /**
-   * Hangs from what is above it, and from nothing else (D-358): a rope, under
-   * a ledge, a beam, a balcony — or under another rope.
+   * Also held by what is above it (D-358, D-359): a rope under a ledge, a
+   * beam, a balcony, or another rope — as well as every way a ladder is held.
    */
   readonly dangles?: boolean;
   /**
@@ -223,12 +223,13 @@ export const PROP_TYPES: readonly PropType[] = [
     id: 'ladder', name: 'Ladder', group: 'stairs', size: { x: 1, y: 1, z: 1 }, ...fixed(STOPS_NOTHING),
     climbable: true, leans: true, turnsToWall: true, paints: [OAK, DARK_OAK, BIRCH, IRON],
   },
-  // More ways up (D-358), each climbed as a ladder is and held its own way: a
-  // rope from what is above it — iron makes it a chain — and holds and vines
-  // on the wall behind them, as a torch hangs.
+  // More ways up (D-358), each climbed as a ladder is: a rope set against a
+  // wall and held as a ladder is, or hung from what is over it — iron makes it
+  // a chain (D-359) — and holds and vines on the wall behind them, as a torch
+  // hangs.
   {
     id: 'rope', name: 'Rope', group: 'stairs', size: { x: 1, y: 1, z: 1 }, ...fixed(STOPS_NOTHING),
-    climbable: true, dangles: true, paints: [DRIED, BIRCH, IRON, COPPER],
+    climbable: true, leans: true, dangles: true, turnsToWall: true, paints: [DRIED, BIRCH, IRON, COPPER],
   },
   {
     id: 'holds', name: 'Holds', plural: true, group: 'stairs', size: { x: 1, y: 1, z: 1 }, ...fixed(STOPS_NOTHING),
@@ -285,11 +286,10 @@ export function propById(props: Props, id: PropId | string): Prop | null {
  *   a doorway, between its posts. Never by what is in front of it or behind
  *   it; one that hangs is the one held from behind.
  * - `unhung` — one that hangs has no block behind it to hang on (D-335).
- * - `untied` — one that dangles has nothing above it to hang from (D-358).
  *
  * `self` is the prop being turned or moved, which does not get in its own way.
  */
-export type PropFooting = 'outside' | 'solid' | 'taken' | 'unsupported' | 'unhung' | 'untied';
+export type PropFooting = 'outside' | 'solid' | 'taken' | 'unsupported' | 'unhung';
 
 /**
  * The two cubes at a prop's ends, along its width, as it is turned (D-355): a
@@ -318,11 +318,11 @@ export function whyNotPut(
     return blockAt(map, { x: prop.at.x + back.x, y: prop.at.y, z: prop.at.z + back.z }) ? null : 'unhung';
   }
   const solidAt = (cube: BlockCoord) => !!blockAt(map, cube) || taken.has(blockKey(cube));
-  // A rope hangs from a block or a prop over its top — another rope too (D-358).
+  // A rope is held from above as well — a block or a prop over its top,
+  // another rope too (D-358) — and every way a ladder is (D-359).
   if (propType(prop.type)?.dangles) {
     const top = Math.max(...cubes.map((cube) => cube.y));
-    const tied = cubes.filter((cube) => cube.y === top).some((cube) => solidAt({ x: cube.x, y: cube.y + 1, z: cube.z }));
-    return tied ? null : 'untied';
+    if (cubes.filter((cube) => cube.y === top).some((cube) => solidAt({ x: cube.x, y: cube.y + 1, z: cube.z }))) return null;
   }
   const bottom = Math.min(...cubes.map((cube) => cube.y));
   const stands = cubes

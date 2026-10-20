@@ -188,12 +188,13 @@ function partsOf(type: string, open: boolean): readonly Part[] {
         ...[0.15, 0.85].map((x) => ({ size: [0.07, 1, 0.07] as const, at: [x, 0.5, 0.12] as const })),
         ...[1 / 6, 1 / 2, 5 / 6].map((y) => ({ size: [0.66, 0.05, 0.05] as const, at: [0.5, y, 0.12] as const, tone: 'light' as const })),
       ];
-    // More ways up (D-358). A rope down the middle of its cube, knotted, so
-    // ropes one under another run on as one; painted iron, it is a chain.
+    // More ways up (D-358). A rope against the wall behind it, as a ladder is
+    // (D-359), knotted, so ropes one over another run on as one; painted
+    // iron, it is a chain.
     case 'rope':
       return [
-        { size: [0.06, 1, 0.06], at: [0.5, 0.5, 0.5], round: true },
-        ...[0.25, 0.75].map((y) => ({ size: [0.1, 0.07, 0.1] as const, at: [0.5, y, 0.5] as const, tone: 'dark' as const, round: true })),
+        { size: [0.06, 1, 0.06], at: [0.5, 0.5, 0.12], round: true },
+        ...[0.25, 0.75].map((y) => ({ size: [0.1, 0.07, 0.1] as const, at: [0.5, y, 0.12] as const, tone: 'dark' as const, round: true })),
       ];
     // Grips on the wall behind, staggered up it.
     case 'holds':

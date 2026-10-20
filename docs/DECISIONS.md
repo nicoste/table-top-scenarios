@@ -9225,3 +9225,13 @@ chain too"*), **holds** and **vines**; and the group is **Up & down**.
   beside a torch, holds or vines catches them instead, and (D-356) offers
   nothing there. Moving the pointer a little further along the wall finds it.
 
+### D-359 — A rope is set as a ladder is · `agreed`
+*"I wanted to have a rope working as the ladder... I always need to build it
+from top to down but I want to put it free from anywhere like the ladder."*
+D-358 made a rope hang from what is above it and nothing else, down the middle
+of its cube. Now it is held **every way a ladder is** — against the wall
+behind it, on the floor, on another rope — and drawn against that wall,
+turned to it, Z / X turning it over a floor. Hanging from a block or a prop
+over it stays, as one more way it is held: a rope from a beam over a pit. The
+reason D-358 added for a rope with nothing above it is gone with it.
+

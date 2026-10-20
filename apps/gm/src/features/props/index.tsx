@@ -57,7 +57,7 @@ function aboutOf(type: PropType): string {
   if (type.light) return `lights ${type.light.reach}${type.hangs ? ', hangs on a wall' : ''} — ${rulesOf(type)}`;
   if (type.holds) return `${type.size.x} × ${type.size.y} — ${rulesOf(type)}; stood on as a block is${type.turnsToWall ? ', climbing toward the back' : ''}`;
   if (type.climbable) {
-    const held = type.hangs ? 'on a wall' : type.dangles ? 'hangs from what is above it' : 'set against a wall or on another';
+    const held = type.hangs ? 'on a wall' : `set against a wall or on another${type.dangles ? ', or hung from above' : ''}`;
     return `${type.size.x} × ${type.size.y} — ${rulesOf(type)}; climbed, ${held}`;
   }
   return `${type.size.x} × ${type.size.y} — ${rulesOf(type)}`;
@@ -132,7 +132,7 @@ export function PropsPanel({ hand, onHand, selected, onSelect, opened, placeId, 
           />
           <div className="btn-grid tools">
             {/* One that hangs faces out from its wall, and has no other way to turn (D-335). */}
-            {!selectedType.hangs && !selectedType.dangles && (
+            {!selectedType.hangs && (
               <>
                 <Tooltip label="A quarter turn anticlockwise" placement="bottom" stretch>
                   <button onClick={() => dispatch({ kind: 'editProp', ...where, id: selected.id, facing: turned(selected.facing, -1) })}>
@@ -223,7 +223,7 @@ export function PropsPanel({ hand, onHand, selected, onSelect, opened, placeId, 
       {inHand ? (
         <>
           <p className="lbl" style={{ margin: '8px 0 4px' }}>
-            {inHand.name}: paint{inHand.flames ? ', flame' : ''}{inHand.hangs || inHand.dangles ? '' : ' and turn'}
+            {inHand.name}: paint{inHand.flames ? ', flame' : ''}{inHand.hangs ? '' : ' and turn'}
           </p>
           <Paints
             type={inHand}
@@ -241,7 +241,7 @@ export function PropsPanel({ hand, onHand, selected, onSelect, opened, placeId, 
             </div>
           )}
           {/* One that hangs turns to the wall pointed at (D-335). */}
-          {!inHand.hangs && !inHand.dangles && (
+          {!inHand.hangs && (
             <div className="btn-grid tools" style={{ marginTop: 6 }}>
               <Tooltip label="A quarter turn anticlockwise — Z" placement="bottom" stretch>
                 <button onClick={() => onHand(turnHand(hand, -1))}>↺ Turn</button>
@@ -253,8 +253,10 @@ export function PropsPanel({ hand, onHand, selected, onSelect, opened, placeId, 
           )}
           <p className="hint">
             {inHand.hangs ? 'Point at a wall; it hangs facing out. ' : ''}
-            {inHand.dangles ? 'Point under a ledge or a beam, or under another; it hangs down. ' : ''}
-            {inHand.turnsToWall ? 'Point at the side of a wall to climb toward it, or at a floor to turn it with Z / X. ' : ''}
+            {inHand.dangles ? 'Or under a ledge or a beam, to hang it from there. ' : ''}
+            {inHand.turnsToWall
+              ? `Point at the side of a wall to ${inHand.climbable ? 'set it against it' : 'climb toward it'}, or at a floor to turn it with Z / X. `
+              : ''}
             One per click. Escape puts it down.
           </p>
         </>

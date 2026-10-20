@@ -2404,8 +2404,9 @@ apps/host/src/
 >   sight, and **somebody may be in its cube with nothing under them**; a
 >   token is put there by a move aimed at it. Each is held its own way: a
 >   ladder leans on the wall behind it or stands on the floor or another
->   ladder; holds and vines hang on the wall behind them, as a torch does; a
->   rope hangs from what is over it, another rope too — iron makes it a chain.
+>   ladder, and so does a rope (D-359) — which may also hang from what is
+>   over it, iron making it a chain; holds and vines hang on the wall behind
+>   them, as a torch does.
 > - **The walk climbs them** (D-358): through what is climbed, and only
 >   there, a step may go straight up or down, and counts 1 as a step across
 >   does. How hard the climb is, is the GM's (R-1).

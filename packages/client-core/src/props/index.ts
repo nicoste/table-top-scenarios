@@ -72,7 +72,6 @@ export function propWords(why: PropFooting): string {
     case 'solid': return 'a block is in the way';
     case 'taken': return 'something is already there';
     case 'unhung': return 'no wall behind it to hang on';
-    case 'untied': return 'nothing above it to hang from';
     default: return 'nothing under it or beside it to hold it';
   }
 }
@@ -252,13 +251,9 @@ export function propPrompt(type: PropType | null, at: BlockCoord | null, why: st
   if (!type) return 'Pick a prop from the catalogue, or click one on the map to change it.';
   // "a torch", but "candles" and "stairs".
   const one = `${type.plural ? '' : 'a '}${type.name.toLowerCase()}`;
-  if (!at) {
-    if (type.hangs) return `Hanging ${one} — point at a wall.`;
-    if (type.dangles) return `Hanging ${one} — point under a ledge, or under another.`;
-    return `Placing ${one} — point at where it should stand.`;
-  }
+  if (!at) return type.hangs ? `Hanging ${one} — point at a wall.` : `Placing ${one} — point at where it should stand.`;
   if (why) return `${type.name}: ${why}.`;
-  return type.hangs || type.dangles ? `Click to hang ${one} here.` : `Click to place ${one} here. Z / X turn it.`;
+  return type.hangs ? `Click to hang ${one} here.` : `Click to place ${one} here. Z / X turn it.`;
 }
 
 /**
