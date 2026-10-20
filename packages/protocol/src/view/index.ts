@@ -227,6 +227,8 @@ export interface TableAreaWire {
   readonly size: number;
   readonly colour: string;
   readonly name: string;
+  /** Drawn from the table, so the table may move it and take it away (D-344). */
+  readonly byTable?: true;
 }
 
 /** One silver token as the table sees it (R-206). */
@@ -340,6 +342,7 @@ function areasForTheTable(campaign: Campaign, save: Save, library: TokensLibrary
       size: area.size,
       colour: area.colour,
       name: area.name,
+      ...(area.byTable ? { byTable: true as const } : {}),
     });
   }
   return out;

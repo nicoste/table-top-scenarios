@@ -341,7 +341,9 @@ describe('permissions fail closed (R-18a)', () => {
     // a reviewer checks against R-136: the party is the players', the world is
     // the GM's. Every entry here needs an argument. The fourth, `moveToken`,
     // has one: it is where each member stands inside the map the party is in,
-    // which is the party's own pawn one surface down (D-259).
+    // which is the party's own pawn one surface down (D-259). The three area
+    // intents have theirs: the players' own areas, drawn on what they have seen
+    // and never the GM's or anything hidden (D-322, D-344).
     const state = withCampaign();
     const past: string[] = [];
     for (const kind of everyIntentKind()) {
@@ -351,7 +353,7 @@ describe('permissions fail closed (R-18a)', () => {
       if (result.rejected !== 'only the GM can do that') past.push(kind);
     }
     expect(past.sort())
-      .toEqual(['movePartyMember', 'moveParty', 'setPartyTogether', 'moveToken'].sort());
+      .toEqual(['movePartyMember', 'moveParty', 'setPartyTogether', 'moveToken', 'placeArea', 'editArea', 'removeArea'].sort());
   });
 
   it('rejects every intent from a spectator, including the party ones', () => {

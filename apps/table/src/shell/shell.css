@@ -223,3 +223,20 @@ button.quiet:hover { background: #3a2222; color: #ffc9c9; border-color: transpar
    moves nothing. */
 .metrics dd.hot { color: #ffb86b; }
 .metrics .hint { margin: 7px 0 0; font-size: 10.5px; color: var(--dim); }
+
+/*
+ * The palette inside a map (D-344): Move, the ruler, the shapes, a colour for
+ * the next area, and the players' own areas to take away.
+ */
+.tools-card { width: 228px; }
+.area-colours { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.chip-button {
+  width: 30px; height: 26px; padding: 0; display: inline-grid; place-items: center;
+  border-radius: 6px; border: 1px solid var(--edge); background: transparent;
+}
+.chip-button.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: transparent; }
+.chip { width: 18px; height: 14px; border-radius: 3px; display: inline-block; flex: none; }
+.area-list { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.area-list li { display: flex; align-items: center; gap: 8px; }
+.area-list .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+

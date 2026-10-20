@@ -8754,3 +8754,45 @@ The cubes worth the asking are now looked up by column — the floors of each
 column, worked out once per map — rather than every cube of the shape's box:
 a sphere of 40 takes 1.6 ms on the GM's map, sixteen samples a cube and all.
 
+### D-344 — Rulers and areas, round two: the table · `agreed`
+*"Lets move on."* D-341's second round: the players measure and draw areas
+from the table themselves, as D-322 agreed (*"they will play-around to see how
+can I connect more enemies at once, and add areas, move them"*).
+
+**A palette, inside a map only.** The table had none — a click meant what
+`tableAction` said (R-94). Now, inside a map, one small card at the top left:
+**Move** (what a click always was: the party's tokens), **Ruler**, and the four
+shapes, with a colour for the next area and a list of the players' own areas,
+each with a × to take it away. Out on the world there is still no palette.
+The drag is the console's (D-341, D-342, D-343): the same helpers, the same
+rule for what is in an area, the same ruler.
+
+**The right button pans.** The table panned with a left drag, which drawing
+now needs; a right drag pans in every tool — what the table's hint already
+said — and a right click still cancels a move.
+
+**Chosen here, to be argued with:**
+
+- **The players may move and take away only their own areas.** An area drawn
+  from the table is marked so (`byTable`); the GM's they see and cannot move
+  — the reason doors are the GM's (D-328): *"we need to avoid accidents."* A
+  drag on the GM's fireball's handle at the table draws a new area instead.
+- **Everything else about an area stays the GM's**: its size, name, colour,
+  whether it is hidden, whom it follows. The GM may change the players' areas
+  as freely as their own, and hiding one takes it out of the players' reach.
+- **The table draws only where the party has looked**: in the map the party
+  is in, inside the band, on ground it has seen — a token's move's checks, for
+  R-85's reason: a refusal about a cube nobody has seen would describe it. A
+  hidden area, or the GM's, is *"no such area"* to the table.
+- **The ruler is each screen's own**: the table's is never sent to the
+  console, nor the console's to the table.
+
+R-136's line moves for the first time since the party was drawn: the table
+may now make something that is not the party's own pawn. The two tests that
+enumerate every intent say so.
+
+Checked on the test copy: the table's palette inside Tollkeep; a red sphere
+drawn from the table on ground the party has seen, listed as the players'
+own; moved by its handle (*Drag to move this area.*); a ruler of 10.1 that
+stayed through a right-drag pan; the sphere taken away with its ×.
+

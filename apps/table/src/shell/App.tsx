@@ -3,30 +3,35 @@
 //
 // Two interactions, both about looking and going: move the party's own pawns
 // (D-152), and select a place to read what the party knows about it (D-174).
-// Still no tool palette and no roster — a click means whatever `tableAction`
-// says it means, and a travel in progress outranks everything.
+// No roster, and on the world no tool palette — a click means whatever
+// `tableAction` says it means, and a travel in progress outranks everything.
+// Inside a map, one small palette (D-344): Move, the ruler, and the players'
+// own areas.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { decodeCampaign, decodePlacement, cellsFromWire } from '@tt/protocol';
 import {
   CHUNK_SIZE, DEFAULT_MARKERS, DEFAULT_MATERIALS, mapFromJSON, clampLighting, tokensFromJSON,
-  allKnownIn, routeAcross, toGlobal, blockKey, carriedFromJSON, carriedLightFromJSON, areaColour,
+  allKnownIn, routeAcross, toGlobal, blockKey, carriedFromJSON, carriedLightFromJSON, areasFromJSON,
 } from '@tt/domain';
 import type { BlockCoord, MemberId, Route, TravelModeId, Travelling } from '@tt/domain';
 import type { Intent, TableView } from '@tt/protocol';
-import type { Stride, Travel } from '@tt/client-core';
+import type { MeasureHand, Stride, Travel } from '@tt/client-core';
 import {
   idle, pick, aim, ghostCell, canConfirm, movingFrom, aimedAt, travelIntent, travelPrompt,
   tableAction,
   cameraAction, wheelZoom, CAMERA_HINT,
   still, grab, tokenAim, aimStride, strideGhost, strideIntent, standVerdict, tableCeiling, walkShown,
   tokenAction, stridePrompt,
+  MEASURE_START, measureCleared, measurePress, measureDrag, measureRelease, rulerShown, areasShown, handleAt,
+  measurePrompt, faceCentre, floorCentre,
 } from '@tt/client-core';
 import { defaultTarget, worldCentre } from '@tt/render';
-import type { Standing, StageFog } from '@tt/render';
+import type { Picked, RulerPoint, Standing, StageFog } from '@tt/render';
 import { useStage } from '../scene/use-stage.js';
 import { useCost, COST_HINT } from '../scene/use-cost.js';
 import { PlaceCard } from '../features/place/index.js';
+import { TableTools } from '../features/tools/index.js';
 import { Compass, Metrics } from '@tt/ui';
 
 interface Props {
@@ -43,7 +48,21 @@ export function App({ view, status, rejection, dispatch }: Props) {
   const { setCanvas, canvas, stage, frames, draws } = useStage();
   const cost = useCost(stage, frames, draws);
   const openedId = useRef<string | null>(null);
-  const drag = useRef<{ x: number; y: number; moved: boolean } | null>(null);
+  /** A press under way: where it was, whether it has moved, and which button — the right one only pans. */
+  const drag = useRef<{ x: number; y: number; moved: boolean; button: number } | null>(null);
+  /**
+   * The palette inside a map (D-344): Move, or measuring with the ruler or a
+   * shape in hand. Kept in a ref as well as state, for the console's reason: a
+   * pointer-up can come before the render a drag's last move asked for.
+   */
+  const [measuring, setMeasuring] = useState(false);
+  const [hand, setHandState] = useState<MeasureHand>(MEASURE_START);
+  const handRef = useRef<MeasureHand>(MEASURE_START);
+  const setHand = useCallback((next: MeasureHand) => {
+    handRef.current = next;
+    setHandState(next);
+  }, []);
+  const [overHandle, setOverHandle] = useState(false);
   const [travel, setTravel] = useState<Travel>(idle);
   /** A party token being moved inside the map (R-188). Never armed here (D-167). */
   const [stride, setStride] = useState<Stride>(still);
@@ -286,13 +305,17 @@ export function App({ view, status, rejection, dispatch }: Props) {
    * where it is now. Drawn, never resolved.
    */
   const areasWire = view?.areas ?? null;
+  const areasHere = useMemo(() => areasFromJSON(areasWire), [areasWire]);
+  /** The ones drawn from this screen: the only ones it may move or take away (D-344). */
+  const mine = useMemo(() => areasHere.filter((area) => area.byTable), [areasHere]);
   useEffect(() => {
-    stage?.setAreas(areasWire
-      ? areasWire.map((area) => ({
-        id: area.id, shape: area.shape, at: area.at, aim: area.aim, size: area.size, colour: areaColour(area.colour),
-      }))
-      : null);
-  }, [stage, areasWire, body]);
+    // Each where the host put it — one that follows somebody arrives where they stand.
+    stage?.setAreas(insideWire ? areasShown(areasHere, measuring ? hand : null, () => null) : null);
+  }, [stage, insideWire, areasHere, measuring, hand]);
+  // The ruler: this screen's alone, never sent (D-341).
+  useEffect(() => {
+    stage?.showRuler(insideWire && measuring ? rulerShown(hand) : null);
+  }, [stage, insideWire, measuring, hand]);
   const openedWire = view?.opened ?? null;
   const opened = useMemo(() => new Set<string>(openedWire ?? []), [openedWire]);
   useEffect(() => { stage?.setOpened(opened); }, [stage, opened]);
@@ -307,6 +330,7 @@ export function App({ view, status, rejection, dispatch }: Props) {
   useEffect(() => {
     setStride(still);
     setTravel(idle);
+    setHand(measureCleared(handRef.current));
   }, [insideWire?.place.id, insideWire?.poi.id]);
 
   useEffect(() => {
@@ -358,13 +382,14 @@ export function App({ view, status, rejection, dispatch }: Props) {
         return;
       }
       if (event.code !== 'Escape') return;
-      if (stride.step === 'aiming') setStride(still);
+      if (measuring && handRef.current.from) setHand(measureCleared(handRef.current));
+      else if (stride.step === 'aiming') setStride(still);
       else if (travel.step === 'aiming') setTravel(idle);
       else setSelectedPlace(null);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [travel.step, stride.step, stage]);
+  }, [travel.step, stride.step, stage, measuring]);
 
   /*
    * The wheel zooms, by the same step as on the console (R-156). Attached here
@@ -383,6 +408,25 @@ export function App({ view, status, rejection, dispatch }: Props) {
     return () => canvas.removeEventListener('wheel', onWheel);
   }, [canvas, stage]);
 
+  /**
+   * The cube the ruler or a shape means (D-341): where somebody stands, when
+   * the pointer is on them, and otherwise the cube against the face pointed
+   * at — and the ruler's end, the middle of that face (D-342).
+   */
+  const measuredAt = (picked: Picked): BlockCoord | null => {
+    if (picked.token) return standing.get(picked.token.memberId as MemberId) ?? null;
+    if (picked.silver) return silverWire?.find((token) => token.id === picked.silver)?.at ?? null;
+    return picked.face?.adjacent ?? null;
+  };
+  const measuredPoint = (picked: Picked): RulerPoint | null => {
+    if (picked.token || picked.silver) {
+      const at = measuredAt(picked);
+      return at ? floorCentre(at) : null;
+    }
+    return picked.face ? faceCentre(picked.face) : null;
+  };
+  const noFollowing = () => null;
+
   const onPointerMove = (event: React.PointerEvent) => {
     if (drag.current) {
       const dx = event.clientX - drag.current.x;
@@ -390,8 +434,18 @@ export function App({ view, status, rejection, dispatch }: Props) {
       if (Math.abs(dx) > CLICK_SLOP || Math.abs(dy) > CLICK_SLOP) drag.current.moved = true;
       if (drag.current.moved && stage) {
         stage.pan(dx, dy);
-        drag.current = { x: event.clientX, y: event.clientY, moved: true };
+        drag.current = { ...drag.current, x: event.clientX, y: event.clientY, moved: true };
       }
+      return;
+    }
+    // Measuring or drawing (D-344): the drag follows the pointer, a face at a time.
+    if (insideWire && measuring && stage) {
+      const picked = stage.pick(event.clientX, event.clientY);
+      const at = measuredAt(picked);
+      const now = handRef.current;
+      const next = measureDrag(now, at, measuredPoint(picked));
+      if (next !== now) setHand(next);
+      setOverHandle(!now.held && handleAt(mine, at, noFollowing) !== null);
       return;
     }
     // Inside a map the only thing that follows the pointer is a token being
@@ -472,7 +526,7 @@ export function App({ view, status, rejection, dispatch }: Props) {
 
   // The table only ever moves somebody already standing, so it is never placing.
   const prompt = insideWire
-    ? stridePrompt(stride, nameOf, false)
+    ? measuring ? measurePrompt(hand, overHandle) : stridePrompt(stride, nameOf, false)
     // The days go in the sentence: this screen has no panel to put them in,
     // and how long it takes is the whole output of a route (R-199, D-304).
     : travelPrompt(travel, nameOf, route);
@@ -502,17 +556,38 @@ export function App({ view, status, rejection, dispatch }: Props) {
             if (e.button === 2 || e.button === 1) {
               if (travel.step === 'aiming') setTravel(idle);
               if (stride.step === 'aiming') setStride(still);
+              // And it pans, so the view still moves while the left button draws (D-344).
+              drag.current = { x: e.clientX, y: e.clientY, moved: false, button: e.button };
               return;
             }
-            drag.current = { x: e.clientX, y: e.clientY, moved: false };
+            // Measuring or drawing: a press starts a ruler or an area, or picks
+            // one of the players' own areas up by its handle (D-344).
+            if (insideWire && measuring && stage) {
+              const picked = stage.pick(e.clientX, e.clientY);
+              const at = measuredAt(picked);
+              setHand(measurePress(handRef.current, at, handleAt(mine, at, noFollowing), measuredPoint(picked)));
+              return;
+            }
+            drag.current = { x: e.clientX, y: e.clientY, moved: false, button: e.button };
           }}
           onPointerMove={onPointerMove}
           onPointerUp={(e) => {
-            const dragged = drag.current?.moved ?? true;
+            if (insideWire && measuring && handRef.current.held) {
+              const { hand: next, intent } = measureRelease(handRef.current, insideWire.place.id, insideWire.poi.id);
+              setHand(next);
+              if (intent) dispatch(intent);
+              return;
+            }
+            const press = drag.current;
             drag.current = null;
-            if (!dragged) onClick(e);
+            if (press && !press.moved && press.button === 0) onClick(e);
           }}
-          onPointerLeave={() => { drag.current = null; }}
+          onPointerLeave={() => {
+            drag.current = null;
+            // A drag that leaves the screen is let go of, not finished: nothing is sent.
+            if (handRef.current.held) setHand(measureCleared(handRef.current));
+            setOverHandle(false);
+          }}
           onContextMenu={(e) => e.preventDefault()}
         />
       </div>
@@ -525,6 +600,17 @@ export function App({ view, status, rejection, dispatch }: Props) {
 
       {!waiting && !insideWire && place && (
         <PlaceCard place={place} markerName={markerName} onClose={() => setSelectedPlace(null)} />
+      )}
+
+      {!waiting && insideWire && (
+        <TableTools
+          measuring={measuring}
+          hand={hand}
+          onMove={() => { setMeasuring(false); setHand(measureCleared(handRef.current)); }}
+          onHand={(next) => { setMeasuring(true); setStride(still); setHand(next); }}
+          mine={mine}
+          onRemove={(id) => dispatch({ kind: 'removeArea', placeId: insideWire.place.id, poiId: insideWire.poi.id, id })}
+        />
       )}
 
       {/* The table can be read from any side of a physical table, so the

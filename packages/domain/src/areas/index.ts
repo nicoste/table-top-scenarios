@@ -80,6 +80,12 @@ export interface Area {
   readonly hidden: boolean;
   /** The token it goes with, a member's id or a silver token's: an aura. */
   readonly follows?: string;
+  /**
+   * Drawn from the table (D-344): the players' own, which they may move and
+   * take away. The GM's they may not, so a drag at the table never moves the
+   * fireball the GM laid out.
+   */
+  readonly byTable?: true;
 }
 
 export type Areas = readonly Area[];
@@ -300,7 +306,10 @@ export function nameForArea(shape: AreaShape, areas: Areas): string {
 /** Draws a new area in a map: named for its shape, shown to the table. */
 export function drawArea(
   areas: Areas,
-  fields: { readonly shape: AreaShape; readonly at: BlockCoord; readonly aim: Aim; readonly size: number; readonly colour: string },
+  fields: {
+    readonly shape: AreaShape; readonly at: BlockCoord; readonly aim: Aim; readonly size: number; readonly colour: string;
+    readonly byTable?: boolean;
+  },
 ): Areas {
   const area: Area = {
     id: freshId<'AreaId'>('area'),
@@ -311,6 +320,7 @@ export function drawArea(
     colour: AREA_COLOURS.some((one) => one.id === fields.colour) ? fields.colour : AREA_COLOURS[0]!.id,
     name: nameForArea(fields.shape, areas),
     hidden: false,
+    ...(fields.byTable ? { byTable: true as const } : {}),
   };
   return [...areas, area];
 }
@@ -343,6 +353,7 @@ export function editArea(areas: Areas, id: AreaId | string, patch: AreaPatch): A
     name,
     hidden: patch.hidden ?? area.hidden,
     ...(follows ? { follows } : {}),
+    ...(area.byTable ? { byTable: true as const } : {}),
   };
   const same = next.at === area.at && next.aim === area.aim && next.size === area.size && next.colour === area.colour
     && next.name === area.name && next.hidden === area.hidden && next.follows === area.follows;
@@ -375,6 +386,7 @@ export interface AreaJSON {
   name: string;
   hidden?: boolean;
   follows?: string;
+  byTable?: boolean;
 }
 
 export function areasToJSON(areas: Areas): AreaJSON[] {
@@ -388,6 +400,7 @@ export function areasToJSON(areas: Areas): AreaJSON[] {
     name: area.name,
     ...(area.hidden ? { hidden: true } : {}),
     ...(area.follows ? { follows: area.follows } : {}),
+    ...(area.byTable ? { byTable: true } : {}),
   }));
 }
 
@@ -419,6 +432,7 @@ export function areasFromJSON(json: unknown): Areas {
       name: typeof entry.name === 'string' && entry.name.trim() ? entry.name.trim().slice(0, MAX_AREA_NAME) : AREA_SHAPES.find((one) => one.id === shape)!.name,
       hidden: entry.hidden === true,
       ...(typeof entry.follows === 'string' && entry.follows ? { follows: entry.follows } : {}),
+      ...(entry.byTable === true ? { byTable: true as const } : {}),
     });
   }
   return out.length === 0 ? NO_AREAS : out;

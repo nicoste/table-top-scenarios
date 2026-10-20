@@ -111,6 +111,10 @@ describe('on a map', () => {
     let areas = drawArea(NO_AREAS, { shape: 'cone', at: cube(1, 1, 1), aim: { x: 2, y: 0, z: 1 }, size: 6, colour: 'violet' });
     areas = editArea(areas, areas[0]!.id, { hidden: true, follows: 'silver_n7' });
     expect(areasFromJSON(areasToJSON(areas))).toEqual(areas);
+    const theirs = drawArea(NO_AREAS, { shape: 'line', at: cube(1, 1, 1), aim: { x: 1, y: 0, z: 0 }, size: 3, colour: 'red', byTable: true });
+    expect(theirs[0]!.byTable).toBe(true);
+    expect(areasFromJSON(areasToJSON(theirs))).toEqual(theirs);
+    expect(editArea(theirs, theirs[0]!.id, { at: cube(2, 1, 2) })[0]!.byTable).toBe(true);
     expect(areasFromJSON([{ id: 'a', shape: 'blob', at: { x: 1, y: 1, z: 1 } }])).toBe(NO_AREAS);
     expect(areasFromJSON([{ id: 'a', shape: 'line', at: { x: 1, y: 1, z: 1 }, size: 0 }])[0]).toMatchObject({
       size: 1, aim: { x: 1, y: 0, z: 0 }, colour: 'red', name: 'Line', hidden: false,

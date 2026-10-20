@@ -5,7 +5,7 @@
 import type { Campaign, ChunkCoord, WorldCell } from '@tt/domain';
 import type {
   PartyMember, PlaceId, NoteId, PoiId, PlaneId, MemberId, SwatchId, Save, Place, Footing, Tokens,
-  TokensLibrary, ImageId, Prefab, Prefabs, Facing,
+  TokensLibrary, ImageId, Prefab, Prefabs, Facing, BlockCoord,
 } from '@tt/domain';
 import {
   createCampaign, duplicateCampaign, uniqueCampaignName, createMember, editMember, removeMember,
@@ -106,12 +106,16 @@ function permitted(role: Role, kind: Intent['kind']): boolean {
  * This way a new intent is GM-only until someone decides otherwise (R-18a), and
  * a test enumerates `IntentSchema` to force the decision.
  *
- * These four are everything about the party's own pawns, and nothing else
- * (R-136): where they stand on the world, whether they stand together, and
- * where each stands inside the map they are in (R-184).
+ * Four are everything about the party's own pawns (R-136): where they stand
+ * on the world, whether they stand together, and where each stands inside the
+ * map they are in (R-184). The other three are the players' own **areas**
+ * (D-322, D-344) — the first thing the table may make that is not a pawn —
+ * drawn, moved and taken away in the map the party is in, on what they have
+ * seen; the GM's areas and anything hidden stay out of reach (`applyToAreas`).
  */
 const OPEN_TO_THE_TABLE = new Set<Intent['kind']>([
   'moveParty', 'movePartyMember', 'setPartyTogether', 'moveToken',
+  'placeArea', 'editArea', 'removeArea',
 ]);
 
 /**
@@ -584,7 +588,7 @@ function applyToCampaign(state: HostState, role: Role, intent: Intent, now: stri
     case 'placeArea':
     case 'editArea':
     case 'removeArea':
-      return applyToAreas(state, campaign, intent, now);
+      return applyToAreas(state, campaign, role, intent, now);
 
     case 'setOrder': {
       // Anybody on stage in that map: a member of the roster, or one of its
@@ -628,6 +632,7 @@ function applyToCampaign(state: HostState, role: Role, intent: Intent, now: stri
 function applyToAreas(
   state: HostState,
   campaign: Campaign,
+  role: Role,
   intent: Extract<Intent, { kind: 'placeArea' | 'editArea' | 'removeArea' }>,
   now: string,
 ): Applied {
@@ -643,14 +648,40 @@ function applyToAreas(
   const commitAreas = (next: typeof areas): Applied => commitSave(state, save, withAreas(save, poi.id, next), now);
   const standing = (id: string) =>
     tokensFor(save, poi.id).get(id as PartyMember['id']) ?? silverIn(save, poi.id).find((token) => token.id === id)?.at ?? null;
+  /*
+   * The table (D-344): only in the map the party is in, only on what it was
+   * sent — inside the band, on ground the party has seen, the checks a token's
+   * move makes and for its reason (R-85) — and only its own areas. One the GM
+   * drew, or hid, is "no such area": the table was never told of a hidden one.
+   */
+  const byTable = role === 'table';
+  if (byTable && (save.inside?.placeId !== place.id || save.inside?.poiId !== poi.id)) {
+    return reject(state, 'the party is not in that map');
+  }
+  const seenFromTable = (at: BlockCoord): string | null => {
+    if (!standsInBand(rangeFor(save, poi.id), at)) return 'that is outside the levels being shown';
+    if (!exploredIn(save, poi.id).has(blockKey(at))) return 'the party has not seen that';
+    return null;
+  };
 
   if (intent.kind === 'placeArea') {
     if (!inMap(map, intent.at)) return reject(state, 'that is outside the map');
-    return commitAreas(drawArea(areas, intent));
+    const unseen = byTable ? seenFromTable(intent.at) : null;
+    if (unseen) return reject(state, unseen);
+    return commitAreas(drawArea(areas, { ...intent, byTable }));
   }
-  const area = areas.find((one) => one.id === intent.id);
+  const area = areas.find((one) => one.id === intent.id && (!byTable || (one.byTable && !one.hidden)));
   if (!area) return reject(state, 'no such area in this map');
   if (intent.kind === 'removeArea') return commitAreas(removeArea(areas, area.id));
+  // The table moves its areas and nothing else about them: the rest is the GM's.
+  if (byTable && (intent.aim || intent.size !== undefined || intent.colour !== undefined || intent.name !== undefined
+    || intent.hidden !== undefined || intent.follows !== undefined)) {
+    return reject(state, 'only the GM can do that');
+  }
+  if (byTable && intent.at) {
+    const unseen = seenFromTable(intent.at);
+    if (unseen) return reject(state, unseen);
+  }
 
   if (intent.at && !inMap(map, intent.at)) return reject(state, 'that is outside the map');
   if (intent.follows && !standing(intent.follows)) return reject(state, 'nobody by that id stands in this map');

@@ -221,8 +221,11 @@ describe('the permission line (R-136)', () => {
   it('opens exactly the party intents and nothing else', () => {
     // Driven off the schema so a new intent has to be classified (R-18a). If this
     // fails, something was added without deciding which side of R-136 it is on.
-    // `moveToken` was decided: the party's own pawns, inside a map (D-259).
-    const open = new Set(['moveParty', 'movePartyMember', 'setPartyTogether', 'moveToken']);
+    // `moveToken` was decided: the party's own pawns, inside a map (D-259). The
+    // three area intents too: the players' own areas (D-322, D-344).
+    const open = new Set([
+      'moveParty', 'movePartyMember', 'setPartyTogether', 'moveToken', 'placeArea', 'editArea', 'removeArea',
+    ]);
     const state = revealed();
     for (const option of IntentSchema.options) {
       const kind = option.shape.kind.value as Intent['kind'];

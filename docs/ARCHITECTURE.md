@@ -2329,6 +2329,13 @@ apps/host/src/
 > - **The table is sent the areas not hidden** (`areas`, the ninth piece of
 >   save data it is sent), each where it is now — and none that follows
 >   somebody the table is not sent, which would say where they are (R-85).
+> - **The players draw areas too** (D-322, D-344): inside a map the table
+>   has a small palette — Move, the ruler and the four shapes. The table may
+>   draw, move and take away **its own** areas — in the map the party is in,
+>   on ground the party has seen, inside the band — and nothing else about
+>   them; the GM's areas it draws and leaves alone, and of a hidden one it
+>   knows nothing. The first thing the table may make that is not the party's
+>   own pawn (R-136). Right-drag pans the table's view, as on the console.
 
 ---
 

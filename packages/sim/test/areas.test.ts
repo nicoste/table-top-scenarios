@@ -47,9 +47,8 @@ const fireball = (t: Tavern, at = cube(4, 1, 4)): Intent => ({
 });
 
 describe('areas on the host (D-341)', () => {
-  it('are drawn, changed and taken away as play — the GM\'s in this round, and never undone', () => {
+  it('are drawn, changed and taken away as play, and never undone', () => {
     const t = tavern();
-    expect(run(t.state, fireball(t), 'table').rejected).toBe('only the GM can do that');
     const history = t.state.history;
     let state = run(t.state, fireball(t)).state;
     expect(state.history).toBe(history);
@@ -95,5 +94,55 @@ describe('areas on the host (D-341)', () => {
     // Out on the world, nothing.
     state = run(state, { kind: 'leaveMap' }).state;
     expect(table(state).areas).toBeNull();
+  });
+});
+
+describe('the players\' own areas (D-344)', () => {
+  it('are drawn from the table on what the party has seen, and marked as theirs', () => {
+    const t = tavern();
+    // Behind the wall at x = 8: never seen.
+    expect(run(t.state, fireball(t, cube(12, 1, 4)), 'table').rejected).toBe('the party has not seen that');
+    const state = run(t.state, fireball(t), 'table').state;
+    expect(areasOf(t, state)[0]).toMatchObject({ byTable: true, name: 'Sphere 1' });
+    expect(table(state).areas![0]).toMatchObject({ byTable: true });
+  });
+
+  it('may be moved and taken away from the table, and nothing else about them changed there', () => {
+    const t = tavern();
+    let state = run(t.state, fireball(t), 'table').state;
+    const id = areasOf(t, state)[0]!.id as string;
+    const edit = (patch: object): Intent => ({ kind: 'editArea', placeId: t.placeId, poiId: t.poiId, id, ...patch } as Intent);
+    state = run(state, edit({ at: cube(3, 1, 5) }), 'table').state;
+    expect(areasOf(t, state)[0]!.at).toEqual(cube(3, 1, 5));
+    expect(run(state, edit({ at: cube(12, 1, 5) }), 'table').rejected).toBe('the party has not seen that');
+    expect(run(state, edit({ size: 9 }), 'table').rejected).toBe('only the GM can do that');
+    expect(run(state, edit({ hidden: true }), 'table').rejected).toBe('only the GM can do that');
+    // The GM may do anything to it.
+    state = run(state, edit({ size: 9, name: 'Their fireball' })).state;
+    expect(areasOf(t, state)[0]).toMatchObject({ size: 9, name: 'Their fireball', byTable: true });
+    state = run(state, { kind: 'removeArea', placeId: t.placeId, poiId: t.poiId, id }, 'table').state;
+    expect(areasOf(t, state)).toEqual([]);
+  });
+
+  it('leave the GM\'s areas alone, and know nothing of a hidden one', () => {
+    const t = tavern();
+    let state = run(t.state, fireball(t)).state;
+    const gms = areasOf(t, state)[0]!.id as string;
+    const move: Intent = { kind: 'editArea', placeId: t.placeId, poiId: t.poiId, id: gms, at: cube(3, 1, 3) };
+    expect(run(state, move, 'table').rejected).toBe('no such area in this map');
+    expect(run(state, { kind: 'removeArea', placeId: t.placeId, poiId: t.poiId, id: gms }, 'table').rejected)
+      .toBe('no such area in this map');
+    // Their own, hidden by the GM: gone from their reach as well as their screen.
+    state = run(state, fireball(t, cube(5, 1, 5)), 'table').state;
+    const theirs = areasOf(t, state)[1]!.id as string;
+    state = run(state, { kind: 'editArea', placeId: t.placeId, poiId: t.poiId, id: theirs, hidden: true }).state;
+    expect(run(state, { kind: 'removeArea', placeId: t.placeId, poiId: t.poiId, id: theirs }, 'table').rejected)
+      .toBe('no such area in this map');
+  });
+
+  it('are drawn only in the map the party is in', () => {
+    const t = tavern();
+    const state = run(t.state, { kind: 'leaveMap' }).state;
+    expect(run(state, fireball(t), 'table').rejected).toBe('the party is not in that map');
   });
 });
