@@ -229,6 +229,11 @@ button.quiet:hover { background: #3a2222; color: #ffc9c9; border-color: transpar
  * the next area, and the players' own areas to take away.
  */
 .tools-card { width: 228px; }
+/* Measure's options on the right, as on the console (D-346) — below the campaign's name. */
+.measure-dock { top: 48px; }
+.tools-card .lbl {
+  margin: 10px 0 4px; font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--dim);
+}
 .area-colours { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
 .chip-button {
   width: 30px; height: 26px; padding: 0; display: inline-grid; place-items: center;

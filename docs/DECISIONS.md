@@ -8810,3 +8810,18 @@ else; the hint no longer says *Esc leaves*. On the world, Escape still puts a
 place back and closes what is selected — there is nothing further out to
 leave to.
 
+### D-346 — The table's tools are laid out as the console's · `agreed`
+*"I want them to mimic the distribution we have as GMs, it's easier to guide
+them when the tools are distributed the same way. They should have the move
+and measure tools, then the options should be on the right."* D-344 gave the
+table one card with Move, the ruler and the four shapes side by side.
+
+Now it is the console's arrangement, in small: a **Tool** card at the top
+left with **♟ Move** and **⟷ Measure** — the console's third and seventh, the
+same names and marks — and the hint for the tool in hand under them; and,
+while Measure is in hand, a **Measure** card at the top right, under the
+campaign's name, with Ruler, Sphere, Cone, Line and Cube in the console's
+order, the colours, a line of hint, and the players' own areas. With Move in
+hand the right side is empty, as the console's is with nothing to show. A GM
+can say *"Measure, then Cone"* and the players find both where the GM does.
+

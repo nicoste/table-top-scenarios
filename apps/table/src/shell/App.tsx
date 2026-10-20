@@ -607,6 +607,7 @@ export function App({ view, status, rejection, dispatch }: Props) {
           measuring={measuring}
           hand={hand}
           onMove={() => { setMeasuring(false); setHand(measureCleared(handRef.current)); }}
+          onMeasure={() => { setMeasuring(true); setStride(still); }}
           onHand={(next) => { setMeasuring(true); setStride(still); setHand(next); }}
           mine={mine}
           onRemove={(id) => dispatch({ kind: 'removeArea', placeId: insideWire.place.id, poiId: insideWire.poi.id, id })}

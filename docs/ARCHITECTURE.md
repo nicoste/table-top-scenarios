@@ -2334,7 +2334,9 @@ apps/host/src/
 >   save data it is sent), each where it is now — and none that follows
 >   somebody the table is not sent, which would say where they are (R-85).
 > - **The players draw areas too** (D-322, D-344): inside a map the table
->   has a small palette — Move, the ruler and the four shapes. The table may
+>   has the console's layout in small (D-346) — a **Tool** card on the left
+>   with Move and Measure, and with Measure in hand a **Measure** card on the
+>   right with the ruler and the four shapes, in the console's order. The table may
 >   draw, move and take away **its own** areas — in the map the party is in,
 >   on ground the party has seen, inside the band — and nothing else about
 >   them; the GM's areas it draws and leaves alone, and of a hidden one it
