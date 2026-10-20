@@ -1,4 +1,4 @@
-// The Props tool on the console (D-322, D-328), and the door a Move click
+// The Props tool on the console (D-322, D-328), and the door a Play click
 // opens. Local until the click (R-64): the ghost follows the pointer and
 // nothing reaches the host until a prop is put down, edited or opened.
 //
@@ -10,7 +10,7 @@
 import type { Intent } from '@tt/protocol';
 import type { BlockCoord, Box, EncounterMap, Facing, Opened, PropFooting, PropType, SwatchId } from '@tt/domain';
 import {
-  facingWithBack, paintOf, propBox, propById, propType, statesOf, swatchName, turned, whyNotPut,
+  facingWithBack, paintOf, propBox, propById, propType, stackOf, statesOf, swatchName, turned, whyNotMove, whyNotPut,
 } from '@tt/domain';
 import type { FacePick, PropGhostDrawn } from '@tt/render';
 
@@ -71,7 +71,7 @@ export function propWords(why: PropFooting): string {
     case 'solid': return 'a block is in the way';
     case 'taken': return 'something is already there';
     case 'unhung': return 'no wall behind it to hang on';
-    default: return 'nothing under it to stand on';
+    default: return 'nothing under it or beside it to hold it';
   }
 }
 
@@ -121,6 +121,76 @@ export function placePropIntent(
 }
 
 /**
+ * A prop being dragged somewhere else (D-354): the one selected, pressed on
+ * and dragged with the Props tool and nothing in hand. Local until it is let
+ * go (R-64); what rests on it goes with it.
+ */
+export interface PropDrag {
+  readonly id: string;
+  /** The cube it would stand at, as a prop in hand would; null until the pointer finds one. */
+  readonly at: BlockCoord | null;
+}
+
+/** What letting go would do: everything carried, where it would land, the box round it, and why not. */
+export interface PropMovePreview {
+  readonly box: Box;
+  readonly ghosts: readonly PropGhostDrawn[];
+  readonly why: string | null;
+}
+
+const sameCube = (a: BlockCoord, b: BlockCoord) => a.x === b.x && a.y === b.y && a.z === b.z;
+
+/** The ghosts of a drag, or nothing while it would land where it stands. */
+export function propMovePreview(
+  map: EncounterMap,
+  drag: PropDrag,
+  standing: ReadonlySet<string>,
+): PropMovePreview | null {
+  const stack = stackOf(map.props, drag.id);
+  const prop = stack[0];
+  if (!prop || !drag.at || sameCube(prop.at, drag.at)) return null;
+  const why = whyNotMove(map, drag.id, drag.at, standing);
+  const step = { x: drag.at.x - prop.at.x, y: drag.at.y - prop.at.y, z: drag.at.z - prop.at.z };
+  const landed = stack.map((one) => ({ ...one, at: { x: one.at.x + step.x, y: one.at.y + step.y, z: one.at.z + step.z } }));
+  const boxes = landed.map(propBox);
+  return {
+    box: {
+      min: { x: Math.min(...boxes.map((b) => b.min.x)), y: Math.min(...boxes.map((b) => b.min.y)), z: Math.min(...boxes.map((b) => b.min.z)) },
+      max: { x: Math.max(...boxes.map((b) => b.max.x)), y: Math.max(...boxes.map((b) => b.max.y)), z: Math.max(...boxes.map((b) => b.max.z)) },
+    },
+    ghosts: landed.map((one) => ({
+      type: one.type, at: one.at, facing: one.facing, paint: one.paint ?? null, flame: one.flame ?? null, refused: why !== null,
+    })),
+    why: why ? propWords(why) : null,
+  };
+}
+
+/** What letting go sends: the move, or nothing where it would not stand or would not move. */
+export function propMoveIntent(
+  map: EncounterMap,
+  drag: PropDrag,
+  standing: ReadonlySet<string>,
+  placeId: string,
+  poiId: string,
+): Intent | null {
+  const preview = propMovePreview(map, drag, standing);
+  if (!preview || preview.why || !drag.at) return null;
+  return { kind: 'moveProp', placeId, poiId, id: drag.id, at: drag.at };
+}
+
+/** What the readout says while a prop is dragged: where it would go, or why not. */
+export function propMovePrompt(map: EncounterMap, drag: PropDrag, standing: ReadonlySet<string>): string {
+  const stack = stackOf(map.props, drag.id);
+  const type = stack[0] ? propType(stack[0].type) : undefined;
+  if (!type) return '';
+  const what = `the ${type.name.toLowerCase()}${stack.length > 1 ? ' and what is on it' : ''}`;
+  const preview = propMovePreview(map, drag, standing);
+  if (!preview) return `Moving ${what} — drag it where it should stand; Escape leaves it.`;
+  if (preview.why) return `${type.name}: ${preview.why}.`;
+  return `Let go to move ${what} here.`;
+}
+
+/**
  * What a Paint click on a prop sends (D-352): that prop, and only that one,
  * painted with the material in hand — whatever the brush, a fill included —
  * or nothing when it is painted with it already.
@@ -163,7 +233,7 @@ export function propPrompt(type: PropType | null, at: BlockCoord | null, why: st
 }
 
 /**
- * A Move click on a prop (D-328): opens it if it is shut, shuts it if it is
+ * A Play click on a prop (D-328, D-354): opens it if it is shut, shuts it if it is
  * open — or puts a light out, or lights it (D-335). Only for one that
  * changes; nothing for a table.
  */
@@ -179,7 +249,7 @@ export function toggleIntent(
   return { kind: 'setPropOpen', placeId, poiId, id: prop.id, open: !opened.has(prop.id) };
 }
 
-/** What Move's readout says over a prop that changes: "Open the door", "Put out the torch". */
+/** What Play's readout says over a prop that changes: "Open the door", "Put out the torch". */
 export function toggleLabel(map: EncounterMap, id: string, opened: Opened): string | null {
   const prop = propById(map.props, id);
   const type = prop ? propType(prop.type) : null;

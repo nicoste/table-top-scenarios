@@ -271,6 +271,15 @@ export const IntentSchema = z.discriminatedUnion('kind', [
     placeId: z.string().min(1), poiId: z.string().min(1), id: z.string().min(1),
   }),
   /**
+   * Moves a prop so it stands at `at` (D-354), carrying what rests on it:
+   * building, one undo step, the GM's.
+   */
+  z.object({
+    kind: z.literal('moveProp'),
+    placeId: z.string().min(1), poiId: z.string().min(1), id: z.string().min(1),
+    at: CubeWireSchema,
+  }),
+  /**
    * Sets a prop as placed (`open: false`) or the other way (`open: true`):
    * a door shut or open, a light lit or out (D-335).
    */

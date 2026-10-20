@@ -5,7 +5,7 @@
 // (D-152), and select a place to read what the party knows about it (D-174).
 // No roster, and on the world no tool palette — a click means whatever
 // `tableAction` says it means, and a travel in progress outranks everything.
-// Inside a map, one small palette (D-344): Move, the ruler, and the players'
+// Inside a map, one small palette (D-344): Play, the ruler, and the players'
 // own areas.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -51,7 +51,7 @@ export function App({ view, status, rejection, dispatch }: Props) {
   /** A press under way: where it was, whether it has moved, and which button — the right one only pans. */
   const drag = useRef<{ x: number; y: number; moved: boolean; button: number } | null>(null);
   /**
-   * The palette inside a map (D-344): Move, or measuring with the ruler or a
+   * The palette inside a map (D-344): Play, or measuring with the ruler or a
    * shape in hand. Kept in a ref as well as state, for the console's reason: a
    * pointer-up can come before the render a drag's last move asked for.
    */

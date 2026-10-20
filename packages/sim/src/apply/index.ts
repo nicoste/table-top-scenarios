@@ -37,6 +37,7 @@ import {
   withStageOrder, tidyOrder, withNoteOn, withLightOn, openedIn,
   capturePrefab, prefabById, addPrefab, editPrefab, removePrefab, stampPrefab, editPoiMap,
   propType, propById, propCubes, whyNotPut, putProp, editProp, removeProp, propRules, withOpen, tidyOpened,
+  whyNotMove, moveProp,
   areasIn, withAreas, drawArea, editArea, removeArea, areaAt, tidyAreas,
 } from '@tt/domain';
 import type { HostState, Intent, Role } from '@tt/protocol';
@@ -710,7 +711,7 @@ const PROP_FOOTING = {
   outside: 'that is outside the map',
   solid: 'there is a block there',
   taken: 'something is already there',
-  unsupported: 'there is nothing under it to stand on',
+  unsupported: 'there is nothing under it or beside it to hold it',
   unhung: 'there is no wall behind it to hang on',
 } as const;
 
@@ -725,7 +726,7 @@ const PROP_FOOTING = {
 function applyToProps(
   state: HostState,
   campaign: Campaign,
-  intent: Extract<Intent, { kind: 'placeProp' | 'editProp' | 'removeProp' | 'setPropOpen' }>,
+  intent: Extract<Intent, { kind: 'placeProp' | 'editProp' | 'removeProp' | 'moveProp' | 'setPropOpen' }>,
   withPlaces: (places: readonly Place[]) => Applied,
   reject_: (reason: string) => Applied,
   now: string,
@@ -758,6 +759,13 @@ function applyToProps(
   if (!prop) return reject_('no such prop in this map');
 
   if (intent.kind === 'removeProp') return edited((m) => removeProp(m, prop.id));
+
+  // Moved, with what rests on it (D-354).
+  if (intent.kind === 'moveProp') {
+    const why = whyNotMove(map, prop.id, intent.at, standing);
+    if (why) return reject_(PROP_FOOTING[why]);
+    return edited((m) => moveProp(m, prop.id, intent.at, standing));
+  }
 
   if (intent.kind === 'editProp') {
     if (intent.facing !== undefined) {
@@ -1066,6 +1074,7 @@ function applyToPois(
     case 'placeProp':
     case 'editProp':
     case 'removeProp':
+    case 'moveProp':
     case 'setPropOpen':
       return applyToProps(state, campaign, intent, withPlaces, reject_, now);
 

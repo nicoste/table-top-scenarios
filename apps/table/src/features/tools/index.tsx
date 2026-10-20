@@ -1,10 +1,10 @@
 // The table's tools inside a map (D-344), laid out as the console lays out its
-// own (D-346): a **Tool** card on the left — Move and Measure, the console's
+// own (D-346): a **Tool** card on the left — Play and Measure, the console's
 // third and seventh — and, with Measure in hand, a **Measure** card on the
 // right with the ruler and the shapes. The same places and the same words, so
 // a GM can say "Measure, then Cone" and the players find it where the GM does.
 //
-// Move is what a click always was — the party's own tokens. The ruler
+// Play is what a click always was — the party's own tokens (D-354). The ruler
 // measures, and the shapes draw the players' own areas (D-341): theirs to do
 // with as the GM does with any (D-347) — drag by the handle, rename, recolour,
 // resize, have one of the party carry it, take it away — all but hide it.
@@ -17,7 +17,7 @@ import { chooseAreaColour, chooseMeasure } from '@tt/client-core';
 import { DraftInput } from '@tt/ui';
 
 interface Props {
-  /** Measure in hand — or not, which is Move. */
+  /** Measure in hand — or not, which is Play. */
   readonly measuring: boolean;
   readonly hand: MeasureHand;
   readonly onMove: () => void;
@@ -58,7 +58,7 @@ export function TableTools({ measuring, hand, onMove, onMeasure, onHand, mine, p
         <div className="card tools-card">
           <h2>Tool</h2>
           <div className="btn-grid tools">
-            <button className={measuring ? '' : 'on'} aria-pressed={!measuring} onClick={onMove}>♟ Move</button>
+            <button className={measuring ? '' : 'on'} aria-pressed={!measuring} onClick={onMove}>▶ Play</button>
             <button className={measuring ? 'on' : ''} aria-pressed={measuring} onClick={onMeasure}>⟷ Measure</button>
           </div>
           <p className="hint">

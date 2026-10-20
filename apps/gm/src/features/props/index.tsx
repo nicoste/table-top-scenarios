@@ -10,7 +10,7 @@
 //
 // Placing, turning, repainting, a light's reach and removing are building,
 // under undo, as a block is. Opening a door and lighting a light are play —
-// the GM's, and in play it is a Move click.
+// the GM's, and in play it is a Play click (D-354).
 
 import type { Intent } from '@tt/protocol';
 import type { Opened, Prop, PropFlame, PropType, SwatchId } from '@tt/domain';
@@ -136,7 +136,7 @@ export function PropsPanel({ hand, onHand, selected, onSelect, opened, placeId, 
               </>
             )}
             {selectedType.opens && (
-              <Tooltip label="In play, a Move click on it does the same" placement="bottom" stretch>
+              <Tooltip label="With Play, a click on it does the same" placement="bottom" stretch>
                 <button onClick={() => dispatch({ kind: 'setPropOpen', ...where, id: selected.id, open: !opened.has(selected.id) })}>
                   {opened.has(selected.id) ? statesOf(selectedType).toPlaced : statesOf(selectedType).toOther}
                 </button>
@@ -249,8 +249,8 @@ export function PropsPanel({ hand, onHand, selected, onSelect, opened, placeId, 
       ) : !selected && (
         <p className="hint">
           Pick a prop, then click where it stands. With nothing in hand, click a prop
-          on the map to change it. In play, a <b>Move</b> click opens and shuts doors,
-          and lights and puts out lights.
+          on the map to change it, and drag it to move it. With <b>Play</b>, a click
+          opens and shuts doors, and lights and puts out lights.
         </p>
       )}
     </div>

@@ -1014,13 +1014,14 @@ export class Stage {
   }
 
   /**
-   * The prop about to be placed (D-351): itself, see-through, turned as it
-   * will stand and red where it cannot — or nothing. Its box is framed by
+   * The prop about to be placed (D-351), or one being moved with what it
+   * carries (D-354): themselves, see-through, turned as they will stand and
+   * red where they cannot — or nothing. The box is framed by
    * `showBlockGhost`. Only inside a map.
    */
-  showPropGhost(ghost: PropGhostDrawn | null): void {
+  showPropGhost(ghosts: readonly PropGhostDrawn[] | null): void {
     this.invalidate();
-    const group = this.propGhost.show(this.showingMap ? ghost : null);
+    const group = this.propGhost.show(this.showingMap ? ghosts : null);
     if (group) this.scene.add(group);
   }
 
@@ -1432,7 +1433,12 @@ export class Stage {
   }
 
   /** What is under the pointer: a column, an empty chunk slot, or neither. */
-  pick(clientX: number, clientY: number): Picked {
+  pick(
+    clientX: number,
+    clientY: number,
+    /** Props the ray passes through — the ones being moved (D-354), which are not where they will be. */
+    passing: ReadonlySet<string> | null = null,
+  ): Picked {
     this.syncCamera();
     const rect = this.canvas.getBoundingClientRect();
     const ndc = new Vector2(
@@ -1455,7 +1461,9 @@ export class Stage {
       let prop: string | null = null;
       let propFace: FacePick | null = null;
       if (this.props) {
-        const hit = this.raycaster.intersectObjects([...this.props.proxies], false)[0];
+        const props = this.props;
+        const proxies = passing ? props.proxies.filter((proxy) => !passing.has(props.propAt(proxy) ?? '')) : props.proxies;
+        const hit = this.raycaster.intersectObjects([...proxies], false)[0];
         if (hit && hit.distance <= faceAt + 1e-6) {
           prop = this.props.propAt(hit.object);
           // The proxies are never turned, so a face normal is a world axis.

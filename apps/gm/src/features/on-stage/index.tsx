@@ -7,7 +7,7 @@
 // an order. Per map, so the cellar has its own.
 //
 // Silver tokens are renamed, hidden, noted and taken away here (R-206);
-// party members are picked up for Move, given their sight, as the party card
+// party members are picked up for Play, given their sight, as the party card
 // used to (R-46, R-188), and noted (D-315). Anybody may be given a light to
 // carry (D-335).
 
@@ -143,7 +143,7 @@ export function OnStagePanel({ party, silver, order, library, placeId, poiId, di
                         ? { backgroundImage: `url(${imageUrl(member.picture)})` }
                         : { background: member.colour }}
                     />
-                    {/* A click picks them up with Move — the way in for one
+                    {/* A click picks them up with Play — the way in for one
                         behind a wall, or not placed yet (R-188). */}
                     <button className="plain stage-name" onClick={() => onPickMember(member.id)}>
                       {/* The name and nothing beside it (D-318, D-332): a hint here

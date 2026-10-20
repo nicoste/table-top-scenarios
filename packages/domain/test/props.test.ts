@@ -9,7 +9,7 @@ import {
   editProp, removeProp, propRules, NONE_OPEN, whyNotStand, walkAcross, partySight, mapToJSON, mapFromJSON,
   sliceOf, seenPart, propsSeen, sightShows, shownBy, createCampaign, createLiveSave, openedIn, withOpen, tidyOpened,
   statesOf, isLit, reachOf, backOf, facingWithBack, MAX_LIGHT_REACH, floorUnder, dropBelow, whyNotPlace, paintOf, flameOf,
-  isKnownSwatch, prefabFromJSON, prefabToJSON,
+  isKnownSwatch, prefabFromJSON, prefabToJSON, stackOf, whyNotMove, moveProp,
   NO_SILVER, NO_TOKENS,
 } from '@tt/domain';
 
@@ -73,6 +73,17 @@ describe('putting one down', () => {
     expect(whyNotPut(door(withDoorway()), { type: 'chair', at: cube(5, 2, 7), facing: 0 })).toBe('taken');
     expect(whyNotPut(createMap(), { type: 'chair', at: cube(3, 1, 3), facing: 0 }, new Set(['3,1,3']))).toBe('taken');
     expect(whyNotPut(createMap(), { type: 'chair', at: cube(3, 4, 3), facing: 0 })).toBe('unsupported');
+  });
+
+  it('is held from the side too (D-354): bars across the top of a doorway, a prop against a prop', () => {
+    // The doorway at z = 7 in the wall at x = 5: its upper cube, the wall to either side.
+    expect(whyNotPut(withDoorway(), { type: 'bars', at: cube(5, 2, 7), facing: 1 })).toBeNull();
+    // Over the open floor, nothing beside it: not held.
+    expect(whyNotPut(withDoorway(), { type: 'bars', at: cube(2, 2, 2), facing: 0 })).toBe('unsupported');
+    // Beside a cell door standing on the floor, up in the air.
+    const gate = putProp(createMap(), { type: 'cell-door', at: cube(3, 1, 3), facing: 0 });
+    expect(whyNotPut(gate, { type: 'bars', at: cube(4, 2, 3), facing: 0 })).toBeNull();
+    expect(whyNotPut(gate, { type: 'bars', at: cube(4, 3, 3), facing: 0 })).toBe('unsupported');
   });
 
   it('stacks: a bookcase stands on a bookcase (D-322)', () => {
@@ -364,6 +375,49 @@ describe('paint (D-352)', () => {
       { type: 'crate', at: { x: 0, y: 0, z: 0 }, facing: 0, paint: 'material:wood/dark-oak' },
       { type: 'lantern', at: { x: 1, y: 0, z: 0 }, facing: 0, flame: 'green' },
     ]);
+  });
+});
+
+describe('moving a prop (D-354)', () => {
+  /** A barrel with candles on it, a bookcase with a bookcase on it, and a crate beside the barrel. */
+  const room = () => {
+    let map = putProp(createMap(), { type: 'barrel', at: cube(3, 1, 3), facing: 0, paint: 'material:brick' });
+    map = putProp(map, { type: 'candles', at: cube(3, 2, 3), facing: 0, flame: 'green' });
+    map = putProp(map, { type: 'bookcase', at: cube(6, 1, 6), facing: 2 });
+    map = putProp(map, { type: 'bookcase', at: cube(6, 2, 6), facing: 2 });
+    map = putProp(map, { type: 'crate', at: cube(4, 1, 3), facing: 0 });
+    return map;
+  };
+  const idOf = (map: EncounterMap, type: string, y = 1) => map.props.find((one) => one.type === type && one.at.y === y)!.id;
+
+  it('carries what rests on it, and leaves what only stands beside it', () => {
+    const map = room();
+    expect(stackOf(map.props, idOf(map, 'barrel')).map((one) => one.type)).toEqual(['barrel', 'candles']);
+    expect(stackOf(map.props, idOf(map, 'candles', 2)).map((one) => one.type)).toEqual(['candles']);
+    const moved = moveProp(map, idOf(map, 'barrel'), cube(3, 1, 8));
+    const barrel = moved.props.find((one) => one.type === 'barrel')!;
+    const candles = moved.props.find((one) => one.type === 'candles')!;
+    expect(barrel).toMatchObject({ id: idOf(map, 'barrel'), at: cube(3, 1, 8), paint: 'material:brick' });
+    expect(candles).toMatchObject({ at: cube(3, 2, 8), flame: 'green' });
+    expect(moved.props.find((one) => one.type === 'crate')!.at).toEqual(cube(4, 1, 3));
+    // In the order they were, so nothing else about the map changes.
+    expect(moved.props.map((one) => one.id)).toEqual(map.props.map((one) => one.id));
+  });
+
+  it('says why not, and leaves the map as it was', () => {
+    const map = setBlocks(room(), [cube(3, 1, 9), cube(8, 2, 6)], STONE);
+    const barrel = idOf(map, 'barrel');
+    expect(whyNotMove(map, barrel, cube(3, 1, 9))).toBe('solid');
+    expect(whyNotMove(map, barrel, cube(4, 1, 3))).toBe('taken');
+    expect(whyNotMove(map, barrel, cube(3, 1, 3), new Set(['3,1,3']))).toBeNull();
+    expect(whyNotMove(map, barrel, cube(3, 4, 12))).toBe('unsupported');
+    expect(moveProp(map, barrel, cube(3, 1, 9))).toBe(map);
+    // The lower bookcase, carrying the upper: its top is blocked one over.
+    const bookcase = idOf(map, 'bookcase');
+    expect(whyNotMove(map, bookcase, cube(8, 1, 6))).toBe('solid');
+    expect(whyNotMove(map, bookcase, cube(7, 1, 6))).toBeNull();
+    // Moving onto its own old place, one along, is no collision with itself.
+    expect(whyNotMove(map, barrel, cube(3, 1, 4))).toBeNull();
   });
 });
 

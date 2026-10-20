@@ -9079,3 +9079,49 @@ an inside.
 Checked on the test copy: a chest put down by the campfire and opened, empty
 inside; the bookcases' and the barrel's oak grained.
 
+### D-354 — Play, moving props, and props held from the side · `agreed`
+Three things asked together.
+
+**Move is Play.** *"We should change the '(triangleIcon) Move' tool to
+'(playIcon) Play'."* Agreed after one argument: the tool had grown into the
+hands-on half of play — tokens, doors, lights — and beside Build it says which
+of the two a click is. **▶ Play** on the console, key 3 as before, and on the
+table too, so the two screens keep one word for it (D-346). Every hint that
+said *Move* says *Play*; the tool's name in the code stays `move`.
+
+**Moving a prop.** *"Move props: select then drag?"* — as asked: with the
+Props tool and nothing in hand, a click selects a prop as before, and a press
+on **the one selected**, dragged, moves it. Only the selected one, so a click
+meant to select never shifts something by a cube.
+
+- **What rests on it goes with it** (`stackOf`): the candles on the barrel,
+  the bookcase on the bookcase. What is only held from the side stays.
+- **It lands as a prop in hand would** — where the pointer aims, the ray
+  passing through what is being moved — and the same rules judge it,
+  everything carried checked from the bottom up; the first that would not
+  stand says why. The ghosts of all of it follow the pointer, red where it
+  cannot go.
+- **Letting go is one undo step** (`moveProp`), the GM's, as all building is;
+  Escape, or the pointer leaving the map, leaves it where it was. Its id, turn,
+  paint and flame go with it, and its place in the map's list does not change.
+
+**Held from the side.** *"I can't add the bars (probably happening with all
+other items too) when there is no block or prop below, even when props or
+blocks are to their sides."* A prop now stands on a block or a prop below it,
+**or** is held by a block or a prop against any of its cubes, across the floor
+— bars over a doorway between two cell doors, a shelf on a wall. Every prop,
+as the user said; one that hangs still needs its wall behind it. The readout
+says *"nothing under it or beside it to hold it"*.
+
+**Chosen here, to be argued with:**
+
+- **Held props are not carried.** Bars held by a cell door stay when the cell
+  door is moved, and are then held by nothing — as a prop on one that is taken
+  away already is.
+- **Turning during a drag is not offered.** Turn it, then move it, or the
+  other way round.
+
+Checked on the test copy: the tool card and the Party card say Play; bars put
+up against Tollkeep's wall a cube off the ground, selected, and dragged down
+onto the grass.
+

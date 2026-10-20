@@ -1,11 +1,11 @@
-// The Props tool on the console, and the door a Move click opens (D-322, D-328).
+// The Props tool on the console, and the door a Play click opens (D-322, D-328).
 
 import { describe, it, expect } from 'vitest';
 import type { BlockCoord, EncounterMap, SwatchId } from '@tt/domain';
 import { createMap, setBlocks, putProp, propType, DEFAULT_FLOOR } from '@tt/domain';
 import {
   EMPTY_HAND, takeProp, turnHand, propAim, propWall, propPreview, placePropIntent, propPrompt, toggleIntent, toggleLabel,
-  paintPropIntent, paintPropPrompt,
+  paintPropIntent, paintPropPrompt, propMovePreview, propMoveIntent, propMovePrompt,
 } from '@tt/client-core';
 
 const cube = (x: number, y: number, z: number): BlockCoord => ({ x, y, z });
@@ -60,7 +60,7 @@ describe('the preview', () => {
   });
 });
 
-describe('a Move click on a door (D-328)', () => {
+describe('a Play click on a door (D-328, D-354)', () => {
   it('opens a shut one and shuts an open one, and does nothing to a table', () => {
     const map = withDoor();
     const id = map.props[0]!.id as string;
@@ -93,7 +93,7 @@ describe('a light (D-335)', () => {
     expect(propPrompt(propType('torch')!, cube(5, 1, 3), null)).toMatch(/Click to hang a torch/);
   });
 
-  it('is put out and lit by a Move click, in its own words', () => {
+  it('is put out and lit by a Play click, in its own words', () => {
     const map = putProp(createMap(), { type: 'campfire', at: cube(3, 1, 3), facing: 0 });
     const id = map.props[0]!.id as string;
     expect(toggleLabel(map, id, new Set())).toBe('Put out the campfire');
@@ -129,6 +129,31 @@ describe('painting a prop (D-352)', () => {
     expect(paintPropIntent(map, id, 'material:wood' as SwatchId, 'place_a', 'poi_a')).toBeNull();
     expect(paintPropPrompt(map, id, 'material:wood' as SwatchId)).toBe('Chest: already Oak.');
     expect(paintPropIntent(map, 'prop_nobody', brick, 'place_a', 'poi_a')).toBeNull();
+  });
+});
+
+describe('dragging a prop (D-354)', () => {
+  it('shows it and what it carries where they would land, sends the move only where it may go', () => {
+    let map = putProp(createMap(), { type: 'barrel', at: cube(3, 1, 3), facing: 0 });
+    map = putProp(map, { type: 'candles', at: cube(3, 2, 3), facing: 0 });
+    map = setBlocks(map, [cube(6, 1, 3)], DEFAULT_FLOOR as SwatchId);
+    const id = map.props[0]!.id as string;
+    const none = new Set<string>();
+    expect(propMovePreview(map, { id, at: null }, none)).toBeNull();
+    expect(propMovePreview(map, { id, at: cube(3, 1, 3) }, none)).toBeNull();
+    expect(propMovePrompt(map, { id, at: null }, none)).toMatch(/^Moving the barrel and what is on it/);
+    const fine = propMovePreview(map, { id, at: cube(4, 1, 5) }, none)!;
+    expect(fine.why).toBeNull();
+    expect(fine.ghosts.map((ghost) => ghost.at)).toEqual([cube(4, 1, 5), cube(4, 2, 5)]);
+    expect(fine.box).toEqual({ min: cube(4, 1, 5), max: cube(4, 2, 5) });
+    expect(propMoveIntent(map, { id, at: cube(4, 1, 5) }, none, 'place_a', 'poi_a')).toEqual({
+      kind: 'moveProp', placeId: 'place_a', poiId: 'poi_a', id, at: cube(4, 1, 5),
+    });
+    expect(propMovePrompt(map, { id, at: cube(4, 1, 5) }, none)).toBe('Let go to move the barrel and what is on it here.');
+    const walled = propMovePreview(map, { id, at: cube(6, 1, 3) }, none)!;
+    expect(walled.why).toBe('a block is in the way');
+    expect(walled.ghosts.every((ghost) => ghost.refused)).toBe(true);
+    expect(propMoveIntent(map, { id, at: cube(6, 1, 3) }, none, 'place_a', 'poi_a')).toBeNull();
   });
 });
 

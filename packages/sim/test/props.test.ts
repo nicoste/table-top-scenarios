@@ -58,7 +58,7 @@ describe('placing props (D-322)', () => {
     expect(run(t.state, { ...putDoor(t), type: 'throne' } as Intent).rejected).toBe('no such prop');
     expect(run(t.state, { ...putDoor(t), at: { x: 5, y: 1, z: 6 } } as Intent).rejected).toBe('there is a block there');
     expect(run(t.state, { ...putDoor(t), type: 'chair', at: { x: 2, y: 1, z: 7 } } as Intent).rejected).toBe('something is already there');
-    expect(run(t.state, { ...putDoor(t), type: 'chair', at: { x: 2, y: 4, z: 2 } } as Intent).rejected).toBe('there is nothing under it to stand on');
+    expect(run(t.state, { ...putDoor(t), type: 'chair', at: { x: 2, y: 4, z: 2 } } as Intent).rejected).toBe('there is nothing under it or beside it to hold it');
   });
 
   it('turns, repaints and comes away, each a step of its own', () => {
@@ -168,3 +168,19 @@ describe('stairs (D-350)', () => {
     expect((viewFor('table', state) as TableView).tokens![t.aldra]).toEqual(onTop);
   });
 });
+
+describe('moving a prop (D-354)', () => {
+  it('is building: the GM\'s, one undo step, and refused with the reason', () => {
+    const t = tavern();
+    let state = run(t.state, { kind: 'placeProp', placeId: t.placeId, poiId: t.poiId, type: 'chest', at: { x: 3, y: 1, z: 3 }, facing: 0 }).state;
+    const id = mapOf(state).props[0]!.id as string;
+    const move = (at: { x: number; y: number; z: number }): Intent => ({ kind: 'moveProp', placeId: t.placeId, poiId: t.poiId, id, at });
+    expect(run(state, move({ x: 3, y: 1, z: 5 }), 'table').rejected).toBe('only the GM can do that');
+    expect(run(state, move({ x: 5, y: 1, z: 3 })).rejected).toBe('there is a block there');
+    expect(run(state, move({ x: 2, y: 1, z: 7 })).rejected).toBe('something is already there');
+    state = run(state, move({ x: 3, y: 1, z: 5 })).state;
+    expect(mapOf(state).props[0]).toMatchObject({ id, at: { x: 3, y: 1, z: 5 } });
+    expect(mapOf(run(state, { kind: 'undo' }).state).props[0]!.at).toEqual({ x: 3, y: 1, z: 3 });
+  });
+});
+

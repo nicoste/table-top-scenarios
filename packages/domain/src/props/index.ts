@@ -237,13 +237,18 @@ export function propById(props: Props, id: PropId | string): Prop | null {
  * - `outside` — some cube of it is not the map's.
  * - `solid` — a block is in one of its cubes.
  * - `taken` — another prop is, or somebody is standing there.
- * - `unsupported` — something under its bottom is air. A prop stands on a
- *   block or on another prop (D-322: they stack — a tall bookcase is two).
+ * - `unsupported` — nothing holds it: something under its bottom is air, and
+ *   nothing stands beside it either. A prop stands on a block or on another
+ *   prop (D-322: they stack — a tall bookcase is two), or is held by one
+ *   beside it (D-354): bars across the top of a doorway, between its posts.
  * - `unhung` — one that hangs has no block behind it to hang on (D-335).
  *
  * `self` is the prop being turned or moved, which does not get in its own way.
  */
 export type PropFooting = 'outside' | 'solid' | 'taken' | 'unsupported' | 'unhung';
+
+/** The four cubes beside one, across the floor. */
+const SIDES: readonly (readonly [number, number])[] = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
 export function whyNotPut(
   map: EncounterMap,
@@ -261,14 +266,19 @@ export function whyNotPut(
     const back = backOf(prop.facing);
     return blockAt(map, { x: prop.at.x + back.x, y: prop.at.y, z: prop.at.z + back.z }) ? null : 'unhung';
   }
+  const solidAt = (cube: BlockCoord) => !!blockAt(map, cube) || taken.has(blockKey(cube));
   const bottom = Math.min(...cubes.map((cube) => cube.y));
-  const held = cubes
+  const stands = cubes
     .filter((cube) => cube.y === bottom)
-    .every((cube) => {
-      const below = { x: cube.x, y: cube.y - 1, z: cube.z };
-      return !!blockAt(map, below) || taken.has(blockKey(below));
-    });
-  return held ? null : 'unsupported';
+    .every((cube) => solidAt({ x: cube.x, y: cube.y - 1, z: cube.z }));
+  if (stands) return null;
+  // Or held from the side (D-354): a block or a prop against any of its cubes.
+  const own = new Set(cubes.map(blockKey));
+  const beside = cubes.some((cube) => SIDES.some(([dx, dz]) => {
+    const next = { x: cube.x + dx, y: cube.y, z: cube.z + dz };
+    return !own.has(blockKey(next)) && solidAt(next);
+  }));
+  return beside ? null : 'unsupported';
 }
 
 /** A material the registry knows, or nothing: what a prop may be painted with (D-352). */
@@ -343,6 +353,86 @@ export function editProp(
 export function removeProp(map: EncounterMap, id: PropId | string): EncounterMap {
   const props = map.props.filter((prop) => prop.id !== id);
   return props.length === map.props.length ? map : { ...map, props };
+}
+
+/**
+ * A prop and everything that rests on it, by id (D-354): the candles on the
+ * barrel, the bookcase on the bookcase — what is carried when it is moved.
+ * Resting is standing on top; what is only held from the side stays.
+ */
+export function stackOf(props: readonly Prop[], id: PropId | string): readonly Prop[] {
+  const first = propById(props, id);
+  if (!first) return [];
+  const stack = [first];
+  const under = new Set(propCubes(first).map(blockKey));
+  for (let grew = true; grew;) {
+    grew = false;
+    for (const prop of props) {
+      if (stack.includes(prop)) continue;
+      const cubes = propCubes(prop);
+      const bottom = Math.min(...cubes.map((cube) => cube.y));
+      if (!cubes.some((cube) => cube.y === bottom && under.has(blockKey({ x: cube.x, y: cube.y - 1, z: cube.z })))) continue;
+      stack.push(prop);
+      for (const cube of cubes) under.add(blockKey(cube));
+      grew = true;
+    }
+  }
+  return stack;
+}
+
+/**
+ * The map with a prop moved so it stands at `to`, everything resting on it
+ * carried along (D-354) — or `null` with the reason it cannot go there: the
+ * first of them, from the bottom up, that would not stand where it lands.
+ * Each keeps its id, turn and paint.
+ */
+function moved(
+  map: EncounterMap,
+  id: PropId | string,
+  to: BlockCoord,
+  standing: ReadonlySet<string>,
+): { readonly map: EncounterMap } | { readonly why: PropFooting } {
+  const stack = stackOf(map.props, id);
+  const prop = stack[0];
+  if (!prop) return { map };
+  const step = { x: to.x - prop.at.x, y: to.y - prop.at.y, z: to.z - prop.at.z };
+  if (step.x === 0 && step.y === 0 && step.z === 0) return { map };
+  const carried = new Set(stack.map((one) => one.id));
+  let next: EncounterMap = { ...map, props: map.props.filter((one) => !carried.has(one.id)) };
+  for (const one of [...stack].sort((a, b) => a.at.y - b.at.y)) {
+    const there = { ...one, at: { x: one.at.x + step.x, y: one.at.y + step.y, z: one.at.z + step.z } };
+    const why = whyNotPut(next, there, standing);
+    if (why) return { why };
+    next = { ...next, props: [...next.props, there] };
+  }
+  // In the order they were in, so nothing else about the map changes.
+  const placed = new Map(next.props.map((one) => [one.id, one]));
+  return { map: { ...map, props: map.props.map((one) => placed.get(one.id) ?? one) } };
+}
+
+/** Why a prop could not be moved to `to`, everything on it with it (D-354), or `null` if it can. */
+export function whyNotMove(
+  map: EncounterMap,
+  id: PropId | string,
+  to: BlockCoord,
+  standing: ReadonlySet<string> = new Set(),
+): PropFooting | null {
+  const result = moved(map, id, to, standing);
+  return 'why' in result ? result.why : null;
+}
+
+/**
+ * Moves a prop to stand at `to`, carrying what rests on it (D-354), or leaves
+ * the map as it was if it cannot go there — the caller asks `whyNotMove`.
+ */
+export function moveProp(
+  map: EncounterMap,
+  id: PropId | string,
+  to: BlockCoord,
+  standing: ReadonlySet<string> = new Set(),
+): EncounterMap {
+  const result = moved(map, id, to, standing);
+  return 'why' in result ? map : result.map;
 }
 
 // -- what they do now --------------------------------------------------------

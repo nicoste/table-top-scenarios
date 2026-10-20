@@ -131,10 +131,10 @@ export function MapPanel({
                 now — one list for everyone in the map, in the GM's order (R-208). */}
             <p className="hint" style={{ margin: '0 0 8px' }}>
               {waiting > 0
-                ? <>{waiting} to place — pick <b>Move</b> (key 3) and point at a floor; the next one is already in hand.</>
+                ? <>{waiting} to place — pick <b>Play</b> (key 3) and point at a floor; the next one is already in hand.</>
                 : party.some((member) => !member.onTable)
                   ? 'Somebody is outside the levels the table is shown, so the table does not show them.'
-                  : 'Everybody is placed. Pick Move (key 3) to move them.'}
+                  : 'Everybody is placed. Pick Play (key 3) to move them.'}
             </p>
             <div className="btn-grid campaign-actions">
               <Tooltip
@@ -218,7 +218,8 @@ export function MapPanel({
           fill were tools of their own and are modes of these two now — you
           alternate between build and erase constantly, and reaching for a
           different button each time was the tax. The third is not about
-          matter at all: Move stands the party somewhere (D-258).
+          matter at all: Play stands the party somewhere (D-258), and opens
+          doors and lights lights — the hands-on half of play (D-354).
         */}
         <div className="btn-grid tools">
           <Tooltip
@@ -241,12 +242,12 @@ export function MapPanel({
           </Tooltip>
           {/* The third tool (D-258): the party, picked and stood somewhere else. */}
           <Tooltip
-            label="Pick a token up and stand it on another floor — key 3"
+            label="Move tokens, open doors, light lights — key 3"
             placement="bottom"
             stretch
           >
             <button className={tool === 'move' ? 'on' : ''} onClick={() => onTool('move')}>
-              ♟ Move
+              ▶ Play
             </button>
           </Tooltip>
           {/* The fourth (D-307): everyone else, from the Tokens Library. */}
@@ -295,7 +296,7 @@ export function MapPanel({
           Five named shapes, three flat and two upright (R-164). The flats come
           first and fill the row, so the two groups read as two groups — and
           the outline is the real label, since it takes the shape before the
-          click. Not under Move, which lays nothing down (D-110's reason).
+          click. Not under Play, which lays nothing down (D-110's reason).
         */}
         {mapToolShows(tool, 'brush') && (
           <>
@@ -363,8 +364,8 @@ export function MapPanel({
               toward it. One per click, and
               each is one undo. With nothing in hand, click a prop to turn, refinish,
               open or remove it, or to set how far a light reaches — <b>Backspace</b>{' '}
-              removes the one selected. During play, a <b>Move</b> click opens and
-              shuts a door, and lights or puts out a light.
+              removes the one selected; drag the one selected to move it. With{' '}
+              <b>Play</b>, a click opens and shuts a door, and lights or puts out a light.
             </>
           )}
           {tool === 'measure' && (

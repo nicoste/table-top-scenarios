@@ -13,7 +13,7 @@ import {
   DAYLIGHT, clampLighting,
   NO_TOKENS, tokensIn, onRoster, unplaced, tokensInBand, standsInBand, standingAt,
   NO_CELLS, shownBy, memberNotesFromJSON, carriedFromJSON, areasFromJSON, areaAt,
-  prefabFromJSON, capturePrefab, propById, propBox, propType, blockKey, propsSeen, sightShows,
+  prefabFromJSON, capturePrefab, propById, propBox, propType, stackOf, blockKey, propsSeen, sightShows,
 } from '@tt/domain';
 import type {
   SwatchId, CoverId, Lighting, Ambience, MemberId, Tokens, BlockCoord, Route, Travelling,
@@ -23,7 +23,7 @@ import type { GmView, Intent } from '@tt/protocol';
 import { defaultTarget, worldCentre, SILVER } from '@tt/render';
 import type { Picked, Present, RulerPoint, Standing, StageFog } from '@tt/render';
 import type {
-  Capture, Carry, MeasureHand, PrefabPlacing, PropHand, SilverMove, Stride, Tool, Travel,
+  Capture, Carry, MeasureHand, PrefabPlacing, PropDrag, PropHand, SilverMove, Stride, Tool, Travel,
 } from '@tt/client-core';
 import {
   emptyHanded, pickUp, turnCarried, canSetDown, setDownIntent, placesPrompt,
@@ -38,7 +38,7 @@ import {
   NOT_PLACING, turnPlacing, mirrorPlacing, prefabAim, prefabPreview, placeIntent, placePrompt,
   NO_CAPTURE, captureCorner, captureClick, captureHeight, captureBack, captureBox, capturePrompt,
   EMPTY_HAND, turnHand, propAim, propWall, propPreview, placePropIntent, propPrompt, toggleIntent, toggleLabel,
-  paintPropIntent, paintPropPrompt,
+  paintPropIntent, paintPropPrompt, propMovePreview, propMoveIntent, propMovePrompt,
   MEASURE_START, measureCleared, measurePress, measureDrag, measureRelease, rulerShown, areasShown, handleAt,
   measurePrompt, faceCentre, floorCentre,
 } from '@tt/client-core';
@@ -114,6 +114,8 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    */
   const [propHand, setPropHand] = useState<PropHand>(EMPTY_HAND);
   const [selectedProp, setSelectedProp] = useState<string | null>(null);
+  /** The selected prop being dragged somewhere else (D-354), or none. */
+  const [propDrag, setPropDrag] = useState<PropDrag | null>(null);
   /**
    * The Measure tool (D-341): the ruler or a shape in hand, and the drag under
    * way. Kept in a ref as well, because a pointer-up can arrive before the
@@ -799,9 +801,21 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    */
   useEffect(() => {
     if (!stage || !openMap || mapTool !== 'props' || !openBody) return;
+    // A prop being moved: it and what it carries where they would land (D-354).
+    if (propDrag) {
+      const preview = propMovePreview(openBody, propDrag, standingCubes);
+      stage.showPropGhost(preview?.ghosts ?? null);
+      const box = preview?.box ?? (() => {
+        const chosen = propById(openBody.props, propDrag.id);
+        return chosen ? propBox(chosen) : null;
+      })();
+      stage.showBlockGhost(box ? [box.min, box.max] : [], preview?.why ? 0xff6b6b : preview ? 0xffffff : 0x7fd4ff);
+      setHoverLabel(propMovePrompt(openBody, propDrag, standingCubes));
+      return;
+    }
     if (propHand.type) {
       const preview = propAt ? propPreview(openBody, propHand, propAt, standingCubes, propWallAt) : null;
-      stage.showPropGhost(preview?.ghost ?? null);
+      stage.showPropGhost(preview ? [preview.ghost] : null);
       stage.showBlockGhost(preview ? [preview.box.min, preview.box.max] : [], preview?.why ? 0xff6b6b : 0xffffff);
       const type = propType(propHand.type);
       setHoverLabel(propPrompt(type ?? null, propAt, preview?.why ?? null));
@@ -812,12 +826,14 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     if (chosen) {
       const box = propBox(chosen);
       stage.showBlockGhost([box.min, box.max], 0x7fd4ff);
-      setHoverLabel(`${propType(chosen.type)?.name ?? 'Prop'} selected — change it in the panel, or Escape to let go.`);
+      const type = propType(chosen.type);
+      const it = type?.plural ? 'them' : 'it';
+      setHoverLabel(`${type?.name ?? 'Prop'} selected — drag ${it} to move ${it}, change ${it} in the panel, or Escape to let go.`);
       return;
     }
     stage.showBlockGhost([]);
     setHoverLabel(propPrompt(null, null, null));
-  }, [stage, openMap, mapTool, openBody, propHand, propAt, propWallAt, selectedProp, standingCubes]);
+  }, [stage, openMap, mapTool, openBody, propHand, propAt, propWallAt, selectedProp, propDrag, standingCubes]);
   // A prop removed, or undone away, is no longer selected.
   useEffect(() => {
     if (selectedProp && openBody && !propById(openBody.props, selectedProp)) setSelectedProp(null);
@@ -1251,6 +1267,13 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
         if (intent) dispatch(intent);
         return;
       }
+      // Pressed on the one selected: dragged, it moves (D-354). Anywhere
+      // else, a click selects what is there, or lets go.
+      if (picked.prop && picked.prop === selectedProp) {
+        setPropDrag({ id: picked.prop, at: null });
+        e.currentTarget.setPointerCapture(e.pointerId);
+        return;
+      }
       setSelectedProp(picked.prop);
       return;
     }
@@ -1458,6 +1481,15 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       return;
     }
 
+    if (openMap && mapTool === 'props' && propDrag && openBody) {
+      // Through what is being moved, which is not where it will be (D-354).
+      const carried = new Set(stackOf(openBody.props, propDrag.id).map((one) => one.id as string));
+      const picked = stage.pick(e.clientX, e.clientY, carried);
+      const at = propAim(picked.face, picked.propFace);
+      setPropDrag((now) => (!now || now.at === at || (now.at && at && now.at.x === at.x && now.at.y === at.y && now.at.z === at.z)
+        ? now : { ...now, at }));
+      return;
+    }
     if (openMap && mapTool === 'props') {
       lastPointer.current = { x: e.clientX, y: e.clientY };
       const picked = stage.pick(e.clientX, e.clientY);
@@ -1610,6 +1642,12 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
 
   /** The pointer coming up: a drag with the Measure tool is finished, and what it drew is sent (D-341). */
   const onPointerUp = () => {
+    // Let go: the prop moves there, if it may (D-354).
+    if (propDrag && openMap && openBody) {
+      const intent = propMoveIntent(openBody, propDrag, standingCubes, openMap.placeId, openMap.poiId);
+      if (intent) dispatch(intent);
+      setPropDrag(null);
+    }
     if (openMap && mapTool === 'measure' && measureRef.current.held) {
       const { hand, intent } = measureRelease(measureRef.current, openMap.placeId, openMap.poiId);
       setMeasure(hand);
@@ -1650,10 +1688,12 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       if (capture.step === 'start') setCaptureHover(null);
       return;
     }
-    // The same for props: the ghost goes, the selected prop's outline stays.
+    // The same for props: the ghost goes, the selected prop's outline stays,
+    // and a prop being dragged stays where it was.
     if (openMap && mapTool === 'props') {
       setPropAt(null);
       setPropWallAt(null);
+      setPropDrag(null);
       return;
     }
     // A drag that leaves the map is let go of, not finished: nothing is sent.
@@ -1776,7 +1816,8 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
           if (silverMove.step === 'aiming') { setSilverMove(noSilverMove); return; }
           // A half-drawn box, then a prefab in hand.
           if (mapTool === 'prefabs' && capture.step !== 'start') { setCapture(captureBack); return; }
-          // A prop in hand, then the one selected (D-328).
+          // A prop being dragged, a prop in hand, then the one selected (D-328, D-354).
+          if (mapTool === 'props' && propDrag) { setPropDrag(null); return; }
           if (mapTool === 'props' && propHand.type) { setPropHand((now) => ({ ...now, type: null })); return; }
           if (mapTool === 'props' && selectedProp) { setSelectedProp(null); return; }
           if (mapTool === 'prefabs' && placing.id) { setPlacing((now) => ({ ...now, id: null })); return; }

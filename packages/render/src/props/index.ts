@@ -464,8 +464,11 @@ export interface PropGhostDrawn {
 }
 
 export interface PropGhost {
-  /** Draws this one, or nothing. The caller adds the group to its scene. */
-  show(ghost: PropGhostDrawn | null): Group | null;
+  /**
+   * Draws these — the prop in hand, or one being moved with all it carries
+   * (D-354) — or nothing. The caller adds the group to its scene.
+   */
+  show(ghosts: readonly PropGhostDrawn[] | null): Group | null;
   dispose(): void;
 }
 
@@ -513,30 +516,32 @@ export function buildPropGhost(): PropGhost {
   };
 
   return {
-    show(ghost) {
+    show(ghosts) {
       drop();
-      const type = ghost ? propType(ghost.type) : undefined;
-      if (!ghost || !type) return null;
-      const tones = lookOf({
-        type: ghost.type, ...(ghost.paint ? { paint: ghost.paint } : {}), ...(ghost.flame ? { flame: ghost.flame } : {}),
-      });
-      const seed = seedOf(ghost.type);
-      const { holder, inner } = holderFor(ghost);
-      const geometries: BufferGeometry[] = [];
-      // Shut and lit: as it is put down.
-      partsOf(ghost.type, false).forEach((part, i) => {
-        const geometry = shapeOf(part);
-        shadeFaces(geometry, holder.rotation.y);
-        geometries.push(geometry);
-        const mesh = new Mesh(geometry, material(ghost.refused ? REFUSED : partColour(tones, part.tone ?? 'base', i, seed)));
-        mesh.position.set(part.at[0], part.at[1], part.at[2]);
-        mesh.raycast = () => {};
-        // Over the body's own cubes, under the outline that frames it.
-        mesh.renderOrder = 10;
-        inner.add(mesh);
-      });
+      const shown = (ghosts ?? []).filter((ghost) => propType(ghost.type));
+      if (shown.length === 0) return null;
       const group = new Group();
-      group.add(holder);
+      const geometries: BufferGeometry[] = [];
+      for (const ghost of shown) {
+        const tones = lookOf({
+          type: ghost.type, ...(ghost.paint ? { paint: ghost.paint } : {}), ...(ghost.flame ? { flame: ghost.flame } : {}),
+        });
+        const seed = seedOf(ghost.type);
+        const { holder, inner } = holderFor(ghost);
+        // Shut and lit: as it is put down.
+        partsOf(ghost.type, false).forEach((part, i) => {
+          const geometry = shapeOf(part);
+          shadeFaces(geometry, holder.rotation.y);
+          geometries.push(geometry);
+          const mesh = new Mesh(geometry, material(ghost.refused ? REFUSED : partColour(tones, part.tone ?? 'base', i, seed)));
+          mesh.position.set(part.at[0], part.at[1], part.at[2]);
+          mesh.raycast = () => {};
+          // Over the body's own cubes, under the outline that frames it.
+          mesh.renderOrder = 10;
+          inner.add(mesh);
+        });
+        group.add(holder);
+      }
       current = { group, geometries };
       return group;
     },
