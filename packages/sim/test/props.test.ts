@@ -61,12 +61,18 @@ describe('placing props (D-322)', () => {
     expect(run(t.state, { ...putDoor(t), type: 'chair', at: { x: 2, y: 4, z: 2 } } as Intent).rejected).toBe('there is nothing under it to stand on');
   });
 
-  it('turns, refinishes and comes away, each a step of its own', () => {
+  it('turns, repaints and comes away, each a step of its own', () => {
     const t = tavern();
     let state = run(t.state, { kind: 'placeProp', placeId: t.placeId, poiId: t.poiId, type: 'table', at: { x: 3, y: 1, z: 3 }, facing: 0 }).state;
     const id = mapOf(state).props[0]!.id as string;
-    state = run(state, { kind: 'editProp', placeId: t.placeId, poiId: t.poiId, id, facing: 2, finish: 'pale-wood' }).state;
-    expect(mapOf(state).props[0]).toMatchObject({ facing: 2, finish: 'pale-wood' });
+    state = run(state, { kind: 'editProp', placeId: t.placeId, poiId: t.poiId, id, facing: 2, paint: 'material:wood/birch' }).state;
+    expect(mapOf(state).props[0]).toMatchObject({ facing: 2, paint: 'material:wood/birch' });
+    // Any material the registry knows (D-352), and nothing it does not.
+    const painted = run(state, { kind: 'editProp', placeId: t.placeId, poiId: t.poiId, id, paint: 'material:glowing/acid' });
+    expect(mapOf(painted.state).props[0]!.paint).toBe('material:glowing/acid');
+    expect(mapOf(run(painted.state, { kind: 'undo' }).state).props[0]!.paint).toBe('material:wood/birch');
+    expect(run(state, { kind: 'editProp', placeId: t.placeId, poiId: t.poiId, id, paint: 'material:plaid' }).rejected)
+      .toBe('unknown material');
     state = run(state, { kind: 'removeProp', placeId: t.placeId, poiId: t.poiId, id }).state;
     expect(mapOf(state).props).toEqual([]);
     expect(run(state, { kind: 'removeProp', placeId: t.placeId, poiId: t.poiId, id }).rejected).toBe('no such prop in this map');

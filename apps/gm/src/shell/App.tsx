@@ -38,6 +38,7 @@ import {
   NOT_PLACING, turnPlacing, mirrorPlacing, prefabAim, prefabPreview, placeIntent, placePrompt,
   NO_CAPTURE, captureCorner, captureClick, captureHeight, captureBack, captureBox, capturePrompt,
   EMPTY_HAND, turnHand, propAim, propWall, propPreview, placePropIntent, propPrompt, toggleIntent, toggleLabel,
+  paintPropIntent, paintPropPrompt,
   MEASURE_START, measureCleared, measurePress, measureDrag, measureRelease, rulerShown, areasShown, handleAt,
   measurePrompt, faceCentre, floorCentre,
 } from '@tt/client-core';
@@ -1285,6 +1286,12 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       }
       return;
     }
+    // A Paint click on a prop paints that prop and nothing else (D-352).
+    if (openMap && mapTool === 'paint' && picked.prop && openBody) {
+      const intent = paintPropIntent(openBody, picked.prop, swatch, openMap.placeId, openMap.poiId);
+      if (intent) dispatch(intent);
+      return;
+    }
     if (openMap) {
       const action = mapAction(mapTool, picked.face, reach);
       // Refused here as well as by the host, so a click the readout already
@@ -1498,6 +1505,16 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     if (openMap) {
       lastPointer.current = { x: e.clientX, y: e.clientY };
       const picked = stage.pick(e.clientX, e.clientY);
+      // Paint over a prop paints that prop, and only it, whatever the brush —
+      // a fill included (D-352). A stroke under way paints blocks alone.
+      const painted = mapTool === 'paint' && blockStroke.current === null && picked.prop && openBody
+        ? propById(openBody.props, picked.prop) : null;
+      if (painted && openBody) {
+        const box = propBox(painted);
+        stage.showBlockGhost([box.min, box.max], 0xffffff);
+        setHoverLabel(paintPropPrompt(openBody, painted.id, swatch));
+        return;
+      }
       const action = mapAction(mapTool, picked.face, reach);
       const verdict = aimAt(action);
       // A fill follows connected material straight through a cut, so while
@@ -1982,6 +1999,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
               opened={openedHere}
               placeId={openPlace.id}
               poiId={openPoi.id}
+              swatch={swatch}
               dispatch={dispatch}
             />
           )}

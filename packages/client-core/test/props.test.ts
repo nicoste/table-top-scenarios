@@ -5,15 +5,16 @@ import type { BlockCoord, EncounterMap, SwatchId } from '@tt/domain';
 import { createMap, setBlocks, putProp, propType, DEFAULT_FLOOR } from '@tt/domain';
 import {
   EMPTY_HAND, takeProp, turnHand, propAim, propWall, propPreview, placePropIntent, propPrompt, toggleIntent, toggleLabel,
+  paintPropIntent, paintPropPrompt,
 } from '@tt/client-core';
 
 const cube = (x: number, y: number, z: number): BlockCoord => ({ x, y, z });
 const withDoor = (): EncounterMap => putProp(createMap(), { type: 'door', at: cube(5, 1, 7), facing: 1 });
 
 describe('the prop in hand', () => {
-  it('is taken from the catalogue in its first finish, and put back by picking it again', () => {
+  it('is taken from the catalogue in its first paint, and put back by picking it again', () => {
     const hand = takeProp(EMPTY_HAND, 'door');
-    expect(hand).toEqual({ type: 'door', facing: 0, finish: null });
+    expect(hand).toEqual({ type: 'door', facing: 0, paint: null, flame: null });
     expect(takeProp(hand, 'door').type).toBeNull();
     expect(takeProp(hand, 'chest').type).toBe('chest');
   });
@@ -39,7 +40,7 @@ describe('the preview', () => {
     const fine = propPreview(map, hand, cube(3, 1, 3), new Set())!;
     expect(fine.why).toBeNull();
     expect(fine.box).toEqual({ min: cube(3, 1, 3), max: cube(3, 2, 3) });
-    expect(fine.ghost).toEqual({ type: 'door', at: cube(3, 1, 3), facing: 1, finish: null, refused: false });
+    expect(fine.ghost).toEqual({ type: 'door', at: cube(3, 1, 3), facing: 1, paint: null, flame: null, refused: false });
     const walled = setBlocks(map, [cube(3, 2, 3)], DEFAULT_FLOOR as SwatchId);
     const refused = propPreview(walled, hand, cube(3, 1, 3), new Set())!;
     expect(refused.why).toBe('a block is in the way');
@@ -47,11 +48,11 @@ describe('the preview', () => {
     expect(propPreview(map, EMPTY_HAND, cube(3, 1, 3), new Set())).toBeNull();
   });
 
-  it('sends a placement only with a prop in hand, turned and finished as shown', () => {
+  it('sends a placement only with a prop in hand, turned and painted as shown', () => {
     expect(placePropIntent(EMPTY_HAND, cube(3, 1, 3), 'place_a', 'poi_a')).toBeNull();
-    const hand = { ...turnHand(takeProp(EMPTY_HAND, 'door'), 1), finish: 'iron' };
+    const hand = { ...turnHand(takeProp(EMPTY_HAND, 'door'), 1), paint: 'material:mineral/iron' as SwatchId };
     expect(placePropIntent(hand, cube(3, 1, 3), 'place_a', 'poi_a')).toEqual({
-      kind: 'placeProp', placeId: 'place_a', poiId: 'poi_a', type: 'door', at: cube(3, 1, 3), facing: 1, finish: 'iron',
+      kind: 'placeProp', placeId: 'place_a', poiId: 'poi_a', type: 'door', at: cube(3, 1, 3), facing: 1, paint: 'material:mineral/iron',
     });
     expect(propPrompt(propType('door')!, cube(3, 1, 3), null)).toMatch(/Click to place a door/);
     expect(propPrompt(propType('candles')!, null, null)).toMatch(/^Placing candles/);
@@ -106,6 +107,28 @@ describe('stairs (D-350)', () => {
     const hand = turnHand(takeProp(EMPTY_HAND, 'stairs'), -1);
     expect(placePropIntent(hand, cube(5, 1, 3), 'place_a', 'poi_a', 1)).toMatchObject({ type: 'stairs', facing: 1 });
     expect(placePropIntent(hand, cube(5, 1, 3), 'place_a', 'poi_a', null)).toMatchObject({ facing: 3 });
+  });
+});
+
+describe('painting a prop (D-352)', () => {
+  it('in hand: placed in the paint and flame chosen, or its first', () => {
+    const hand = { ...takeProp(EMPTY_HAND, 'lantern'), paint: 'material:mineral/copper' as SwatchId, flame: 'cold' };
+    expect(placePropIntent(hand, cube(3, 1, 3), 'place_a', 'poi_a')).toMatchObject({ paint: 'material:mineral/copper', flame: 'cold' });
+    expect(placePropIntent(takeProp(hand, 'chest'), cube(3, 1, 3), 'place_a', 'poi_a')).not.toHaveProperty('paint');
+    expect(propPreview(createMap(), hand, cube(3, 1, 3), new Set())!.ghost).toMatchObject({ paint: 'material:mineral/copper', flame: 'cold' });
+  });
+
+  it('with the Paint tool: that prop alone, one click, nothing when it is that already', () => {
+    const map = putProp(createMap(), { type: 'chest', at: cube(3, 1, 3), facing: 0 });
+    const id = map.props[0]!.id as string;
+    const brick = 'material:brick' as SwatchId;
+    expect(paintPropIntent(map, id, brick, 'place_a', 'poi_a')).toEqual({
+      kind: 'editProp', placeId: 'place_a', poiId: 'poi_a', id, paint: brick,
+    });
+    expect(paintPropPrompt(map, id, brick)).toBe('Click to paint the chest Clay.');
+    expect(paintPropIntent(map, id, 'material:wood' as SwatchId, 'place_a', 'poi_a')).toBeNull();
+    expect(paintPropPrompt(map, id, 'material:wood' as SwatchId)).toBe('Chest: already Oak.');
+    expect(paintPropIntent(map, 'prop_nobody', brick, 'place_a', 'poi_a')).toBeNull();
   });
 });
 

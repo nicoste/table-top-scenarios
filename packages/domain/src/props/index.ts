@@ -23,8 +23,9 @@
 // out, as a door's is open: the save keeps which props are not as they were
 // placed (`Opened`), whatever that means for each.
 
-import type { PropId } from '../ids/index.js';
-import { freshId } from '../ids/index.js';
+import type { PropId, SwatchId } from '../ids/index.js';
+import { freshId, registryId } from '../ids/index.js';
+import { isKnownSwatch, swatchOf } from '../materials/index.js';
 import type { BlockCoord, EncounterMap, Prop } from '../map/index.js';
 import { blockAt, blockKey, cleanReach, inMap } from '../map/index.js';
 import type { Facing } from '../place/index.js';
@@ -38,8 +39,8 @@ export interface PropEffect {
   readonly blocksWalking: boolean;
 }
 
-/** One way a prop can look: *dark wood*. Its colour is the whole of it. */
-export interface PropFinish {
+/** One of a light's flames (D-335): *cold blue*. Its colour is the whole of it. */
+export interface PropFlame {
   readonly id: string;
   readonly name: string;
   readonly colour: string;
@@ -74,8 +75,14 @@ export interface PropType {
   readonly closed: PropEffect;
   /** What it does open. The same as closed for one that does not open. */
   readonly open: PropEffect;
-  /** The ways it can look, the first the one it is placed in. A light's are its flames. */
-  readonly finishes: readonly PropFinish[];
+  /**
+   * The materials the catalogue suggests it in (D-352), the first the one it
+   * is placed in unless another is asked for. Any material paints it; these
+   * are only the ones offered first.
+   */
+  readonly paints: readonly SwatchId[];
+  /** A light's flames (D-335), the first the one it is placed with. */
+  readonly flames?: readonly PropFlame[];
   /** Its two states' words, when they are not a door's. */
   readonly states?: PropStates;
   /** Hung on a wall — held by the block behind it, not by one below (D-335). */
@@ -107,24 +114,31 @@ export function statesOf(type: PropType): PropStates {
   return type.states ?? SHUT_OR_OPEN;
 }
 
-const WOOD: PropFinish = { id: 'wood', name: 'Wood', colour: '#8a5a35' };
-const DARK_WOOD: PropFinish = { id: 'dark-wood', name: 'Dark wood', colour: '#4f3424' };
-const PALE_WOOD: PropFinish = { id: 'pale-wood', name: 'Pale wood', colour: '#b48a5c' };
-const IRON: PropFinish = { id: 'iron', name: 'Iron', colour: '#5d646c' };
-const DARK_IRON: PropFinish = { id: 'dark-iron', name: 'Dark iron', colour: '#363a40' };
-const RUSTED: PropFinish = { id: 'rusted', name: 'Rusted', colour: '#7a4a34' };
-const STONE: PropFinish = { id: 'stone', name: 'Stone', colour: '#8b8f94' };
-const DARK_STONE: PropFinish = { id: 'dark-stone', name: 'Dark stone', colour: '#5a5f66' };
+/** A block material, as a prop is painted with one (D-352). */
+const material = (family: string, cut: string | null = null): SwatchId =>
+  swatchOf(registryId<'MaterialId'>('material', family), cut);
+const OAK = material('wood');
+const DARK_OAK = material('wood', 'dark-oak');
+const BIRCH = material('wood', 'birch');
+const IRON = material('mineral', 'iron');
+const COPPER = material('mineral', 'copper');
+const GOLD = material('mineral', 'gold');
+const ROCK = material('mineral');
+const DARK_ROCK = material('mineral', 'dark-rock');
+
+/** What a door, a chest, a stair is offered in: wood, or iron. */
+const WOODS = [OAK, DARK_OAK, BIRCH];
+const METALS = [IRON, DARK_ROCK, COPPER];
 
 /**
- * The flames (D-335): a light's finish is the colour of what it gives. The
- * light itself is drawn in it, and so is everything it falls on.
+ * The flames (D-335): the colour of what a light gives. The light itself is
+ * drawn in it, and so is everything it falls on.
  */
-const FIRE: PropFinish = { id: 'fire', name: 'Fire', colour: '#ff9440' };
-const CANDLE: PropFinish = { id: 'candle', name: 'Candle', colour: '#ffcf7a' };
-const COLD: PropFinish = { id: 'cold', name: 'Cold blue', colour: '#7fb0ff' };
-const GREEN: PropFinish = { id: 'green', name: 'Green', colour: '#86f07a' };
-export const FLAMES: readonly PropFinish[] = [FIRE, CANDLE, COLD, GREEN];
+const FIRE: PropFlame = { id: 'fire', name: 'Fire', colour: '#ff9440' };
+const CANDLE: PropFlame = { id: 'candle', name: 'Candle', colour: '#ffcf7a' };
+const COLD: PropFlame = { id: 'cold', name: 'Cold blue', colour: '#7fb0ff' };
+const GREEN: PropFlame = { id: 'green', name: 'Green', colour: '#86f07a' };
+export const FLAMES: readonly PropFlame[] = [FIRE, CANDLE, COLD, GREEN];
 
 const STOPS_BOTH: PropEffect = { blocksSight: true, blocksWalking: true };
 const STOPS_WALKING: PropEffect = { blocksSight: false, blocksWalking: true };
@@ -140,48 +154,48 @@ const burns = (effect: PropEffect, reach: number, rise: number) => ({
 export const PROP_TYPES: readonly PropType[] = [
   {
     id: 'door', name: 'Door', group: 'doors', size: { x: 1, y: 2, z: 1 },
-    opens: true, closed: STOPS_BOTH, open: STOPS_NOTHING, finishes: [WOOD, DARK_WOOD, IRON],
+    opens: true, closed: STOPS_BOTH, open: STOPS_NOTHING, paints: [OAK, DARK_OAK, IRON],
   },
   {
     id: 'cell-door', name: 'Cell door', group: 'doors', size: { x: 1, y: 2, z: 1 },
-    opens: true, closed: STOPS_WALKING, open: STOPS_NOTHING, finishes: [IRON, DARK_IRON, RUSTED],
+    opens: true, closed: STOPS_WALKING, open: STOPS_NOTHING, paints: METALS,
   },
-  { id: 'bars', name: 'Bars', plural: true, group: 'doors', size: { x: 1, y: 1, z: 1 }, ...fixed(STOPS_WALKING), finishes: [IRON, DARK_IRON, RUSTED] },
+  { id: 'bars', name: 'Bars', plural: true, group: 'doors', size: { x: 1, y: 1, z: 1 }, ...fixed(STOPS_WALKING), paints: METALS },
   {
     id: 'portcullis', name: 'Portcullis', group: 'doors', size: { x: 2, y: 2, z: 1 },
-    opens: true, closed: STOPS_WALKING, open: STOPS_NOTHING, finishes: [IRON, DARK_IRON, RUSTED],
+    opens: true, closed: STOPS_WALKING, open: STOPS_NOTHING, paints: METALS,
   },
   {
     id: 'chest', name: 'Chest', group: 'furniture', size: { x: 1, y: 1, z: 1 },
-    opens: true, closed: STOPS_WALKING, open: STOPS_WALKING, finishes: [WOOD, DARK_WOOD, IRON],
+    opens: true, closed: STOPS_WALKING, open: STOPS_WALKING, paints: [OAK, DARK_OAK, IRON],
   },
   // A table, a bookcase, a barrel and a crate are a whole cube tall and are
   // stood on (D-351): crates piled up to a balcony are a way up.
-  { id: 'table', name: 'Table', group: 'furniture', size: { x: 1, y: 1, z: 1 }, ...fixed(STOPS_WALKING), holds: true, finishes: [WOOD, DARK_WOOD, PALE_WOOD] },
-  { id: 'chair', name: 'Chair', group: 'furniture', size: { x: 1, y: 1, z: 1 }, ...fixed(STOPS_WALKING), finishes: [WOOD, DARK_WOOD, PALE_WOOD] },
+  { id: 'table', name: 'Table', group: 'furniture', size: { x: 1, y: 1, z: 1 }, ...fixed(STOPS_WALKING), holds: true, paints: WOODS },
+  { id: 'chair', name: 'Chair', group: 'furniture', size: { x: 1, y: 1, z: 1 }, ...fixed(STOPS_WALKING), paints: WOODS },
   // A wall of books: the one piece of furniture you cannot see past.
-  { id: 'bookcase', name: 'Bookcase', group: 'furniture', size: { x: 1, y: 1, z: 1 }, ...fixed(STOPS_BOTH), holds: true, finishes: [WOOD, DARK_WOOD, PALE_WOOD] },
-  { id: 'barrel', name: 'Barrel', group: 'furniture', size: { x: 1, y: 1, z: 1 }, ...fixed(STOPS_WALKING), holds: true, finishes: [WOOD, DARK_WOOD] },
-  { id: 'crate', name: 'Crate', group: 'furniture', size: { x: 1, y: 1, z: 1 }, ...fixed(STOPS_WALKING), holds: true, finishes: [WOOD, PALE_WOOD, DARK_WOOD] },
+  { id: 'bookcase', name: 'Bookcase', group: 'furniture', size: { x: 1, y: 1, z: 1 }, ...fixed(STOPS_BOTH), holds: true, paints: WOODS },
+  { id: 'barrel', name: 'Barrel', group: 'furniture', size: { x: 1, y: 1, z: 1 }, ...fixed(STOPS_WALKING), holds: true, paints: [OAK, DARK_OAK] },
+  { id: 'crate', name: 'Crate', group: 'furniture', size: { x: 1, y: 1, z: 1 }, ...fixed(STOPS_WALKING), holds: true, paints: [OAK, BIRCH, DARK_OAK] },
   // Lights (D-335). A torch hangs on the wall behind it; the rest stand.
   // A brazier and a campfire are in the way; the others are not.
   {
     id: 'torch', name: 'Torch', group: 'lights', size: { x: 1, y: 1, z: 1 }, hangs: true,
-    ...burns(STOPS_NOTHING, 6, 0.95), finishes: FLAMES,
+    ...burns(STOPS_NOTHING, 6, 0.95), paints: [IRON, COPPER, GOLD], flames: FLAMES,
   },
-  { id: 'lantern', name: 'Lantern', group: 'lights', size: { x: 1, y: 1, z: 1 }, ...burns(STOPS_NOTHING, 5, 0.3), finishes: FLAMES },
+  { id: 'lantern', name: 'Lantern', group: 'lights', size: { x: 1, y: 1, z: 1 }, ...burns(STOPS_NOTHING, 5, 0.3), paints: [IRON, COPPER, GOLD], flames: FLAMES },
   {
     id: 'candles', name: 'Candles', plural: true, group: 'lights', size: { x: 1, y: 1, z: 1 },
-    ...burns(STOPS_NOTHING, 3, 0.45), finishes: [CANDLE, FIRE, COLD, GREEN],
+    ...burns(STOPS_NOTHING, 3, 0.45), paints: [GOLD, COPPER, IRON], flames: [CANDLE, FIRE, COLD, GREEN],
   },
-  { id: 'brazier', name: 'Brazier', group: 'lights', size: { x: 1, y: 1, z: 1 }, ...burns(STOPS_WALKING, 8, 1.1), finishes: FLAMES },
-  { id: 'campfire', name: 'Campfire', group: 'lights', size: { x: 1, y: 1, z: 1 }, ...burns(STOPS_WALKING, 10, 0.8), finishes: FLAMES },
+  { id: 'brazier', name: 'Brazier', group: 'lights', size: { x: 1, y: 1, z: 1 }, ...burns(STOPS_WALKING, 8, 1.1), paints: [IRON, COPPER, DARK_ROCK], flames: FLAMES },
+  { id: 'campfire', name: 'Campfire', group: 'lights', size: { x: 1, y: 1, z: 1 }, ...burns(STOPS_WALKING, 10, 0.8), paints: [ROCK, DARK_ROCK], flames: FLAMES },
   // Stairs (D-350): a block in every rule but one look — nobody walks into
   // them or sees through them, and they are stood on as a floor is. They climb
   // toward their back, and are turned to the wall they are set against.
   {
     id: 'stairs', name: 'Stairs', group: 'stairs', size: { x: 1, y: 1, z: 1 }, ...fixed(STOPS_BOTH),
-    holds: true, turnsToWall: true, plural: true, finishes: [STONE, DARK_STONE, WOOD, DARK_WOOD],
+    holds: true, turnsToWall: true, plural: true, paints: [ROCK, DARK_ROCK, OAK, DARK_OAK],
   },
 ];
 
@@ -257,14 +271,22 @@ export function whyNotPut(
   return held ? null : 'unsupported';
 }
 
+/** A material the registry knows, or nothing: what a prop may be painted with (D-352). */
+const knownPaint = (paint: string | undefined): SwatchId | null =>
+  paint !== undefined && isKnownSwatch(paint as SwatchId) ? paint as SwatchId : null;
+
 /**
  * Puts a prop in a map, or leaves the map as it was if it cannot stand there
- * — the caller asks `whyNotPut` for the reason. Its finish is the catalogue's
- * first unless one it has is asked for.
+ * — the caller asks `whyNotPut` for the reason. It is painted with the
+ * catalogue's first material unless another is asked for, and a light burns
+ * with its first flame unless one it has is asked for (D-352).
  */
 export function putProp(
   map: EncounterMap,
-  fields: { readonly type: string; readonly at: BlockCoord; readonly facing: Facing; readonly finish?: string },
+  fields: {
+    readonly type: string; readonly at: BlockCoord; readonly facing: Facing;
+    readonly paint?: SwatchId | string; readonly flame?: string;
+  },
   standing: ReadonlySet<string> = new Set(),
 ): EncounterMap {
   const type = propType(fields.type);
@@ -274,14 +296,17 @@ export function putProp(
     type: type.id,
     at: { x: fields.at.x, y: fields.at.y, z: fields.at.z },
     facing: asFacing(fields.facing),
-    finish: type.finishes.some((finish) => finish.id === fields.finish) ? fields.finish! : type.finishes[0]!.id,
+    paint: knownPaint(fields.paint) ?? type.paints[0]!,
+    ...(type.flames
+      ? { flame: type.flames.some((flame) => flame.id === fields.flame) ? fields.flame! : type.flames[0]!.id }
+      : {}),
   };
   if (whyNotPut(map, prop, standing) !== null) return map;
   return { ...map, props: [...map.props, prop] };
 }
 
 /**
- * Turns, refinishes or — for a light — sets how far it reaches, where it
+ * Turns, repaints, changes a light's flame or sets how far it reaches, where it
  * stands. A turn that would not fit is refused — the map comes back as it
  * was. A reach equal to its type's own is no reach of its own. Identity-
  * preserving (R-165).
@@ -289,20 +314,28 @@ export function putProp(
 export function editProp(
   map: EncounterMap,
   id: PropId | string,
-  patch: { readonly facing?: Facing; readonly finish?: string; readonly reach?: number },
+  patch: {
+    readonly facing?: Facing; readonly paint?: SwatchId | string; readonly flame?: string; readonly reach?: number;
+  },
   standing: ReadonlySet<string> = new Set(),
 ): EncounterMap {
   const prop = propById(map.props, id);
   const type = prop ? propType(prop.type) : null;
   if (!prop || !type) return map;
   const facing = patch.facing === undefined ? prop.facing : asFacing(patch.facing);
-  const finish = patch.finish !== undefined && type.finishes.some((one) => one.id === patch.finish)
-    ? patch.finish : prop.finish;
+  const paint = knownPaint(patch.paint) ?? prop.paint;
+  const flame = patch.flame !== undefined && type.flames?.some((one) => one.id === patch.flame)
+    ? patch.flame : prop.flame;
   const asked = patch.reach !== undefined && type.light && Number.isFinite(patch.reach) ? cleanReach(patch.reach) : null;
   const reach = asked === null ? prop.reach : asked === type.light!.reach ? undefined : asked;
-  if (facing === prop.facing && finish === prop.finish && reach === prop.reach) return map;
-  const { reach: _, ...rest } = prop;
-  const next: Prop = { ...rest, facing, finish, ...(reach !== undefined ? { reach } : {}) };
+  if (facing === prop.facing && paint === prop.paint && flame === prop.flame && reach === prop.reach) return map;
+  const { reach: _, paint: _paint, flame: _flame, ...rest } = prop;
+  const next: Prop = {
+    ...rest, facing,
+    ...(paint !== undefined ? { paint } : {}),
+    ...(flame !== undefined ? { flame } : {}),
+    ...(reach !== undefined ? { reach } : {}),
+  };
   if (facing !== prop.facing && whyNotPut(map, next, standing, prop.id) !== null) return map;
   return { ...map, props: map.props.map((one) => (one.id === prop.id ? next : one)) };
 }
@@ -379,6 +412,22 @@ export function reachOf(prop: Prop): number | null {
 /** The colour of a flame, by its id, or fire's for one nobody knows. */
 export function flameColour(id: string): string {
   return (FLAMES.find((flame) => flame.id === id) ?? FLAMES[0]!).colour;
+}
+
+/**
+ * What a prop is painted with (D-352): its own, or — when it has none, or one
+ * the registry has never heard of — its type's first. Every screen draws this.
+ */
+export function paintOf(prop: { readonly type: string; readonly paint?: SwatchId }): SwatchId {
+  if (prop.paint !== undefined && isKnownSwatch(prop.paint)) return prop.paint;
+  return propType(prop.type)?.paints[0] ?? ROCK;
+}
+
+/** A light's flame (D-335): its own, or its type's first. Null for what is not a light. */
+export function flameOf(prop: { readonly type: string; readonly flame?: string }): string | null {
+  const flames = propType(prop.type)?.flames;
+  if (!flames) return null;
+  return flames.some((one) => one.id === prop.flame) ? prop.flame! : flames[0]!.id;
 }
 
 /**

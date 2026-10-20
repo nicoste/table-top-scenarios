@@ -2233,10 +2233,18 @@ apps/host/src/
 > - **A material is what a whole cube is made of; anything that is not a
 >   whole cube is a prop.** From a built-in catalogue — door, cell door, bars,
 >   portcullis; chest, table, chair, bookcase, barrel, crate — each a box of
->   whole cubes (a door is 1 × 2), turned with Z / X, in one of a few
->   finishes. Props stack: a prop stands on a block or on another prop.
+>   whole cubes (a door is 1 × 2), turned with Z / X. Props stack: a prop
+>   stands on a block or on another prop.
+> - **Painted with any block material** (D-352), on the parts that take
+>   paint; the parts that do not — a knob, a lock, a barrel's hoops, wax,
+>   embers — keep their own colour. Each painted part is a few percent off
+>   its paint by which part it is, never by where the prop stands, so two
+>   alike look alike. The catalogue offers a few materials per prop; the
+>   **Paint** tool paints a prop with a click, one prop a click whatever its
+>   brush — a fill included — and a stroke across the map paints blocks only.
+>   Saved before paint, a finish is read as the nearest material.
 > - **The prop is the map's; its state is the session's.** Placing, turning,
->   refinishing and removing are building — on the map, saved with it, one
+>   repainting and removing are building — on the map, saved with it, one
 >   undo step each. Which props stand open is play state in the save
 >   (`opened`), which undo leaves alone (R-140).
 > - **Its rules feed everything that asks.** A shut door or a bookcase stops
@@ -2269,8 +2277,9 @@ apps/host/src/
 >
 > - **Placed lights are props** (R-212), a group of their own: torch,
 >   lantern, candles, brazier, campfire. A torch hangs on the wall pointed at,
->   held by the block behind it; the rest stand. A light's finish is its
->   flame — fire, candle, cold blue, green — and its reach is its type's
+>   held by the block behind it; the rest stand. A light is painted where it
+>   holds its flame (D-352), and its flame is its own — fire, candle, cold
+>   blue, green — and its reach is its type's
 >   unless the GM sets its own (1 to 20), which is building, under undo.
 > - **A light is placed lit, and its other state is out**, as a door's is
 >   open: the save's `opened` is *which props are not as they were placed*.

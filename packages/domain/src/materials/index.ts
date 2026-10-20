@@ -213,6 +213,9 @@ export const DEFAULT_MATERIALS: readonly Material[] = [
     c('dark-rock', 'Dark rock', '#5f6672'),
     c('gold', 'Gold', '#b89a4e'),
     c('copper', 'Copper', '#a8714c'),
+    // The bars, gates and lanterns of a dungeon, now that a prop is painted
+    // with what a block is made of (D-352). Darker and bluer than dark rock.
+    c('iron', 'Iron', '#4b5058'),
   ], { pattern: 'plates', difficulty: 1.5 }),
 
   family('wood', 'Wood', [
@@ -387,4 +390,16 @@ export function difficultyOf(material: Material, cutId: string | null): Difficul
  */
 export function familyOf(swatch: SwatchId): Material | null {
   return materialById(DEFAULT_MATERIALS, materialIn(swatch));
+}
+
+/** A swatch's colour, or null when the registry has never heard of it. */
+export function swatchColour(swatch: SwatchId): string | null {
+  const family = familyOf(swatch);
+  return family ? colourOf(family, cutIdIn(swatch)) : null;
+}
+
+/** A swatch's name as it is said at the table — its cut's — or null when unknown. */
+export function swatchName(swatch: SwatchId): string | null {
+  const family = familyOf(swatch);
+  return family ? cutOf(family, cutIdIn(swatch)).name : null;
 }

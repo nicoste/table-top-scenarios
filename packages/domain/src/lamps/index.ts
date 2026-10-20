@@ -27,7 +27,7 @@
 import type { BlockCoord, EncounterMap } from '../map/index.js';
 import { blockKey, cleanReach, inMap, MAP_MAX_HEIGHT, MAP_MIN_DEPTH, MAX_LIGHT_REACH } from '../map/index.js';
 import type { Opened, Props } from '../props/index.js';
-import { FLAMES, NONE_OPEN, flameColour, isLit, propRules, propType, reachOf } from '../props/index.js';
+import { FLAMES, NONE_OPEN, flameColour, flameOf, isLit, propRules, propType, reachOf } from '../props/index.js';
 
 // -- carried lights ----------------------------------------------------------
 
@@ -130,7 +130,7 @@ export function propLights(props: Props, opened: Opened = NONE_OPEN): readonly L
   return props
     .filter((prop) => isLit(prop, opened))
     .map((prop) => ({
-      at: prop.at, colour: flameColour(prop.finish), reach: reachOf(prop)!, rise: propType(prop.type)!.light!.rise,
+      at: prop.at, colour: flameColour(flameOf(prop)!), reach: reachOf(prop)!, rise: propType(prop.type)!.light!.rise,
     }));
 }
 

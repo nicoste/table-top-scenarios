@@ -60,11 +60,11 @@ export {
 export type { Size, Turn, Heading } from './boxes/index.js';
 export { boxCubes, placeInBox, anchorOf, backOf, facingWithBack } from './boxes/index.js';
 export type {
-  Prop, Props, PropType, PropFinish, PropEffect, PropFooting, PropRules, PropStates, Opened,
+  Prop, Props, PropType, PropFlame, PropEffect, PropFooting, PropRules, PropStates, Opened,
 } from './props/index.js';
 export {
   PROP_TYPES, NO_PROPS, NONE_OPEN, FLAMES, propType, propBox, propCubes, propAt, propById, whyNotPut, putProp, editProp,
-  removeProp, propRules, statesOf, isLit, reachOf, flameColour, floorUnder,
+  removeProp, propRules, statesOf, isLit, reachOf, flameColour, floorUnder, paintOf, flameOf,
 } from './props/index.js';
 export type {
   CarriedLight, CarriedLightJSON, CarriedLights, LightSource, LampField, LightShadows,
@@ -83,7 +83,7 @@ export {
 export {
   DEFAULT_MATERIALS, DEFAULT_FLOOR, materialById, isKnownMaterial, requireMaterial,
   swatchOf, swatchFor, materialIn, cutIdIn, cutOf, colourOf, isKnownSwatch, difficultyOf,
-  familyOf,
+  familyOf, swatchColour, swatchName,
 } from './materials/index.js';
 export type { EncounterMap, BlockCoord, Brush, Expand, MapJSON, MapJSONIn } from './map/index.js';
 

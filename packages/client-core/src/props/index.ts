@@ -4,26 +4,31 @@
 //
 // A prop in hand is placed by a click, one per click — never dragged along a
 // line (D-322); with nothing in hand, a click on a prop selects it, to turn,
-// refinish, open or remove.
+// repaint, open or remove. The Paint tool paints a prop too, one per click,
+// whatever its brush (D-352).
 
 import type { Intent } from '@tt/protocol';
-import type { BlockCoord, Box, EncounterMap, Facing, Opened, PropFooting, PropType } from '@tt/domain';
-import { facingWithBack, propBox, propById, propType, statesOf, turned, whyNotPut } from '@tt/domain';
+import type { BlockCoord, Box, EncounterMap, Facing, Opened, PropFooting, PropType, SwatchId } from '@tt/domain';
+import {
+  facingWithBack, paintOf, propBox, propById, propType, statesOf, swatchName, turned, whyNotPut,
+} from '@tt/domain';
 import type { FacePick, PropGhostDrawn } from '@tt/render';
 
-/** The prop in hand: which catalogue entry, turned how, in which finish. */
+/** The prop in hand: which catalogue entry, turned how, painted with what, and a light's flame. */
 export interface PropHand {
   readonly type: string | null;
   readonly facing: Facing;
-  /** `null` for the entry's first finish. */
-  readonly finish: string | null;
+  /** Any block material (D-352); `null` for the entry's first. */
+  readonly paint: SwatchId | null;
+  /** A light's flame; `null` for the entry's first. */
+  readonly flame: string | null;
 }
 
-export const EMPTY_HAND: PropHand = { type: null, facing: 0, finish: null };
+export const EMPTY_HAND: PropHand = { type: null, facing: 0, paint: null, flame: null };
 
-/** Picks an entry from the catalogue — in its first finish — or puts it back if it was in hand. */
+/** Picks an entry from the catalogue — in its first paint and flame — or puts it back if it was in hand. */
 export function takeProp(hand: PropHand, type: string): PropHand {
-  return hand.type === type ? { ...hand, type: null } : { ...hand, type, finish: null };
+  return hand.type === type ? { ...hand, type: null } : { ...hand, type, paint: null, flame: null };
 }
 
 /** Z / X: a quarter turn anticlockwise or clockwise, seen from above (R-203). */
@@ -94,7 +99,7 @@ export function propPreview(
   const why = whyNotPut(map, candidate, standing);
   return {
     box: propBox(candidate),
-    ghost: { ...candidate, finish: hand.finish, refused: why !== null },
+    ghost: { ...candidate, paint: hand.paint, flame: hand.flame, refused: why !== null },
     why: why ? propWords(why) : null,
   };
 }
@@ -110,8 +115,38 @@ export function placePropIntent(
   if (!hand.type) return null;
   return {
     kind: 'placeProp', placeId, poiId, type: hand.type, at, facing: facingHere(hand, wall),
-    ...(hand.finish ? { finish: hand.finish } : {}),
+    ...(hand.paint ? { paint: hand.paint } : {}),
+    ...(hand.flame ? { flame: hand.flame } : {}),
   };
+}
+
+/**
+ * What a Paint click on a prop sends (D-352): that prop, and only that one,
+ * painted with the material in hand — whatever the brush, a fill included —
+ * or nothing when it is painted with it already.
+ */
+export function paintPropIntent(
+  map: EncounterMap,
+  id: string,
+  swatch: SwatchId,
+  placeId: string,
+  poiId: string,
+): Intent | null {
+  const prop = propById(map.props, id);
+  if (!prop || paintOf(prop) === swatch) return null;
+  return { kind: 'editProp', placeId, poiId, id: prop.id, paint: swatch };
+}
+
+/** What the readout says with Paint over a prop: what a click would make it, or that it is already. */
+export function paintPropPrompt(map: EncounterMap, id: string, swatch: SwatchId): string | null {
+  const prop = propById(map.props, id);
+  const type = prop ? propType(prop.type) : undefined;
+  if (!prop || !type) return null;
+  const name = swatchName(swatch) ?? 'that';
+  const the = `the ${type.name.toLowerCase()}`;
+  return paintOf(prop) === swatch
+    ? `${type.name}: already ${name}.`
+    : `Click to paint ${the} ${name}.`;
 }
 
 /**

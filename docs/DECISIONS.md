@@ -8995,3 +8995,56 @@ Checked on the test copy: the stairs' ghost turning with X, the bookcase's
 ghost and the bookcase put down three quarters deep, and Turdorn moved from
 the stairs onto its top.
 
+### D-352 — Props are painted with any material · `agreed`
+Asked for feedback first: *"what if we do each prop paintable? They have
+colors without the figures we use for the materials they say they are... each
+prop having internal 'this doesn't change with painting', like a door knob, or
+the chest lock, and also having internal color variations like the floor
+painting... I'm not saying 2 chest with the same painting will look different
+by this 'pseudo-random' technique, I'm referring to process of tinting
+different the same material."* Then: **any material**, **one prop at a time**,
+and *"I think we can disable fill functionality for props, fill should do just
+single paint."*
+
+So a prop's look is no longer a finish from a short list per type:
+
+- **Its paint is a block material** (`paint`, a swatch) — any the registry
+  has, glowing and glassy included, drawn in the cut's colour. The catalogue
+  still offers a few per type (`paints`, the first the one it is placed in):
+  oak, dark oak and birch for furniture; iron, dark rock and copper for bars
+  and gates; rock and dark rock for stairs and a campfire's ring.
+- **A light keeps its flame apart** (`flame`): the paint is what holds it —
+  a torch's bracket, a lantern's frame, a candle plate, a brazier's bowl, a
+  campfire's stones.
+- **Parts that take paint and parts that do not.** A door's knob and a
+  chest's lock stay brass, a barrel's hoops iron, a torch's handle and a
+  campfire's logs wood, a candle wax, embers embers. A painted part may be a
+  designed shade darker or lighter — a chest's rim, a table's legs, a stair's
+  tread edge.
+- **A few percent of shade per part** (7%), from which part of which type it
+  is — never from where it stands — so a chest is three shades of one oak and
+  two oak chests are alike. Worked out as a block's grain is (R-172).
+- **The Paint tool paints a prop with a click**, and only that prop: whatever
+  the brush, a fill included. A stroke dragged across the map paints blocks
+  and passes props by. Hovering says *"Click to paint the chest Clay"* or that
+  it is that already, and frames the prop. One undo each.
+- **The Props panel offers the catalogue's materials, and the Paint tool's
+  own beside them** — so any material is a chip away for the prop in hand
+  or the one selected — and a light's flames on a row of their own.
+
+**Chosen here, to be argued with:**
+
+- **Iron is a new cut of Mineral**, beside gold and copper (D-245 put metals
+  there), darker and bluer than dark rock — the bars, gates and lanterns of a
+  dungeon had nothing to be painted with. It is a block material too.
+- **Saved props keep their look**: a `finish` written before is read as the
+  nearest material (wood → oak, dark wood → dark oak, pale wood → birch,
+  iron → iron, rusted → copper, stone → grey rock), and a light's as its
+  flame. A map is written the new way the next time it is saved.
+- **No figures on props yet** — the wood's stripes, the brick's courses. The
+  next step if wanted, on the large parts only.
+
+Checked on the test copy: the old props read in their nearest materials; the
+barrel painted Clay with a Paint click, its hoops still iron; the brazier made
+copper from the panel and lit.
+

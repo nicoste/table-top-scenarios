@@ -9,24 +9,35 @@
 // walking. Picked by an invisible box the size of its cubes, which does not
 // turn, as a token's volume does not (R-36a).
 //
-// A light (D-335) is drawn in fixed iron, wood and stone, and its finish is
-// its flame: a blocky flame in that colour, unlit by anything — it is the
-// light — and gone when the light is out. What it lights is `lamplight`'s.
+// **Painted with any block material** (D-352): the parts that take paint are
+// in the prop's paint — some a designed shade darker or lighter, and each a
+// few percent off it by which part it is, so a chest is not one flat colour
+// and two chests painted alike look alike. The parts that do not — a door's
+// knob, a chest's lock, a barrel's hoops, wax, embers — keep their own.
+//
+// A light (D-335) is painted on what holds the flame, and its flame is its
+// own: a blocky flame in that colour, unlit by anything — it is the light —
+// and gone when the light is out. What it lights is `lamplight`'s.
 
 import {
   BoxGeometry, Color, CylinderGeometry, Group, Mesh, MeshBasicMaterial, MeshStandardMaterial,
 } from 'three';
 import { Float32BufferAttribute } from 'three';
 import type { BufferGeometry, Material } from 'three';
-import type { BlockCoord, Facing, Opened, Prop } from '@tt/domain';
-import { propBox, propType, turnedSize } from '@tt/domain';
+import type { BlockCoord, Facing, Opened, Prop, SwatchId } from '@tt/domain';
+import { flameColour, flameOf, paintOf, propBox, propType, swatchColour, turnedSize } from '@tt/domain';
+import { grainAt } from '../grain/index.js';
 
 /**
- * What a part is coloured: its finish (`base`), darker or lighter; or, for a
- * light, a fixed material, and its flame — `flame` in the finish's colour and
- * `core`, nearer white — which no light falls on, because it is the light.
+ * What a part is coloured: its paint (`base`), darker or lighter (D-352); a
+ * fixed material that no paint changes; or, for a light, its flame — `flame`
+ * in the flame's colour and `core`, nearer white — which no light falls on,
+ * because it is the light.
  */
-type Tone = 'base' | 'dark' | 'light' | 'brass' | 'iron' | 'wood' | 'stone' | 'wax' | 'ember' | 'ash' | 'flame' | 'core';
+type Tone = 'base' | 'dark' | 'light' | 'brass' | 'iron' | 'wood' | 'wax' | 'ember' | 'ash' | 'flame' | 'core';
+
+/** The tones the paint gives. */
+const PAINTED: ReadonlySet<Tone> = new Set(['base', 'dark', 'light']);
 
 /** The tones that are the light itself: drawn flat, and casting no shadow. */
 const BURNING: ReadonlySet<Tone> = new Set(['flame', 'core']);
@@ -133,7 +144,8 @@ function partsOf(type: string, open: boolean): readonly Part[] {
     case 'barrel':
       return [
         { size: [0.76, 1, 0.76], at: [0.5, 0.5, 0.5], round: true },
-        ...[0.16, 0.84].map((y) => ({ size: [0.79, 0.06, 0.79] as const, at: [0.5, y, 0.5] as const, tone: 'dark' as const, round: true })),
+        // Iron hoops, whatever it is painted (D-352).
+        ...[0.16, 0.84].map((y) => ({ size: [0.79, 0.06, 0.79] as const, at: [0.5, y, 0.5] as const, tone: 'iron' as const, round: true })),
       ];
     case 'crate':
       return [
@@ -156,26 +168,26 @@ function partsOf(type: string, open: boolean): readonly Part[] {
     case 'torch':
       // Hung on the wall behind it, which is toward −z unturned.
       return burning([
-        { size: [0.16, 0.24, 0.04], at: [0.5, 0.5, 0.02], tone: 'iron' },
-        { size: [0.05, 0.05, 0.2], at: [0.5, 0.46, 0.12], tone: 'iron' },
-        { size: [0.13, 0.06, 0.13], at: [0.5, 0.5, 0.24], tone: 'iron' },
+        { size: [0.16, 0.24, 0.04], at: [0.5, 0.5, 0.02] },
+        { size: [0.05, 0.05, 0.2], at: [0.5, 0.46, 0.12] },
+        { size: [0.13, 0.06, 0.13], at: [0.5, 0.5, 0.24] },
         { size: [0.07, 0.34, 0.07], at: [0.5, 0.64, 0.24], tone: 'wood' },
       ], fire(0.5, 0.8, 0.24, 0.12), !open);
     case 'lantern':
       return burning([
-        { size: [0.34, 0.05, 0.34], at: [0.5, 0.025, 0.5], tone: 'iron' },
+        { size: [0.34, 0.05, 0.34], at: [0.5, 0.025, 0.5] },
         ...[[0.35, 0.35], [0.65, 0.35], [0.35, 0.65], [0.65, 0.65]].map(([x, z]) => ({
-          size: [0.035, 0.3, 0.035] as const, at: [x!, 0.2, z!] as const, tone: 'iron' as const,
+          size: [0.035, 0.3, 0.035] as const, at: [x!, 0.2, z!] as const, tone: 'dark' as const,
         })),
-        { size: [0.36, 0.05, 0.36], at: [0.5, 0.375, 0.5], tone: 'iron' },
-        { size: [0.2, 0.06, 0.2], at: [0.5, 0.43, 0.5], tone: 'iron' },
-        { size: [0.04, 0.1, 0.04], at: [0.5, 0.51, 0.5], tone: 'iron' },
+        { size: [0.36, 0.05, 0.36], at: [0.5, 0.375, 0.5] },
+        { size: [0.2, 0.06, 0.2], at: [0.5, 0.43, 0.5] },
+        { size: [0.04, 0.1, 0.04], at: [0.5, 0.51, 0.5], tone: 'dark' },
       ], fire(0.5, 0.06, 0.5, 0.17), !open);
     case 'candles': {
       // Three, each its own height: across, how tall, and how deep.
       const sticks = [[0.42, 0.24, 0.44], [0.58, 0.18, 0.42], [0.5, 0.13, 0.6]] as const;
       return burning([
-        { size: [0.42, 0.04, 0.42], at: [0.5, 0.02, 0.5], tone: 'brass', round: true },
+        { size: [0.42, 0.04, 0.42], at: [0.5, 0.02, 0.5], round: true },
         ...sticks.map(([x, tall, z]) => ({
           size: [0.07, tall, 0.07] as const, at: [x, 0.04 + tall / 2, z] as const, tone: 'wax' as const,
         })),
@@ -184,9 +196,9 @@ function partsOf(type: string, open: boolean): readonly Part[] {
     case 'brazier':
       return burning([
         ...[[0.28, 0.28], [0.72, 0.28], [0.28, 0.72], [0.72, 0.72]].map(([x, z]) => ({
-          size: [0.06, 0.5, 0.06] as const, at: [x!, 0.25, z!] as const, tone: 'iron' as const,
+          size: [0.06, 0.5, 0.06] as const, at: [x!, 0.25, z!] as const, tone: 'dark' as const,
         })),
-        { size: [0.74, 0.16, 0.74], at: [0.5, 0.56, 0.5], tone: 'iron', round: true },
+        { size: [0.74, 0.16, 0.74], at: [0.5, 0.56, 0.5], round: true },
         { size: [0.62, 0.04, 0.62], at: [0.5, 0.65, 0.5], tone: 'ember', round: true },
       ], [...fire(0.5, 0.66, 0.5, 0.26), ...fire(0.36, 0.66, 0.6, 0.13), ...fire(0.64, 0.66, 0.4, 0.12)], !open);
     case 'campfire':
@@ -196,7 +208,6 @@ function partsOf(type: string, open: boolean): readonly Part[] {
           return {
             size: [0.16, 0.1, 0.16] as const,
             at: [0.5 + Math.cos(turn) * 0.36, 0.05, 0.5 + Math.sin(turn) * 0.36] as const,
-            tone: 'stone' as const,
           };
         }),
         { size: [0.4, 0.03, 0.4], at: [0.5, 0.015, 0.5], tone: 'ember', round: true },
@@ -218,9 +229,9 @@ export interface PropMeshes {
 }
 
 const BRASS = '#c9a24f';
-/** A light's own materials (D-335): what holds the flame is not in the flame's colour. */
+/** What no paint changes (D-352): a lock's brass, a barrel's hoops, a torch's handle, wax, embers. */
 const FIXED = {
-  iron: '#3b3f45', wood: '#5b3b24', stone: '#7a776f', wax: '#efe5cc', ember: '#8a2c10', ash: '#3d3936',
+  iron: '#3b3f45', wood: '#5b3b24', wax: '#efe5cc', ember: '#8a2c10', ash: '#3d3936',
 } as const;
 /**
  * Out of sight, a prop is greyed as an explored block is (R-45, D-332): most
@@ -241,18 +252,45 @@ function greyed(colour: string): string {
   ).getHexString()}`;
 }
 
-/** The colour of each tone of a finish, worked out once a colour. */
-function tonesOf(colour: string): Record<NonNullable<Part['tone']>, string> {
-  const base = new Color(colour);
+/** The colour of each tone, from a paint and — for a light — a flame. */
+function tonesOf(paint: string, flame: string): Record<Tone, string> {
+  const base = new Color(paint);
   return {
-    base: colour,
+    base: paint,
     dark: `#${base.clone().multiplyScalar(0.62).getHexString()}`,
     light: `#${base.clone().lerp(new Color('#ffffff'), 0.25).getHexString()}`,
     brass: BRASS,
     ...FIXED,
-    flame: colour,
-    core: `#${base.clone().lerp(new Color('#fff3c4'), 0.45).getHexString()}`,
+    flame,
+    core: `#${new Color(flame).lerp(new Color('#fff3c4'), 0.45).getHexString()}`,
   };
+}
+
+/**
+ * How far a painted part's shade wanders from its paint's (D-352): a few
+ * percent, so the lid, the body and the bands of a chest are three shades of
+ * one oak rather than one flat colour.
+ */
+const DRIFT = 0.07;
+
+/** A number for a type, so its parts wander differently from another type's. */
+const seedOf = (type: string) => [...type].reduce((sum, char) => (sum * 31 + char.charCodeAt(0)) | 0, 7);
+
+/**
+ * The colour of a part: its tone's, and for a painted one, nudged by which
+ * part of which type it is — never by where the prop stands, so two chests
+ * in the same paint look the same (D-352). Deterministic, as a block's grain
+ * is (R-172).
+ */
+function partColour(tones: Record<Tone, string>, tone: Tone, part: number, seed: number): string {
+  if (!PAINTED.has(tone)) return tones[tone];
+  return `#${new Color(tones[tone]).multiplyScalar(1 + DRIFT * grainAt(part, seed, 3)).getHexString()}`;
+}
+
+/** The look of a prop as drawn: its paint's colour, and a light's flame's. */
+function lookOf(prop: { readonly type: string; readonly paint?: SwatchId; readonly flame?: string }): Record<Tone, string> {
+  const flame = flameOf(prop);
+  return tonesOf(swatchColour(paintOf(prop)) ?? '#9aa3ad', flame ? flameColour(flame) : '#ff9440');
 }
 
 /** A part's shape: a box, or a cylinder for what is round. */
@@ -308,30 +346,29 @@ export function buildProps(
   for (const prop of props) {
     const type = propType(prop.type);
     const size = type?.size ?? { x: 1, y: 1, z: 1 };
-    const finish = type?.finishes.find((one) => one.id === prop.finish) ?? type?.finishes[0];
-    const lit = tonesOf(finish?.colour ?? '#9aa3ad');
-    const tones = !inSight || inSight(prop)
-      ? lit
-      : Object.fromEntries(Object.entries(lit).map(([tone, colour]) => [tone, greyed(colour)])) as typeof lit;
+    const tones = lookOf(prop);
+    const seen = !inSight || inSight(prop);
+    const seed = seedOf(prop.type);
     const box = propBox(prop);
     const turned = turnedSize(size, prop.facing);
 
     // Turned about the middle of its box, built from its unturned corner.
     const { holder, inner } = holderFor(prop);
 
-    for (const part of partsOf(prop.type, !!type?.opens && opened.has(prop.id))) {
+    partsOf(prop.type, !!type?.opens && opened.has(prop.id)).forEach((part, i) => {
       const geometry = shapeOf(part);
       geometries.push(geometry);
       const tone = part.tone ?? 'base';
       const flat = BURNING.has(tone);
-      const mesh = new Mesh(geometry, material(tones[tone], flat));
+      const colour = partColour(tones, tone, i, seed);
+      const mesh = new Mesh(geometry, material(seen ? colour : greyed(colour), flat));
       mesh.position.set(part.at[0], part.at[1], part.at[2]);
       mesh.castShadow = !flat;
       mesh.receiveShadow = !flat;
       // Drawn, never picked: the proxy answers for the whole prop.
       mesh.raycast = () => {};
       inner.add(mesh);
-    }
+    });
     group.add(holder);
 
     const volume = new BoxGeometry(turned.x, turned.y, turned.z);
@@ -363,7 +400,10 @@ export interface PropGhostDrawn {
   readonly type: string;
   readonly at: BlockCoord;
   readonly facing: Facing;
-  readonly finish: string | null;
+  /** What it will be painted with (D-352); its type's first when null. */
+  readonly paint: SwatchId | null;
+  /** A light's flame; its type's first when null. */
+  readonly flame: string | null;
   /** It cannot go there: drawn red. */
   readonly refused: boolean;
 }
@@ -422,22 +462,24 @@ export function buildPropGhost(): PropGhost {
       drop();
       const type = ghost ? propType(ghost.type) : undefined;
       if (!ghost || !type) return null;
-      const finish = type.finishes.find((one) => one.id === ghost.finish) ?? type.finishes[0];
-      const tones = tonesOf(finish?.colour ?? '#9aa3ad');
+      const tones = lookOf({
+        type: ghost.type, ...(ghost.paint ? { paint: ghost.paint } : {}), ...(ghost.flame ? { flame: ghost.flame } : {}),
+      });
+      const seed = seedOf(ghost.type);
       const { holder, inner } = holderFor(ghost);
       const geometries: BufferGeometry[] = [];
       // Shut and lit: as it is put down.
-      for (const part of partsOf(ghost.type, false)) {
+      partsOf(ghost.type, false).forEach((part, i) => {
         const geometry = shapeOf(part);
         shadeFaces(geometry, holder.rotation.y);
         geometries.push(geometry);
-        const mesh = new Mesh(geometry, material(ghost.refused ? REFUSED : tones[part.tone ?? 'base']));
+        const mesh = new Mesh(geometry, material(ghost.refused ? REFUSED : partColour(tones, part.tone ?? 'base', i, seed)));
         mesh.position.set(part.at[0], part.at[1], part.at[2]);
         mesh.raycast = () => {};
         // Over the body's own cubes, under the outline that frames it.
         mesh.renderOrder = 10;
         inner.add(mesh);
-      }
+      });
       const group = new Group();
       group.add(holder);
       current = { group, geometries };

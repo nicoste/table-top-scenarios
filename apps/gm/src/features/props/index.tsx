@@ -1,16 +1,20 @@
 // The Props catalogue (D-322, D-328): doors and bars, then furniture, then
 // lights (D-335). Shown with the Props tool in hand — pick an entry and click
 // where it stands, one per click; or, with nothing in hand, click a prop on
-// the map to turn it, refinish it, open it, set how far a light reaches, or
+// the map to turn it, repaint it, open it, set how far a light reaches, or
 // take it away.
 //
-// Placing, turning, refinishing, a light's reach and removing are building,
+// A prop is painted with any block material (D-352): the catalogue offers a
+// few, and the material in the Paint tool is offered beside them — or the
+// Paint tool paints a prop with a click.
+//
+// Placing, turning, repainting, a light's reach and removing are building,
 // under undo, as a block is. Opening a door and lighting a light are play —
 // the GM's, and in play it is a Move click.
 
 import type { Intent } from '@tt/protocol';
-import type { Opened, Prop, PropType } from '@tt/domain';
-import { PROP_TYPES, propType, reachOf, statesOf, turned } from '@tt/domain';
+import type { Opened, Prop, PropFlame, PropType, SwatchId } from '@tt/domain';
+import { PROP_TYPES, flameOf, paintOf, propType, reachOf, statesOf, swatchColour, swatchName, turned } from '@tt/domain';
 import type { PropHand } from '@tt/client-core';
 import { takeProp, turnHand } from '@tt/client-core';
 import { DraftInput, Tooltip } from '@tt/ui';
@@ -25,6 +29,8 @@ interface Props {
   opened: Opened;
   placeId: string;
   poiId: string;
+  /** The material in the Paint tool, offered beside the catalogue's (D-352). */
+  swatch: SwatchId;
   dispatch: (intent: Intent) => void;
 }
 
@@ -52,27 +58,53 @@ function aboutOf(type: PropType): string {
   return `${type.size.x} × ${type.size.y} — ${rulesOf(type)}`;
 }
 
-/** A row of finish chips: the colour is the whole of a finish. */
-function Finishes({ type, chosen, onPick }: { type: PropType; chosen: string; onPick: (id: string) => void }) {
+/** One chip in a row: a colour, named on hover. */
+function Chip({ name, colour, on, onPick }: { name: string; colour: string; on: boolean; onPick: () => void }) {
+  return (
+    <Tooltip label={name} placement="bottom">
+      <button className={`chip-button${on ? ' on' : ''}`} aria-label={name} aria-pressed={on} onClick={onPick}>
+        <span className="chip" style={{ background: colour }} />
+      </button>
+    </Tooltip>
+  );
+}
+
+/**
+ * What a prop may be painted with, offered (D-352): the catalogue's picks,
+ * then the Paint tool's material when it is not one of them — and the one it
+ * is painted with already, when that is neither.
+ */
+function Paints({ type, chosen, swatch, onPick }: {
+  type: PropType; chosen: SwatchId; swatch: SwatchId; onPick: (paint: SwatchId) => void;
+}) {
+  const offered = [...new Set([...type.paints, swatch, chosen])];
   return (
     <div className="prop-finishes">
-      {type.finishes.map((finish) => (
-        <Tooltip key={finish.id} label={finish.name} placement="bottom">
-          <button
-            className={`chip-button${finish.id === chosen ? ' on' : ''}`}
-            aria-label={finish.name}
-            aria-pressed={finish.id === chosen}
-            onClick={() => onPick(finish.id)}
-          >
-            <span className="chip" style={{ background: finish.colour }} />
-          </button>
-        </Tooltip>
+      {offered.map((paint) => (
+        <Chip
+          key={paint}
+          name={`${swatchName(paint) ?? paint}${type.paints.includes(paint) ? '' : paint === swatch ? ' — from Paint' : ''}`}
+          colour={swatchColour(paint) ?? '#9aa3ad'}
+          on={paint === chosen}
+          onPick={() => onPick(paint)}
+        />
       ))}
     </div>
   );
 }
 
-export function PropsPanel({ hand, onHand, selected, onSelect, opened, placeId, poiId, dispatch }: Props) {
+/** A light's flames (D-335): the colour of what it gives. */
+function Flames({ flames, chosen, onPick }: { flames: readonly PropFlame[]; chosen: string; onPick: (id: string) => void }) {
+  return (
+    <div className="prop-finishes">
+      {flames.map((flame) => (
+        <Chip key={flame.id} name={flame.name} colour={flame.colour} on={flame.id === chosen} onPick={() => onPick(flame.id)} />
+      ))}
+    </div>
+  );
+}
+
+export function PropsPanel({ hand, onHand, selected, onSelect, opened, placeId, poiId, swatch, dispatch }: Props) {
   const inHand = hand.type ? propType(hand.type) : null;
   const where = { placeId, poiId };
   const selectedType = selected ? propType(selected.type) : null;
@@ -119,11 +151,23 @@ export function PropsPanel({ hand, onHand, selected, onSelect, opened, placeId, 
               </button>
             </Tooltip>
           </div>
-          <Finishes
+          <p className="lbl" style={{ margin: '8px 0 4px' }}>Paint</p>
+          <Paints
             type={selectedType}
-            chosen={selected.finish}
-            onPick={(finish) => dispatch({ kind: 'editProp', ...where, id: selected.id, finish })}
+            chosen={paintOf(selected)}
+            swatch={swatch}
+            onPick={(paint) => dispatch({ kind: 'editProp', ...where, id: selected.id, paint })}
           />
+          {selectedType.flames && (
+            <>
+              <p className="lbl" style={{ margin: '8px 0 4px' }}>Flame</p>
+              <Flames
+                flames={selectedType.flames}
+                chosen={flameOf(selected)!}
+                onPick={(flame) => dispatch({ kind: 'editProp', ...where, id: selected.id, flame })}
+              />
+            </>
+          )}
           {selectedType.light && (
             <Tooltip label="How far its light reaches, in cubes" placement="left">
               <span className="stage-sight prop-reach">
@@ -139,7 +183,10 @@ export function PropsPanel({ hand, onHand, selected, onSelect, opened, placeId, 
               </span>
             </Tooltip>
           )}
-          <p className="hint">{rulesOf(selectedType)}. Backspace removes it; Escape lets go of it.</p>
+          <p className="hint">
+            {rulesOf(selectedType)}. Any material: pick it in <b>Paint</b> and click the prop.
+            Backspace removes it; Escape lets go of it.
+          </p>
         </div>
       )}
 
@@ -165,13 +212,23 @@ export function PropsPanel({ hand, onHand, selected, onSelect, opened, placeId, 
       {inHand ? (
         <>
           <p className="lbl" style={{ margin: '8px 0 4px' }}>
-            {inHand.name}: {inHand.light ? 'flame' : 'finish'}{inHand.hangs ? '' : ' and turn'}
+            {inHand.name}: paint{inHand.flames ? ', flame' : ''}{inHand.hangs ? '' : ' and turn'}
           </p>
-          <Finishes
+          <Paints
             type={inHand}
-            chosen={hand.finish ?? inHand.finishes[0]!.id}
-            onPick={(finish) => onHand({ ...hand, finish })}
+            chosen={hand.paint ?? inHand.paints[0]!}
+            swatch={swatch}
+            onPick={(paint) => onHand({ ...hand, paint })}
           />
+          {inHand.flames && (
+            <div style={{ marginTop: 6 }}>
+              <Flames
+                flames={inHand.flames}
+                chosen={hand.flame ?? inHand.flames[0]!.id}
+                onPick={(flame) => onHand({ ...hand, flame })}
+              />
+            </div>
+          )}
           {/* One that hangs turns to the wall pointed at (D-335). */}
           {!inHand.hangs && (
             <div className="btn-grid tools" style={{ marginTop: 6 }}>

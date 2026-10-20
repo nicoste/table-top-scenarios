@@ -44,19 +44,28 @@ export interface Prefab {
   readonly blocks: ReadonlyMap<string, SwatchId>;
   /**
    * The props it holds (D-322): each wholly inside the box when it was
-   * captured, at its place **in the box**, with its facing and finish. Placed
+   * captured, at its place **in the box**, with its facing, paint and flame. Placed
    * with the blocks, turned and mirrored with them, as new props.
    */
   readonly props: readonly PrefabProp[];
 }
 
-/** A prop inside a prefab: its type, the cube it stands at in the box, its facing and finish. */
+/** A prop inside a prefab: its type, the cube it stands at in the box, its facing, paint and flame. */
 export interface PrefabProp {
   readonly type: string;
   readonly at: BlockCoord;
   readonly facing: Facing;
-  readonly finish: string;
+  /** What it is painted with (D-352). */
+  readonly paint?: SwatchId;
+  /** A light's flame (D-335). */
+  readonly flame?: string;
 }
+
+/** A prop's paint and flame, carried as they are: absent stays absent. */
+const lookOf = (prop: { readonly paint?: SwatchId; readonly flame?: string }) => ({
+  ...(prop.paint !== undefined ? { paint: prop.paint } : {}),
+  ...(prop.flame !== undefined ? { flame: prop.flame } : {}),
+});
 
 /** In the order they were saved; screens sort for themselves. */
 export type Prefabs = readonly Prefab[];
@@ -117,7 +126,7 @@ export function capturePrefab(
       type: prop.type,
       at: { x: prop.at.x - box.min.x, y: prop.at.y - box.min.y, z: prop.at.z - box.min.z },
       facing: prop.facing,
-      finish: prop.finish,
+      ...lookOf(prop),
     }));
   if (blocks.size === 0 && props.length === 0) return 'nothing is built in that box';
   return {
@@ -151,7 +160,7 @@ export function placedProps(prefab: Prefab, at: BlockCoord, how: PrefabTurn): re
     const mirrored = how.mirrored ? asFacing(4 - prop.facing) : prop.facing;
     const facing = turned(mirrored, how.facing);
     const size = propType(prop.type)?.size ?? { x: 1, y: 1, z: 1 };
-    return { type: prop.type, at: anchorOf(box, size, facing), facing, finish: prop.finish };
+    return { type: prop.type, at: anchorOf(box, size, facing), facing, ...lookOf(prop) };
   });
 }
 
@@ -275,7 +284,7 @@ export interface PrefabJSON {
   palette: string[];
   runs: number[];
   /** Its props (D-322), at their places in the box. Absent before there were props: none. */
-  props?: { type: string; at: { x: number; y: number; z: number }; facing: number; finish: string }[];
+  props?: { type: string; at: { x: number; y: number; z: number }; facing: number; paint?: string; flame?: string }[];
 }
 
 export function prefabToJSON(prefab: Prefab): PrefabJSON {
@@ -311,7 +320,9 @@ export function prefabToJSON(prefab: Prefab): PrefabJSON {
     runs,
     ...(prefab.props.length > 0 ? {
       props: prefab.props.map((prop) => ({
-        type: prop.type, at: { x: prop.at.x, y: prop.at.y, z: prop.at.z }, facing: prop.facing, finish: prop.finish,
+        type: prop.type, at: { x: prop.at.x, y: prop.at.y, z: prop.at.z }, facing: prop.facing,
+        ...(prop.paint !== undefined ? { paint: prop.paint as string } : {}),
+        ...(prop.flame !== undefined ? { flame: prop.flame } : {}),
       })),
     } : {}),
   };
@@ -360,7 +371,7 @@ export function prefabFromJSON(json: unknown): Prefab | null {
   // standing outside the box could not have been captured, so it goes too.
   const props = propsOfJSON((raw.props as unknown[] | undefined)?.map((prop, i) => ({ ...(prop as object), id: `p${i}` })))
     .filter((prop) => prop.at.x >= 0 && prop.at.y >= 0 && prop.at.z >= 0 && prop.at.x < box.x && prop.at.y < box.y && prop.at.z < box.z)
-    .map((prop) => ({ type: prop.type, at: prop.at, facing: prop.facing, finish: prop.finish }));
+    .map((prop) => ({ type: prop.type, at: prop.at, facing: prop.facing, ...lookOf(prop) }));
   if (cursor !== volumeOf(box) || (blocks.size === 0 && props.length === 0)) return null;
   return {
     id: raw.id as PrefabId,

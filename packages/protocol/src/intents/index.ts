@@ -251,13 +251,18 @@ export const IntentSchema = z.discriminatedUnion('kind', [
     type: z.string().min(1).max(40),
     at: CubeWireSchema,
     facing: z.number().int().min(0).max(3),
-    finish: z.string().max(40).optional(),
+    /** Any block material (D-352); the catalogue's first when absent. */
+    paint: z.string().min(1).max(80).optional(),
+    /** A light's flame (D-335). */
+    flame: z.string().max(40).optional(),
   }),
   z.object({
     kind: z.literal('editProp'),
     placeId: z.string().min(1), poiId: z.string().min(1), id: z.string().min(1),
     facing: z.number().int().min(0).max(3).optional(),
-    finish: z.string().max(40).optional(),
+    /** Repainted with any block material (D-352): one prop, one click, one undo. */
+    paint: z.string().min(1).max(80).optional(),
+    flame: z.string().max(40).optional(),
     /** A light's reach (D-335); one equal to its type's own clears its own. */
     reach: reach.optional(),
   }),

@@ -168,7 +168,7 @@ describe('props in a prefab (D-322)', () => {
   const captured = () => capturePrefab(doorway(), cube(4, 1, 3), cube(4, 3, 5), { name: 'Doorway' }) as Prefab;
 
   it('takes the props wholly inside the box, at their places in it, and leaves one the box cuts through', () => {
-    expect(captured().props).toEqual([{ type: 'door', at: cube(0, 0, 1), facing: 1, finish: 'wood' }]);
+    expect(captured().props).toEqual([{ type: 'door', at: cube(0, 0, 1), facing: 1, paint: 'material:wood' }]);
     const half = capturePrefab(doorway(), cube(4, 1, 3), cube(4, 1, 5)) as Prefab;
     expect(half.props).toEqual([]);
   });

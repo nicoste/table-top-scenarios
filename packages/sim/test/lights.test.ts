@@ -59,7 +59,7 @@ describe('placed lights (D-335)', () => {
     expect(run(t.state, place(t, 'torch', cube(4, 1, 4))).rejected).toBe('there is no wall behind it to hang on');
     // Against the wall at x = 8, its back toward +x: facing 1.
     const state = run(t.state, place(t, 'torch', cube(7, 2, 4), 1)).state;
-    expect(mapOf(state).props[0]).toMatchObject({ type: 'torch', facing: 1, finish: 'fire' });
+    expect(mapOf(state).props[0]).toMatchObject({ type: 'torch', facing: 1, paint: 'material:mineral/iron', flame: 'fire' });
   });
 
   it('reach as far as the GM sets, as building — one undo step', () => {

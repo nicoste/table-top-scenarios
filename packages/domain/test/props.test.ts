@@ -8,7 +8,8 @@ import {
   createMap, setBlocks, blockKey, DEFAULT_FLOOR, PROP_TYPES, propType, propBox, propAt, whyNotPut, putProp,
   editProp, removeProp, propRules, NONE_OPEN, whyNotStand, walkAcross, partySight, mapToJSON, mapFromJSON,
   sliceOf, seenPart, propsSeen, sightShows, shownBy, createCampaign, createLiveSave, openedIn, withOpen, tidyOpened,
-  statesOf, isLit, reachOf, backOf, facingWithBack, MAX_LIGHT_REACH, floorUnder, dropBelow, whyNotPlace,
+  statesOf, isLit, reachOf, backOf, facingWithBack, MAX_LIGHT_REACH, floorUnder, dropBelow, whyNotPlace, paintOf, flameOf,
+  isKnownSwatch, prefabFromJSON, prefabToJSON,
   NO_SILVER, NO_TOKENS,
 } from '@tt/domain';
 
@@ -53,15 +54,17 @@ describe('the catalogue (D-328)', () => {
 });
 
 describe('putting one down', () => {
-  it('stands in air on a block, its finish the first unless one it has is asked for', () => {
+  it('stands in air on a block, painted with its first material unless another is asked for (D-352)', () => {
     const map = door(withDoorway());
     expect(map.props).toHaveLength(1);
-    expect(map.props[0]).toMatchObject({ type: 'door', facing: 1, finish: 'wood' });
+    expect(map.props[0]).toMatchObject({ type: 'door', facing: 1, paint: 'material:wood' });
+    expect(map.props[0]!.flame).toBeUndefined();
     expect(propAt(map.props, cube(5, 2, 7))?.type).toBe('door');
-    const iron = putProp(withDoorway(), { type: 'door', at: cube(5, 1, 7), facing: 1, finish: 'iron' });
-    expect(iron.props[0]!.finish).toBe('iron');
-    const odd = putProp(withDoorway(), { type: 'door', at: cube(5, 1, 7), facing: 1, finish: 'gold' });
-    expect(odd.props[0]!.finish).toBe('wood');
+    // Any material — brick, not one the catalogue offers a door in.
+    const brick = putProp(withDoorway(), { type: 'door', at: cube(5, 1, 7), facing: 1, paint: 'material:brick/limestone' });
+    expect(paintOf(brick.props[0]!)).toBe('material:brick/limestone');
+    const odd = putProp(withDoorway(), { type: 'door', at: cube(5, 1, 7), facing: 1, paint: 'material:gold' });
+    expect(odd.props[0]!.paint).toBe('material:wood');
   });
 
   it('says why not: outside, a block, something there, nothing under it', () => {
@@ -78,13 +81,15 @@ describe('putting one down', () => {
     expect(map.props).toHaveLength(2);
   });
 
-  it('turns where it stands only if the turn fits, refinishes, and comes away', () => {
+  it('turns where it stands only if the turn fits, repaints, and comes away', () => {
     let map = putProp(createMap(), { type: 'portcullis', at: cube(3, 1, 3), facing: 0 });
     const id = map.props[0]!.id;
+    expect(map.props[0]!.paint).toBe('material:mineral/iron');
     const walled = setBlocks(map, [cube(3, 1, 2)], STONE);
     expect(editProp(walled, id, { facing: 1 })).toBe(walled);
-    map = editProp(map, id, { facing: 1, finish: 'rusted' });
-    expect(map.props[0]).toMatchObject({ facing: 1, finish: 'rusted' });
+    map = editProp(map, id, { facing: 1, paint: 'material:mineral/copper' });
+    expect(map.props[0]).toMatchObject({ facing: 1, paint: 'material:mineral/copper' });
+    expect(editProp(map, id, { paint: 'material:nothing' })).toBe(map);
     expect(editProp(map, id, { facing: 1 })).toBe(map);
     expect(removeProp(map, id).props).toEqual([]);
   });
@@ -301,6 +306,64 @@ describe('furniture a whole cube tall (D-351)', () => {
     const walk = walkAcross(map, cube(2, 1, 3), cube(6, 4, 3));
     expect(walk?.cubes).toContainEqual(cube(4, 2, 3));
     expect(walk?.cubes).toContainEqual(cube(5, 3, 3));
+  });
+});
+
+describe('paint (D-352)', () => {
+  it('every type offers materials the registry knows, and a light its flames', () => {
+    for (const type of PROP_TYPES) {
+      expect(type.paints.length, type.id).toBeGreaterThan(0);
+      for (const paint of type.paints) expect(isKnownSwatch(paint), `${type.id}: ${paint}`).toBe(true);
+      expect(!!type.flames, type.id).toBe(!!type.light);
+    }
+  });
+
+  it('a light is painted where it holds its flame, and keeps its flame apart', () => {
+    let map = putProp(createMap(), { type: 'candles', at: cube(3, 1, 3), facing: 0 });
+    expect(map.props[0]).toMatchObject({ paint: 'material:mineral/gold', flame: 'candle' });
+    const id = map.props[0]!.id;
+    map = editProp(map, id, { paint: 'material:mineral/iron', flame: 'cold' });
+    expect(map.props[0]).toMatchObject({ paint: 'material:mineral/iron', flame: 'cold' });
+    // A flame it does not have is not taken.
+    expect(editProp(map, id, { flame: 'purple' })).toBe(map);
+    expect(flameOf(map.props[0]!)).toBe('cold');
+    expect(flameOf({ type: 'table' })).toBeNull();
+  });
+
+  it('round-trips with the map, and a map from before paint keeps its look', () => {
+    const map = door(withDoorway());
+    const painted = editProp(map, doorId(map), { paint: 'material:brick' });
+    expect(mapFromJSON(mapToJSON(painted))!.props[0]!.paint).toBe('material:brick');
+    // Written with a finish: wood is oak, iron is iron, a flame is a flame.
+    const old = mapToJSON(painted);
+    const props = [
+      { id: 'prop_a', type: 'door', at: { x: 5, y: 1, z: 7 }, facing: 1, finish: 'dark-wood' },
+      { id: 'prop_b', type: 'bars', at: { x: 2, y: 1, z: 2 }, facing: 0, finish: 'iron' },
+      { id: 'prop_c', type: 'torch', at: { x: 4, y: 2, z: 3 }, facing: 1, finish: 'green' },
+      { id: 'prop_d', type: 'chest', at: { x: 3, y: 1, z: 3 }, facing: 0, finish: 'plaid' },
+    ];
+    const read = mapFromJSON({ ...old, props })!.props;
+    expect(read.map((prop) => paintOf(prop))).toEqual([
+      'material:wood/dark-oak', 'material:mineral/iron', 'material:mineral/iron', 'material:wood',
+    ]);
+    expect(read.map((prop) => flameOf(prop))).toEqual([null, null, 'green', null]);
+  });
+
+  it('goes with a prop into a prefab and out of one, and a prefab from before paint keeps its look', () => {
+    const json = { id: 'prefab_a', name: 'Store', tags: [], size: { x: 2, y: 1, z: 1 }, palette: [], runs: [2, 0],
+      props: [
+        { type: 'crate', at: { x: 0, y: 0, z: 0 }, facing: 0, paint: 'material:wood/dark-oak' },
+        { type: 'lantern', at: { x: 1, y: 0, z: 0 }, facing: 0, finish: 'green' },
+      ] };
+    const prefab = prefabFromJSON(json)!;
+    expect(prefab.props).toEqual([
+      { type: 'crate', at: cube(0, 0, 0), facing: 0, paint: 'material:wood/dark-oak' },
+      { type: 'lantern', at: cube(1, 0, 0), facing: 0, flame: 'green' },
+    ]);
+    expect(prefabToJSON(prefab).props).toEqual([
+      { type: 'crate', at: { x: 0, y: 0, z: 0 }, facing: 0, paint: 'material:wood/dark-oak' },
+      { type: 'lantern', at: { x: 1, y: 0, z: 0 }, facing: 0, flame: 'green' },
+    ]);
   });
 });
 

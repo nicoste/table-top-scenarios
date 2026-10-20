@@ -746,7 +746,12 @@ function applyToProps(
     const candidate = { type: type.id, at: intent.at, facing: intent.facing as Facing };
     const why = whyNotPut(map, candidate, standing);
     if (why) return reject_(PROP_FOOTING[why]);
-    return edited((m) => putProp(m, { ...candidate, ...(intent.finish !== undefined ? { finish: intent.finish } : {}) }, standing));
+    if (intent.paint !== undefined && !isKnownSwatch(intent.paint as SwatchId)) return reject_('unknown material');
+    return edited((m) => putProp(m, {
+      ...candidate,
+      ...(intent.paint !== undefined ? { paint: intent.paint } : {}),
+      ...(intent.flame !== undefined ? { flame: intent.flame } : {}),
+    }, standing));
   }
 
   const prop = propById(map.props, intent.id);
@@ -759,9 +764,12 @@ function applyToProps(
       const why = whyNotPut(map, { ...prop, facing: intent.facing as Facing }, standing, prop.id);
       if (why) return reject_(PROP_FOOTING[why]);
     }
+    // Painted with what a block is made of (D-352): one the registry knows.
+    if (intent.paint !== undefined && !isKnownSwatch(intent.paint as SwatchId)) return reject_('unknown material');
     return edited((m) => editProp(m, prop.id, {
       ...(intent.facing !== undefined ? { facing: intent.facing as Facing } : {}),
-      ...(intent.finish !== undefined ? { finish: intent.finish } : {}),
+      ...(intent.paint !== undefined ? { paint: intent.paint } : {}),
+      ...(intent.flame !== undefined ? { flame: intent.flame } : {}),
       ...(intent.reach !== undefined ? { reach: intent.reach } : {}),
     }, standing));
   }

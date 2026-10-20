@@ -338,6 +338,7 @@ export function MapPanel({
               Click a block to repaint it, or drag the brush across several. Nothing moves.
               Hold <b>⇧ shift</b> to <b>fill</b>: everything joined to the block you click,
               of the same cut of the same material, is repainted. The readout says how many.
+              A click on a prop paints that prop alone, whatever the brush.
             </>
           )}
           {tool === 'move' && (

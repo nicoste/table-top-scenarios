@@ -78,7 +78,14 @@ export interface Prop {
   readonly at: BlockCoord;
   /** Quarter turns clockwise from above (R-203). */
   readonly facing: 0 | 1 | 2 | 3;
-  readonly finish: string;
+  /**
+   * What its parts that take paint are painted with (D-352): any block
+   * material. Absent, or one the registry has never heard of, is its type's
+   * first (`paintOf`).
+   */
+  readonly paint?: SwatchId;
+  /** A light's flame, by id (D-335): the colour of what it gives. Only a light has one. */
+  readonly flame?: string;
   /**
    * How far a light reaches, when the GM has set it (D-335): absent means
    * its type's own. Only a light has one; on anything else it means nothing.
@@ -569,9 +576,39 @@ export interface PropJSON {
   type: string;
   at: { x: number; y: number; z: number };
   facing: number;
-  finish: string;
+  /** What it is painted with (D-352). Before props were painted it was a `finish`; see `lookOfJSON`. */
+  paint?: string;
+  /** A light's flame (D-335). */
+  flame?: string;
   /** A light's own reach (D-335). Written only when the GM set one. */
   reach?: number;
+}
+
+/**
+ * The materials nearest the finishes props had before they were painted
+ * (D-352), so a map saved then keeps its doors oak and its bars iron. A
+ * light's finish was its flame, and is read as one.
+ */
+const FINISH_PAINTS: Readonly<Record<string, string>> = {
+  wood: 'material:wood', 'dark-wood': 'material:wood/dark-oak', 'pale-wood': 'material:wood/birch',
+  iron: 'material:mineral/iron', 'dark-iron': 'material:mineral/iron', rusted: 'material:mineral/copper',
+  stone: 'material:mineral', 'dark-stone': 'material:mineral/dark-rock',
+};
+const OLD_FLAMES: ReadonlySet<string> = new Set(['fire', 'candle', 'cold', 'green']);
+
+/**
+ * A prop's look as written — its paint and its flame — read leniently, from
+ * a map or a prefab, and from either spelling: `paint` and `flame`, or the
+ * `finish` that was one or the other (D-352). Unchecked against the registry
+ * and the catalogue here; what nobody knows is drawn as its type's first.
+ */
+export function lookOfJSON(entry: Record<string, unknown>): { readonly paint?: SwatchId; readonly flame?: string } {
+  const finish = typeof entry.finish === 'string' ? entry.finish : null;
+  const paint = typeof entry.paint === 'string' && entry.paint
+    ? entry.paint : finish !== null ? FINISH_PAINTS[finish] ?? null : null;
+  const flame = typeof entry.flame === 'string' && entry.flame
+    ? entry.flame : finish !== null && OLD_FLAMES.has(finish) ? finish : null;
+  return { ...(paint ? { paint: paint as SwatchId } : {}), ...(flame ? { flame } : {}) };
 }
 
 const isWhole = (n: unknown): n is number => typeof n === 'number' && Number.isInteger(n);
@@ -598,7 +635,7 @@ export function propsOfJSON(json: unknown): readonly Prop[] {
       type: entry.type,
       at: { x: at.x, y: at.y, z: at.z },
       facing,
-      finish: typeof entry.finish === 'string' ? entry.finish : '',
+      ...lookOfJSON(entry),
       ...(typeof entry.reach === 'number' && Number.isFinite(entry.reach) ? { reach: cleanReach(entry.reach) } : {}),
     });
   }
@@ -608,7 +645,9 @@ export function propsOfJSON(json: unknown): readonly Prop[] {
 export function propsAsJSON(props: readonly Prop[]): PropJSON[] {
   return props.map((prop) => ({
     id: prop.id, type: prop.type, at: { x: prop.at.x, y: prop.at.y, z: prop.at.z },
-    facing: prop.facing, finish: prop.finish,
+    facing: prop.facing,
+    ...(prop.paint !== undefined ? { paint: prop.paint as string } : {}),
+    ...(prop.flame !== undefined ? { flame: prop.flame } : {}),
     ...(prop.reach !== undefined ? { reach: prop.reach } : {}),
   }));
 }
