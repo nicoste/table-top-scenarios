@@ -35,7 +35,7 @@ describe('the catalogue (D-328)', () => {
   it('has the doors and bars, the furniture, the lights (D-335), stairs (D-350) and a ladder (D-357)', () => {
     expect(PROP_TYPES.map((type) => type.id)).toEqual([
       'door', 'cell-door', 'bars', 'portcullis', 'chest', 'table', 'chair', 'bookcase', 'barrel', 'crate',
-      'torch', 'lantern', 'candles', 'brazier', 'campfire', 'stairs', 'ladder',
+      'torch', 'lantern', 'candles', 'brazier', 'campfire', 'stairs', 'ladder', 'rope', 'holds', 'vines',
     ]);
   });
 
@@ -453,7 +453,7 @@ describe('a ladder (D-357)', () => {
     expect(map.props).toHaveLength(2);
   });
 
-  it('is in nobody\'s way, and somebody may be anywhere up it — with no rule of moving', () => {
+  it('is in nobody\'s way, and somebody may be anywhere up it', () => {
     let map = wall();
     for (const y of [1, 2, 3]) map = putProp(map, { type: 'ladder', at: cube(5, y, 3), facing: 1 });
     const rules = propRules(map.props);
@@ -464,8 +464,6 @@ describe('a ladder (D-357)', () => {
     expect(dropBelow(map, cube(5, 3, 3))).toBe(0);
     // Beside it, still nothing.
     expect(whyNotStand(map, nobody, 'member_a' as MemberId, cube(4, 3, 3))).toBe('unsupported');
-    // The walk does not climb it: up a rung is the GM's, or a confirmed move.
-    expect(walkAcross(map, cube(3, 1, 3), cube(5, 3, 3))).toBeNull();
   });
 });
 
@@ -503,6 +501,55 @@ describe('a prop turned as it is moved (D-357)', () => {
     expect(turned.props.map((one) => one.facing)).toEqual([1, 1]);
     expect(whyNotMove(map, id, cube(5, 1, 5), new Set(), 0)).toBeNull();
     expect(moveProp(map, id, cube(5, 1, 5), new Set(), 0)).toBe(map);
+  });
+});
+
+describe('more ways up (D-358)', () => {
+  const nobody = new Map<MemberId, BlockCoord>();
+  /** A ledge four high across x = 6 — its top is stood on at y = 5 — and a beam over (3, 6, 3). */
+  const cliff = () => {
+    const blocks: BlockCoord[] = [cube(3, 6, 3)];
+    for (let z = 0; z < 16; z += 1) for (let y = 1; y <= 4; y += 1) blocks.push(cube(6, y, z));
+    return setBlocks(createMap(), blocks, STONE);
+  };
+
+  it('a rope hangs from what is above it, and from nothing else', () => {
+    let map = cliff();
+    expect(whyNotPut(map, { type: 'rope', at: cube(3, 5, 3), facing: 0 })).toBeNull();
+    expect(whyNotPut(map, { type: 'rope', at: cube(2, 5, 3), facing: 0 })).toBe('untied');
+    // On the floor, with nothing over it: not a rope, a heap.
+    expect(whyNotPut(map, { type: 'rope', at: cube(2, 1, 2), facing: 0 })).toBe('untied');
+    for (const y of [5, 4, 3, 2]) map = putProp(map, { type: 'rope', at: cube(3, y, 3), facing: 0 });
+    expect(map.props).toHaveLength(4);
+    expect(whyNotStand(map, nobody, 'member_a' as MemberId, cube(3, 4, 3))).toBeNull();
+  });
+
+  it('holds and vines go on a wall, as a torch does, and are climbed', () => {
+    const map = cliff();
+    for (const type of ['holds', 'vines']) {
+      expect(whyNotPut(map, { type, at: cube(5, 3, 3), facing: 1 })).toBeNull();
+      expect(whyNotPut(map, { type, at: cube(5, 3, 3), facing: 3 })).toBe('unhung');
+      const on = putProp(map, { type, at: cube(5, 3, 3), facing: 1 });
+      expect(whyNotStand(on, nobody, 'member_a' as MemberId, cube(5, 3, 3))).toBeNull();
+    }
+  });
+
+  it('the walk climbs them, a cube straight up or down counting 1, and goes nowhere else straight up', () => {
+    let map = cliff();
+    expect(walkAcross(map, cube(4, 1, 3), cube(6, 5, 3))).toBeNull();
+    for (const y of [1, 2, 3, 4]) map = putProp(map, { type: 'ladder', at: cube(5, y, 3), facing: 1 });
+    // Onto the ladder a rung up, as up a stair; straight up it; off the top onto the ledge.
+    const up = walkAcross(map, cube(4, 1, 3), cube(6, 5, 3))!;
+    expect(up.cubes).toEqual([cube(4, 1, 3), cube(5, 2, 3), cube(5, 3, 3), cube(5, 4, 3), cube(6, 5, 3)]);
+    expect(up.length).toBeCloseTo(Math.SQRT2 + 2 + Math.SQRT2, 9);
+    // Nothing climbed, nothing straight up: beside the ladder, a cube up is in the air.
+    expect(walkAcross(map, cube(4, 1, 3), cube(4, 2, 3))).toBeNull();
+    // Back down the same way, as long.
+    expect(walkAcross(map, cube(6, 5, 3), cube(4, 1, 3))!.length).toBeCloseTo(up.length, 9);
+    // A row of holds is a way across the face, rung to rung.
+    let face = cliff();
+    for (const z of [3, 4, 5]) face = putProp(face, { type: 'holds', at: cube(5, 3, z), facing: 1 });
+    expect(walkAcross(face, cube(5, 3, 3), cube(5, 3, 5))!.length).toBeCloseTo(2, 9);
   });
 });
 

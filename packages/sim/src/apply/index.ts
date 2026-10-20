@@ -713,6 +713,7 @@ const PROP_FOOTING = {
   taken: 'something is already there',
   unsupported: 'there is nothing under it or beside it to hold it',
   unhung: 'there is no wall behind it to hang on',
+  untied: 'there is nothing above it to hang from',
 } as const;
 
 /**

@@ -12,8 +12,12 @@
 // *with* a step across: up a stair is √2, and up a stair diagonally √3. What
 // the number is in, the table decides; the tool says the number.
 //
-// **Walking only.** One block up or down per step, so a taller ledge is walked
-// round, and a wall with no way round has no path.
+// **Walking, and climbing what is there to climb.** One block up or down per
+// step, so a taller ledge is walked round, and a wall with no way round has no
+// path — unless something on it is climbed (D-358): a ladder, a rope, holds,
+// vines. Through those, and only those, a step may go straight up or straight
+// down, and it counts 1, as a step across does. How hard the climb is, is the
+// GM's (R-1); the tool says how far.
 
 import type { BlockCoord, EncounterMap } from '../map/index.js';
 import { blockAt, blockKey, inMap, MAP_MIN_DEPTH } from '../map/index.js';
@@ -44,6 +48,12 @@ const STEPS: readonly (readonly [number, number, number, number])[] = [-1, 0, 1]
   [-1, 0, 1].flatMap((dx) => [-1, 0, 1]
     .filter((dz) => dx !== 0 || dz !== 0)
     .map((dz) => [dx, dy, dz, Math.hypot(dx, dy, dz)] as const)));
+
+/** Straight up and straight down: only on something climbed (D-358). */
+const CLIMBS: readonly (readonly [number, number, number, number])[] = [[0, 1, 0, 1], [0, -1, 0, 1]];
+
+/** Every way out of a cube a walk may try. */
+const WAYS = [...STEPS, ...CLIMBS];
 
 /**
  * The shortest a walk between two cubes could possibly be: the length with
@@ -114,9 +124,11 @@ export function walkAcross(
   const solid = (at: BlockCoord) => !!blockAt(map, at) || (!!rules && rules.walking.has(blockKey(at)));
   // On a block, or on stairs (D-350).
   const floored = (below: BlockCoord) => !!blockAt(map, below) || (!!rules && rules.floors.has(blockKey(below)));
+  // On something climbed — a ladder's rung, a rope, holds, vines (D-357, D-358).
+  const climbed = (at: BlockCoord) => !!rules && rules.rungs.has(blockKey(at));
   const stands = (at: BlockCoord) => inMap(map, at)
     && !solid(at)
-    && floored({ x: at.x, y: at.y - 1, z: at.z })
+    && (floored({ x: at.x, y: at.y - 1, z: at.z }) || climbed(at))
     && may(at);
   // The start is wherever the token is, floor or not: a trapdoor opened under
   // somebody leaves them hanging (R-186), and they can still be measured from.
@@ -151,8 +163,10 @@ export function walkAcross(
     }
     const here = at.get(key)!;
     const soFar = best.get(key)!;
-    for (const [dx, dy, dz, span] of STEPS) {
+    for (const [dx, dy, dz, span] of WAYS) {
       const next = { x: here.x + dx, y: here.y + dy, z: here.z + dz };
+      // Straight up or down only off something climbed, or onto it (D-358).
+      if (dx === 0 && dz === 0 && !climbed(here) && !climbed(next)) continue;
       if (!stands(next)) continue;
       const nextKey = keyOf(next);
       if (settled.has(nextKey)) continue;

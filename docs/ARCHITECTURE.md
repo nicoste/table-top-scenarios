@@ -2399,11 +2399,16 @@ apps/host/src/
 >   it, so the cube above a stair is pointed at directly; the stand rules
 >   refuse the top of any prop that does not hold people.
 > - Drawn as three steps climbing toward the back, a paler edge to each tread.
-> - **A ladder** (D-357) is in nobody's way and no wall to sight. It leans on
->   the block behind it, or stands on the floor or on another ladder, and
->   **somebody may be in its cube with nothing under them** — on a rung. No
->   rule of moving goes with it: the walk does not climb it; a token is put
->   on a rung by a confirmed move, aimed at the ladder itself.
+> - **Up & down** (D-357, D-358): stairs, and what is climbed — a ladder, a
+>   rope, holds, vines. What is climbed is in nobody's way and no wall to
+>   sight, and **somebody may be in its cube with nothing under them**; a
+>   token is put there by a move aimed at it. Each is held its own way: a
+>   ladder leans on the wall behind it or stands on the floor or another
+>   ladder; holds and vines hang on the wall behind them, as a torch does; a
+>   rope hangs from what is over it, another rope too — iron makes it a chain.
+> - **The walk climbs them** (D-358): through what is climbed, and only
+>   there, a step may go straight up or down, and counts 1 as a step across
+>   does. How hard the climb is, is the GM's (R-1).
 
 ---
 

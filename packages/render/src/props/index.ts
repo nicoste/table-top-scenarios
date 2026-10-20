@@ -188,6 +188,26 @@ function partsOf(type: string, open: boolean): readonly Part[] {
         ...[0.15, 0.85].map((x) => ({ size: [0.07, 1, 0.07] as const, at: [x, 0.5, 0.12] as const })),
         ...[1 / 6, 1 / 2, 5 / 6].map((y) => ({ size: [0.66, 0.05, 0.05] as const, at: [0.5, y, 0.12] as const, tone: 'light' as const })),
       ];
+    // More ways up (D-358). A rope down the middle of its cube, knotted, so
+    // ropes one under another run on as one; painted iron, it is a chain.
+    case 'rope':
+      return [
+        { size: [0.06, 1, 0.06], at: [0.5, 0.5, 0.5], round: true },
+        ...[0.25, 0.75].map((y) => ({ size: [0.1, 0.07, 0.1] as const, at: [0.5, y, 0.5] as const, tone: 'dark' as const, round: true })),
+      ];
+    // Grips on the wall behind, staggered up it.
+    case 'holds':
+      return ([[0.28, 0.14, 0.16], [0.7, 0.36, 0.13], [0.36, 0.58, 0.15], [0.68, 0.84, 0.17]] as const).map(([x, y, w], i) => ({
+        size: [w, 0.09, 0.09] as const, at: [x, y, 0.045] as const, ...(i % 2 ? { tone: 'dark' as const } : {}),
+      }));
+    // Strands up the wall behind, and leaves along them.
+    case 'vines':
+      return [
+        ...[0.28, 0.55, 0.8].map((x) => ({ size: [0.035, 1, 0.03] as const, at: [x, 0.5, 0.02] as const, tone: 'dark' as const })),
+        ...([[0.2, 0.18], [0.36, 0.42], [0.5, 0.7], [0.62, 0.3], [0.74, 0.9], [0.86, 0.55], [0.3, 0.86]] as const).map(([x, y], i) => ({
+          size: [0.13, 0.09, 0.035] as const, at: [x, y, 0.035] as const, ...(i % 3 === 1 ? { tone: 'light' as const } : {}),
+        })),
+      ];
     // Lights (D-335): `open` is out.
     case 'torch':
       // Hung on the wall behind it, which is toward −z unturned.

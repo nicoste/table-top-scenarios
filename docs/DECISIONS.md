@@ -9190,3 +9190,38 @@ Checked on the test copy: a ladder hung on Tollkeep's wall a cube up, Turdorn
 moved onto it past the walk's *no path*; a note written on the open chest
 and read back under the pointer with Play.
 
+### D-358 — More ways up, the walk climbs them, and "Up & down" · `agreed`
+*"Is this ladder prop a thing we should have to think better for paths?...
+adding new props inside 'Stairs & ladders' that would be climbing variations,
+like a rope or cliffs."* Proposed and answered: the walk should climb,
+**counting each cube as one**; **rope** (*"that can be metal so we don't add
+chain too"*), **holds** and **vines**; and the group is **Up & down**.
+
+- **The walk climbs what is climbed.** A cube with something climbed in it
+  is somewhere a walk may stand, and through those cubes — only those — a
+  step may go **straight up or straight down, for 1**, as a step across. So
+  the walk goes onto a ladder, up it and off the top onto the ledge, along a
+  row of holds across a rock face, down a rope into a pit, and says how far.
+  Still a measurement and not a rule (R-133, D-316): how hard the climb is —
+  double cost, a check — is the GM's, and a prop's note can say it.
+- **Rope** hangs from what is over it — a block, a prop, another rope —
+  and from nothing else: not a rope standing up from the floor. A new reason
+  when it cannot: *"nothing above it to hang from"*. Down the middle of its
+  cube, knotted; offered in dried grass for hemp, birch, iron and copper, and
+  painted iron it is the chain. No turning: it looks the same every way.
+- **Holds** — grips staggered up the wall — and **vines** — strands and
+  leaves — hang on the wall behind them as a torch does, turned to it. Holds
+  are offered in grey rock, dark rock and limestone, to match a cliff; vines in
+  the three leaves and dried grass.
+- **Up & down** names the group: stairs are walked, the rest are climbed,
+  and both are a way between levels.
+
+**Chosen here, to be argued with:**
+
+- **Stepping onto a ladder a rung up counts as a stair does** (√2): from the
+  floor, the walk may take the second rung directly rather than the first and
+  then up. Shorter by a little, and how a ladder is mounted.
+- **Thin props are picked by their whole cube**, so pointing at a wall right
+  beside a torch, holds or vines catches them instead, and (D-356) offers
+  nothing there. Moving the pointer a little further along the wall finds it.
+
