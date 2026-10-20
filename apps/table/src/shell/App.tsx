@@ -456,7 +456,8 @@ export function App({ view, status, rejection, dispatch }: Props) {
     // moved, and only onto a floor its member may stand on (R-138).
     if (insideWire) {
       if (stride.step !== 'aiming' || !stage) return;
-      const at = tokenAim(stage.pick(event.clientX, event.clientY).face);
+      const spot = stage.pick(event.clientX, event.clientY);
+      const at = tokenAim(spot.face, spot.propFace);
       setStride((current) => (current.step === 'aiming'
         ? aimStride(current, at, at ? strideVerdict(current.memberId, at) : null)
         : current));
@@ -481,7 +482,7 @@ export function App({ view, status, rejection, dispatch }: Props) {
     if (insideWire) {
       const act = tokenAction(hit.token, stride.step === 'aiming');
       if (act.kind === 'confirm' && stride.step === 'aiming') {
-        const at = tokenAim(hit.face);
+        const at = tokenAim(hit.face, hit.propFace);
         if (at && strideVerdict(stride.memberId, at) === null) {
           dispatch(strideIntent(stride, at, insideWire.place.id, insideWire.poi.id));
         }

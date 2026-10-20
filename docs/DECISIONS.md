@@ -8872,7 +8872,7 @@ Checked on the test copy: the band brought down from roof 1 to the water
 level and the console set to show it; the areas on the ground went with the
 ground.
 
-### D-349 — Stairs · `agreed`
+### D-349 — Stairs · `superseded by D-350`
 *"We are missing stairs! But we gonna target the normal stairs, the one that
 move you up or down in a diagonal, not vertical ladders. These stairs will be
 just get a better representation of 'this block is not a block, is a stair'
@@ -8915,4 +8915,43 @@ Checked on the test copy: stairs laid against Tollkeep's brick wall climbing
 toward it, a second turned with X on the grass, the ghost showing the steps
 before each click; aiming at a step aimed at the cube above; the table drew
 both as steps.
+
+### D-350 — Stairs are a prop · `agreed`
+*"This was not expected... You added the stairs as they were blocks xD why?"*
+Asked what they had expected, the user chose **a prop**. D-349 read "does the
+same a block will do" as "is a block"; what was meant is a thing put down from
+the Props catalogue that *behaves* like a block. The block version is taken
+back whole (the mark on blocks, the Build brush, the stepped block mesh, the
+prefab's stairs) and stairs are placed as any prop is.
+
+R-215 is the rule. A stair is **a prop in a group of its own, Stairs**: one
+cube, one per click, turned with **Z / X**, in stone, dark stone, wood or dark
+wood. It stops sight and walking as a block does. What no prop did before is
+the third thing it does: **it holds people up.** Its cube is a floor to the
+cube above, for every rule that asks for a floor — a party member standing
+(`whyNotStand`), a silver token placed (`whyNotPlace`), the walk (R-209) and a
+fall (`dropBelow`) — through one question, `floorUnder`, and one flag on the
+type, `holds`. A staircase of stairs is climbed one diagonal step at a time,
+as a staircase of blocks always was; a ledge two high is reached by a stair
+set before it.
+
+**Chosen here, to be argued with:**
+
+- **Turned to the wall pointed at**, as a torch hangs on one (D-335): pointing
+  at the side of a block puts the stair in front of it, climbing toward it;
+  over a floor the hand's own turn decides. A flag of its own, `turnsToWall`,
+  since a stair does not need a wall the way a torch does.
+- **The top of a prop is pointed at in its own right** when a token is moved:
+  the cube above a stair is aimed at, where before the pointer went through
+  every prop to the floor behind. Above any other prop the stand rules say
+  why not, as they would over a wall; a prop's side still aims at the floor
+  behind it.
+- **Drawn as three steps** climbing toward the prop's back, each with a paler
+  edge to its tread so it reads from above.
+- **"Placing stairs", not "a stairs"**: a type whose name is a plural says so
+  (`plural`), which also mended "a bars" and "a candles" in the readout.
+
+Checked on the test copy: stairs put down on the grass and against Tollkeep's
+wall, climbing toward it; Turdorn aimed at the top of one and stood there; the
+table drew both.
 

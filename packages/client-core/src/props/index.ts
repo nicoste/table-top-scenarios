@@ -7,7 +7,7 @@
 // refinish, open or remove.
 
 import type { Intent } from '@tt/protocol';
-import type { BlockCoord, Box, EncounterMap, Facing, Opened, PropFooting, SwatchId } from '@tt/domain';
+import type { BlockCoord, Box, EncounterMap, Facing, Opened, PropFooting, PropType, SwatchId } from '@tt/domain';
 import { facingWithBack, propBox, propById, propCubes, propType, statesOf, turned, whyNotPut } from '@tt/domain';
 import type { FacePick, GhostCube } from '@tt/render';
 
@@ -50,9 +50,13 @@ export function propWall(face: FacePick | null, propFace: FacePick | null): Faci
   return facingWithBack({ x: face.block.x - face.adjacent.x, z: face.block.z - face.adjacent.z });
 }
 
-/** How the prop in hand would be turned here: to the wall, for one that hangs and has one. */
+/**
+ * How the prop in hand would be turned here: to the wall pointed at, for one
+ * that hangs (D-335) or is set against one, as stairs are (D-350).
+ */
 function facingHere(hand: PropHand, wall: Facing | null): Facing {
-  return wall !== null && hand.type && propType(hand.type)?.hangs ? wall : hand.facing;
+  const type = hand.type ? propType(hand.type) : undefined;
+  return wall !== null && (type?.hangs || type?.turnsToWall) ? wall : hand.facing;
 }
 
 /** Why not, in the readout's words (R-18). */
@@ -111,14 +115,17 @@ export function placePropIntent(
   };
 }
 
-/** What the readout says with the Props tool in hand. One that hangs is hung on a wall (D-335). */
-export function propPrompt(name: string | null, at: BlockCoord | null, why: string | null, hangs = false): string {
-  if (!name) return 'Pick a prop from the catalogue, or click one on the map to change it.';
-  if (!at) return hangs
-    ? `Hanging a ${name.toLowerCase()} — point at a wall.`
-    : `Placing a ${name.toLowerCase()} — point at where it should stand.`;
-  if (why) return `${name}: ${why}.`;
-  return hangs ? `Click to hang a ${name.toLowerCase()} here.` : `Click to place a ${name.toLowerCase()} here. Z / X turn it.`;
+/**
+ * What the readout says with the Props tool in hand. One that hangs is hung on
+ * a wall (D-335); stairs are turned to one, or with Z / X (D-350).
+ */
+export function propPrompt(type: PropType | null, at: BlockCoord | null, why: string | null): string {
+  if (!type) return 'Pick a prop from the catalogue, or click one on the map to change it.';
+  // "a torch", but "candles" and "stairs".
+  const one = `${type.plural ? '' : 'a '}${type.name.toLowerCase()}`;
+  if (!at) return type.hangs ? `Hanging ${one} — point at a wall.` : `Placing ${one} — point at where it should stand.`;
+  if (why) return `${type.name}: ${why}.`;
+  return type.hangs ? `Click to hang ${one} here.` : `Click to place ${one} here. Z / X turn it.`;
 }
 
 /**

@@ -110,11 +110,13 @@ export function walkAcross(
 ): Walk | null {
   // A prop that stops walking is as solid as a block to a walk: nobody stands
   // in it, and nobody squeezes past its corner (D-322).
-  const blocked = map.props.length > 0 ? propRules(map.props, opened).walking : null;
-  const solid = (at: BlockCoord) => !!blockAt(map, at) || (!!blocked && blocked.has(blockKey(at)));
+  const rules = map.props.length > 0 ? propRules(map.props, opened) : null;
+  const solid = (at: BlockCoord) => !!blockAt(map, at) || (!!rules && rules.walking.has(blockKey(at)));
+  // On a block, or on stairs (D-350).
+  const floored = (below: BlockCoord) => !!blockAt(map, below) || (!!rules && rules.floors.has(blockKey(below)));
   const stands = (at: BlockCoord) => inMap(map, at)
     && !solid(at)
-    && blockAt(map, { x: at.x, y: at.y - 1, z: at.z }) !== null
+    && floored({ x: at.x, y: at.y - 1, z: at.z })
     && may(at);
   // The start is wherever the token is, floor or not: a trapdoor opened under
   // somebody leaves them hanging (R-186), and they can still be measured from.

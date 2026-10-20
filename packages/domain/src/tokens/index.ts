@@ -16,7 +16,7 @@ import { blockAt, blockKey, inMap, MAP_MIN_DEPTH } from '../map/index.js';
 import type { LevelRange } from '../planes/index.js';
 import { inRange } from '../planes/index.js';
 import type { Opened } from '../props/index.js';
-import { NONE_OPEN, propRules } from '../props/index.js';
+import { NONE_OPEN, floorUnder, propRules } from '../props/index.js';
 
 /**
  * Where each placed member stands in one map.
@@ -76,7 +76,8 @@ export function whyNotStand(
   if (!inMap(map, at)) return 'outside';
   if (blockAt(map, at)) return 'solid';
   if (map.props.length > 0 && propRules(map.props, opened).walking.has(blockKey(at))) return 'blocked';
-  if (!blockAt(map, { x: at.x, y: at.y - 1, z: at.z })) return 'unsupported';
+  // A block under it, or stairs (D-350).
+  if (!floorUnder(map, at)) return 'unsupported';
   const standing = standingAt(tokens, at);
   if (standing !== null && standing !== memberId) return 'taken';
   if (others.has(blockKey(at))) return 'taken';
@@ -219,8 +220,11 @@ export function settled(
  * it, the stalk runs to bedrock, which is as far down as a map goes (R-161).
  */
 export function dropBelow(map: EncounterMap, at: BlockCoord): number {
+  // Stairs stop a fall as a block does (D-350).
+  const floors = map.props.length > 0 ? propRules(map.props).floors : null;
   for (let y = at.y - 1; y >= MAP_MIN_DEPTH; y -= 1) {
-    if (blockAt(map, { x: at.x, y, z: at.z })) return at.y - (y + 1);
+    const cube = { x: at.x, y, z: at.z };
+    if (blockAt(map, cube) || floors?.has(blockKey(cube))) return at.y - (y + 1);
   }
   return at.y - MAP_MIN_DEPTH;
 }

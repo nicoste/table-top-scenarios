@@ -136,6 +136,16 @@ function partsOf(type: string, open: boolean): readonly Part[] {
           size: [0.08, 0.86, 0.08] as const, at: [x!, 0.43, z!] as const, tone: 'dark' as const,
         })),
       ];
+    case 'stairs':
+      // Three steps climbing toward the back (D-350), each from the floor up,
+      // with a paler edge to its tread so the steps read from above.
+      return [1, 2, 3].flatMap((k) => {
+        const front = 1 - (k - 1) / 3;
+        return [
+          { size: [1, k / 3, 1 / 3] as const, at: [0.5, k / 6, front - 1 / 6] as const },
+          { size: [1, 0.03, 0.07] as const, at: [0.5, k / 3 + 0.015, front - 0.035] as const, tone: 'light' as const },
+        ];
+      });
     // Lights (D-335): `open` is out.
     case 'torch':
       // Hung on the wall behind it, which is toward −z unturned.

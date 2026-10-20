@@ -150,3 +150,15 @@ describe('what the party remembers of props (D-331)', () => {
     expect(tableProps(state)).toHaveLength(1);
   });
 });
+
+describe('stairs (D-350)', () => {
+  it('are stood on, as a block is', () => {
+    const t = tavern();
+    const onTop = { x: 4, y: 2, z: 6 };
+    const move: Intent = { kind: 'moveToken', placeId: t.placeId, poiId: t.poiId, memberId: t.aldra, at: onTop };
+    expect(run(t.state, move).rejected).toBe('there is nothing there to stand on');
+    let state = run(t.state, { kind: 'placeProp', placeId: t.placeId, poiId: t.poiId, type: 'stairs', at: { x: 4, y: 1, z: 6 }, facing: 1 }).state;
+    state = run(state, move).state;
+    expect((viewFor('table', state) as TableView).tokens![t.aldra]).toEqual(onTop);
+  });
+});

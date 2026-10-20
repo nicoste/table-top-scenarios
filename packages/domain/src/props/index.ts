@@ -65,7 +65,7 @@ export interface PropType {
   readonly id: string;
   readonly name: string;
   /** Where the catalogue lists it. */
-  readonly group: 'doors' | 'furniture' | 'lights';
+  readonly group: 'doors' | 'furniture' | 'lights' | 'stairs';
   /** The box it fills unturned, in cubes: wide (x), tall (y), deep (z). A door is 1 × 2. */
   readonly size: Size;
   /** Whether it has an open state at all. A table does not. */
@@ -80,6 +80,15 @@ export interface PropType {
   readonly states?: PropStates;
   /** Hung on a wall — held by the block behind it, not by one below (D-335). */
   readonly hangs?: boolean;
+  /**
+   * Somebody stands on it as on a block (D-350): its cubes are a floor to the
+   * cube above, for standing, placing and the walk. Stairs.
+   */
+  readonly holds?: boolean;
+  /** Turned to the wall pointed at when it is put down, its back to it, as a torch hangs (D-350). */
+  readonly turnsToWall?: boolean;
+  /** Its name is a plural — bars, candles, stairs — so it is never "a" one. */
+  readonly plural?: boolean;
   /**
    * The light it gives while lit (D-335): how far, unless the GM sets its own,
    * and how high over its cube's floor the light comes from — the top of the
@@ -103,6 +112,8 @@ const PALE_WOOD: PropFinish = { id: 'pale-wood', name: 'Pale wood', colour: '#b4
 const IRON: PropFinish = { id: 'iron', name: 'Iron', colour: '#5d646c' };
 const DARK_IRON: PropFinish = { id: 'dark-iron', name: 'Dark iron', colour: '#363a40' };
 const RUSTED: PropFinish = { id: 'rusted', name: 'Rusted', colour: '#7a4a34' };
+const STONE: PropFinish = { id: 'stone', name: 'Stone', colour: '#8b8f94' };
+const DARK_STONE: PropFinish = { id: 'dark-stone', name: 'Dark stone', colour: '#5a5f66' };
 
 /**
  * The flames (D-335): a light's finish is the colour of what it gives. The
@@ -134,7 +145,7 @@ export const PROP_TYPES: readonly PropType[] = [
     id: 'cell-door', name: 'Cell door', group: 'doors', size: { x: 1, y: 2, z: 1 },
     opens: true, closed: STOPS_WALKING, open: STOPS_NOTHING, finishes: [IRON, DARK_IRON, RUSTED],
   },
-  { id: 'bars', name: 'Bars', group: 'doors', size: { x: 1, y: 1, z: 1 }, ...fixed(STOPS_WALKING), finishes: [IRON, DARK_IRON, RUSTED] },
+  { id: 'bars', name: 'Bars', plural: true, group: 'doors', size: { x: 1, y: 1, z: 1 }, ...fixed(STOPS_WALKING), finishes: [IRON, DARK_IRON, RUSTED] },
   {
     id: 'portcullis', name: 'Portcullis', group: 'doors', size: { x: 2, y: 2, z: 1 },
     opens: true, closed: STOPS_WALKING, open: STOPS_NOTHING, finishes: [IRON, DARK_IRON, RUSTED],
@@ -157,11 +168,18 @@ export const PROP_TYPES: readonly PropType[] = [
   },
   { id: 'lantern', name: 'Lantern', group: 'lights', size: { x: 1, y: 1, z: 1 }, ...burns(STOPS_NOTHING, 5, 0.3), finishes: FLAMES },
   {
-    id: 'candles', name: 'Candles', group: 'lights', size: { x: 1, y: 1, z: 1 },
+    id: 'candles', name: 'Candles', plural: true, group: 'lights', size: { x: 1, y: 1, z: 1 },
     ...burns(STOPS_NOTHING, 3, 0.45), finishes: [CANDLE, FIRE, COLD, GREEN],
   },
   { id: 'brazier', name: 'Brazier', group: 'lights', size: { x: 1, y: 1, z: 1 }, ...burns(STOPS_WALKING, 8, 1.1), finishes: FLAMES },
   { id: 'campfire', name: 'Campfire', group: 'lights', size: { x: 1, y: 1, z: 1 }, ...burns(STOPS_WALKING, 10, 0.8), finishes: FLAMES },
+  // Stairs (D-350): a block in every rule but one look — nobody walks into
+  // them or sees through them, and they are stood on as a floor is. They climb
+  // toward their back, and are turned to the wall they are set against.
+  {
+    id: 'stairs', name: 'Stairs', group: 'stairs', size: { x: 1, y: 1, z: 1 }, ...fixed(STOPS_BOTH),
+    holds: true, turnsToWall: true, plural: true, finishes: [STONE, DARK_STONE, WOOD, DARK_WOOD],
+  },
 ];
 
 export function propType(id: string): PropType | null {
@@ -309,6 +327,8 @@ export interface PropRules {
   readonly walking: ReadonlySet<string>;
   /** Every cube a prop fills, open or not: nothing else may be built or placed there. */
   readonly occupied: ReadonlySet<string>;
+  /** Cubes somebody may stand on top of, as on a block: stairs (D-350). */
+  readonly floors: ReadonlySet<string>;
 }
 
 /** Worked out once per list of props and set of open ones: an edit makes new ones (R-165). */
@@ -322,6 +342,7 @@ export function propRules(props: Props, opened: Opened = NONE_OPEN): PropRules {
   const sight = new Set<string>();
   const walking = new Set<string>();
   const occupied = new Set<string>();
+  const floors = new Set<string>();
   for (const prop of props) {
     const type = propType(prop.type);
     const effect = type ? (type.opens && opened.has(prop.id) ? type.open : type.closed) : STOPS_WALKING;
@@ -330,9 +351,10 @@ export function propRules(props: Props, opened: Opened = NONE_OPEN): PropRules {
       occupied.add(key);
       if (effect.blocksSight) sight.add(key);
       if (effect.blocksWalking) walking.add(key);
+      if (type?.holds) floors.add(key);
     }
   }
-  const rules = { sight, walking, occupied };
+  const rules = { sight, walking, occupied, floors };
   byOpened.set(opened, rules);
   return rules;
 }
@@ -355,3 +377,15 @@ export function reachOf(prop: Prop): number | null {
 export function flameColour(id: string): string {
   return (FLAMES.find((flame) => flame.id === id) ?? FLAMES[0]!).colour;
 }
+
+/**
+ * Whether there is something to stand on under a cube (D-350): a block, or a
+ * prop that holds people up — stairs. Every rule that asks for a floor asks
+ * this, so a stair is stood on wherever a block would be.
+ */
+export function floorUnder(map: EncounterMap, at: BlockCoord): boolean {
+  const below = { x: at.x, y: at.y - 1, z: at.z };
+  if (blockAt(map, below)) return true;
+  return map.props.length > 0 && propRules(map.props).floors.has(blockKey(below));
+}
+

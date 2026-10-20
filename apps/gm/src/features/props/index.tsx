@@ -32,6 +32,7 @@ const GROUPS: readonly { readonly id: PropType['group']; readonly name: string }
   { id: 'doors', name: 'Doors & bars' },
   { id: 'furniture', name: 'Furniture' },
   { id: 'lights', name: 'Lights' },
+  { id: 'stairs', name: 'Stairs' },
 ];
 
 
@@ -47,6 +48,7 @@ function rulesOf(type: PropType): string {
 /** What the catalogue's tooltip says of an entry: its size, or for a light how far it reaches (D-335). */
 function aboutOf(type: PropType): string {
   if (type.light) return `lights ${type.light.reach}${type.hangs ? ', hangs on a wall' : ''} — ${rulesOf(type)}`;
+  if (type.holds) return `${type.size.x} × ${type.size.y} — ${rulesOf(type)}; stood on as a block is, climbing toward the back`;
   return `${type.size.x} × ${type.size.y} — ${rulesOf(type)}`;
 }
 
@@ -182,7 +184,9 @@ export function PropsPanel({ hand, onHand, selected, onSelect, opened, placeId, 
             </div>
           )}
           <p className="hint">
-            {inHand.hangs ? 'Point at a wall; it hangs facing out. ' : ''}One per click. Escape puts it down.
+            {inHand.hangs ? 'Point at a wall; it hangs facing out. ' : ''}
+            {inHand.turnsToWall ? 'Point at the side of a wall to climb toward it, or at a floor to turn it with Z / X. ' : ''}
+            One per click. Escape puts it down.
           </p>
         </>
       ) : !selected && (

@@ -58,12 +58,19 @@ export function armedStride(stride: Stride, moveActive: boolean, next: string | 
  * point at, so a side face aims at nothing — pointing at a wall never puts
  * somebody on top of it, and the GM turns the camera or cuts the band to reach
  * a floor a wall is hiding.
+ *
+ * The top of a prop, when one is nearer than the block behind it, is pointed
+ * at in its own right (D-350): the cube above stairs is stood in. Above any
+ * other prop the stand rules say why not, as they would over a wall.
  */
-export function tokenAim(face: FacePick | null): BlockCoord | null {
-  if (!face) return null;
-  const { block, adjacent } = face;
+export function tokenAim(face: FacePick | null, propFace: FacePick | null = null): BlockCoord | null {
+  const on = propFace ?? face;
+  if (!on) return null;
+  const { block, adjacent } = on;
   const up = adjacent.x === block.x && adjacent.z === block.z && adjacent.y === block.y + 1;
-  return up ? adjacent : null;
+  if (up) return adjacent;
+  // The side of a prop: the floor behind it, as before props were pointed at.
+  return propFace ? tokenAim(face) : null;
 }
 
 /** Identity-preserving, so a pointer that has not changed cube re-renders nothing. */

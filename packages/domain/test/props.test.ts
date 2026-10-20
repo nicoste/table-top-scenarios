@@ -8,7 +8,8 @@ import {
   createMap, setBlocks, blockKey, DEFAULT_FLOOR, PROP_TYPES, propType, propBox, propAt, whyNotPut, putProp,
   editProp, removeProp, propRules, NONE_OPEN, whyNotStand, walkAcross, partySight, mapToJSON, mapFromJSON,
   sliceOf, seenPart, propsSeen, sightShows, shownBy, createCampaign, createLiveSave, openedIn, withOpen, tidyOpened,
-  statesOf, isLit, reachOf, backOf, facingWithBack, MAX_LIGHT_REACH,
+  statesOf, isLit, reachOf, backOf, facingWithBack, MAX_LIGHT_REACH, floorUnder, dropBelow, whyNotPlace,
+  NO_SILVER, NO_TOKENS,
 } from '@tt/domain';
 
 const cube = (x: number, y: number, z: number): BlockCoord => ({ x, y, z });
@@ -30,10 +31,10 @@ const door = (map: EncounterMap) => putProp(map, { type: 'door', at: cube(5, 1, 
 const doorId = (map: EncounterMap) => map.props[0]!.id as string;
 
 describe('the catalogue (D-328)', () => {
-  it('has the doors and bars, the furniture, and the lights (D-335)', () => {
+  it('has the doors and bars, the furniture, the lights (D-335) and stairs (D-350)', () => {
     expect(PROP_TYPES.map((type) => type.id)).toEqual([
       'door', 'cell-door', 'bars', 'portcullis', 'chest', 'table', 'chair', 'bookcase', 'barrel', 'crate',
-      'torch', 'lantern', 'candles', 'brazier', 'campfire',
+      'torch', 'lantern', 'candles', 'brazier', 'campfire', 'stairs',
     ]);
   });
 
@@ -237,3 +238,42 @@ describe('lights (D-335)', () => {
     expect(reachOf(table.props[0]!)).toBeNull();
   });
 });
+
+describe('stairs (D-350)', () => {
+  const nobody = new Map<MemberId, BlockCoord>();
+  /** A ledge two high across x = 4, too high for the walk to climb from the floor. */
+  const ledge = () => {
+    const wall: BlockCoord[] = [];
+    for (let z = 0; z < 16; z += 1) wall.push(cube(4, 1, z), cube(4, 2, z));
+    return setBlocks(createMap(), wall, STONE);
+  };
+
+  it('stop sight and walking as a block does, and are stood on as one', () => {
+    const map = putProp(createMap(), { type: 'stairs', at: cube(3, 1, 3), facing: 1 });
+    const rules = propRules(map.props);
+    for (const set of [rules.sight, rules.walking, rules.floors]) expect(set.has(blockKey(cube(3, 1, 3)))).toBe(true);
+    expect(floorUnder(map, cube(3, 2, 3))).toBe(true);
+    expect(whyNotStand(map, nobody, 'member_a' as MemberId, cube(3, 2, 3))).toBeNull();
+    expect(whyNotStand(map, nobody, 'member_a' as MemberId, cube(3, 1, 3))).toBe('blocked');
+    expect(whyNotPlace(map, NO_TOKENS, NO_SILVER, cube(3, 2, 3))).toBeNull();
+    // A fall from above stops on them.
+    expect(dropBelow(map, cube(3, 5, 3))).toBe(3);
+    // A table is in the way, but nobody stands on it.
+    const table = putProp(createMap(), { type: 'table', at: cube(3, 1, 3), facing: 0 });
+    expect(propRules(table.props).floors.size).toBe(0);
+    expect(whyNotStand(table, nobody, 'member_a' as MemberId, cube(3, 2, 3))).toBe('unsupported');
+  });
+
+  it('are the way up a ledge the walk cannot climb from the floor', () => {
+    const map = ledge();
+    expect(walkAcross(map, cube(1, 1, 3), cube(4, 3, 3))).toBeNull();
+    const walk = walkAcross(putProp(map, { type: 'stairs', at: cube(3, 1, 3), facing: 1 }), cube(1, 1, 3), cube(4, 3, 3));
+    expect(walk?.cubes).toContainEqual(cube(3, 2, 3));
+  });
+
+  it('stand on stairs, for a flight', () => {
+    const map = putProp(createMap(), { type: 'stairs', at: cube(3, 1, 3), facing: 1 });
+    expect(whyNotPut(map, { type: 'stairs', at: cube(3, 2, 3), facing: 1 })).toBeNull();
+  });
+});
+

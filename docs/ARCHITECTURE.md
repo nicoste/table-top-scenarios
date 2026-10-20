@@ -2348,22 +2348,22 @@ apps/host/src/
 >   leaves alone, and of a hidden one it knows nothing. The first thing the table may make that is not the party's
 >   own pawn (R-136). Right-drag pans the table's view, as on the console.
 
-> **R-215.** **A stair is a block drawn as steps** (D-349). A mark beside the
-> block — which way it climbs — and never a rule: standing, walking, sight,
-> building and props see a block, as they always did. A staircase of blocks
-> was already climbed by the walk's diagonal steps (R-209); stairs make it look
-> like one.
+> **R-215.** **A stair is a prop that holds people up** (D-350, superseding
+> D-349). From the Props catalogue, a group of its own; one cube, placed one
+> per click, in stone or wood, like any prop (R-212) — and in every rule a
+> block: it stops sight and walking, and **its cube is a floor** to the cube
+> above it.
 >
-> - **Laid by the Build tool's Stairs brush**, one at a time. Against the side
->   of a block they climb toward it, their high side to the wall; on a floor,
->   **Z / X** turn them. A see-through ghost shows the steps before the click.
-> - **The mark goes where the block goes**: laid with it, erased with it, kept
->   when it is repainted, carried and turned and mirrored in a prefab, cut with
->   the band. A plain block laid where a stair was is plain.
-> - **Written only for blocks the map holds**, so a slice or the part the party
->   has seen tells the table of no stair it was not sent (R-85).
-> - Drawn as three steps, in its block's material and colour, under the fog
->   like any block; a click on a step is a click on its block.
+> - **One question asks for a floor**: `floorUnder` — a block below, or a
+>   prop whose type `holds`. Standing, placing a silver token, the walk
+>   (R-209) and a fall all ask it, so a stair is stood on, climbed and landed
+>   on wherever a block would be.
+> - **Turned to the wall pointed at**, climbing toward it, its back to the
+>   wall (`turnsToWall`); over a floor, **Z / X** turn it.
+> - **A token is aimed at the top of a prop** nearer than the floor behind
+>   it, so the cube above a stair is pointed at directly; the stand rules
+>   refuse the top of any prop that does not hold people.
+> - Drawn as three steps climbing toward the back, a paler edge to each tread.
 
 ---
 

@@ -64,7 +64,7 @@ export type {
 } from './props/index.js';
 export {
   PROP_TYPES, NO_PROPS, NONE_OPEN, FLAMES, propType, propBox, propCubes, propAt, propById, whyNotPut, putProp, editProp,
-  removeProp, propRules, statesOf, isLit, reachOf, flameColour,
+  removeProp, propRules, statesOf, isLit, reachOf, flameColour, floorUnder,
 } from './props/index.js';
 export type {
   CarriedLight, CarriedLightJSON, CarriedLights, LightSource, LampField, LightShadows,

@@ -271,7 +271,7 @@ export function MapPanel({
           </Tooltip>
           {/* The sixth (D-328): doors, bars and furniture, one per click. */}
           <Tooltip
-            label="Place doors, bars, furniture and lights, or change one — key 6"
+            label="Place doors, bars, furniture, lights and stairs, or change one — key 6"
             placement="bottom"
             stretch
           >
@@ -358,7 +358,8 @@ export function MapPanel({
           {tool === 'props' && (
             <>
               Pick a prop from the catalogue and click where it stands — <b>Z / X</b>{' '}
-              turn it first; a torch hangs on the wall you point at. One per click, and
+              turn it first; a torch hangs on the wall you point at, and stairs climb
+              toward it. One per click, and
               each is one undo. With nothing in hand, click a prop to turn, refinish,
               open or remove it, or to set how far a light reaches — <b>Backspace</b>{' '}
               removes the one selected. During play, a <b>Move</b> click opens and

@@ -19,7 +19,7 @@ import type { Footing, Tokens } from '../tokens/index.js';
 import { sameCube, standingAt, standsInBand } from '../tokens/index.js';
 import type { TokenTemplate } from '../library/index.js';
 import type { Opened } from '../props/index.js';
-import { NONE_OPEN, propRules } from '../props/index.js';
+import { NONE_OPEN, floorUnder, propRules } from '../props/index.js';
 import type { CarriedLight, CarriedLightJSON } from '../lamps/index.js';
 import { carriedLightFromJSON, carriedLightToJSON, cleanCarried, sameLight } from '../lamps/index.js';
 
@@ -125,7 +125,8 @@ export function whyNotPlace(
   if (!inMap(map, at)) return 'outside';
   if (blockAt(map, at)) return 'solid';
   if (map.props.length > 0 && propRules(map.props, opened).walking.has(blockKey(at))) return 'blocked';
-  if (!blockAt(map, { x: at.x, y: at.y - 1, z: at.z })) return 'unsupported';
+  // A block under it, or stairs (D-350).
+  if (!floorUnder(map, at)) return 'unsupported';
   if (standingAt(party, at) !== null) return 'taken';
   const there = silverAt(silver, at);
   if (there && there.id !== self) return 'taken';

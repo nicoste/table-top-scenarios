@@ -803,7 +803,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       stage.showPrefabGhost(preview?.cubes ?? null);
       stage.showBlockGhost(preview ? [preview.box.min, preview.box.max] : [], preview?.why ? 0xff6b6b : 0xffffff);
       const type = propType(propHand.type);
-      setHoverLabel(propPrompt(type?.name ?? null, propAt, preview?.why ?? null, !!type?.hangs));
+      setHoverLabel(propPrompt(type ?? null, propAt, preview?.why ?? null));
       return;
     }
     stage.showPrefabGhost(null);
@@ -1200,7 +1200,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
         picked.token, stride.step === 'aiming' || silverMove.step === 'aiming', picked.silver,
       );
       if (act.kind === 'confirm' && stride.step === 'aiming') {
-        const at = tokenAim(picked.face);
+        const at = tokenAim(picked.face, picked.propFace);
         if (at && strideVerdict(stride.memberId, at) === null) {
           dispatch(strideIntent(stride, at, openMap.placeId, openMap.poiId));
         }
@@ -1208,7 +1208,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
         return;
       }
       if (act.kind === 'confirm' && silverMove.step === 'aiming') {
-        const at = tokenAim(picked.face);
+        const at = tokenAim(picked.face, picked.propFace);
         if (at && silverVerdictAt(at, silverMove.id) === null) {
           dispatch(silverMoveIntent(silverMove, at, openMap.placeId, openMap.poiId));
         }
@@ -1278,7 +1278,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
      * cannot stand on does nothing; the readout has already said why.
      */
     if (openMap && mapTool === 'spawn') {
-      const at = tokenAim(picked.face);
+      const at = tokenAim(picked.face, picked.propFace);
       if (chosenTemplate && at && silverVerdictAt(at) === null) {
         dispatch(spawnIntent(chosenTemplate, at, openMap.placeId, openMap.poiId));
       }
@@ -1415,7 +1415,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       if (stride.step === 'aiming') {
         // The ghost follows the pointer only onto a floor the member may stand
         // on; anywhere else the prompt says why (R-138).
-        const at = tokenAim(picked.face);
+        const at = tokenAim(picked.face, picked.propFace);
         setStride((current) => (current.step === 'aiming'
           ? aimStride(current, at, at ? strideVerdict(current.memberId, at) : null)
           : current));
@@ -1423,7 +1423,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
         return;
       }
       if (silverMove.step === 'aiming') {
-        const at = tokenAim(picked.face);
+        const at = tokenAim(picked.face, picked.propFace);
         setSilverMove((current) => (current.step === 'aiming'
           ? aimSilverMove(current, at, at ? silverVerdictAt(at, current.id) : null)
           : current));
@@ -1485,7 +1485,8 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     if (openMap && mapTool === 'spawn') {
       lastPointer.current = { x: e.clientX, y: e.clientY };
       stage.showBlockGhost([]);
-      const at = tokenAim(stage.pick(e.clientX, e.clientY).face);
+      const spot = stage.pick(e.clientX, e.clientY);
+      const at = tokenAim(spot.face, spot.propFace);
       const why = at ? silverVerdictAt(at) : null;
       stage.aimSilver(chosenTemplate && at && why === null ? at : null);
       const entry = chosenTemplate ? library.find((one) => one.id === chosenTemplate)?.name ?? null : null;

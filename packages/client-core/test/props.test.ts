@@ -2,7 +2,7 @@
 
 import { describe, it, expect } from 'vitest';
 import type { BlockCoord, EncounterMap, SwatchId } from '@tt/domain';
-import { createMap, setBlocks, putProp, DEFAULT_FLOOR } from '@tt/domain';
+import { createMap, setBlocks, putProp, propType, DEFAULT_FLOOR } from '@tt/domain';
 import {
   EMPTY_HAND, takeProp, turnHand, propAim, propWall, propPreview, placePropIntent, propPrompt, toggleIntent, toggleLabel,
 } from '@tt/client-core';
@@ -50,7 +50,8 @@ describe('the preview', () => {
     expect(placePropIntent(hand, cube(3, 1, 3), 'place_a', 'poi_a')).toEqual({
       kind: 'placeProp', placeId: 'place_a', poiId: 'poi_a', type: 'door', at: cube(3, 1, 3), facing: 1, finish: 'iron',
     });
-    expect(propPrompt('Door', cube(3, 1, 3), null)).toMatch(/Click to place a door/);
+    expect(propPrompt(propType('door')!, cube(3, 1, 3), null)).toMatch(/Click to place a door/);
+    expect(propPrompt(propType('candles')!, null, null)).toMatch(/^Placing candles/);
     expect(propPrompt(null, null, null)).toMatch(/Pick a prop/);
   });
 });
@@ -85,7 +86,7 @@ describe('a light (D-335)', () => {
     expect(placePropIntent(hand, cube(5, 1, 3), 'place_a', 'poi_a', 1)).toMatchObject({ facing: 1 });
     // Anything that stands keeps the hand's turn.
     expect(placePropIntent(turnHand(takeProp(EMPTY_HAND, 'lantern'), 1), cube(5, 1, 3), 'place_a', 'poi_a', 3)).toMatchObject({ facing: 1 });
-    expect(propPrompt('Torch', cube(5, 1, 3), null, true)).toMatch(/Click to hang a torch/);
+    expect(propPrompt(propType('torch')!, cube(5, 1, 3), null)).toMatch(/Click to hang a torch/);
   });
 
   it('is put out and lit by a Move click, in its own words', () => {
@@ -96,3 +97,12 @@ describe('a light (D-335)', () => {
     expect(toggleIntent(map, id, new Set(), 'place_a', 'poi_a')).toMatchObject({ open: true });
   });
 });
+
+describe('stairs (D-350)', () => {
+  it('climb toward the wall pointed at, and keep the hand\'s turn over a floor', () => {
+    const hand = turnHand(takeProp(EMPTY_HAND, 'stairs'), -1);
+    expect(placePropIntent(hand, cube(5, 1, 3), 'place_a', 'poi_a', 1)).toMatchObject({ type: 'stairs', facing: 1 });
+    expect(placePropIntent(hand, cube(5, 1, 3), 'place_a', 'poi_a', null)).toMatchObject({ facing: 3 });
+  });
+});
+
