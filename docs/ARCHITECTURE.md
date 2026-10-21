@@ -2289,6 +2289,9 @@ apps/host/src/
 >   explored block is, on the table and in the Party's view. What sight shows
 >   now (`sightShows`) is the blocks it shows and the cubes of the props it
 >   shows, by the same seen-or-beside rule (`propsSeen`, D-331).
+> - **A prop shows where it stands** (D-360): once it is seen, the blocks
+>   under it, over it and at its two ends are seen with it — a shut door's
+>   floor and frame — and **never what is in front of it or behind it**.
 
 > **R-213.** **A light is drawn, never ruled: it fills the air from its flame,
 > cube by cube, and stops where sight stops** (D-321, D-335). It changes how

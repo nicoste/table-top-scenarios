@@ -301,6 +301,31 @@ function endsOf(facing: Facing): readonly (readonly [number, number])[] {
   return back.x !== 0 ? [[0, 1], [0, -1]] : [[1, 0], [-1, 0]];
 }
 
+/**
+ * The cubes a prop shows along with itself, once it is seen (D-360): under it,
+ * over it, and at its two ends — the floor a door stands on, its lintel, its
+ * frame. **Never in front of it or behind it**: what is on the far side of a
+ * shut door stays the far side's. Its own cubes are not among them.
+ */
+export function framingOf(prop: { readonly type: string; readonly at: BlockCoord; readonly facing: Facing }): readonly BlockCoord[] {
+  const cubes = propCubes(prop);
+  const own = new Set(cubes.map(blockKey));
+  const around: BlockCoord[] = [];
+  const seen = new Set<string>();
+  const take = (cube: BlockCoord) => {
+    const key = blockKey(cube);
+    if (own.has(key) || seen.has(key)) return;
+    seen.add(key);
+    around.push(cube);
+  };
+  for (const cube of cubes) {
+    take({ x: cube.x, y: cube.y - 1, z: cube.z });
+    take({ x: cube.x, y: cube.y + 1, z: cube.z });
+    for (const [dx, dz] of endsOf(prop.facing)) take({ x: cube.x + dx, y: cube.y, z: cube.z + dz });
+  }
+  return around;
+}
+
 export function whyNotPut(
   map: EncounterMap,
   prop: { readonly type: string; readonly at: BlockCoord; readonly facing: Facing },

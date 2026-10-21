@@ -26,7 +26,7 @@ import { DEFAULT_MATERIALS, materialById, materialIn } from '../materials/index.
 import type { PartyMember } from '../party/index.js';
 import type { Tokens } from '../tokens/index.js';
 import type { Opened } from '../props/index.js';
-import { NONE_OPEN, propCubes, propRules } from '../props/index.js';
+import { NONE_OPEN, framingOf, propCubes, propRules } from '../props/index.js';
 
 /**
  * Eye height, as a ratio of the cube, above the floor of the token's cube
@@ -261,6 +261,8 @@ export function explore(explored: Cells, seen: Cells): Cells {
  * The blocks this space shows (D-271): every block in a cube of it, or across
  * a face from one. The floor under a cube seen, the wall beside it, the
  * ceiling over it — and, for explored space, whatever stands there *now*.
+ * And the blocks every prop it shows stands among (D-360): under it, over it,
+ * at its ends.
  * Explored is what the party knows of the map as it is, not a memory of how it
  * looked.
  *
@@ -285,6 +287,14 @@ export function shownBy(map: EncounterMap, cells: Cells): ReadonlySet<string> {
       const y = at.y + dy;
       const z = at.z + dz;
       if (cubeAt(grid, x, y, z) !== EMPTY) shown.add(`${x},${y},${z}`);
+    }
+  }
+  // A prop shows where it stands (D-360): the blocks under it, over it and at
+  // its ends come with it — so a shut door's floor and frame are not black —
+  // and nothing in front of it or behind it.
+  for (const prop of propsSeen(map.props, cells)) {
+    for (const cube of framingOf(prop)) {
+      if (cubeAt(grid, cube.x, cube.y, cube.z) !== EMPTY) shown.add(`${cube.x},${cube.y},${cube.z}`);
     }
   }
   byCells.set(cells, shown);

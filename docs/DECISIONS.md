@@ -9235,3 +9235,28 @@ turned to it, Z / X turning it over a floor. Hanging from a block or a prop
 over it stays, as one more way it is held: a rope from a beam over a pit. The
 reason D-358 added for a rope with nothing above it is gone with it.
 
+### D-360 — A prop shows where it stands · `agreed`
+*"The door has the block below itself in full black until the door is open.
+I don't think we should start adding exceptions, so we should apply a global
+rule."* And, on the proposal: *"I don't want to see what's on the cube on the
+other side of the door."*
+
+A block is shown when the space across one of its faces is seen (D-271). A
+shut door stops sight, so its own cubes are never seen, and the floor under
+it — touching only those and the floor beside it — never was: black until
+the door opened. The same, less visibly, under every prop that stops sight:
+the front quarter of a bookcase's floor, the floor under stairs.
+
+The rule, for every prop: **once a prop is seen, the blocks under it, over it
+and at its two ends are seen with it** (`framingOf`) — a door's floor, its
+lintel, the wall either side of it; a stair's floor and the walls at its
+ends. **Never in front of it or behind it**, so what stands on the far side of
+a shut door — a block against it, the room's floor — stays the far side's.
+Its ends are the ends a prop is held at (D-355). Asked in one place,
+`shownBy`, so the console's fog, the Party's view and what the table is sent
+all follow it. Seeing the prop is the rule that already decided whether it is
+drawn (`propsSeen`).
+
+Checked against the test copy's own save: the tavern door's floor and frame
+are shown, and so is the floor under each stair and bookcase.
+

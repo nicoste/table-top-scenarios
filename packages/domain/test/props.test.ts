@@ -558,3 +558,40 @@ describe('more ways up (D-358)', () => {
   });
 });
 
+describe('a prop shows where it stands (D-360)', () => {
+  // The doorway at z = 7 in the wall at x = 5; the party has seen the cube in front of it.
+  const front = new Set(['4,1,7']);
+
+  it('a shut door shows its floor and its frame with it, and nothing on its far side', () => {
+    // A block standing right behind the door, and the floor beyond it.
+    const map = setBlocks(door(withDoorway()), [cube(6, 1, 7)], STONE);
+    const shown = shownBy(map, front);
+    // Under it, and the wall at both ends, both cubes high.
+    for (const at of [cube(5, 0, 7), cube(5, 1, 6), cube(5, 1, 8), cube(5, 2, 6), cube(5, 2, 8)]) {
+      expect(shown.has(blockKey(at)), blockKey(at)).toBe(true);
+    }
+    // Behind it: neither the block against it nor the floor of the room.
+    expect(shown.has(blockKey(cube(6, 1, 7)))).toBe(false);
+    expect(shown.has(blockKey(cube(6, 0, 7)))).toBe(false);
+    // And without the door, no floor there to show by this rule: the doorway is air, seen.
+    expect(shownBy(withDoorway(), front).has(blockKey(cube(5, 0, 7)))).toBe(false);
+  });
+
+  it('reaches the table with the door: the part of the map the party has seen holds that floor', () => {
+    const part = seenPart(door(withDoorway()), front);
+    expect(part.blocks.has(blockKey(cube(5, 0, 7)))).toBe(true);
+    expect(part.blocks.has(blockKey(cube(6, 0, 7)))).toBe(false);
+  });
+
+  it('stairs show their floor and the walls at their ends, not what is in front or behind', () => {
+    // A stair in a corridor one wide along z, walls at x = 2 and x = 4; it climbs toward −z.
+    const walls = setBlocks(createMap(), [cube(2, 1, 5), cube(4, 1, 5), cube(3, 1, 4), cube(3, 1, 6)], STONE);
+    const map = putProp(walls, { type: 'stairs', at: cube(3, 1, 5), facing: 0 });
+    const shown = shownBy(map, new Set(['3,2,5']));
+    expect([cube(3, 0, 5), cube(2, 1, 5), cube(4, 1, 5)].every((at) => shown.has(blockKey(at)))).toBe(true);
+    // In front of it and behind it — here, blocks — are not its to show.
+    expect(shown.has(blockKey(cube(3, 1, 4)))).toBe(false);
+    expect(shown.has(blockKey(cube(3, 1, 6)))).toBe(false);
+  });
+});
+
