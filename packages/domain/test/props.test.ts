@@ -615,3 +615,21 @@ describe('a prop sight passes through is seen as space is (D-361)', () => {
   });
 });
 
+describe('a ladder or a rope is never held at its ends (D-362)', () => {
+  it('so none chains sideways into the air from another', () => {
+    // A rope against a wall at z = 3, a cube up — and one beside it, with only that rope to hold it.
+    const wall = setBlocks(createMap(), [cube(5, 4, 3), cube(4, 4, 3)], STONE);
+    expect(whyNotPut(wall, { type: 'rope', at: cube(5, 4, 2), facing: 2 })).toBeNull();
+    const one = putProp(wall, { type: 'rope', at: cube(5, 4, 2), facing: 2 });
+    // Beside it, its back to the air: nothing holds it.
+    expect(whyNotPut(one, { type: 'rope', at: cube(4, 6, 2), facing: 0 })).toBe('unsupported');
+    expect(whyNotPut(one, { type: 'rope', at: cube(6, 4, 2), facing: 0 })).toBe('unsupported');
+    const ladder = putProp(wall, { type: 'ladder', at: cube(5, 4, 2), facing: 2 });
+    expect(whyNotPut(ladder, { type: 'ladder', at: cube(6, 4, 2), facing: 0 })).toBe('unsupported');
+    // Against the wall beside it, it leans as the first one does.
+    expect(whyNotPut(one, { type: 'rope', at: cube(4, 4, 2), facing: 2 })).toBeNull();
+    // Bars are still held at their ends.
+    expect(whyNotPut(wall, { type: 'bars', at: cube(6, 4, 3), facing: 0 })).toBeNull();
+  });
+});
+

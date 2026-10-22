@@ -9289,3 +9289,25 @@ Now:
 Replayed on a copy of the GM's own data — memory reset, one token where
 Turdorn stands: one hold seen, on its wall; the other two not.
 
+### D-362 — Ladders and ropes go up their wall, not out into the air · `agreed`
+From the review list: *"snapping rope"* — *"I didn't remove blocks to make
+those ropes float around."* In Tollkeep, two of three ropes floated:
+
+- **One beside another, held by nothing but it.** A prop may be held at its
+  ends (D-354, D-355) — bars across the top of a doorway — and a rope beside
+  a rope is at its end. Pointing at the side of a rope offered the cube
+  beside it, so ropes, and ladders, could chain sideways into the air.
+- **One on top of another, turned away from the wall.** Aimed at the rope
+  below rather than at the wall, it took the hand's own turn and was drawn on
+  the far side of its cube, out in the air.
+
+Now **a ladder or a rope is never held at its ends** — only by what is under
+it, the wall behind it, and (a rope) what is over it; and **one put directly
+on or under another of its kind takes that one's turn** (`placedTurn`), so a
+run goes on up the same wall. A wall pointed at still turns it, as before.
+Other props are held at their ends as they were.
+
+The two ropes already in the map stay where they are: the rule is asked when
+a prop is put down or moved. The one beside the other can be taken away or
+moved; the one turned away turned twice.
+

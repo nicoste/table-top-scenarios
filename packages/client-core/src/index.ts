@@ -53,7 +53,7 @@ export type { PrefabPlacing, PrefabPreview, Capture } from './prefabs/index.js';
 export {
   EMPTY_HAND, takeProp, turnHand, propAim, propWall, propWords, propPreview, placePropIntent, propPrompt,
   toggleIntent, toggleLabel, paintPropIntent, paintPropPrompt, propMovePreview, propMoveIntent, propMovePrompt, turnDrag,
-  propHoverLabel,
+  propHoverLabel, placedTurn,
 } from './props/index.js';
 export type { PropHand, PropPreview, PropDrag, PropMovePreview } from './props/index.js';
 

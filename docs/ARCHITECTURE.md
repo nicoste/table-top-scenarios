@@ -2412,7 +2412,9 @@ apps/host/src/
 >   ladder leans on the wall behind it or stands on the floor or another
 >   ladder, and so does a rope (D-359) — which may also hang from what is
 >   over it, iron making it a chain; holds and vines hang on the wall behind
->   them, as a torch does.
+>   them, as a torch does. **A ladder or a rope is never held at its ends**
+>   (D-362), and one put on or under another of its kind takes its turn, so
+>   a run goes on up the same wall.
 > - **The walk climbs them** (D-358): through what is climbed, and only
 >   there, a step may go straight up or down, and counts 1 as a step across
 >   does. How hard the climb is, is the GM's (R-1).

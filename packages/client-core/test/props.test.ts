@@ -6,6 +6,7 @@ import { createMap, setBlocks, putProp, editProp, propType, DEFAULT_FLOOR } from
 import {
   EMPTY_HAND, takeProp, turnHand, propAim, propWall, propPreview, placePropIntent, propPrompt, toggleIntent, toggleLabel,
   paintPropIntent, paintPropPrompt, propMovePreview, propMoveIntent, propMovePrompt, turnDrag, propHoverLabel,
+  placedTurn,
 } from '@tt/client-core';
 
 const cube = (x: number, y: number, z: number): BlockCoord => ({ x, y, z });
@@ -207,6 +208,21 @@ describe('the GM\'s note on a prop, under the pointer (D-357)', () => {
     const tid = table.props[0]!.id as string;
     expect(propHoverLabel(table, tid, new Set())).toBeNull();
     expect(propHoverLabel(editProp(table, tid, { note: 'wobbly' }), tid, new Set())).toBe('Table: wobbly');
+  });
+});
+
+describe('a ladder or a rope goes on up the same wall (D-362)', () => {
+  it('over or under one of its kind, it takes that one\'s turn; a wall pointed at still turns it', () => {
+    const map = putProp(setBlocks(createMap(), [cube(5, 4, 3)], DEFAULT_FLOOR as SwatchId), { type: 'rope', at: cube(5, 4, 2), facing: 2 });
+    const rope = takeProp(EMPTY_HAND, 'rope');
+    expect(placedTurn(map, rope, cube(5, 5, 2), null)).toBe(2);
+    expect(placedTurn(map, rope, cube(5, 3, 2), null)).toBe(2);
+    expect(placedTurn(map, rope, cube(5, 5, 2), 1)).toBe(1);
+    expect(placePropIntent(rope, cube(5, 5, 2), 'place_a', 'poi_a', placedTurn(map, rope, cube(5, 5, 2), null))).toMatchObject({ facing: 2 });
+    // A ladder over a rope is not a run; nor is a chest over a chest.
+    expect(placedTurn(map, takeProp(EMPTY_HAND, 'ladder'), cube(5, 5, 2), null)).toBeNull();
+    const chests = putProp(createMap(), { type: 'chest', at: cube(3, 1, 3), facing: 2 });
+    expect(placedTurn(chests, takeProp(EMPTY_HAND, 'chest'), cube(3, 2, 3), null)).toBeNull();
   });
 });
 

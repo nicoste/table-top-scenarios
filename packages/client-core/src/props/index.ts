@@ -10,8 +10,8 @@
 import type { Intent } from '@tt/protocol';
 import type { BlockCoord, Box, EncounterMap, Facing, Opened, PropFooting, PropType, SwatchId } from '@tt/domain';
 import {
-  facingWithBack, landedStack, paintOf, propBox, propById, propType, stackOf, statesOf, swatchName, turned, whyNotMove,
-  whyNotPut,
+  facingWithBack, landedStack, paintOf, propAt, propBox, propById, propType, stackOf, statesOf, swatchName, turned,
+  whyNotMove, whyNotPut,
 } from '@tt/domain';
 import type { FacePick, PropGhostDrawn } from '@tt/render';
 
@@ -54,6 +54,22 @@ export function propAim(face: FacePick | null, propFace: FacePick | null): Block
 export function propWall(face: FacePick | null, propFace: FacePick | null): Facing | null {
   if (propFace || !face || face.adjacent.y !== face.block.y) return null;
   return facingWithBack({ x: face.block.x - face.adjacent.x, z: face.block.z - face.adjacent.z });
+}
+
+/**
+ * The way a prop in hand is turned by where it goes, beyond the hand's own
+ * turn: the wall pointed at (`propWall`), or — for a ladder or a rope, over
+ * or under one of its kind — the turn of that one, so a run of them goes on
+ * up the same wall (D-362). `null` where nothing turns it.
+ */
+export function placedTurn(map: EncounterMap, hand: PropHand, at: BlockCoord, wall: Facing | null): Facing | null {
+  if (wall !== null || !hand.type) return wall;
+  if (!propType(hand.type)?.leans) return null;
+  for (const dy of [-1, 1]) {
+    const next = propAt(map.props, { x: at.x, y: at.y + dy, z: at.z });
+    if (next && next.type === hand.type) return next.facing;
+  }
+  return null;
 }
 
 /**

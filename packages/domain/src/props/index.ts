@@ -280,7 +280,8 @@ export function propById(props: Props, id: PropId | string): Prop | null {
  * - `solid` — a block is in one of its cubes.
  * - `taken` — another prop is, or somebody is standing there.
  * - `unsupported` — nothing holds it: something under its bottom is air, and
- *   nothing is at its ends either. A prop stands on a block or on another
+ *   nothing is at its ends either — a ladder or a rope is never held at its
+ *   ends (D-362). A prop stands on a block or on another
  *   prop (D-322: they stack — a tall bookcase is two), or is held at its ends
  *   — left and right, along its width (D-354, D-355): bars across the top of
  *   a doorway, between its posts. Never by what is in front of it or behind
@@ -360,7 +361,9 @@ export function whyNotPut(
     if (cubes.some((cube) => !!blockAt(map, { x: cube.x + back.x, y: cube.y, z: cube.z + back.z }))) return null;
   }
   // Or held at its ends (D-354, D-355): a block or a prop beyond its left or
-  // right, along its width — what is in front or behind holds nothing.
+  // right, along its width — what is in front or behind holds nothing. Not a
+  // ladder or a rope (D-362): one beside another would chain into the air.
+  if (propType(prop.type)?.leans) return 'unsupported';
   const own = new Set(cubes.map(blockKey));
   const beside = cubes.some((cube) => endsOf(prop.facing).some(([dx, dz]) => {
     const next = { x: cube.x + dx, y: cube.y, z: cube.z + dz };

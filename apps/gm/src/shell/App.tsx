@@ -38,7 +38,7 @@ import {
   NOT_PLACING, turnPlacing, mirrorPlacing, prefabAim, prefabPreview, placeIntent, placePrompt,
   NO_CAPTURE, captureCorner, captureClick, captureHeight, captureBack, captureBox, capturePrompt,
   EMPTY_HAND, turnHand, propAim, propWall, propPreview, placePropIntent, propPrompt, toggleIntent,
-  paintPropIntent, paintPropPrompt, propMovePreview, propMoveIntent, propMovePrompt, turnDrag, propHoverLabel,
+  paintPropIntent, paintPropPrompt, propMovePreview, propMoveIntent, propMovePrompt, turnDrag, propHoverLabel, placedTurn,
   MEASURE_START, measureCleared, measurePress, measureDrag, measureRelease, rulerShown, areasShown, handleAt,
   measurePrompt, faceCentre, floorCentre,
 } from '@tt/client-core';
@@ -816,7 +816,9 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       return;
     }
     if (propHand.type) {
-      const preview = propAt ? propPreview(openBody, propHand, propAt, standingCubes, propWallAt, propAtOnProp) : null;
+      // Turned to the wall pointed at, or on with the ladder or rope it goes on (D-362).
+      const turn = propAt ? placedTurn(openBody, propHand, propAt, propWallAt) : null;
+      const preview = propAt ? propPreview(openBody, propHand, propAt, standingCubes, turn, propAtOnProp) : null;
       stage.showPropGhost(preview ? [preview.ghost] : null);
       stage.showBlockGhost(preview ? [preview.box.min, preview.box.max] : [], preview?.why ? 0xff6b6b : 0xffffff);
       const type = propType(propHand.type);
@@ -1263,7 +1265,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     if (openMap && mapTool === 'props') {
       if (propHand.type) {
         const at = propAim(picked.face, picked.propFace);
-        const wall = propWall(picked.face, picked.propFace);
+        const wall = at && openBody ? placedTurn(openBody, propHand, at, propWall(picked.face, picked.propFace)) : null;
         const preview = at && openBody ? propPreview(openBody, propHand, at, standingCubes, wall, !!picked.propFace) : null;
         const intent = at && preview && !preview.why ? placePropIntent(propHand, at, openMap.placeId, openMap.poiId, wall) : null;
         if (intent) dispatch(intent);
