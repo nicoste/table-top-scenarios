@@ -9,7 +9,7 @@ import {
   editProp, removeProp, propRules, NONE_OPEN, whyNotStand, walkAcross, partySight, mapToJSON, mapFromJSON,
   sliceOf, seenPart, propsSeen, sightShows, shownBy, createCampaign, createLiveSave, openedIn, withOpen, tidyOpened,
   statesOf, isLit, reachOf, backOf, facingWithBack, MAX_LIGHT_REACH, floorUnder, dropBelow, whyNotPlace, paintOf, flameOf,
-  isKnownSwatch, prefabFromJSON, prefabToJSON, stackOf, whyNotMove, moveProp, landedStack,
+  isKnownSwatch, prefabFromJSON, prefabToJSON, stackOf, whyNotMove, moveProp, landedStack, memberSight,
   NO_SILVER, NO_TOKENS,
 } from '@tt/domain';
 
@@ -592,6 +592,26 @@ describe('a prop shows where it stands (D-360)', () => {
     // In front of it and behind it — here, blocks — are not its to show.
     expect(shown.has(blockKey(cube(3, 1, 4)))).toBe(false);
     expect(shown.has(blockKey(cube(3, 1, 6)))).toBe(false);
+  });
+});
+
+describe('a prop sight passes through is seen as space is (D-361)', () => {
+  it('only once a cube of its own has been seen — a cube beside it is not enough', () => {
+    // Holds on the outside of the wall at x = 5, and the cube beside them seen, as through a window.
+    const map = putProp(withDoorway(), { type: 'holds', at: cube(4, 3, 3), facing: 1 });
+    expect(propsSeen(map.props, new Set([blockKey(cube(4, 3, 4))]))).toEqual([]);
+    expect(propsSeen(map.props, new Set([blockKey(cube(4, 4, 3))]))).toEqual([]);
+    expect(propsSeen(map.props, new Set([blockKey(cube(4, 3, 3))]))).toBe(map.props);
+    // One that stops sight is still seen from beside it, as a block is: a shut door from its room.
+    expect(propsSeen(door(withDoorway()).props, new Set([blockKey(cube(4, 1, 7))]))).toHaveLength(1);
+  });
+
+  it('sight looks into a prop\'s cube with no block beside it: a crate on a crate is seen', () => {
+    let map = putProp(createMap(), { type: 'crate', at: cube(5, 1, 5), facing: 0 });
+    map = putProp(map, { type: 'crate', at: cube(5, 2, 5), facing: 0 });
+    const sight = memberSight(map, cube(2, 1, 5), 10);
+    expect(sight.has(blockKey(cube(5, 2, 5)))).toBe(true);
+    expect(propsSeen(map.props, sight)).toBe(map.props);
   });
 });
 

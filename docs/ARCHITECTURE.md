@@ -2288,7 +2288,10 @@ apps/host/src/
 > - **The fog reaches props** (D-332): out of sight, a prop is greyed as an
 >   explored block is, on the table and in the Party's view. What sight shows
 >   now (`sightShows`) is the blocks it shows and the cubes of the props it
->   shows, by the same seen-or-beside rule (`propsSeen`, D-331).
+>   shows, by the same seen-or-beside rule (`propsSeen`, D-331) — for a
+>   prop that can stop sight. One sight passes through is seen as space is,
+>   only once a cube of its own has been (D-361), and sight looks into every
+>   prop's cube, block beside it or not.
 > - **A prop shows where it stands** (D-360): once it is seen, the blocks
 >   under it, over it and at its two ends are seen with it — a shut door's
 >   floor and frame — and **never what is in front of it or behind it**.

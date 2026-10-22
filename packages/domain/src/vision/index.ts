@@ -26,7 +26,7 @@ import { DEFAULT_MATERIALS, materialById, materialIn } from '../materials/index.
 import type { PartyMember } from '../party/index.js';
 import type { Tokens } from '../tokens/index.js';
 import type { Opened } from '../props/index.js';
-import { NONE_OPEN, framingOf, propCubes, propRules } from '../props/index.js';
+import { NONE_OPEN, framingOf, propCubes, propRules, propType } from '../props/index.js';
 
 /**
  * Eye height, as a ratio of the cube, above the floor of the token's cube
@@ -71,6 +71,9 @@ const SAMPLES: readonly (readonly [number, number, number])[] = [
   [INSET, FAR, INSET], [FAR, FAR, INSET], [INSET, FAR, FAR], [FAR, FAR, FAR],
   [INSET, INSET, INSET], [FAR, INSET, INSET], [INSET, INSET, FAR], [FAR, INSET, FAR],
 ];
+
+/** Only the cube itself: how a prop sight passes through is seen (D-361). */
+const ITSELF: readonly (readonly [number, number, number])[] = [[0, 0, 0]];
 
 /** The six neighbours across a face, and the cube itself. */
 const AROUND: readonly (readonly [number, number, number])[] = [
@@ -161,6 +164,7 @@ export function memberSight(map: EncounterMap, at: BlockCoord, range: number, op
   const seen = new Set<string>();
   if (!(range > 0)) return seen;
   const grid = sightGrid(map, stopsIn(map, opened));
+  const held = propsIn(map, grid);
   const eye = eyeOf(map, at, opened);
   const blocks: Blocks = (x, y, z) => cubeAt(grid, x, y, z) === SOLID;
   const reach = range * range;
@@ -174,13 +178,32 @@ export function memberSight(map: EncounterMap, at: BlockCoord, range: number, op
       for (let x = from(eye.x, min.x); x <= to(eye.x, min.x, size.x); x++) {
         const here = cubeAt(grid, x, y, z);
         if (here === SOLID) continue;
-        if (here === EMPTY && !touchesBlock(grid, x, y, z)) continue;
+        // Space next to nothing shows nothing, and is not looked into — unless
+        // a prop stands in it, which is seen only when its own cube is (D-361).
+        if (here === EMPTY && !touchesBlock(grid, x, y, z) && !(held && held[cubeIndex(grid, x, y, z)])) continue;
         if (nearest(eye, x, y, z) > reach) continue;
         if (seesInto(blocks, eye, x, y, z, reach)) seen.add(`${x},${y},${z}`);
       }
     }
   }
   return seen;
+}
+
+/**
+ * Which cubes of the grid a prop stands in, or nothing when there are none:
+ * the space sight must look into even with no block beside it (D-361) — a
+ * crate on a crate, a lantern on a table, a rope in mid-air.
+ */
+function propsIn(map: EncounterMap, grid: CubeGrid): Uint8Array | null {
+  if (map.props.length === 0) return null;
+  const held = new Uint8Array(grid.cells.length);
+  for (const prop of map.props) {
+    for (const cube of propCubes(prop)) {
+      const index = cubeIndex(grid, cube.x, cube.y, cube.z);
+      if (index >= 0) held[index] = 1;
+    }
+  }
+  return held;
 }
 
 function touchesBlock(grid: CubeGrid, x: number, y: number, z: number): boolean {
@@ -327,9 +350,12 @@ export function sightShows(map: EncounterMap, sight: Cells): ReadonlySet<string>
 }
 
 /**
- * The props the party has seen (D-322): a prop is shown as a block is, once a
- * cube of it, or one across a face from it, has been seen — so a shut door is
- * seen from the room it closes, not from beyond it.
+ * The props the party has seen (D-322, D-361): one that can stop sight is
+ * shown as a block is, once a cube of it, or one across a face from it, has
+ * been seen — so a shut door is seen from the room it closes, not from beyond
+ * it. One sight passes through — holds, a ladder, bars, a crate — is seen as
+ * space is: only once a cube of its own has been, so a cube seen beside it
+ * through a window does not show it.
  *
  * **One rule, two readers** (D-311's lesson, D-331): the host cuts the
  * table's payload with it, and the console's Party's view draws with it. The
@@ -339,8 +365,14 @@ export function sightShows(map: EncounterMap, sight: Cells): ReadonlySet<string>
  */
 export function propsSeen<P extends Prop>(props: readonly P[], explored: Cells): readonly P[] {
   if (props.length === 0) return props;
-  const seen = props.filter((prop) => propCubes(prop).some((cube) => AROUND.some(([dx, dy, dz]) =>
-    explored.has(`${cube.x + dx},${cube.y + dy},${cube.z + dz}`))));
+  const seen = props.filter((prop) => {
+    const type = propType(prop.type);
+    // A type nobody knows is taken as one that may stop sight: shown, not lost.
+    const screens = !type || type.closed.blocksSight || type.open.blocksSight;
+    const around = screens ? AROUND : ITSELF;
+    return propCubes(prop).some((cube) => around.some(([dx, dy, dz]) =>
+      explored.has(`${cube.x + dx},${cube.y + dy},${cube.z + dz}`)));
+  });
   return seen.length === props.length ? props : seen;
 }
 

@@ -9260,3 +9260,32 @@ drawn (`propsSeen`).
 Checked against the test copy's own save: the tavern door's floor and frame
 are shown, and so is the floor under each stair and bookcase.
 
+### D-361 — A prop sight passes through is seen as space is · `agreed`
+From the review list: *"Props visible when they shouldn't be"* — in Tollkeep,
+with the party's memory reset and one token moved to the east side of the
+keep, three holds on the far side of it stood in the dark, floating.
+
+Turdorn's sight runs in through the east window, across the room and out of
+the west one, and reaches a few cubes against the outside of the west wall.
+One hold's own cube was among them, and shows — rightly: its corner is in
+sight past the window's edge, and its wall shows with it. The other two
+showed only because **a cube beside them** had been seen: a prop is seen once
+a cube of it, *or one across a face from it*, has been (D-331). That second
+half is for props whose own cubes sight never enters — a shut door is seen
+from the room it closes, as a block is. For a prop sight passes through, it
+leaks: its own cube was never seen, its wall was not shown, and it floated.
+
+Now:
+
+- **A prop that can stop sight** — a door, a bookcase, stairs — is seen as a
+  block is, from its own cubes or the cubes beside them, as before.
+- **A prop sight passes through** — holds, vines, a ladder, a rope, bars, a
+  crate, a light — is seen as space is: **only once a cube of its own has
+  been seen.**
+- **Sight looks into every prop's cube**, where before it skipped space with
+  no block beside it: a crate on a crate, a lantern on a table, a rope in
+  the air were seen only through the rule above, and would have vanished.
+
+Replayed on a copy of the GM's own data — memory reset, one token where
+Turdorn stands: one hold seen, on its wall; the other two not.
+
