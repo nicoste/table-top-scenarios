@@ -62,6 +62,11 @@ export const IntentSchema = z.discriminatedUnion('kind', [
     size, stroke,
   }),
   z.object({ kind: z.literal('setHeight'), ...cell, height: z.number().int().min(0).max(MAX_HEIGHT), size, stroke }),
+  /**
+   * Every column under the brush moved up or down together by `delta` (D-367),
+   * keeping its shape: measured from the ground as the stroke found it, so a
+   * drag sends how far it has gone in all, each column stopping at the limits.
+   */
   z.object({ kind: z.literal('raiseHeight'), ...cell, delta: z.number().int().min(-MAX_HEIGHT).max(MAX_HEIGHT), size, stroke }),
 
   z.object({ kind: z.literal('addMember'), name: z.string().max(40).optional() }),

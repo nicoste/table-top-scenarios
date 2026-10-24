@@ -769,9 +769,12 @@ most time in, so it gets specified rather than improvised.
 > the `+` affordance (R-79).
 
 > **R-89.** **Height tool** (mountain icon): same highlight, but a **vertical drag
-> on a cell raises or lowers it**, snapping to whole levels. Terrain is untouched.
-> Clamped to `[0, MAX_HEIGHT]` (R-80). With a brush wider than one cell it stamps
-> a **flat plateau**, which is what makes it useful for building.
+> on a cell raises or lowers the ground under the brush**, snapping to whole
+> levels. Terrain is untouched. Clamped to `[0, MAX_HEIGHT]` (R-80). The ground
+> **moves as one, keeping its shape** (D-367): every column goes up or down by
+> as many levels as the drag has, from the height the drag found it at, and
+> stops at a limit on its own while the rest close in on it. A flat plateau is
+> two drags: down until every column has met at the sea, then up.
 >
 > Separating paint from height means neither gesture can surprise you by doing the
 > other, and it is why a fresh chunk being uniform water (R-78) works as a

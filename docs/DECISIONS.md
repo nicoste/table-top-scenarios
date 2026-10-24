@@ -9381,3 +9381,30 @@ Measured as D-290 was, on a copy of the GM's data with the party apart:
 three strokes of soil painted away from the party removed and re-added
 Galion's name three times before, and not once after.
 
+### D-367 — The ground under a brush rises and falls as one · `agreed`
+*"If I raised two columns one by one, and then I cover those 2 columns plus
+other X columns with my brush, when I try to rise/lower them, they should move
+together keeping the original offset. If some columns reach limits, they get
+stuck at those limits and the other columns will start getting closer to
+them."* The Height drag set every column under the brush to one height (R-89),
+so a wider brush flattened whatever it touched.
+
+Now the drag **lifts the ground as it found it**: every column under the
+brush moves by the same number of levels, and each stops at 0 or at the top
+on its own while the others keep moving, closing in on it (`liftArea`).
+
+- **Measured from the start of the drag, not from the last step.** The console
+  says how far the drag has gone in all — `raiseHeight` with the whole delta
+  and the stroke — and the host lifts from the ground the stroke began on,
+  which is already in the undo history (D-170). A drag that goes too far and
+  comes back gives back the shape it started with, columns stopped at a limit
+  included, and the whole drag is still one undo.
+- **A plateau is two drags**: down until every column has met at the sea,
+  then up. The flattening drag was the one way to make one; it is now a step
+  rather than the rule.
+- `raiseArea`, which raised from the ground as it stood at each step, had no
+  caller left and is gone.
+
+Checked on a copy of the GM's data: two drags of a 9×9 over the Mines of
+Dulubin's foothills moved its 69 columns by 6 and by 5, 11 where they
+overlapped, every slope kept.

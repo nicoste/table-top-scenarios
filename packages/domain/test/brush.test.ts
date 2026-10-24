@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   CHUNK_SIZE, MAX_BRUSH, clampBrush, brushCells, brushCentreOffset, toGlobal, fromGlobal,
-  paintArea, setHeightArea, raiseArea, emptyWorld, addChunk, chunkAt, columnAt,
-  WORLD_BRUSHES, stepBrush, BRUSHES,
+  paintArea, setHeightArea, emptyWorld, addChunk, chunkAt, columnAt,
+  WORLD_BRUSHES, stepBrush, BRUSHES, liftArea, MAX_HEIGHT,
 } from '@tt/domain';
 import type { SwatchId } from '@tt/domain';
 
@@ -132,17 +132,40 @@ describe('brushes across chunk boundaries', () => {
     expect(columnAt(chunk, 8, 10)?.height).toBe(0);
   });
 
-  it('preserves relative heights with raiseArea', () => {
-    let world = addChunk(emptyWorld(), { cx: 0, cz: 0 });
-    world = setHeightArea(world, { gx: 10, gz: 10 }, 1, 4);
-    world = raiseArea(world, { gx: 10, gz: 10 }, 3, 2);
-    const chunk = chunkAt(world, { cx: 0, cz: 0 })!;
-    expect(columnAt(chunk, 10, 10)?.height).toBe(6);
-    expect(columnAt(chunk, 9, 10)?.height).toBe(2);
-  });
-
   it('returns the same world when the brush changes nothing', () => {
     const world = addChunk(emptyWorld(), { cx: 0, cz: 0 });
     expect(setHeightArea(world, { gx: 10, gz: 10 }, 3, 0)).toBe(world);
   });
 });
+
+describe('lifting the ground under a brush (D-367)', () => {
+  /** A ridge across the 3-cross at 10,10: the middle 4 high, its arms 1, 2, 3 and 0. */
+  const ridge = () => {
+    let world = addChunk(emptyWorld(), { cx: 0, cz: 0 });
+    for (const [x, z, h] of [[10, 10, 4], [9, 10, 1], [11, 10, 2], [10, 9, 3]] as const) {
+      world = setHeightArea(world, { gx: x, gz: z }, 1, h);
+    }
+    return world;
+  };
+  const heights = (world: ReturnType<typeof ridge>) => [[10, 10], [9, 10], [11, 10], [10, 9], [10, 11]]
+    .map(([x, z]) => columnAt(chunkAt(world, { cx: 0, cz: 0 })!, x!, z!)!.height);
+
+  it('moves every column together, keeping their offsets', () => {
+    const from = ridge();
+    expect(heights(liftArea(from, from, { gx: 10, gz: 10 }, 3, 2))).toEqual([6, 3, 4, 5, 2]);
+    expect(heights(liftArea(from, from, { gx: 10, gz: 10 }, 3, -1))).toEqual([3, 0, 1, 2, 0]);
+  });
+
+  it('stops each column at the limits on its own, and the rest close in on it', () => {
+    const from = ridge();
+    const high = liftArea(from, from, { gx: 10, gz: 10 }, 3, MAX_HEIGHT - 3);
+    expect(heights(high)).toEqual([MAX_HEIGHT, MAX_HEIGHT - 2, MAX_HEIGHT - 1, MAX_HEIGHT, MAX_HEIGHT - 3]);
+  });
+
+  it('measures from where it started, so going too far and back gives the shape back', () => {
+    const from = ridge();
+    const over = liftArea(from, from, { gx: 10, gz: 10 }, 3, MAX_HEIGHT);
+    expect(heights(liftArea(over, from, { gx: 10, gz: 10 }, 3, 0))).toEqual(heights(from));
+  });
+});
+

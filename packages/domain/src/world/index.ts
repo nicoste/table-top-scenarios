@@ -403,8 +403,19 @@ export function setHeightArea(world: World, at: GlobalCell, size: number, height
   return applyBrush(world, at, size, (chunk, x, z) => setHeight(chunk, x, z, height));
 }
 
-export function raiseArea(world: World, at: GlobalCell, size: number, delta: number): World {
-  return applyBrush(world, at, size, (chunk, x, z) => raiseHeight(chunk, x, z, delta));
+/**
+ * Every column under the brush raised or lowered by `delta` from the height it
+ * had in `from` (D-367) — the ground as a drag found it — so the shape under
+ * the brush moves as one, its offsets kept. Each column stops at the limits on
+ * its own: one that reaches the top stays there while the rest keep climbing
+ * toward it. Measured from `from` rather than from now, so a drag that goes
+ * too far and comes back gives back the shape it started with.
+ */
+export function liftArea(world: World, from: World, at: GlobalCell, size: number, delta: number): World {
+  return applyBrush(world, at, size, (chunk, x, z) => {
+    const was = columnAt(chunkAt(from, chunk.coord) ?? chunk, x, z);
+    return was ? setHeight(chunk, x, z, was.height + delta) : chunk;
+  });
 }
 
 // -- world-level edits -------------------------------------------------------

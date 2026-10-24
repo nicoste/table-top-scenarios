@@ -145,6 +145,27 @@ describe('the two tools (R-88, R-89)', () => {
     expect(columnAt(chunkAt(state.active!.world, ORIGIN)!, 1, 1)?.height).toBe(0);
   });
 
+  it('lifts the ground under a brush as one, measured from where the drag found it (D-367)', () => {
+    let state = withCampaign();
+    const at = { cx: ORIGIN.cx, cz: ORIGIN.cz, x: 5, z: 5 };
+    // A slope under a 3-cross: 2 in the middle, 1 to the west, 0 elsewhere.
+    state = run(state, { kind: 'setHeight', ...at, height: 2 }).state;
+    state = run(state, { kind: 'setHeight', ...at, x: 4, height: 1 }).state;
+    const height = (s: HostState, x: number, z: number) => columnAt(chunkAt(s.active!.world, ORIGIN)!, x, z)!.height;
+    const lift = (delta: number): Intent => ({ kind: 'raiseHeight', ...at, delta, size: 3, stroke: 'drag-1' });
+    const undoDepth = state.history.past.length;
+    // One drag: up 2, up 5 in all, then back to 1 — each step from the start, not from the last.
+    state = run(state, lift(2)).state;
+    state = run(state, lift(5)).state;
+    expect([height(state, 5, 5), height(state, 4, 5), height(state, 6, 5)]).toEqual([7, 6, 5]);
+    state = run(state, lift(1)).state;
+    expect([height(state, 5, 5), height(state, 4, 5), height(state, 6, 5)]).toEqual([3, 2, 1]);
+    // The whole drag is one undo, back to the slope it started from.
+    expect(state.history.past.length).toBe(undoDepth + 1);
+    state = run(state, { kind: 'undo' }).state;
+    expect([height(state, 5, 5), height(state, 4, 5), height(state, 6, 5)]).toEqual([2, 1, 0]);
+  });
+
   it('does not ask for a save when nothing changed', () => {
     const state = withCampaign();
     const result = run(state, { kind: 'setHeight', cx: ORIGIN.cx, cz: ORIGIN.cz, x: 1, z: 1, height: 0 });

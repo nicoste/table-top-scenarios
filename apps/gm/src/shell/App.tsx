@@ -1635,11 +1635,14 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     }
 
     if (drag.current) {
-      // Vertical drag, snapped to whole cubes (R-89). Up is higher.
+      // Vertical drag, snapped to whole cubes (R-89). Up is higher. The ground
+      // under the brush moves as one, keeping its shape (D-367): the host
+      // measures each column from where the drag found it, so this says how
+      // far the drag has gone in all.
       const steps = Math.round((drag.current.startY - e.clientY) / 18);
       const height = Math.max(0, Math.min(MAX_HEIGHT, drag.current.base + steps));
       dispatch({
-        kind: 'setHeight', ...drag.current.cell, height, size: brush,
+        kind: 'raiseHeight', ...drag.current.cell, delta: steps, size: brush,
         ...(stroke.current ? { stroke: stroke.current } : {}),
       });
       stage.showHighlight(drag.current.cell, height, brush);

@@ -20,8 +20,8 @@ export {
   columnAt, paintGround, paintCover, clampHeight, setHeight, raiseHeight,
   addChunk, replaceChunk, creatableSlots, isCreatableSlot, CHUNK_NEIGHBOURS,
   WORLD_BRUSHES, MAX_BRUSH, clampBrush, stepBrush, toGlobal, fromGlobal,
-  brushCells, brushCentreOffset,
-  paintArea, coverArea, setHeightArea, raiseArea,
+  brushCells, brushCentreOffset, liftArea,
+  paintArea, coverArea, setHeightArea,
 } from './world/index.js';
 
 export { packRuns, unpackRuns } from './runs/index.js';

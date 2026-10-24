@@ -93,7 +93,7 @@ export function BuildWorldPanel({
               : tool === 'cover'
                 ? <>Click, or drag. {standing ? <>Planting <b>{standing.name}</b>.</> : <>Clearing what is there.</>} The ground underneath is untouched.</>
                 : tool === 'height'
-                  ? <>Drag a cell up or down. Each step is 150&nbsp;m.</>
+                  ? <>Drag a cell up or down: the ground under the brush moves as one, keeping its shape. Each step is 150&nbsp;m.</>
                   : tool === 'travel'
                     ? <>Click a pawn, aim, then click to confirm. Escape or right-click cancels.</>
                     : <>Click an empty cell to place one, or a place to pick it up and move it. <b>Z / X</b> turn it; right-click puts it back.</>}
