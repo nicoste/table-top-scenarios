@@ -43,6 +43,15 @@ export interface PartyPawns {
    */
   turnTo(yaw: number): void;
   /**
+   * Whether these pawns still draw this campaign and placement exactly — the
+   * same members, names, colours, pictures, cells and ground under them — and
+   * if so, takes the campaign on for aiming and keeps itself (D-366). Every
+   * accepted intent sends a fresh campaign and placement; rebuilding on each
+   * tore the names out of the page and put them back, a blink at every paint
+   * stroke, as the place markers once did (D-290).
+   */
+  reuse(campaign: Campaign, placement: Placement, pictures: Pictures | undefined): boolean;
+  /**
    * Puts the ghost on a cell, or takes it off the board.
    *
    * Called on every pointer move during the aim step, so it repositions one
@@ -57,11 +66,30 @@ const centre = (cell: WorldCell) => ({
   z: cell.cz * CHUNK_SIZE + cell.z + 0.5,
 });
 
+/**
+ * Everything a set of pawns is drawn from, as one string (D-366): who stands
+ * where, as whom — name, colour, picture — and how high the ground is under
+ * each. The party together is one pawn made of everyone's faces.
+ */
+export function pawnSignature(campaign: Campaign, placement: Placement): string {
+  const byId = new Map<string, PartyMember>(campaign.party.map((m) => [m.id, m]));
+  const everyone = campaign.party.map((m) => `${m.colour}/${m.image ?? ''}`).join(',');
+  return pawnsOf(placement, campaign.party).map((pawn) => {
+    const member = pawn.memberId ? byId.get(pawn.memberId) ?? null : null;
+    const who = member ? `${member.id}/${member.name}/${member.colour}/${member.image ?? ''}` : `party/${everyone}`;
+    const { cx, cz, x, z } = pawn.cell;
+    return `${who}@${cx},${cz},${x},${z}:${surfaceAt(campaign, pawn.cell)}`;
+  }).join('|');
+}
+
 export function buildPartyPawns(
   campaign: Campaign,
   placement: Placement,
   pictures?: Pictures,
 ): PartyPawns {
+  const signature = pawnSignature(campaign, placement);
+  /** The campaign aiming reads the ground from: the latest one these pawns were kept for. */
+  let ground = campaign;
   const group = new Group();
   const owners = new Map<object, PawnRef>();
   const proxies: Mesh[] = [];
@@ -119,6 +147,11 @@ export function buildPartyPawns(
     group,
     proxies,
     pawnAt: (object) => owners.get(object) ?? null,
+    reuse(next, nextPlacement, nextPictures) {
+      if (nextPictures !== pictures || pawnSignature(next, nextPlacement) !== signature) return false;
+      ground = next;
+      return true;
+    },
     turnTo(yaw) {
       for (const turner of turning) turner.rotation.y = yaw;
     },
@@ -128,7 +161,7 @@ export function buildPartyPawns(
         return;
       }
       const { x, z } = centre(cell);
-      ghost.position.set(x, surfaceAt(campaign, cell), z);
+      ghost.position.set(x, surfaceAt(ground, cell), z);
       ghost.visible = true;
     },
     dispose() {

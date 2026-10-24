@@ -733,7 +733,9 @@ export class Stage {
       this.places.dispose();
       this.places = null;
     }
-    this.dropPawns();
+    // The pawns are kept or rebuilt below, once the campaign is in (D-366);
+    // only no campaign at all takes them away here.
+    if (!campaign) this.dropPawns();
     this.campaign = campaign;
     if (!campaign) this.setFogChunks([]);
     for (const { mesh } of this.slotMeshes) {
@@ -774,7 +776,8 @@ export class Stage {
     }
 
     this.campaign = campaign;
-    this.rebuildPawns();
+    // Kept when nothing they draw has changed (D-366), as the markers are (D-290).
+    this.keepOrRebuildPawns();
 
     const centre = worldCentre(campaign.world);
     if (!this.grid) {
@@ -839,6 +842,13 @@ export class Stage {
     this.pawns = null;
   }
 
+  /** The pawns as they are if they still draw what is here, or built again (D-366). */
+  private keepOrRebuildPawns(): void {
+    if (this.pawns && this.campaign && this.placement
+      && this.pawns.reuse(this.campaign, this.placement, this.pictures ?? undefined)) return;
+    this.rebuildPawns();
+  }
+
   private rebuildPawns(): void {
     this.dropPawns();
     if (!this.campaign || !this.placement) return;
@@ -857,7 +867,8 @@ export class Stage {
   setPlacement(placement: Placement | null): void {
     this.invalidate();
     this.placement = placement;
-    this.rebuildPawns();
+    // Sent afresh with every message; a placement where nobody moved keeps them (D-366).
+    this.keepOrRebuildPawns();
   }
 
   /**

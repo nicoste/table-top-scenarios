@@ -9363,3 +9363,21 @@ Now **any other tool drops a journey under way** — aimed, or waiting to be
 confirmed — and the route and the ghost go with it (`armed`). Under Travel,
 it stays as it was.
 
+### D-366 — The world's pawns are kept when nothing they draw has changed · `agreed`
+*"Party member token names, when separated, tilt/flicker after each map
+modification, like being recreated. I think we already went through something
+like this in the past."* We had: D-290, for the place markers' captions. The
+pawns never got the same treatment. `setCampaign` dropped every pawn on every
+accepted intent, and `setPlacement` rebuilt them on every message — each a
+fresh name in the page in place of the old one, a blink at every brush stroke.
+
+Now the pawns are **kept while nothing they draw has changed** —
+`pawnSignature`: who stands where, as whom (name, colour, picture), and the
+ground under each — checked when the campaign arrives and when the placement
+does, as the markers are (D-290). A pawn kept takes on the new campaign for
+the ghost's height while aiming.
+
+Measured as D-290 was, on a copy of the GM's data with the party apart:
+three strokes of soil painted away from the party removed and re-added
+Galion's name three times before, and not once after.
+
