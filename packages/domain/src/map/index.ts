@@ -14,6 +14,7 @@ import { freshId } from '../ids/index.js';
 import { DEFAULT_FLOOR } from '../materials/index.js';
 import type { CuttingPlane, LevelRange, PlaneJSON } from '../planes/index.js';
 import { fullRange, inRange, planesToJSON, planesFromJSON, WATER_LEVEL } from '../planes/index.js';
+import { footprintOf } from '../footprint/index.js';
 
 /** Cells along one side of a freshly created map, and the step `+` grows by. */
 export const MAP_PATCH = 16;
@@ -210,8 +211,12 @@ export interface Brush {
 
 export const BRUSHES: readonly Brush[] = [
   { id: 'cube', name: 'Cube', span: 1, rise: 1 },
+  // Round, as the world's are (D-364): a cross at 3, rounder as they grow.
   { id: 'flat3', name: 'Flat 3×3', span: 3, rise: 1 },
   { id: 'flat5', name: 'Flat 5×5', span: 5, rise: 1 },
+  { id: 'flat7', name: 'Flat 7×7', span: 7, rise: 1 },
+  { id: 'flat9', name: 'Flat 9×9', span: 9, rise: 1 },
+  { id: 'flat11', name: 'Flat 11×11', span: 11, rise: 1 },
   { id: 'column2', name: 'Column 2', span: 1, rise: 2 },
   { id: 'column3', name: 'Column 3', span: 1, rise: 3 },
 ];
@@ -220,7 +225,7 @@ export const DEFAULT_BRUSH = BRUSHES[0]!;
 
 /** How many cells the largest brush reaches: the cap on a single edit. */
 export const MAP_BRUSH_CELLS = BRUSHES
-  .reduce((most, brush) => Math.max(most, brush.span * brush.span * brush.rise), 1);
+  .reduce((most, brush) => Math.max(most, footprintOf(brush.span).length * brush.rise), 1);
 
 /**
  * The brush with this id, or the single cube.
@@ -251,14 +256,12 @@ export function brushPatch(
   brush: Brush,
   grow: 'up' | 'down' = 'up',
 ): readonly BlockCoord[] {
-  const half = Math.floor(brush.span / 2);
   const step = grow === 'up' ? 1 : -1;
   const cells: BlockCoord[] = [];
   for (let level = 0; level < brush.rise; level += 1) {
-    for (let dx = -half; dx <= half; dx += 1) {
-      for (let dz = -half; dz <= half; dz += 1) {
-        cells.push({ x: at.x + dx, y: at.y + level * step, z: at.z + dz });
-      }
+    // Round from above (D-364), as the world's brushes are.
+    for (const [dx, dz] of footprintOf(brush.span)) {
+      cells.push({ x: at.x + dx, y: at.y + level * step, z: at.z + dz });
     }
   }
   return cells;

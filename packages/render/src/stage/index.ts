@@ -7,7 +7,7 @@ import {
   Vector3,
   MeshBasicMaterial, PlaneGeometry, Raycaster, Scene, Vector2, WebGLRenderer, BoxGeometry,
   WebGLRenderTarget, HalfFloatType, MathUtils,
-  EdgesGeometry, LineSegments, LineBasicMaterial, Group, BufferGeometry, DoubleSide,
+  EdgesGeometry, LineSegments, LineBasicMaterial, Group, BufferGeometry, DoubleSide, Float32BufferAttribute,
 } from 'three';
 import type {
   BlockCoord, Campaign, CarriedLight, EncounterMap, GlobalCell, LightShadows, LightSource, Lighting, Material, Opened,
@@ -19,7 +19,7 @@ import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import {
-  CHUNK_SIZE, brushCentreOffset, mapCentre, DAYLIGHT, sunDirection, shadowReach, bounceOf,
+  CHUNK_SIZE, brushCentreOffset, footprintOf, mapCentre, DAYLIGHT, sunDirection, shadowReach, bounceOf,
   dropBelow, fromGlobal, NONE_OPEN, propCubes, propLights, carriedAt, lampField,
 } from '@tt/domain';
 import type { CameraTarget } from '../camera/index.js';
@@ -220,6 +220,44 @@ const MAX_LAMPS = 6;
  */
 const LAMP_INTENSITY = 3;
 
+/**
+ * The outline of cells seen from above, as line segments in a unit-tall box
+ * (D-364): their edge along the top and the bottom, and an upright at every
+ * corner — what a round brush reaches, rather than the square around it.
+ * `cells` are cell centres in cell units; drawn a hair outside them, as the
+ * square outline was, so it is not lost in the faces it frames.
+ */
+function footprintOutline(cells: readonly (readonly [number, number])[]): BufferGeometry {
+  const PAD = 1.02;
+  const has = new Set(cells.map(([x, z]) => `${x},${z}`));
+  const points: number[] = [];
+  const corners = new Map<string, { x: boolean; z: boolean; at: [number, number] }>();
+  const corner = (x: number, z: number, along: 'x' | 'z') => {
+    const key = `${x},${z}`;
+    const found = corners.get(key) ?? { x: false, z: false, at: [x, z] };
+    found[along] = true;
+    corners.set(key, found);
+  };
+  const edge = (x0: number, z0: number, x1: number, z1: number) => {
+    for (const y of [-0.5, 0.5]) points.push(x0 * PAD, y, z0 * PAD, x1 * PAD, y, z1 * PAD);
+    const along = z0 === z1 ? 'x' : 'z';
+    corner(x0, z0, along);
+    corner(x1, z1, along);
+  };
+  for (const [x, z] of cells) {
+    if (!has.has(`${x},${z - 1}`)) edge(x - 0.5, z - 0.5, x + 0.5, z - 0.5);
+    if (!has.has(`${x},${z + 1}`)) edge(x - 0.5, z + 0.5, x + 0.5, z + 0.5);
+    if (!has.has(`${x - 1},${z}`)) edge(x - 0.5, z - 0.5, x - 0.5, z + 0.5);
+    if (!has.has(`${x + 1},${z}`)) edge(x + 0.5, z - 0.5, x + 0.5, z + 0.5);
+  }
+  for (const { x, z, at } of corners.values()) {
+    if (x && z) points.push(at[0] * PAD, -0.5, at[1] * PAD, at[0] * PAD, 0.5, at[1] * PAD);
+  }
+  const geometry = new BufferGeometry();
+  geometry.setAttribute('position', new Float32BufferAttribute(points, 3));
+  return geometry;
+}
+
 export class Stage {
   /** How many Stages are alive. A leak means a leaked rAF loop and GL context. */
   static get liveCount(): number { return instances; }
@@ -418,6 +456,12 @@ export class Stage {
   private readonly ruler = buildRuler();
   /** The prefab about to be placed (D-321). */
   private readonly prefabGhost = buildPrefabGhost();
+  /** The world brush's outline, one a size, made as asked for (D-364). */
+  private readonly highlightShapes = new Map<number, BufferGeometry>();
+  /** The square a map's ghost frames bounds with. */
+  private readonly ghostBox: BufferGeometry = new EdgesGeometry(new BoxGeometry(1.02, 1.02, 1.02));
+  /** A brush's round outline in a map, made for the cells it is showing (D-364). */
+  private ghostShape: BufferGeometry | null = null;
   /** The prop about to be placed, as itself (D-351). */
   private readonly propGhost = buildPropGhost();
   /** The party's fog, kept so a rebuilt body is drawn under it too (R-69). */
@@ -560,9 +604,10 @@ export class Stage {
     this.key.shadow.normalBias = 0.05;
     this.scene.add(this.key, this.key.target);
 
-    // The snapped hover highlight, shared by both tools (R-87).
+    // The snapped hover highlight, shared by both tools (R-87): the brush's
+    // own round outline, one geometry a size (D-364).
     this.highlight = new LineSegments(
-      new EdgesGeometry(new BoxGeometry(1.02, 1.02, 1.02)),
+      this.highlightShape(1),
       new LineBasicMaterial({ color: 0x8ecbff, depthTest: false }),
     );
     this.highlight.visible = false;
@@ -573,7 +618,7 @@ export class Stage {
     // by default, because inside a map it is the *only* thing outlined and it
     // marks cubes that are not there yet (R-153, R-162).
     this.blockGhost = new LineSegments(
-      new EdgesGeometry(new BoxGeometry(1.02, 1.02, 1.02)),
+      this.ghostBox,
       new LineBasicMaterial({ color: 0xffffff, depthTest: false }),
     );
     this.blockGhost.visible = false;
@@ -1658,9 +1703,21 @@ export class Stage {
     // offset by half a cell. The offset comes from domain so it cannot drift
     // from what brushCells actually edits.
     const offset = brushCentreOffset(n);
+    // The brush's round outline (D-364), drawn from the cells it edits.
+    this.highlight.geometry = this.highlightShape(n);
     this.highlight.visible = true;
     this.highlight.position.set(centre.x + offset, top / 2, centre.z + offset);
-    this.highlight.scale.set(n, Math.max(top, 0.25), n);
+    this.highlight.scale.set(1, Math.max(top, 0.25), 1);
+  }
+
+  /** The world brush's outline at one size, made once (D-364). */
+  private highlightShape(size: number): BufferGeometry {
+    let shape = this.highlightShapes.get(size);
+    if (!shape) {
+      shape = footprintOutline(footprintOf(size));
+      this.highlightShapes.set(size, shape);
+    }
+    return shape;
   }
 
   /**
@@ -1682,7 +1739,15 @@ export class Stage {
    * material, so the outline vanishes into the surface it exists to stand out
    * from (D-212).
    */
-  showBlockGhost(cells: readonly BlockCoord[], tint = 0xffffff): void {
+  showBlockGhost(
+    cells: readonly BlockCoord[],
+    tint = 0xffffff,
+    /**
+     * `box` frames the cells' bounds — a prop, a prefab, a box being taken;
+     * `brush` outlines the cells themselves, round as a brush is (D-364).
+     */
+    shape: 'box' | 'brush' = 'box',
+  ): void {
     this.invalidate();
     if (cells.length === 0 || !this.showingMap) { this.blockGhost.visible = false; return; }
     let lowX = Infinity; let lowY = Infinity; let lowZ = Infinity;
@@ -1703,7 +1768,20 @@ export class Stage {
       (lowY + highY) / 2 + 0.5,
       (lowZ + highZ) / 2 + 0.5,
     );
-    this.blockGhost.scale.set(highX - lowX + 1, highY - lowY + 1, highZ - lowZ + 1);
+    if (this.ghostShape) { this.ghostShape.dispose(); this.ghostShape = null; }
+    if (shape === 'brush') {
+      // The cells seen from above, about the middle of their bounds.
+      const midX = (lowX + highX) / 2;
+      const midZ = (lowZ + highZ) / 2;
+      const columns = new Map<string, readonly [number, number]>();
+      for (const at of cells) columns.set(`${at.x},${at.z}`, [at.x - midX, at.z - midZ]);
+      this.ghostShape = footprintOutline([...columns.values()]);
+      this.blockGhost.geometry = this.ghostShape;
+      this.blockGhost.scale.set(1, highY - lowY + 1, 1);
+    } else {
+      this.blockGhost.geometry = this.ghostBox;
+      this.blockGhost.scale.set(highX - lowX + 1, highY - lowY + 1, highZ - lowZ + 1);
+    }
     (this.blockGhost.material as LineBasicMaterial).color.setHex(tint);
   }
 
@@ -1930,6 +2008,9 @@ export class Stage {
     this.ruler.dispose();
     this.prefabGhost.dispose();
     this.propGhost.dispose();
+    for (const shape of this.highlightShapes.values()) shape.dispose();
+    this.ghostBox.dispose();
+    this.ghostShape?.dispose();
     this.props?.dispose();
     this.lamps.dispose();
     for (const lamp of this.lampPool) lamp.dispose();

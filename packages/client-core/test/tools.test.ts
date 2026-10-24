@@ -288,8 +288,10 @@ describe('the brush (R-162)', () => {
   const side = { block: { x: 4, y: 1, z: 7 }, adjacent: { x: 5, y: 1, z: 7 } };
   it('lays down the shape it was given', () => {
     expect(cellsOf(mapAction('build', top, bare))).toHaveLength(1);
-    expect(cellsOf(mapAction('build', top, held({ brush: brushById('flat3') })))).toHaveLength(9);
-    expect(cellsOf(mapAction('build', top, held({ brush: brushById('flat5') })))).toHaveLength(25);
+    // Round (D-364): a cross at 3, 21 cubes at 5.
+    expect(cellsOf(mapAction('build', top, held({ brush: brushById('flat3') })))).toHaveLength(5);
+    expect(cellsOf(mapAction('build', top, held({ brush: brushById('flat5') })))).toHaveLength(21);
+    expect(cellsOf(mapAction('build', top, held({ brush: brushById('flat11') })))).toHaveLength(97);
     expect(cellsOf(mapAction('build', top, held({ brush: brushById('column3') })))).toHaveLength(3);
   });
 
@@ -343,7 +345,7 @@ describe('the brush (R-162)', () => {
     // is horizontal even when a flank was pointed at.
     const cells = cellsOf(mapAction('build', side, held({ brush: brushById('flat3'), alt: true })));
     expect(new Set(cells.map((c) => c.y))).toEqual(new Set([0]));
-    expect(cells).toHaveLength(9);
+    expect(cells).toHaveLength(5);
   });
 
   it('is admitted or refused by the band as one, since it is one level', () => {
@@ -351,7 +353,7 @@ describe('the brush (R-162)', () => {
     // same for every cell — which is what lets `mapAllowed` read an empty
     // patch as "the cube you are aiming at is outside the levels you show".
     const inside = mapAction('build', side, held({ brush: brushById('flat3'), within: { lower: 1, upper: 3 } }));
-    expect(cellsOf(inside)).toHaveLength(9);
+    expect(cellsOf(inside)).toHaveLength(5);
     const outside = mapAction('build', side, held({ brush: brushById('flat3'), within: { lower: 4, upper: 8 } }));
     expect(cellsOf(outside)).toEqual([]);
   });
@@ -364,8 +366,8 @@ describe('the brush (R-162)', () => {
   });
 
   it('paints and erases through the same brush as it builds', () => {
-    expect(cellsOf(mapAction('paint', top, held({ brush: brushById('flat5') })))).toHaveLength(25);
-    expect(cellsOf(mapAction('build', top, held({ brush: brushById('flat5'), shift: true })))).toHaveLength(25);
+    expect(cellsOf(mapAction('paint', top, held({ brush: brushById('flat5') })))).toHaveLength(21);
+    expect(cellsOf(mapAction('build', top, held({ brush: brushById('flat5'), shift: true })))).toHaveLength(21);
   });
 });
 
@@ -389,8 +391,8 @@ describe('mapHover — what the GM is told is about to happen (R-153)', () => {
 
   it('outlines every cube a brush would touch', () => {
     const hover = mapHover(mapAction('build', face, held({ brush: brushById('flat3') })));
-    expect(hover.ghost).toHaveLength(9);
-    expect(hover.label).toBe('Build at 4,2,7 — 9 wide');
+    expect(hover.ghost).toHaveLength(5);
+    expect(hover.label).toBe('Build at 4,2,7 — 5 cubes');
   });
 
   it('shows nothing when the pointer is over nothing', () => {

@@ -746,9 +746,11 @@ most time in, so it gets specified rather than improvised.
 > has learned it for the coast as well. The one thing the world adds is what
 > the ground costs to cross, which a map has no use for.
 
-> **R-88a.** The brushed tools share a **brush size of 1×1, 3×3 or 5×5** — the
-> same three the map offers as flats (R-164) — and the hover outline is drawn
-> at that size so what is outlined is what will change.
+> **R-88a.** The brushed tools share a **brush size of 1, 3, 5, 7, 9 or 11
+> across** — the same the map offers as flats (R-164) — **round, as near as
+> cells get** (D-364): a cross at 3, rounder as it grows, each shape written
+> down rather than worked out. The hover outline traces that shape, so what is
+> outlined is what will change.
 >
 > **Every size is odd, so every brush has a centre cell** (D-291). 2×2 had
 > none, so it had to lean one way off the pointer; the arithmetic for that is
@@ -3682,8 +3684,9 @@ apps/host/src/
 
 > **R-164.** **A brush is a shape with a name, chosen from a registry.**
 >
-> Cube, Flat 3×3, Flat 5×5, Column 2, Column 3 — `span` odd and `rise` upward,
-> and the geometry is one box either way. The GM reached for columns the moment
+> Cube, Flat 3×3 to Flat 11×11, Column 2, Column 3 — `span` odd and `rise`
+> upward; the flats round from above, as the world's brushes are (D-364), and
+> outlined in that shape. The GM reached for columns the moment
 > they built a second storey and a cellar, which a flat square cannot do and a
 > radius cannot describe. See R-162 for how a shape is placed, clipped and sent.
 >

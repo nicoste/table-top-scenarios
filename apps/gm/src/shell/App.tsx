@@ -624,7 +624,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     const action = mapAction(mapTool, picked.face, reach);
     const hover = mapHover(action, undefined, aimAt(action));
     setHoverLabel(hover.label);
-    stage.showBlockGhost(hover.ghost, ghostTint(action));
+    stage.showBlockGhost(hover.ghost, ghostTint(action), 'brush');
     // Only what a still hand can change: the modifiers and the brush. A re-aim
     // on every render would fight the pointer.
   }, [digging, shifting, mapBrush]);
@@ -1575,7 +1575,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
         : undefined;
       const hover = mapHover(action, fill, verdict);
       setHoverLabel(hover.label);
-      stage.showBlockGhost(hover.ghost, ghostTint(action));
+      stage.showBlockGhost(hover.ghost, ghostTint(action), 'brush');
 
       // Build and erase only ever *show* what a click would do (R-153): they
       // move their own target, so a hand that drifts mid-click would climb.
@@ -1807,11 +1807,12 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
         }
         // The brushes run along the digits from 8, after the seven tools, as the
         // world's terrain brushes do (R-164) — and on past 0 to minus and equals
-        // (D-328, D-341).
-        const KEYS = ['8', '9', '0'];
-        const picked = e.code === 'Minus' ? 3 : e.code === 'Equal' ? 4 : digit ? KEYS.indexOf(digit) : -1;
-        if (picked >= 0 && picked < BRUSHES.length) {
-          setMapBrush(BRUSHES[picked]!.id);
+        // (D-328, D-341). By id, so the round sizes added between them (D-364)
+        // keep every key where it was; `[` `]` reach them all.
+        const keyed = digit === '8' ? 'cube' : digit === '9' ? 'flat3' : digit === '0' ? 'flat5'
+          : e.code === 'Minus' ? 'column2' : e.code === 'Equal' ? 'column3' : null;
+        if (keyed) {
+          setMapBrush(keyed);
           return;
         }
         // And `[` `]` step through them in order, as they do in the world.
@@ -1855,8 +1856,12 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
           case '7': setBrush(WORLD_BRUSHES[0]!); return;
           case '8': setBrush(WORLD_BRUSHES[1]!); return;
           case '9': setBrush(WORLD_BRUSHES[2]!); return;
+          // And on past 0 to minus and equals, for the round sizes (D-364).
+          case '0': setBrush(WORLD_BRUSHES[3]!); return;
           default: break;
         }
+        if (e.code === 'Minus') { setBrush(WORLD_BRUSHES[4]!); return; }
+        if (e.code === 'Equal') { setBrush(WORLD_BRUSHES[5]!); return; }
 
         /*
          * Z / X turn a place a quarter — Z anticlockwise, X clockwise, seen
@@ -2222,7 +2227,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
           </div>
 
           <div className="hints">
-            1–6 tool · 7/8/9 or [ ] brush · {CAMERA_HINT}
+            1–6 tool · 7–0, −, = or [ ] brush · {CAMERA_HINT}
           </div>
           <ConnectBadge urls={view?.connect ?? []} />
         </>

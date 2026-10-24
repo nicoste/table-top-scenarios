@@ -98,6 +98,9 @@ interface Props {
   readonly poiId: string;
 }
 
+/** The keys the map's brushes answer to, by id (D-364): the round sizes between are reached with `[` `]`. */
+const BRUSH_KEYS: Readonly<Record<string, string>> = { cube: '8', flat3: '9', flat5: '0', column2: '−', column3: '=' };
+
 export function MapPanel({
   placeName, poiName, map, blocks, dug, tool, brush, shifting, materials, swatch, hoverLabel,
   partyHere, party, partyCanSee, range, levelling, onLevelling, partyView, onPartyView, seen,
@@ -302,13 +305,13 @@ export function MapPanel({
           <>
             <p className="lbl" style={{ margin: '8px 0 4px' }}>Brush</p>
             <div className="btn-grid brush">
-              {BRUSHES.map((shape, i) => (
+              {BRUSHES.map((shape) => (
                 <Tooltip
                   key={shape.id}
                   label={`${shape.rise > 1
                     ? `A column ${shape.rise} blocks tall, growing up — or down while ⌥ alt is held`
-                    : shape.span > 1 ? `A flat ${shape.span}×${shape.span} square` : 'One cube'
-                  } — key ${['8', '9', '0', '-', '='][i]}`}
+                    : shape.span > 1 ? `Flat and round, ${shape.span} across` : 'One cube'
+                  }${BRUSH_KEYS[shape.id] ? ` — key ${BRUSH_KEYS[shape.id]}` : ' — [ ] to reach it'}`}
                   placement="bottom"
                   stretch
                 >

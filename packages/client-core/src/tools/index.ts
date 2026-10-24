@@ -473,6 +473,7 @@ export function mapHover(
   // A brush says how many cubes it covers, because the outline shows the shape
   // and not how much of it will take — cells already built, or already the
   // right colour, are skipped without a word.
-  if (cells.length > 1) return { label: `${where} — ${cells.length} wide`, ghost: cells };
+  // How many cubes, not how wide: a round brush is not a square (D-364).
+  if (cells.length > 1) return { label: `${where} — ${cells.length} cubes`, ghost: cells };
   return { label: where, ghost: cells };
 }

@@ -6,6 +6,7 @@
 import type { CoverId, SwatchId } from '../ids/index.js';
 import type { Difficulty } from '../materials/index.js';
 import { DEFAULT_MATERIALS, swatchOf } from '../materials/index.js';
+import { BRUSH_SPANS, footprintOf } from '../footprint/index.js';
 
 /** Cells along one edge of a chunk: 30 x 1.5 km = a 45 km chunk (D-103). */
 export const CHUNK_SIZE = 30;
@@ -311,7 +312,8 @@ export function fromGlobal(cell: GlobalCell): { coord: ChunkCoord; x: number; z:
 /**
  * The world's brushes, and **every one of them is odd** (R-88a, D-291).
  *
- * The same three the map offers as flats (R-164), for the same reason: an odd
+ * The same the map offers as flats (R-164), and round as they are (D-364),
+ * for the same reason: an odd
  * span has a centre cell, so the footprint sits on the cell you are pointing
  * at and the outline is where the edit lands. 2×2 had no centre, so it had to
  * lean one way — forward, which is the voxel-editor convention and still
@@ -319,7 +321,7 @@ export function fromGlobal(cell: GlobalCell): { coord: ChunkCoord; x: number; z:
  * step apart also said less than three a stride apart: 1, 3 and 5 is a cell,
  * a patch and a stroke.
  */
-export const WORLD_BRUSHES = [1, 3, 5] as const;
+export const WORLD_BRUSHES = BRUSH_SPANS;
 
 export const MAX_BRUSH: number = WORLD_BRUSHES[WORLD_BRUSHES.length - 1]!;
 
@@ -333,7 +335,7 @@ export function clampBrush(size: number): number {
 
 /** One size wider or narrower, stopping at the ends. `[` and `]` (R-88a). */
 export function stepBrush(size: number, by: number): number {
-  const at = WORLD_BRUSHES.indexOf(clampBrush(size) as 1 | 3 | 5);
+  const at = (WORLD_BRUSHES as readonly number[]).indexOf(clampBrush(size));
   return WORLD_BRUSHES[Math.min(WORLD_BRUSHES.length - 1, Math.max(0, at + by))]!;
 }
 
@@ -357,22 +359,12 @@ export function brushCentreOffset(size: number): number {
 }
 
 /**
- * The cells a brush of this size covers, anchored on `at`.
- *
- * Centred, because every listed size is odd (D-291). The arithmetic still
- * handles an even one by extending forward from the anchor, which is the
- * voxel-editor convention and the behaviour the outline is derived from.
+ * The cells a brush of this size covers, anchored on `at`: round, as near as
+ * cells get — a cross at 3, and rounder as it grows (D-364) — and centred,
+ * because every listed size is odd (D-291).
  */
 export function brushCells(at: GlobalCell, size: number): readonly GlobalCell[] {
-  const n = clampBrush(size);
-  const start = brushStart(n);
-  const cells: GlobalCell[] = [];
-  for (let dz = start; dz < start + n; dz++) {
-    for (let dx = start; dx < start + n; dx++) {
-      cells.push({ gx: at.gx + dx, gz: at.gz + dz });
-    }
-  }
-  return cells;
+  return footprintOf(clampBrush(size)).map(([dx, dz]) => ({ gx: at.gx + dx, gz: at.gz + dz }));
 }
 
 /**

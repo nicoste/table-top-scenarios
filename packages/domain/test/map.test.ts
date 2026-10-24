@@ -11,6 +11,7 @@ import {
   setBlocks, paintBlocks, clearBlocks,
   DEFAULT_FLOOR, DEFAULT_MATERIALS, swatchOf, isKnownMaterial,
   materialIn, cutIdIn, cutOf, colourOf, isKnownSwatch, swatchFor, difficultyOf, materialById,
+  footprintOf,
 } from '@tt/domain';
 
 const STONE = swatchOf(DEFAULT_MATERIALS.find((m) => m.name === 'Mineral')!.id);
@@ -486,9 +487,10 @@ const patchOf = (x: number, y: number, z: number, brush = CUBE, grow: 'up' | 'do
 
 describe('the brush (R-162, R-164)', () => {
   describe('the registry', () => {
-    it('offers the five shapes the GM named', () => {
-      expect(BRUSHES.map((b) => b.name))
-        .toEqual(['Cube', 'Flat 3×3', 'Flat 5×5', 'Column 2', 'Column 3']);
+    it('offers the shapes the GM named, and the round flats up to 11 (D-364)', () => {
+      expect(BRUSHES.map((b) => b.name)).toEqual([
+        'Cube', 'Flat 3×3', 'Flat 5×5', 'Flat 7×7', 'Flat 9×9', 'Flat 11×11', 'Column 2', 'Column 3',
+      ]);
     });
 
     it('spans an odd number of cells, so the centre cube is always covered', () => {
@@ -498,7 +500,7 @@ describe('the brush (R-162, R-164)', () => {
     });
 
     it('caps a single edit at the largest shape', () => {
-      const largest = Math.max(...BRUSHES.map((b) => b.span * b.span * b.rise));
+      const largest = Math.max(...BRUSHES.map((b) => footprintOf(b.span).length * b.rise));
       expect(MAP_BRUSH_CELLS).toBe(largest);
       for (const brush of BRUSHES) {
         expect(brushPatch(at(0, 0, 0), brush).length, brush.name)
@@ -509,7 +511,7 @@ describe('the brush (R-162, R-164)', () => {
     it('falls back to one cube for an id it does not know', () => {
       // The id is view state and outlives a reload; the narrowest brush is the
       // safe answer to "I no longer know which one you meant".
-      expect(brushById('flat9')).toBe(DEFAULT_BRUSH);
+      expect(brushById('flat13')).toBe(DEFAULT_BRUSH);
       expect(brushById('')).toBe(DEFAULT_BRUSH);
       expect(DEFAULT_BRUSH.span).toBe(1);
       expect(DEFAULT_BRUSH.rise).toBe(1);
@@ -521,10 +523,10 @@ describe('the brush (R-162, R-164)', () => {
       expect(patchOf(1, 2, 3)).toEqual([at(1, 2, 3)]);
     });
 
-    it('covers span squared by rise, and always the cube it is anchored on', () => {
+    it('covers its round footprint by its rise, and always the cube it is anchored on', () => {
       for (const brush of BRUSHES) {
         const cells = brushPatch(at(1, 2, 3), brush);
-        expect(cells, brush.name).toHaveLength(brush.span * brush.span * brush.rise);
+        expect(cells, brush.name).toHaveLength(footprintOf(brush.span).length * brush.rise);
         expect(cells, brush.name).toContainEqual(at(1, 2, 3));
         // No cell twice: a patch that repeated one would edit it twice and
         // count wrong in the readout.
@@ -602,7 +604,8 @@ describe('the brush (R-162, R-164)', () => {
       const cells = brushPatch(at(0, 1, 0), FLAT3);
       const next = setBlocks(map, cells, STONE);
       const placed = cells.filter((cell) => blockAt(next, cell));
-      expect(placed).toHaveLength(4);
+      // The cross's middle and the two arms inside the corner (D-364).
+      expect(placed).toHaveLength(3);
       for (const cell of placed) expect(inMap(next, cell)).toBe(true);
     });
 

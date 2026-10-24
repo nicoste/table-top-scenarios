@@ -24,31 +24,43 @@ describe('global coordinates round-trip', () => {
 });
 
 describe('brush footprints', () => {
-  it('covers size² cells', () => {
-    for (const n of WORLD_BRUSHES) expect(brushCells({ gx: 10, gz: 10 }, n)).toHaveLength(n * n);
+  it('is round, as near as cells get: a cross at 3, and rounder as it grows (D-364)', () => {
+    expect(WORLD_BRUSHES.map((n) => brushCells({ gx: 10, gz: 10 }, n).length)).toEqual([1, 5, 21, 37, 69, 97]);
+    for (const n of WORLD_BRUSHES) {
+      const half = (n - 1) / 2;
+      const cells = new Set(brushCells({ gx: 0, gz: 0 }, n).map(key));
+      // The same every quarter turn and every mirror, and inside its square.
+      for (const cell of cells) {
+        const [x, z] = cell.split(',').map(Number) as [number, number];
+        for (const [a, b] of [[-x, z], [x, -z], [z, x]]) expect(cells.has(`${a},${b}`), `${n}: ${cell}`).toBe(true);
+        expect(Math.max(Math.abs(x), Math.abs(z))).toBeLessThanOrEqual(half);
+      }
+      // Reaching its full width across the middle, and never its corners.
+      expect(cells.has(`${half},0`) && cells.has(`0,${half}`)).toBe(true);
+      if (n > 1) expect(cells.has(`${half},${half}`)).toBe(false);
+    }
   });
 
   it('centres odd sizes on the anchor', () => {
     expect(brushCells({ gx: 5, gz: 5 }, 1).map(key)).toEqual(['5,5']);
-    expect(brushCells({ gx: 5, gz: 5 }, 3).map(key).sort()).toEqual(
-      ['4,4', '4,5', '4,6', '5,4', '5,5', '5,6', '6,4', '6,5', '6,6'],
-    );
+    expect(brushCells({ gx: 5, gz: 5 }, 3).map(key).sort()).toEqual(['4,5', '5,4', '5,5', '5,6', '6,5']);
   });
 
   it('offers only odd sizes, so every brush has a centre cell (D-291)', () => {
     // The whole reason 2x2 went: it had to lean one way off the pointer.
     expect(WORLD_BRUSHES.every((n) => n % 2 === 1)).toBe(true);
-    expect([...WORLD_BRUSHES]).toEqual([1, 3, 5]);
-    // The same three the map offers as flats, which is the point of it.
+    expect([...WORLD_BRUSHES]).toEqual([1, 3, 5, 7, 9, 11]);
+    // The same the map offers as flats, which is the point of it.
     expect([...WORLD_BRUSHES]).toEqual(
       BRUSHES.filter((brush) => brush.rise === 1).map((brush) => brush.span),
     );
   });
 
-  it('reaches five across at the widest', () => {
-    expect(brushCells({ gx: 5, gz: 5 }, 5)).toHaveLength(25);
-    expect(brushCells({ gx: 5, gz: 5 }, 5).map(key)).toContain('3,3');
-    expect(brushCells({ gx: 5, gz: 5 }, 5).map(key)).toContain('7,7');
+  it('reaches eleven across at the widest', () => {
+    const cells = brushCells({ gx: 5, gz: 5 }, 11).map(key);
+    expect(cells).toContain('0,5');
+    expect(cells).toContain('10,5');
+    expect(cells).not.toContain('0,0');
   });
 
   it('always includes the anchor itself', () => {
@@ -76,9 +88,10 @@ describe('brush footprints', () => {
   it('steps through the sizes rather than counting, and stops at the ends', () => {
     // `[` and `]`. Arithmetic on the number would land between them.
     expect(stepBrush(1, 1)).toBe(3);
-    expect(stepBrush(3, 1)).toBe(5);
-    expect(stepBrush(5, 1)).toBe(5);
-    expect(stepBrush(5, -1)).toBe(3);
+    expect(stepBrush(5, 1)).toBe(7);
+    expect(stepBrush(9, 1)).toBe(11);
+    expect(stepBrush(11, 1)).toBe(11);
+    expect(stepBrush(11, -1)).toBe(9);
     expect(stepBrush(1, -1)).toBe(1);
   });
 });
@@ -107,13 +120,15 @@ describe('brushes across chunk boundaries', () => {
     expect(columnAt(chunkAt(painted, { cx: 5, cz: 5 })!, CHUNK_SIZE - 1, 10)?.ground).toBe(grass);
   });
 
-  it('stamps a flat plateau with setHeightArea', () => {
+  it('stamps a flat plateau with setHeightArea, in the brush\'s round shape', () => {
     const world = addChunk(emptyWorld(), { cx: 0, cz: 0 });
     const raised = setHeightArea(world, { gx: 10, gz: 10 }, 3, 6);
     const chunk = chunkAt(raised, { cx: 0, cz: 0 })!;
-    for (let z = 9; z <= 11; z++) for (let x = 9; x <= 11; x++) {
-      expect(columnAt(chunk, x, z)?.height, `${x},${z}`).toBe(6);
+    for (const [x, z] of [[10, 10], [9, 10], [11, 10], [10, 9], [10, 11]]) {
+      expect(columnAt(chunk, x!, z!)?.height, `${x},${z}`).toBe(6);
     }
+    // A cross at 3: its corners are left alone.
+    expect(columnAt(chunk, 9, 9)?.height).toBe(0);
     expect(columnAt(chunk, 8, 10)?.height).toBe(0);
   });
 

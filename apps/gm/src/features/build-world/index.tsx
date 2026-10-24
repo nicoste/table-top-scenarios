@@ -104,7 +104,7 @@ export function BuildWorldPanel({
           <span className="brush-lbl">Brush</span>
           <div className="btn-grid brush">
             {WORLD_BRUSHES.map((n, i) => (
-              <Tooltip key={n} label={`${n}×${n} cells — key ${i + 7}`} placement="bottom" stretch>
+              <Tooltip key={n} label={`${n === 1 ? 'One cell' : `Round, ${n} across`} — key ${['7', '8', '9', '0', '−', '='][i]}`} placement="bottom" stretch>
                 <button className={brush === n ? 'on' : ''} onClick={() => onBrush(n)} aria-pressed={brush === n}>
                   {n}×{n}
                 </button>

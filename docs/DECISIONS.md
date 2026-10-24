@@ -9325,3 +9325,31 @@ Now the card **always says how**: *"6 hours · On foot"*, *"17 hours · By
 balloon"* (`journeyReadout`). A journey of several ways still lists each with
 its share underneath.
 
+### D-364 — Round brushes, up to 11 · `agreed`
+*"We need bigger brushes, and we have to give them a circular shape not a
+square, we can't do a real circle made by squares but the 3x3 should be a
+cross, the 5x5 will be more representative and so on... these don't have to
+be calculated on real time, you can have their shape hardcoded... We should
+add 7x7, 9x9 and 11x11."* Asked which brushes: **both** — the world's
+(Ground, Cover, Height) and the map's flats (Build, Paint), which were made to
+mirror each other.
+
+- **One set of shapes for both** (`footprint`): 1, 3, 5, 7, 9 and 11 across,
+  each **written down cell by cell** — a cross at 3, its corners cut at 5, and
+  rounder as it grows. No rule gives a cross at 3 and a pleasing 9 both, which
+  is why they are drawn rather than computed. 5, 21, 37, 69 and 97 cells.
+- **The world's brushes** are the six sizes; **keys 7, 8, 9, 0, −, =**, and
+  `[` `]` step through them.
+- **The map's flats** are Flat 3×3 to Flat 11×11, between Cube and the
+  columns. The keys stay where they were — 8 Cube, 9 Flat 3×3, 0 Flat 5×5,
+  − Column 2, = Column 3 — and `[` `]` reach the new sizes. The names keep
+  their "3×3": that is how the GM calls them.
+- **The outline traces the shape**, its edge top and bottom with an upright at
+  every corner, where it was the square around it — on the world, and in a
+  map for a brush (a prop or a prefab's box is still framed as a box).
+- **A map's readout counts cubes** — *"Build at 8,1,-14 — 37 cubes"* — where
+  it said "9 wide" of a 3×3, which was a count all along.
+
+Checked on a copy of the GM's data: the world's 11 and 3 (a cross) outlined
+on the ground, and a map's Flat 7×7 outlined over Tollkeep's grass, 37 cubes.
+

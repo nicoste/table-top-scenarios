@@ -407,7 +407,7 @@ describe('a brush arrives as one intent (R-162)', () => {
     const one = run(state, {
       kind: 'setBlock', placeId, poiId, cells: [{ x: 5, y: 1, z: 5 }], swatch: STONE,
     }).state;
-    // A 3×3 over it: the middle is taken, the eight around it are not.
+    // A 3 over it — a cross (D-364): the middle is taken, the four around it are not.
     const wide = run(one, {
       kind: 'setBlock', placeId, poiId, cells: brushPatch({ x: 5, y: 1, z: 5 }, brushById('flat3')), swatch: GRASS,
     });
@@ -415,7 +415,8 @@ describe('a brush arrives as one intent (R-162)', () => {
     const blocks = poiOf(wide.state).map!.blocks;
     expect(blocks.get('5,1,5')).toBe(STONE);
     expect(blocks.get('4,1,5')).toBe(GRASS);
-    expect(blocks.get('6,1,6')).toBe(GRASS);
+    expect(blocks.get('5,1,6')).toBe(GRASS);
+    expect(blocks.get('6,1,6')).toBeUndefined();
   });
 
   it('refuses only when there is nothing at all to place', () => {

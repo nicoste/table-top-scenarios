@@ -189,3 +189,4 @@ export { upgradedCampaign } from './campaign/index.js';
 export {
   SCHEMA_VERSION, ORIGIN, DEFAULT_BOUNDS, createCampaign, duplicateCampaign, uniqueCampaignName,
 } from './campaign/index.js';
+export { BRUSH_SPANS, footprintOf } from './footprint/index.js';
