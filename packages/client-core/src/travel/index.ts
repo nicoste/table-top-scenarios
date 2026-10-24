@@ -68,13 +68,16 @@ export function pick(pawn: PawnRef): Travel {
  * So with the travel tool active and the party nowhere, the sequence arms itself
  * holding the group pawn: aim and confirm work unchanged, ghost and reachability
  * guard included.
+ *
+ * And **another tool drops any journey under way** (D-365) — aimed, or waiting
+ * on its Travel button — rather than leave a route and a ghost standing under
+ * a tool that does not own them. It was dropped only before the party had
+ * been placed.
  */
 export function armed(travel: Travel, travelActive: boolean, partyPlaced: boolean): Travel {
+  if (!travelActive) return travel.step === 'idle' ? travel : idle;
   if (partyPlaced) return travel;
-  if (travelActive) return travel.step === 'aiming' ? travel : pick(GROUP);
-  // Tool switched away before placing: drop the sequence rather than leave a
-  // ghost armed under a tool that does not own it.
-  return travel.step === 'aiming' ? idle : travel;
+  return travel.step === 'aiming' ? travel : pick(GROUP);
 }
 
 export function aim(travel: Travel, cell: WorldCell | null, reachable: boolean): Travel {

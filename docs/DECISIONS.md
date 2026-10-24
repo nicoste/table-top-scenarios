@@ -9353,3 +9353,13 @@ mirror each other.
 Checked on a copy of the GM's data: the world's 11 and 3 (a cross) outlined
 on the ground, and a map's Flat 7×7 outlined over Tollkeep's grass, 37 cubes.
 
+### D-365 — Another tool drops a journey under way · `agreed`
+*"Small bug found, traveling doesn't get cancelled on tool switch."* Picking
+a pawn with Travel, aiming, then picking another tool left the route drawn and
+the journey waiting on its Travel button. The tool switch dropped a journey
+only before the party had ever been placed (D-167); once it was, nothing did.
+
+Now **any other tool drops a journey under way** — aimed, or waiting to be
+confirmed — and the route and the ghost go with it (`armed`). Under Travel,
+it stays as it was.
+

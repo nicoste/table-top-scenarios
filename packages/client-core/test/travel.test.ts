@@ -219,6 +219,17 @@ describe('the first placement, when there is no pawn to pick up (D-167)', () => 
   it('leaves an idle sequence alone under another tool', () => {
     expect(armed(idle, false, false)).toBe(idle);
   });
+
+  it('drops a journey under way when another tool is picked, the party placed or not (D-365)', () => {
+    const aimed = aim(pick({ memberId: 'member_frodo' }), cell(1, 1), true);
+    expect(armed(aimed, false, true)).toBe(idle);
+    const waiting = choose(aimed);
+    expect(waiting.step).toBe('choosing');
+    expect(armed(waiting, false, true)).toBe(idle);
+    // Under the Travel tool it stays.
+    expect(armed(waiting, true, true)).toBe(waiting);
+    expect(armed(idle, false, true)).toBe(idle);
+  });
 });
 
 describe('the costing step, between aiming and the move (R-199)', () => {
