@@ -165,6 +165,17 @@ export function journeyLength(days: number): string {
 }
 
 /**
+ * What the Travel card says of a journey (D-363): how long, and — when it is
+ * all one way — by what, always. A journey by balloon over the sea read as
+ * a walk across it while only a mixed journey named its ways; a mixed one
+ * lists each way under this, with its own share.
+ */
+export function journeyReadout(route: Route, nameOf: (mode: string) => string): string {
+  const length = journeyLength(route.days);
+  return route.legs.length === 1 ? `${length} · ${nameOf(route.legs[0]!.mode as string)}` : length;
+}
+
+/**
  * What to tell the user they are doing, on either screen.
  *
  * `route` is the journey currently previewed, if one has been worked out. It

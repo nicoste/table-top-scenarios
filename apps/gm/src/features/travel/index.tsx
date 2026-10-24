@@ -13,7 +13,7 @@
 // heading between a question and its answer.
 
 import type { Medium, Route, TravelMode, TravelModeId, Travelling } from '@tt/domain';
-import { journeyLength } from '@tt/client-core';
+import { journeyLength, journeyReadout } from '@tt/client-core';
 import { Tooltip } from '@tt/ui';
 
 /** The journey being costed, or null when the party is not going anywhere. */
@@ -102,7 +102,7 @@ export function TravelPanel({ modes, travelling, journey, onTravelling }: Travel
           <p className="lbl">Moving {journey.who}</p>
           {journey.route ? (
             <>
-              <p className="readout">{journeyLength(journey.route.days)}</p>
+              <p className="readout">{journeyReadout(journey.route, nameOf)}</p>
               {legs.length > 0 && (
                 <ul className="palette ways">
                   {legs.map((leg) => (

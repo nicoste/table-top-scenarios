@@ -9311,3 +9311,17 @@ The two ropes already in the map stay where they are: the rule is asked when
 a prop is put down or moved. The one beside the other can be taken away or
 moved; the one turned away turned twice.
 
+### D-363 — A journey always says how it is made · `agreed`
+*"I think we broke the navigation some day because disabling water movement,
+the path is drawn anyways through water."* Nothing was broken: the party had
+a balloon chosen *in the air*, which crosses anything in a straight line and
+is quicker than walking, so every route was flown — over the water as over
+the grass. On foot alone, the only water a route crossed was shore, the
+wadeable cut of Liquids (R-192). What hid it: the Travel card named the ways
+of a journey only when it used more than one, so a journey all by balloon
+read as a length and nothing else.
+
+Now the card **always says how**: *"6 hours · On foot"*, *"17 hours · By
+balloon"* (`journeyReadout`). A journey of several ways still lists each with
+its share underneath.
+

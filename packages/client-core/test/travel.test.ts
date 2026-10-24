@@ -10,7 +10,7 @@ import { describe, it, expect } from 'vitest';
 import type { Travel } from '@tt/client-core';
 import {
   idle, GROUP, pick, armed, aim, choose, ghostCell, aimedAt,
-  canConfirm, movingFrom, travelIntent, travelPrompt, journeyLength,
+  canConfirm, movingFrom, travelIntent, travelPrompt, journeyLength, journeyReadout,
 } from '@tt/client-core';
 import type { MemberId, Placement, Route, WorldCell } from '@tt/domain';
 
@@ -296,3 +296,15 @@ describe('how long a journey is, said out loud (R-199)', () => {
     expect(journeyLength(-1)).toBe('—');
   });
 });
+
+describe('what the Travel card says of a journey (D-363)', () => {
+  const nameOf = (mode: string) => ({ 'travel:balloon': 'By balloon', 'travel:foot': 'On foot', 'travel:canoe': 'By canoe' }[mode] ?? mode);
+  it('names the way when it is all one way, and leaves a mixed one to its list', () => {
+    const route = (legs: { mode: string; days: number }[], days: number) => ({ cells: [], days, legs } as never);
+    expect(journeyReadout(route([{ mode: 'travel:balloon', days: 0.7 }], 0.7), nameOf)).toBe('17 hours · By balloon');
+    expect(journeyReadout(route([{ mode: 'travel:foot', days: 2 }, { mode: 'travel:canoe', days: 1 }], 3), nameOf)).toBe('3.0 days');
+    // Where it stands already: no way at all, only the length.
+    expect(journeyReadout(route([], 0), nameOf)).toBe('under an hour');
+  });
+});
+
