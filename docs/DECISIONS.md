@@ -9467,3 +9467,40 @@ area's handle, drawn with the world rather than over it with the rest of its
 area, stood in front of the token whose cube it was in, and the token showed
 through it as a checkered marker: it is drawn with its area now.
 
+### D-369 — The GM's own band, sent to the table; through walls only what is in play · `agreed`
+*"Leveling ranges are adjusted on change, but they should be sent on
+confirmation… the users might be on the first floor, and enemies on the
+second; the GM should be able to adjust levels for himself only and move the
+enemies without disrupting players camera."* And of what shows through walls
+(D-368) on the console: *"it should be the same as players, just the things
+that are important for current play state. All NPCs is not ideal, 3 floors of
+enemies might show as a salad of tokens for the GM."*
+
+Now there are **two bands** (R-146). The table's is play state as before, and
+moves only when the GM sends theirs, or when the host settles it under a level
+that moved. The ladder moves **the GM's own**: view state, one map at a time,
+for the session — it starts at the table's whenever a map is opened, and a
+level deleted under it settles it as the table's is settled. The table's band
+is a thin amber line beside the rail, with a tick at each end; when the two
+differ, *Show the table* sends the GM's, and *Back to the table's* drops it.
+
+- **Moving your band shows it.** Dragging the ladder turns on *Showing the
+  band* and leaves the Party's view: the GM is looking at their levels now.
+- **The Party's view draws the table's band**, since it is the table's picture.
+  So does the party card's *"The table is showing them…"*, and who counts as
+  outside the levels the table is shown.
+
+And **what shows through walls on the console is what the table gets**
+(R-216): the party, and of the silver tokens and the props only those the
+party sees now — the cube a token stands in, by the rule the host cuts the
+table's tokens with (R-206), and the furniture and lights by the table's own
+fog (D-332). The console was told what the party sees, so nothing new comes
+from the host. In a map the party is not in, nothing shows through.
+
+Checked on a copy of the GM's data in Tollkeep, the console and the table side
+by side: the ladder's band moved to the dungeon floor alone and the console
+drew just that, the amber line staying at Bedrock to Floor and the table not
+moving; *Show the table* brought the table down to the dungeon with it. With
+the whole place shown, the furniture the party sees in the dungeon showed
+through the grass, and the goblins they do not see did not.
+

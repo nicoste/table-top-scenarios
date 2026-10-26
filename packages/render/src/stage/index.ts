@@ -11,7 +11,7 @@ import {
 } from 'three';
 import type {
   BlockCoord, Campaign, CarriedLight, EncounterMap, GlobalCell, LightShadows, LightSource, Lighting, Material, Opened,
-  Placement, WorldCell,
+  Placement, Prop, WorldCell,
 } from '@tt/domain';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -95,6 +95,14 @@ export interface StageFog {
   /** The blocks the party sees now. */
   readonly lit: ReadonlySet<string>;
   readonly shown: ReadonlySet<string> | null;
+}
+
+/** What the party sees now, by cube key: the cubes themselves, and the blocks and props that shows (D-369). */
+export interface PartySight {
+  /** The cubes in sight, as the host cuts the table's tokens by (R-206). */
+  readonly cells: ReadonlySet<string>;
+  /** The blocks and props in sight, as the table's fog lights them (D-332). */
+  readonly lit: ReadonlySet<string>;
 }
 
 export interface SlotAddress { readonly cx: number; readonly cz: number }
@@ -487,6 +495,12 @@ export class Stage {
   private readonly propGhost = buildPropGhost();
   /** The party's fog, kept so a rebuilt body is drawn under it too (R-69). */
   private partyFog: StageFog | null = null;
+  /**
+   * What the party sees now, on a screen that draws no fog of theirs: which of
+   * the tokens and props it holds show through walls (R-216, D-369). `null`
+   * on the table, whose payload is already only what the party sees.
+   */
+  private partySight: PartySight | null = null;
   /**
    * Which surface is on screen: `null` for the world, otherwise a map's key.
    * Compared against the key `setMap` is handed, so the camera reacts to a
@@ -1038,9 +1052,14 @@ export class Stage {
     const map = this.shownMap;
     if (!map || map.props.length === 0) return;
     const fog = this.partyFog;
-    this.props = buildProps(map.props, this.opened, fog
-      ? (prop) => propCubes(prop).some((cube) => fog.lit.has(`${cube.x},${cube.y},${cube.z}`))
-      : null, this.figuring, this.xray);
+    const lit = (seen: ReadonlySet<string>) => (prop: Prop) =>
+      propCubes(prop).some((cube) => seen.has(`${cube.x},${cube.y},${cube.z}`));
+    // What shows through walls goes by the party's sight whether or not their
+    // fog is drawn (D-369): the table's, or the console's own copy of it.
+    const sees = fog?.lit ?? this.partySight?.lit ?? null;
+    this.props = buildProps(map.props, this.opened, fog ? lit(fog.lit) : null, this.figuring, {
+      xray: this.xray, sees: sees ? lit(sees) : null,
+    });
     this.lamps.light(this.props.group);
     this.scene.add(this.props.group);
     this.applySurface();
@@ -1061,8 +1080,12 @@ export class Stage {
     }
     const map = this.shownMap;
     if (!map) return;
+    const sight = this.partySight;
     this.silver = buildSilverTokens(this.present.map((token) => ({
-      ...token, drop: dropBelow(map, token.at),
+      ...token,
+      drop: dropBelow(map, token.at),
+      // In play, or not: shown through walls only if the party sees them (D-369).
+      showsThrough: !sight || sight.cells.has(`${token.at.x},${token.at.y},${token.at.z}`),
     })), this.pictures ?? undefined, this.xray);
     this.lamps.light(this.silver.group);
     this.scene.add(this.silver.group);
@@ -1272,6 +1295,20 @@ export class Stage {
    * blocks hidden or shown again move a shadow, so only that restages them
    * (R-180).
    */
+  /**
+   * What the party sees now, for what shows through walls on the console
+   * (D-369): the party always, and of everyone and everything else only what
+   * is in play — what the table gets. `null` for a screen whose tokens and
+   * props are already only that.
+   */
+  setPartySight(sight: PartySight | null): void {
+    if (sight === this.partySight) return;
+    this.partySight = sight;
+    this.rebuildProps();
+    this.rebuildSilver();
+    this.invalidate();
+  }
+
   setFog(fog: StageFog | null): void {
     if (fog === this.partyFog) return;
     this.partyFog = fog;

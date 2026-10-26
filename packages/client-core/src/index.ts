@@ -39,7 +39,7 @@ export {
   clickAction, holdsSelection, tableAction, mapAction, mapHover, mapDrags, mapAllowed,
 } from './tools/index.js';
 
-export { grabEnd, rowAt } from './levels/index.js';
+export { bandMoved, grabEnd, ownBand, rowAt } from './levels/index.js';
 export type { RowBox } from './levels/index.js';
 
 export { NO_PATH, walkLength, walkShown } from './walk/index.js';

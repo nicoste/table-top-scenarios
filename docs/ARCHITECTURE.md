@@ -459,8 +459,10 @@ cube and a short far cube can land on the same pixels. These are not polish.
 > - **Not the walls' own props.** Doors, bars and the ways up stand in a wall
 >   or against one and would show through the blocks beside them from every
 >   angle.
-> - **No prop on the GM's own view**, which does not know what the party sees:
->   every prop in the map would show through every wall. Its tokens do.
+> - **The console shows through what is in play, as the table does** (D-369):
+>   the party, and of everyone and everything else only what the party sees now
+>   — by the same rules the table's payload is cut with. Not three floors of
+>   goblins at once; and nothing at all in a map the party is not in.
 > - **Never picked** (R-36): what shows through is drawn, not hit.
 >
 > Nothing is faded and nothing is asked of `geometry`: this is the stage
@@ -2077,6 +2079,14 @@ apps/host/src/
 >
 > A plane's Y is editable and the range **snaps to steps**. Which steps exist is
 > R-161: three fixed reference heights, plus whatever the GM has cut.
+>
+> **Amended by D-369: two bands.** The one above is **the table's**, and it
+> moves only when the GM sends theirs — or when the host settles it because the
+> levels under it changed. The ladder moves **the GM's own**: view state
+> (R-64), one map at a time, starting at the table's whenever a map is opened.
+> The table's band is drawn beside it as a thin amber line, and the two can be
+> made one either way: *Show the table*, or *Back to the table's*. So the GM can
+> work on the floor above the party without the players' view moving.
 
 > **R-147.** Blocks are placed by **face adjacency** — click the face of an
 > existing block and the new one attaches there (D-181).
@@ -2582,6 +2592,10 @@ apps/host/src/
 > view state (R-64), off by default because the whole body is the safe view to
 > build in. While it is on, the GM sees exactly the levels the table sees — and
 > since vision, the Party's view adds the fog over them (R-76, D-274).
+>
+> **Amended by D-369.** The band shown is the GM's own (R-146), which is the
+> table's until they move it; moving it turns this on, because moving your band
+> is looking at it. The Party's view always draws the table's.
 >
 > The band is a **slice**, not a dimming, and that is the load-bearing part: the
 > hidden levels are **absent from the scene**, so they cannot be picked. A dimmed

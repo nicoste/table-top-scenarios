@@ -94,7 +94,10 @@ describe('showing through a wall (D-368)', () => {
     const table = prop('table', 'material:wood', 0);
     const bars = prop('bars', 'material:mineral/iron', 2);
     const unseen = { ...prop('chair', 'material:wood', 4), id: 'prop_far' as PropId };
-    const built = buildProps([table, bars, unseen], NONE_OPEN, (p) => p.id !== 'prop_far', true, buildXRay());
+    // On the console, which greys nothing: what shows through goes by sight alone (D-369).
+    const built = buildProps([table, bars, unseen], NONE_OPEN, null, true, {
+      xray: buildXRay(), sees: (p) => p.id !== 'prop_far',
+    });
     const twinned = new Set<number>();
     built.group.traverse((object) => {
       if (!object.userData.xray) return;
@@ -106,13 +109,16 @@ describe('showing through a wall (D-368)', () => {
     expect([...twinned]).toEqual([0]);
   });
 
-  it('shows no prop through a wall on the GM\'s own view, where nobody says what the party sees', () => {
-    const built = buildProps([prop('table', 'material:wood')], NONE_OPEN, null, true, buildXRay());
+  it('shows no prop through a wall when nobody says what the party sees', () => {
+    const built = buildProps([prop('table', 'material:wood')], NONE_OPEN, null, true, { xray: buildXRay(), sees: null });
     expect(twinsOf(built.group)).toHaveLength(0);
   });
 
   it('draws bars after everything that shows through, so a goblin in a cell is not outlined bar by bar', () => {
-    const built = buildProps([prop('bars', 'material:mineral/iron'), prop('table', 'material:wood', 2)], NONE_OPEN, null, true, buildXRay());
+    const built = buildProps(
+      [prop('bars', 'material:mineral/iron'), prop('table', 'material:wood', 2)], NONE_OPEN, null, true,
+      { xray: buildXRay(), sees: null },
+    );
     const orders = new Map<string, number>();
     built.group.children.forEach((holder, i) => {
       holder.traverse((object) => { if ((object as Mesh).isMesh && !built.proxies.includes(object as Mesh)) orders.set(`${i}`, object.renderOrder); });

@@ -17,11 +17,11 @@ import {
 } from '@tt/domain';
 import type {
   SwatchId, CoverId, Lighting, Ambience, MemberId, Tokens, BlockCoord, Route, Travelling,
-  TravelModeId, Facing,
+  TravelModeId, Facing, LevelRange,
 } from '@tt/domain';
 import type { GmView, Intent } from '@tt/protocol';
 import { defaultTarget, worldCentre, SILVER } from '@tt/render';
-import type { Picked, Present, RulerPoint, Standing, StageFog } from '@tt/render';
+import type { PartySight, Picked, Present, RulerPoint, Standing, StageFog } from '@tt/render';
 import type {
   Capture, Carry, MeasureHand, PrefabPlacing, PropDrag, PropHand, SilverMove, Stride, Tool, Travel,
 } from '@tt/client-core';
@@ -40,7 +40,7 @@ import {
   EMPTY_HAND, turnHand, propAim, propWall, propPreview, placePropIntent, propPrompt, toggleIntent,
   paintPropIntent, paintPropPrompt, propMovePreview, propMoveIntent, propMovePrompt, turnDrag, propHoverLabel, placedTurn,
   MEASURE_START, measureCleared, measurePress, measureDrag, measureRelease, rulerShown, areasShown, handleAt,
-  measurePrompt, faceCentre, floorCentre,
+  measurePrompt, faceCentre, floorCentre, ownBand,
 } from '@tt/client-core';
 import type { MapAction, MapReach, MapTool } from '@tt/client-core';
 import { useStage } from '../scene/use-stage.js';
@@ -193,6 +193,14 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    * fog is theirs.
    */
   const [partyView, setPartyView] = useState(false);
+  /**
+   * The GM's own band (D-369): the levels *they* are looking at, moved on the
+   * ladder without the table following — so they can work on the floor above
+   * the party while the players' view stays where it is, and send it when it
+   * should be the table's too. View state (R-64), one map at a time, for the
+   * session: opening a map starts it at the table's. `null` until it is moved.
+   */
+  const [ownLevels, setOwnLevels] = useState<{ readonly poiId: string; readonly range: LevelRange } | null>(null);
   /**
    * Is Alt/Option down — the dig modifier (R-160)?
    *
@@ -357,13 +365,26 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    */
   const banded = levelling || previewing;
   /**
-   * The band the open map is cut to (R-146).
-   *
-   * Read for whichever map is open, not for wherever the party is: the fade is
-   * the GM's own working view, and cutting to one floor is how a multi-level
-   * building gets built (D-201).
+   * The band the table is shown of the open map (R-146): play state, moved
+   * only when the GM sends theirs (D-369), or by the host when the levels
+   * under it change.
    */
-  const openRange = openMap ? rangeIn(view?.save?.ranges ?? {}, openMap.poiId) : null;
+  const tableRange = openMap ? rangeIn(view?.save?.ranges ?? {}, openMap.poiId) : null;
+  /**
+   * The GM's own band: where they moved it, or the table's until they do
+   * (D-369). Read for whichever map is open, not for wherever the party is:
+   * cutting to one floor is how a multi-level building gets built (D-201).
+   */
+  const ownRange = openMap && tableRange
+    ? ownBand(ownLevels?.poiId === openMap.poiId ? ownLevels.range : null, tableRange, openMapWire?.planes ?? [])
+    : null;
+  // A map opened again starts at the table's band.
+  useEffect(() => { setOwnLevels(null); }, [openMap?.placeId, openMap?.poiId]);
+  /**
+   * The band the console draws, when it draws one (R-159): the table's in the
+   * Party's view — that is the table's picture — and otherwise the GM's own.
+   */
+  const openRange = previewing ? tableRange : ownRange;
 
   /**
    * Whether the sun is in what the GM is looking at (R-183).
@@ -428,7 +449,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       name: member.name,
       colour: member.colour,
       standing: at !== null,
-      onTable: at !== null && (!openRange || standsInBand(openRange, at)),
+      onTable: at !== null && (!tableRange || standsInBand(tableRange, at)),
       sight: member.visionRange,
     };
   });
@@ -565,6 +586,19 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     };
   }, [previewing, openBody, sightWire, exploredWire]);
   useEffect(() => { stage?.setFog(partyFog); }, [stage, partyFog]);
+
+  /**
+   * What the party sees now in the open map, for what shows through walls on
+   * this screen (D-369): the party, and of everyone and everything else only
+   * what the table gets — not three floors of goblins at once. Nothing while
+   * the party is not in this map: nothing in it is in play.
+   */
+  const partySight: PartySight | null = useMemo(() => {
+    if (!openBody) return null;
+    const cells = partyHere && sightWire ? cellsFromWire(sightWire) : NO_CELLS;
+    return { cells, lit: sightShows(openBody, cells) };
+  }, [openBody, partyHere, sightWire]);
+  useEffect(() => { stage?.setPartySight(partySight); }, [stage, partySight]);
 
   /**
    * Opening a map takes the party in — *"when a GM open a map, the party goes
@@ -1998,7 +2032,19 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
               && knownChunks.has(`${openPlace.cell.cx},${openPlace.cell.cz}`)
               && openPoi.visibleToParty
             }
-            range={openRange ?? WHOLE_MAP}
+            range={ownRange ?? WHOLE_MAP}
+            tableRange={tableRange ?? WHOLE_MAP}
+            onRange={(range) => {
+              setOwnLevels({ poiId: openPoi.id, range });
+              // Moving your band is looking at it: drawn alone, as you see it
+              // rather than as the table does.
+              setLevelling(true);
+              setPartyView(false);
+            }}
+            onSendRange={() => {
+              if (ownRange) dispatch({ kind: 'setRange', placeId: openPlace.id, poiId: openPoi.id, ...ownRange });
+            }}
+            onTableRange={() => setOwnLevels(null)}
             levelling={levelling}
             onLevelling={setLevelling}
             partyView={previewing}

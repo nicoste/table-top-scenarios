@@ -26,18 +26,26 @@
 // a row cannot be dragged to a new *height* — an ordinal axis has no answer to
 // "what height did I drop it at" — so the number beside each name is how a
 // height is set, and it is exact.
+//
+// **The band is the GM's own** (D-369). Dragging moves the levels the console
+// looks at, and the table follows only when the GM sends it; the table's band
+// is the thin amber line beside the rail, so the two can always be compared.
 
 import { useRef, useState } from 'react';
 import type { Intent, MapWire } from '@tt/protocol';
 import { MAP_MAX_HEIGHT, MAP_MIN_DEPTH, planeSteps, stepLabel } from '@tt/domain';
 import type { LevelRange } from '@tt/domain';
-import { grabEnd, rowAt } from '@tt/client-core';
+import { bandMoved, grabEnd, rowAt } from '@tt/client-core';
 import type { RowBox } from '@tt/client-core';
 import { ConfirmDelete, DraftInput } from '@tt/ui';
 
 interface Props {
   readonly map: MapWire;
+  /** The GM's own band, which the handles move (D-369). */
   readonly range: LevelRange;
+  /** The table's band, drawn beside it. */
+  readonly table: LevelRange;
+  onRange: (range: LevelRange) => void;
   readonly placeId: string;
   readonly poiId: string;
   dispatch: (intent: Intent) => void;
@@ -51,7 +59,7 @@ interface Stop {
   readonly planeId: string | null;
 }
 
-export function LevelLadder({ map, range, placeId, poiId, dispatch }: Props) {
+export function LevelLadder({ map, range, table, onRange, placeId, poiId, dispatch }: Props) {
   const [name, setName] = useState('');
   const [y, setY] = useState('');
   /**
@@ -79,11 +87,8 @@ export function LevelLadder({ map, range, placeId, poiId, dispatch }: Props) {
     });
 
   const move = (end: 'lower' | 'upper', to: number) => {
-    const next = end === 'lower'
-      ? { lower: to, upper: range.upper }
-      : { lower: range.lower, upper: to };
-    if (next.lower === range.lower && next.upper === range.upper) return;
-    dispatch({ kind: 'setRange', placeId, poiId, ...next });
+    const next = bandMoved(range, end, to, planes);
+    if (next !== range) onRange(next);
   };
 
   /**
@@ -158,6 +163,7 @@ export function LevelLadder({ map, range, placeId, poiId, dispatch }: Props) {
       >
         {stops.map((stop, i) => {
           const inBand = stop.y >= range.lower && stop.y <= range.upper;
+          const inTable = stop.y >= table.lower && stop.y <= table.upper;
           const end = stop.y === range.upper
             ? 'upper'
             : stop.y === range.lower ? 'lower' : null;
@@ -170,6 +176,12 @@ export function LevelLadder({ map, range, placeId, poiId, dispatch }: Props) {
                 */}
                 <i className={i > 0 && inBand && stop.y !== range.upper ? 'lit' : ''} />
                 <i className={i < stops.length - 1 && inBand && stop.y !== range.lower ? 'lit' : ''} />
+                {/* The table's band, beside the GM's, and a tick at each of its ends. */}
+                <span className="table" aria-hidden>
+                  <i className={i > 0 && inTable && stop.y !== table.upper ? 'lit' : ''} />
+                  <i className={i < stops.length - 1 && inTable && stop.y !== table.lower ? 'lit' : ''} />
+                </span>
+                {(stop.y === table.upper || stop.y === table.lower) && <b className="table-end" aria-hidden />}
                 {/*
                   The row's own marker — a bar for a bound, a dot for a level —
                   drawn separately from the handle, so a handle resting on a

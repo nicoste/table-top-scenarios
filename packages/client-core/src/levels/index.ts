@@ -5,6 +5,7 @@
 // so it decides what happens to the band far more often than it used to.
 
 import type { LevelRange } from '@tt/domain';
+import { clampRange, MAP_MAX_HEIGHT, MAP_MIN_DEPTH, settleRange } from '@tt/domain';
 
 /**
  * The end a press at this height should move: whichever is nearer.
@@ -48,3 +49,38 @@ export function rowAt(rows: readonly RowBox[], clientY: number): number | null {
   if (hit >= 0) return hit;
   return clientY < rows[0]!.top ? 0 : rows.length - 1;
 }
+
+/**
+ * The GM's own band for the open map (D-369): where they last moved it,
+ * settled onto the levels as they stand now — a level deleted under an end
+ * moves it to the nearest, as the host moves the table's — or, until they move
+ * it, the table's own.
+ */
+export function ownBand(
+  own: LevelRange | null,
+  table: LevelRange,
+  planes: readonly { readonly y: number }[],
+): LevelRange {
+  return own ? settleRange(planes, own, MAP_MAX_HEIGHT, MAP_MIN_DEPTH) : table;
+}
+
+/**
+ * The band with one end taken to a stop, made legal the way the host makes the
+ * table's (R-161): never pulled onto a step, and never selecting nothing. The
+ * same band back when nothing changed, so a drag within one row moves nothing.
+ */
+export function bandMoved(
+  range: LevelRange,
+  end: 'lower' | 'upper',
+  to: number,
+  planes: readonly { readonly y: number }[],
+): LevelRange {
+  const next = clampRange(
+    planes,
+    end === 'lower' ? { lower: to, upper: range.upper } : { lower: range.lower, upper: to },
+    MAP_MAX_HEIGHT,
+    MAP_MIN_DEPTH,
+  );
+  return next.lower === range.lower && next.upper === range.upper ? range : next;
+}
+

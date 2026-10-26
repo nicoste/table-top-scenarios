@@ -28,7 +28,7 @@ export { grainAt } from './grain/index.js';
 
 export { Stage, FRAME_BUDGET_MS, FRAME_SLOP_MS, IDLE_HEARTBEAT_MS } from './stage/index.js';
 export type { StageCost } from './stage/index.js';
-export type { Picked, Present, SlotAddress, Standing, StageFog } from './stage/index.js';
+export type { PartySight, Picked, Present, SlotAddress, Standing, StageFog } from './stage/index.js';
 
 export { buildPartyTokens } from './tokens/index.js';
 export { CARD_ASPECT, SILVER } from './standee/index.js';

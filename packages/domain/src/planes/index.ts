@@ -194,7 +194,8 @@ export function fullRange(cap: number, floor: number): LevelRange {
  * A stored band is the GM's, and nothing moves it behind their back.
  */
 export function clampRange(
-  planes: readonly CuttingPlane[],
+  // Heights only, like `planeSteps`: the console's own band reads them off the wire.
+  planes: readonly { readonly y: number }[],
   range: LevelRange,
   cap: number,
   floor: number,
@@ -236,7 +237,8 @@ export function clampRange(
  * vanish as the band moves make the list feel like it is guessing.
  */
 export function settleRange(
-  planes: readonly CuttingPlane[],
+  // Heights only, like `planeSteps`: the console's own band reads them off the wire.
+  planes: readonly { readonly y: number }[],
   range: LevelRange,
   cap: number,
   floor: number,

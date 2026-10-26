@@ -391,11 +391,12 @@ export function buildProps(
   /** Whether the large parts draw their paint's figure, as the screen's switch says (R-177). */
   figures = true,
   /**
-   * Has each piece of furniture and each light the party sees now show
-   * through what hides it (R-216) — only with `inSight` to say which: without
-   * it, the GM's own view, every one in the map would show through every wall.
+   * What shows through walls (R-216): the stage's twins, and which props the
+   * party sees now — each piece of furniture and each light among them shows
+   * through what hides it. `sees` is `null` when nobody says (D-369), and
+   * then none does: every one in a map would show through every wall.
    */
-  xray?: XRay,
+  through: { readonly xray: XRay; readonly sees: ((prop: Prop) => boolean) | null } | null = null,
 ): PropMeshes {
   const group = new Group();
   const proxies: Mesh[] = [];
@@ -465,13 +466,13 @@ export function buildProps(
       inner.add(mesh);
     });
     group.add(holder);
-    if (xray && inSight && seen && SHOWS_THROUGH.has(type?.group ?? '')) {
-      geometries.push(...xray.add(holder, 'props'));
-    } else if (xray && type && !SHOWS_THROUGH.has(type.group)
+    if (through?.sees && through.sees(prop) && SHOWS_THROUGH.has(type?.group ?? '')) {
+      geometries.push(...through.xray.add(holder, 'props'));
+    } else if (through && type && !SHOWS_THROUGH.has(type.group)
       && !(type.opens && opened.has(prop.id) ? type.open : type.closed).blocksSight) {
       // Bars, an open door, a ladder: seen past, so nothing behind them is
       // outlined rod by rod.
-      xray.seenPast(holder);
+      through.xray.seenPast(holder);
     }
 
     const volume = new BoxGeometry(turned.x, turned.y, turned.z);

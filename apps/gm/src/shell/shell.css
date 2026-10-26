@@ -1,6 +1,8 @@
 :root {
   --bg: #0f1216; --panel: #171b22; --edge: #262c36; --ink: #e6e9ef;
   --dim: #8d97a6; --accent: #6ea8fe; --ok: #57d9a3;
+  /* The table's band beside the GM's on the level ladder (D-369). */
+  --table: #e8b25a;
 }
 * { box-sizing: border-box; }
 html, body, #root { margin: 0; height: 100%; }
@@ -204,7 +206,7 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
 */
 .ladder { list-style: none; margin: 4px 0 8px; padding: 0; touch-action: none; }
 .ladder li {
-  display: grid; grid-template-columns: 20px 1fr auto auto; gap: 0 4px;
+  display: grid; grid-template-columns: 28px 1fr auto auto; gap: 0 4px;
   align-items: center; min-height: 28px;
 }
 .ladder .rail {
@@ -220,6 +222,20 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
    segment — so the line ran on below Bedrock. */
 .ladder li:first-child .rail i:first-of-type,
 .ladder li:last-child .rail i:last-of-type { background: transparent; }
+
+/* The table's band (D-369): a thin amber line at the rail's left, clear of the
+   handles, with a tick at each end. Where the two bands agree it runs beside
+   the GM's; where they part, the GM can see which floor the players are on. */
+.ladder .rail .table {
+  position: absolute; left: 1px; top: 0; bottom: 0; width: 3px;
+  display: grid; grid-template-rows: 1fr 1fr;
+}
+.ladder .rail .table i { width: 3px; background: transparent; }
+.ladder .rail .table i.lit { background: var(--table); }
+.ladder .rail .table-end {
+  position: absolute; left: 1px; top: 50%; width: 7px; height: 2px; margin-top: -1px;
+  background: var(--table);
+}
 
 /* The row's own marker, drawn under any handle rather than replaced by it —
    a handle resting on a bound used to render as a bar and disappear. */

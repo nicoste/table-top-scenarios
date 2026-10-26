@@ -29,6 +29,8 @@ export interface SilverSpec {
   readonly hidden: boolean;
   /** How far down the first block is: zero when standing on one (R-34). */
   readonly drop: number;
+  /** Shown through walls: in play, which on the console means seen by the party (R-216, D-369). */
+  readonly showsThrough: boolean;
 }
 
 export interface SilverTokens3D {
@@ -79,7 +81,7 @@ export function buildSilverTokens(
     captions.push(label);
 
     group.add(root, proxy);
-    if (xray) own.push(...xray.add(root, 'tokens'));
+    if (xray && spec.showsThrough) own.push(...xray.add(root, 'tokens'));
 
     if (spec.drop > 0) {
       const line = new BufferGeometry();

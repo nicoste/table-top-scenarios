@@ -5,7 +5,9 @@
 // gesture, so this now decides the outcome of every press.
 
 import { describe, it, expect } from 'vitest';
-import { grabEnd, rowAt } from '@tt/client-core';
+import type { CuttingPlane, PlaneId } from '@tt/domain';
+import { WHOLE_MAP } from '@tt/domain';
+import { bandMoved, grabEnd, ownBand, rowAt } from '@tt/client-core';
 
 const band = { lower: 0, upper: 8 };
 
@@ -73,3 +75,34 @@ describe('rowAt (D-317)', () => {
     expect(rowAt(moved, 130)).not.toBe(atPress);
   });
 });
+
+describe('the GM\'s own band (D-369)', () => {
+  const planes: CuttingPlane[] = [{ id: 'plane_up' as PlaneId, name: 'Upstairs', y: 4 }];
+  const groundFloor = { lower: 0, upper: 4 };
+
+  it('is the table\'s until the GM moves it', () => {
+    expect(ownBand(null, groundFloor, planes)).toBe(groundFloor);
+  });
+
+  it('stays where the GM moved it, whatever the table is shown', () => {
+    expect(ownBand({ lower: 4, upper: 32 }, groundFloor, planes)).toEqual({ lower: 4, upper: 32 });
+  });
+
+  it('moves to the nearest level when the one it rests on is deleted, as the table\'s does', () => {
+    // Upstairs is deleted; Water level, below it, is the nearest level left.
+    const water: CuttingPlane = { id: 'plane_water' as PlaneId, name: 'Water level', y: 0 };
+    expect(ownBand({ lower: 4, upper: 32 }, WHOLE_MAP, [water])).toEqual({ lower: 0, upper: 32 });
+  });
+
+  it('takes one end to a stop and leaves the other where it was', () => {
+    expect(bandMoved({ lower: 0, upper: 32 }, 'upper', 4, planes)).toEqual(groundFloor);
+    expect(bandMoved(groundFloor, 'lower', -16, planes)).toEqual({ lower: -16, upper: 4 });
+  });
+
+  it('never selects nothing, and gives the same band back when nothing changed', () => {
+    // Both ends on Water level opens up to the next level — which is where it was.
+    expect(bandMoved(groundFloor, 'upper', 0, planes)).toBe(groundFloor);
+    expect(bandMoved(groundFloor, 'lower', 0, planes)).toBe(groundFloor);
+  });
+});
+

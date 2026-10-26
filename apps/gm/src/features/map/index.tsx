@@ -8,7 +8,7 @@ import type { Intent, MapWire } from '@tt/protocol';
 import type { MapTool } from '@tt/client-core';
 import { CAMERA_HINT, mapToolShows } from '@tt/client-core';
 import {
-  MAP_MAX_HEIGHT, MAP_MIN_DEPTH, BRUSHES, isFullRange, stepLabel,
+  MAP_MAX_HEIGHT, MAP_MIN_DEPTH, BRUSHES, isFullRange, sameRange, stepLabel,
 } from '@tt/domain';
 import type { LevelRange, Material, SwatchId } from '@tt/domain';
 import { ConfirmDelete, Tooltip } from '@tt/ui';
@@ -34,6 +34,13 @@ function bandName(y: number, planes: MapWire['planes']): string {
   return stepLabel(y, MAP_MAX_HEIGHT, MAP_MIN_DEPTH)
     ?? planes?.find((plane) => plane.y === y)?.name
     ?? `level ${y}`;
+}
+
+/** A band in words: "the whole place", or "Floor to Upstairs". */
+function bandWords(range: LevelRange, planes: MapWire['planes']): string {
+  return isFullRange(range, MAP_MAX_HEIGHT, MAP_MIN_DEPTH)
+    ? 'the whole place'
+    : `${bandName(range.lower, planes)} to ${bandName(range.upper, planes)}`;
 }
 
 /** One member of the party, as the party card lists them inside a map (R-184). */
@@ -76,8 +83,18 @@ interface Props {
   readonly party: readonly PartyRow[];
   /** Can they see it at all — Revealed, chunk Known, point of interest shown? */
   readonly partyCanSee: boolean;
-  /** The band this map is cut to. Always present — an uncut map is its whole body. */
+  /**
+   * The GM's own band (D-369), which the ladder moves. Always present — an
+   * uncut map is its whole body.
+   */
   readonly range: LevelRange;
+  /** The band the table is shown, which only changes when the GM sends theirs. */
+  readonly tableRange: LevelRange;
+  onRange: (range: LevelRange) => void;
+  /** Shows the table the GM's band. */
+  onSendRange: () => void;
+  /** Puts the GM's band back where the table's is. */
+  onTableRange: () => void;
   /** Is the console showing only the band, like the table (R-159)? */
   readonly levelling: boolean;
   onLevelling: (on: boolean) => void;
@@ -103,7 +120,8 @@ const BRUSH_KEYS: Readonly<Record<string, string>> = { cube: '8', flat3: '9', fl
 
 export function MapPanel({
   placeName, poiName, map, blocks, dug, tool, brush, shifting, materials, swatch, hoverLabel,
-  partyHere, party, partyCanSee, range, levelling, onLevelling, partyView, onPartyView, seen,
+  partyHere, party, partyCanSee, range, tableRange, onRange, onSendRange, onTableRange,
+  levelling, onLevelling, partyView, onPartyView, seen,
   onTool, onBrush, onSwatch, onLeave, dispatch, placeId, poiId,
 }: Props) {
   const waiting = party.filter((member) => !member.standing).length;
@@ -125,10 +143,7 @@ export function MapPanel({
         {partyHere ? (
           <>
             <p className="hint" style={{ margin: '0 0 8px' }}>
-              They are in here. The table is showing them{' '}
-              {isFullRange(range, MAP_MAX_HEIGHT, MAP_MIN_DEPTH)
-                ? 'the whole place'
-                : `${bandName(range.lower, map.planes)} to ${bandName(range.upper, map.planes)}`}.
+              They are in here. The table is showing them {bandWords(tableRange, map.planes)}.
             </p>
             {/* Who is standing where, and their sight, are in the On stage list
                 now — one list for everyone in the map, in the GM's order (R-208). */}
@@ -429,10 +444,39 @@ export function MapPanel({
         <LevelLadder
           map={map}
           range={range}
+          table={tableRange}
+          onRange={onRange}
           placeId={placeId}
           poiId={poiId}
           dispatch={dispatch}
         />
+
+        {/*
+          Yours and the table's (D-369). The ladder moves yours; the table
+          follows only when it is sent, so a GM can look at the floor above the
+          party without the players' view moving with them.
+        */}
+        {sameRange(range, tableRange) ? (
+          <p className="hint">
+            {partyHere
+              ? 'The table is shown this band too.'
+              : 'The table is shown this band when the party comes in.'}
+          </p>
+        ) : (
+          <>
+            <p className="hint">
+              The table is shown {bandWords(tableRange, map.planes)}: the amber line. Yours stays yours until you send it.
+            </p>
+            <div className="btn-grid campaign-actions">
+              <Tooltip label="Show the table the band you are looking at" placement="bottom" stretch>
+                <button className="wide" onClick={onSendRange}>Show the table</button>
+              </Tooltip>
+              <Tooltip label="Put your band back on the table's" placement="bottom" stretch>
+                <button className="wide" onClick={onTableRange}>Back to the table's</button>
+              </Tooltip>
+            </div>
+          </>
+        )}
 
         {/*
           The toggle (R-159). Two views of one body: everything, or the band the
@@ -444,7 +488,7 @@ export function MapPanel({
           <Tooltip
             label={levelling
               ? 'Show the whole body again'
-              : 'Show only the band — what the table gets, and nothing else'}
+              : 'Show only your band, and nothing else'}
             placement="bottom"
             stretch
           >
@@ -459,10 +503,8 @@ export function MapPanel({
         </div>
         <p className="hint">
           {levelling
-            ? 'Only the band is drawn, so nothing outside it can be clicked by mistake.'
-            : partyHere
-              ? 'You see the whole place; the table sees the band.'
-              : 'You see the whole place. The band is what the table gets when the party comes in.'}
+            ? 'Only your band is drawn, so nothing outside it can be clicked by mistake.'
+            : 'You see the whole place.'}
         </p>
       </div>
 
