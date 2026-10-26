@@ -34,7 +34,7 @@ import {
   clickAction, holdsSelection, mapAction, mapHover, mapDrags, mapAllowed,
   cameraAction, wheelZoom, CAMERA_HINT,
   still, grab, armedStride, tokenAim, onRung, aimStride, strideGhost, strideIntent, standVerdict, walkShown,
-  tokenAction, stridePrompt,
+  tokenAction, stridePrompt, jumps,
   NOT_PLACING, turnPlacing, mirrorPlacing, prefabAim, prefabPreview, placeIntent, placePrompt,
   NO_CAPTURE, captureCorner, captureClick, captureHeight, captureBack, captureBox, capturePrompt,
   EMPTY_HAND, turnHand, propAim, propWall, propPreview, placePropIntent, propPrompt, toggleIntent,
@@ -209,6 +209,12 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    * discovered.
    */
   const [shifting, setShifting] = useState(false);
+  /**
+   * The path a move takes, as chosen on screen (D-372): ground, or a jump —
+   * and Shift does the other one while it is held, as on the table.
+   */
+  const [leap, setLeap] = useState(false);
+  const jumping = jumps(leap, shifting);
   /**
    * Which shape the brush lays down (R-164).
    *
@@ -919,18 +925,18 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     const may = openRange
       ? (at: BlockCoord) => standsInBand(openRange, at)
       : undefined;
-    // Shift held makes it a jump (D-371), the same key on both screens.
+    // A walk or a jump: the Path chosen, and Shift for the other (D-371, D-372).
     if (stride.step === 'aiming') {
       return walkShown(
-        openBody, present.get(stride.memberId as MemberId) ?? null, strideGhost(stride), may, openedHere, shifting,
+        openBody, present.get(stride.memberId as MemberId) ?? null, strideGhost(stride), may, openedHere, jumping,
       );
     }
     if (silverMove.step === 'aiming' && mapTool !== 'spawn') {
       const from = silverHere.find((token) => token.id === silverMove.id)?.at ?? null;
-      return walkShown(openBody, from, silverMoveGhost(silverMove), may, openedHere, shifting);
+      return walkShown(openBody, from, silverMoveGhost(silverMove), may, openedHere, jumping);
     }
     return null;
-  }, [openBody, stride, silverMove, mapTool, present, silverHere, openRange?.lower, openRange?.upper, openedHere, shifting]);
+  }, [openBody, stride, silverMove, mapTool, present, silverHere, openRange?.lower, openRange?.upper, openedHere, jumping]);
   useEffect(() => {
     stage?.showWalk(walk, stride.step === 'aiming' ? memberColour(stride.memberId) : SILVER);
   }, [walk, stage]);
@@ -2003,8 +2009,9 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
                 stride,
                 memberName,
                 stride.step === 'aiming' && !present.has(stride.memberId as MemberId),
+                jumping,
                 shifting,
-              ) ?? silverMovePrompt(silverMove, silverName, shifting) ?? hoverLabel
+              ) ?? silverMovePrompt(silverMove, silverName, jumping, shifting) ?? hoverLabel
               : hoverLabel}
             partyHere={partyHere}
             party={partyRows}
@@ -2029,6 +2036,8 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
             seen={exploredWire ? cellsFromWire(exploredWire).size : 0}
             brush={mapBrush}
             shifting={shifting}
+            leap={leap}
+            onLeap={setLeap}
             onTool={setMapTool}
             onBrush={setMapBrush}
             onSwatch={setSwatch}

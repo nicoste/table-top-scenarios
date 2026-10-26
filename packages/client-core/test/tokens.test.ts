@@ -9,7 +9,7 @@ import {
 import type { FacePick } from '@tt/render';
 import {
   still, grab, armedStride, tokenAim, aimStride, strideGhost, canStride, strideIntent,
-  tableCeiling, standVerdict, tokenAction, stridePrompt, mapAction, mapAllowed,
+  tableCeiling, standVerdict, tokenAction, stridePrompt, jumps, mapAction, mapAllowed,
 } from '@tt/client-core';
 import type { Stride } from '@tt/client-core';
 
@@ -186,6 +186,18 @@ describe('the prompt says who and what', () => {
     // Placing somebody for the first time is neither a walk nor a jump.
     expect(stridePrompt(aimStride(grab('aldra'), cube(1, 1, 1), null), name, true, true))
       .toBe('Place Aldra here? Click to confirm, Escape or right-click to cancel.');
+    // Jump path chosen on screen (D-372): Shift is how to walk instead, and held, how to jump again.
+    expect(stridePrompt(aimStride(grab('aldra'), cube(1, 1, 1), null), name, false, true, false))
+      .toBe('Jump Aldra here? Click to confirm, hold Shift to walk, Escape or right-click to cancel.');
+    expect(stridePrompt(aimStride(grab('aldra'), cube(1, 1, 1), null), name, false, false, true))
+      .toBe('Move Aldra here? Click to confirm, let go of Shift to jump, Escape or right-click to cancel.');
+  });
+
+  it('a move is the path chosen on screen, and Shift does the other one (D-372)', () => {
+    expect(jumps(false, false)).toBe(false);
+    expect(jumps(false, true)).toBe(true);
+    expect(jumps(true, false)).toBe(true);
+    expect(jumps(true, true)).toBe(false);
     expect(stridePrompt(aimStride(grab('aldra'), cube(1, 1, 1), 'a block is there'), name, false))
       .toBe('Aldra: a block is there.');
     expect(stridePrompt(still, name, false)).toBeNull();

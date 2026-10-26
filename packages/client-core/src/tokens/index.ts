@@ -223,27 +223,38 @@ export function tokenAction(
 }
 
 /**
+ * Whether a move is a jump (D-371, D-372): the path chosen on screen — ground
+ * or jump — and Shift, which does the other one while it is held. So a mouse
+ * alone, or a finger, can jump, and a keyboard still can in passing.
+ */
+export function jumps(leap: boolean, shift: boolean): boolean {
+  return leap !== shift;
+}
+
+/**
  * What to tell whoever is moving a token, on either screen — and, once they
- * have somewhere to go, that Shift makes the move a jump (D-371). Placing
- * somebody for the first time is neither.
+ * have somewhere to go, whether it is a walk or a jump and how Shift switches
+ * it (D-371). Placing somebody for the first time is neither.
  */
 export function stridePrompt(
   stride: Stride,
   nameOf: (id: string) => string | null,
   placing: boolean,
   jumping = false,
+  /** Is Shift held — is it what made the move what it is? */
+  shift = jumping,
 ): string | null {
   if (stride.step !== 'aiming') return null;
   const who = nameOf(stride.memberId) ?? 'them';
   if (!stride.at) return `${placing ? 'Placing' : 'Moving'} ${who} — point at a floor.`;
   if (stride.why) return `${who}: ${stride.why}.`;
   if (placing) return `Place ${who} here? Click to confirm, Escape or right-click to cancel.`;
-  return moveQuestion(who, jumping);
+  return moveQuestion(who, jumping, shift);
 }
 
-/** The question a move asks before the click: walk or jump, and how to switch (D-371). */
-export function moveQuestion(who: string, jumping: boolean): string {
-  return jumping
-    ? `Jump ${who} here? Click to confirm, let go of Shift to walk, Escape or right-click to cancel.`
-    : `Move ${who} here? Click to confirm, hold Shift to jump, Escape or right-click to cancel.`;
+/** The question a move asks before the click: walk or jump, and how Shift switches it (D-371, D-372). */
+export function moveQuestion(who: string, jumping: boolean, shift = jumping): string {
+  const other = jumping ? 'walk' : 'jump';
+  const key = shift ? `let go of Shift to ${other}` : `hold Shift to ${other}`;
+  return `${jumping ? 'Jump' : 'Move'} ${who} here? Click to confirm, ${key}, Escape or right-click to cancel.`;
 }

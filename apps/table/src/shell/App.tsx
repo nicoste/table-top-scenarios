@@ -22,7 +22,7 @@ import {
   tableAction,
   cameraAction, wheelZoom, CAMERA_HINT,
   still, grab, tokenAim, onRung, aimStride, strideGhost, strideIntent, standVerdict, tableCeiling, walkShown,
-  tokenAction, stridePrompt,
+  tokenAction, stridePrompt, jumps,
   MEASURE_START, measureCleared, measurePress, measureDrag, measureRelease, rulerShown, areasShown, handleAt,
   measurePrompt, faceCentre, floorCentre,
 } from '@tt/client-core';
@@ -67,14 +67,21 @@ export function App({ view, status, rejection, dispatch }: Props) {
   /** A party token being moved inside the map (R-188). Never armed here (D-167). */
   const [stride, setStride] = useState<Stride>(still);
   /**
-   * Is Shift held — is a move a jump rather than a walk (D-371)? State, so the
+   * The path a move takes, as chosen on screen (D-372): ground, or a jump.
+   * View state (R-64), until it is changed — so a mouse alone, or a finger,
+   * can jump.
+   */
+  const [leap, setLeap] = useState(false);
+  /**
+   * Is Shift held, which makes a move the other path (D-371)? State, so the
    * preview turns into an arc the moment the key goes down, with the pointer
    * still; and cleared on blur, which never sees the keyup.
    */
-  const [jumping, setJumping] = useState(false);
+  const [shiftDown, setShiftDown] = useState(false);
+  const jumping = jumps(leap, shiftDown);
   useEffect(() => {
-    const read = (e: KeyboardEvent) => setJumping(e.shiftKey);
-    const onBlur = () => setJumping(false);
+    const read = (e: KeyboardEvent) => setShiftDown(e.shiftKey);
+    const onBlur = () => setShiftDown(false);
     addEventListener('keydown', read);
     addEventListener('keyup', read);
     addEventListener('blur', onBlur);
@@ -550,7 +557,7 @@ export function App({ view, status, rejection, dispatch }: Props) {
 
   // The table only ever moves somebody already standing, so it is never placing.
   const prompt = insideWire
-    ? measuring ? measurePrompt(hand, overHandle) : stridePrompt(stride, nameOf, false, jumping)
+    ? measuring ? measurePrompt(hand, overHandle) : stridePrompt(stride, nameOf, false, jumping, shiftDown)
     // The days go in the sentence: this screen has no panel to put them in,
     // and how long it takes is the whole output of a route (R-199, D-304).
     : travelPrompt(travel, nameOf, route);
@@ -629,6 +636,8 @@ export function App({ view, status, rejection, dispatch }: Props) {
       {!waiting && insideWire && (
         <TableTools
           measuring={measuring}
+          leap={leap}
+          onLeap={setLeap}
           hand={hand}
           onMove={() => { setMeasuring(false); setHand(measureCleared(handRef.current)); }}
           onMeasure={() => { setMeasuring(true); setStride(still); }}

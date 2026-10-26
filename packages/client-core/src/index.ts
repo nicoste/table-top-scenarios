@@ -19,7 +19,7 @@ export type { Travel } from './travel/index.js';
 
 export {
   still, grab, armedStride, tokenAim, onRung, aimStride, strideGhost, canStride, strideIntent,
-  tableCeiling, standVerdict, tokenAction, stridePrompt,
+  tableCeiling, standVerdict, tokenAction, stridePrompt, jumps,
 } from './tokens/index.js';
 export type { Stride, Headroom, TokenAction } from './tokens/index.js';
 

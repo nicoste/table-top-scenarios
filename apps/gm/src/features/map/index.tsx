@@ -73,6 +73,9 @@ interface Props {
   readonly brush: string;
   /** Is Shift held — is the selected tool showing its other mode right now? */
   readonly shifting: boolean;
+  /** Is a move a jump rather than a walk (D-372)? Shift does the other one. */
+  readonly leap: boolean;
+  onLeap: (leap: boolean) => void;
   readonly materials: readonly Material[];
   /** The material **and** the cut of it the next click lays down (R-176). */
   readonly swatch: SwatchId;
@@ -114,7 +117,7 @@ interface Props {
 const BRUSH_KEYS: Readonly<Record<string, string>> = { cube: '8', flat3: '9', flat5: '0', column2: '−', column3: '=' };
 
 export function MapPanel({
-  placeName, poiName, map, blocks, dug, tool, brush, shifting, materials, swatch, hoverLabel,
+  placeName, poiName, map, blocks, dug, tool, brush, shifting, leap, onLeap, materials, swatch, hoverLabel,
   partyHere, party, partyCanSee, range, tableRange, onRange, onApplyRange, partyView, onPartyView, seen,
   onTool, onBrush, onSwatch, onLeave, dispatch, placeId, poiId,
 }: Props) {
@@ -305,6 +308,24 @@ export function MapPanel({
         </div>
 
         {/*
+          Ground or jump (D-372): on screen, so a mouse alone can jump. Shift
+          does the other one while it is held.
+        */}
+        {tool === 'move' && (
+          <>
+            <p className="lbl" style={{ margin: '8px 0 4px' }}>Path</p>
+            <div className="btn-grid tools">
+              <Tooltip label="Walk over the floors, round what is in the way" placement="bottom" stretch>
+                <button className={leap ? '' : 'on'} aria-pressed={!leap} onClick={() => onLeap(false)}>Ground path</button>
+              </Tooltip>
+              <Tooltip label="Leap straight there through the air — shift does the other one" placement="bottom" stretch>
+                <button className={leap ? 'on' : ''} aria-pressed={leap} onClick={() => onLeap(true)}>Jump path</button>
+              </Tooltip>
+            </div>
+          </>
+        )}
+
+        {/*
           Five named shapes, three flat and two upright (R-164). The flats come
           first and fill the row, so the two groups read as two groups — and
           the outline is the real label, since it takes the shape before the
@@ -358,8 +379,9 @@ export function MapPanel({
             <>
               Click a token to pick it up, then the top of a block to stand it there.
               One to a cube, gold or silver, and always on something. Escape or
-              right-click puts it back down where it was. Click a door to open or
-              shut it, and a light to put it out or light it.
+              right-click puts it back down where it was. <b>Jump path</b> leaps
+              straight there instead of walking; <b>⇧ shift</b> does the other one.
+              Click a door to open or shut it, and a light to put it out or light it.
             </>
           )}
           {tool === 'spawn' && (

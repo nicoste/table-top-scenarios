@@ -9548,3 +9548,21 @@ Checked on a copy of the GM's data in Tollkeep's dungeon: Goblin M9 aimed at
 the next room walked 12.2 round the wall, and with Shift held jumped it — an
 arc over the wall, 9.5.
 
+### D-372 — Ground path or jump path, on screen · `agreed`
+*"Add a toggle for ground path / jump path so it's mouse only / touch screen
+compatible."* A jump was Shift alone (D-371), and a table played with a mouse
+and nothing else, or with a finger, had no way to make one.
+
+Now Play has a **Path** pair on both screens — **Ground path** and **Jump
+path** — under the tool buttons, where the brush sits for the tools that have
+one. It is view state (R-64), kept until it is changed, each screen its own.
+**Shift does the other one** while it is held (`jumps`): on Ground path it
+jumps, as before, and on Jump path it walks. The prompt says which a click
+will make and how Shift changes it — *"Jump Goblin M9 here? Click to confirm,
+hold Shift to walk, …"*.
+
+Checked on a copy of the GM's data: with Jump path on, Goblin M9 aimed out of
+the dungeon to the grass showed an arc, 5.8; with Shift held it walked — *no
+path* — and said *let go of Shift to jump*. The table shows the same pair
+under its Play.
+

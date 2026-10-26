@@ -93,12 +93,13 @@ export function silverMovePrompt(
   move: SilverMove,
   nameOf: (id: string) => string | null,
   jumping = false,
+  shift = jumping,
 ): string | null {
   if (move.step !== 'aiming') return null;
   const who = nameOf(move.id) ?? 'them';
   if (!move.at) return `Moving ${who} — point at a floor.`;
   if (move.why) return `${who}: ${move.why}.`;
-  return moveQuestion(who, jumping);
+  return moveQuestion(who, jumping, shift);
 }
 
 /**

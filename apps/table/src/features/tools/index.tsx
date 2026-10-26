@@ -19,6 +19,9 @@ import { DraftInput } from '@tt/ui';
 interface Props {
   /** Measure in hand — or not, which is Play. */
   readonly measuring: boolean;
+  /** Is a move a jump rather than a walk (D-372)? Shift does the other one. */
+  readonly leap: boolean;
+  readonly onLeap: (leap: boolean) => void;
   readonly hand: MeasureHand;
   readonly onMove: () => void;
   readonly onMeasure: () => void;
@@ -51,7 +54,7 @@ const MODES: readonly { readonly id: MeasureMode; readonly name: string }[] = [
   ...AREA_SHAPES.map((shape) => ({ id: shape.id, name: shape.name })),
 ];
 
-export function TableTools({ measuring, hand, onMove, onMeasure, onHand, mine, party, onEdit, onRemove }: Props) {
+export function TableTools({ measuring, leap, onLeap, hand, onMove, onMeasure, onHand, mine, party, onEdit, onRemove }: Props) {
   return (
     <>
       <div className="dock">
@@ -61,10 +64,23 @@ export function TableTools({ measuring, hand, onMove, onMeasure, onHand, mine, p
             <button className={measuring ? '' : 'on'} aria-pressed={!measuring} onClick={onMove}>▶ Play</button>
             <button className={measuring ? 'on' : ''} aria-pressed={measuring} onClick={onMeasure}>⟷ Measure</button>
           </div>
+          {/*
+            Ground or jump (D-372): on screen, so a mouse alone or a finger can
+            jump. Shift does the other one while it is held.
+          */}
+          {!measuring && (
+            <>
+              <p className="lbl">Path</p>
+              <div className="btn-grid tools">
+                <button className={leap ? '' : 'on'} aria-pressed={!leap} onClick={() => onLeap(false)}>Ground path</button>
+                <button className={leap ? 'on' : ''} aria-pressed={leap} onClick={() => onLeap(true)}>Jump path</button>
+              </div>
+            </>
+          )}
           <p className="hint">
             {measuring
               ? <>With the <b>Ruler</b>, drag from one cube to another to see how far. With a shape, drag to draw an area. Drag one of yours by the mark where it starts to move it. Right-drag moves the view.</>
-              : <>Click one of the party to pick them up, then the top of a block to stand them there.</>}
+              : <>Click one of the party to pick them up, then the top of a block to stand them there. <b>Jump path</b> leaps straight there instead of walking; <b>⇧ shift</b> does the other one.</>}
           </p>
         </div>
       </div>

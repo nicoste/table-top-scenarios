@@ -4062,8 +4062,10 @@ apps/host/src/
 > `walkAcross` in `domain` is the search (A*, with a budget, as the world's);
 > `walkShown` in `client-core` is what both screens draw; the stage draws it.
 >
-> **Or a jump, with Shift held** (D-371), on both screens and for any token
-> that moves: straight through the air, as far as the line from the token's
+> **Or a jump** (D-371, D-372), on both screens and for any token that moves —
+> chosen under Play as **Ground path** or **Jump path**, a mouse or a finger's
+> choice that lasts until it is changed, and **Shift does the other one** while
+> it is held: straight through the air, as far as the line from the token's
 > cube to the ghost's (`jumpAcross`) — three across and four down is 5 — drawn
 > as an arc in the mover's colour. One or the other, never a walk that ends in
 > a jump; nothing is searched, so a jump always has a length. It limits nothing
