@@ -54,6 +54,7 @@ import type { BlockBody, FacePick } from '../blocks/index.js';
 import { buildBlockBody } from '../blocks/index.js';
 import type { PartyTokens, TokenRef } from '../tokens/index.js';
 import { buildPartyTokens } from '../tokens/index.js';
+import { buildXRay } from '../xray/index.js';
 import { intendedCell } from '../picking/index.js';
 
 /** One member standing in a cube, as an app hands it over (R-184). */
@@ -434,6 +435,8 @@ export class Stage {
   private opened: Opened = NONE_OPEN;
   /** The light the lights in the open map give (D-335), and what it was worked out from. */
   private readonly lamps = buildLamplight();
+  /** What stands behind a block, drawn through it: tokens, and props the party sees (R-216). */
+  private readonly xray = buildXRay();
   private lit: { map: EncounterMap; opened: Opened; sources: string } | null = null;
   /**
    * How this screen shades the lights (D-339): soft unless it says otherwise.
@@ -502,7 +505,8 @@ export class Stage {
   private lastFrame = 0;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
-    this.renderer = new WebGLRenderer({ canvas, antialias: true });
+    // A stencil, for the outline of what shows through a wall (R-216).
+    this.renderer = new WebGLRenderer({ canvas, antialias: true, stencil: true });
     this.mountCaptions();
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     /*
@@ -651,7 +655,7 @@ export class Stage {
      */
     this.composer = new EffectComposer(
       this.renderer,
-      new WebGLRenderTarget(1, 1, { type: HalfFloatType, samples: 4 }),
+      new WebGLRenderTarget(1, 1, { type: HalfFloatType, samples: 4, stencilBuffer: true }),
     );
     this.composer.addPass(new RenderPass(this.scene, this.camera));
     this.occlusion = new GTAOPass(this.scene, this.camera, 1, 1);
@@ -852,7 +856,7 @@ export class Stage {
   private rebuildPawns(): void {
     this.dropPawns();
     if (!this.campaign || !this.placement) return;
-    this.pawns = buildPartyPawns(this.campaign, this.placement, this.pictures ?? undefined);
+    this.pawns = buildPartyPawns(this.campaign, this.placement, this.pictures ?? undefined, this.xray);
     this.scene.add(this.pawns.group);
     this.applySurface();
   }
@@ -1018,7 +1022,7 @@ export class Stage {
     const fog = this.partyFog;
     this.props = buildProps(map.props, this.opened, fog
       ? (prop) => propCubes(prop).some((cube) => fog.lit.has(`${cube.x},${cube.y},${cube.z}`))
-      : null, this.figuring);
+      : null, this.figuring, this.xray);
     this.lamps.light(this.props.group);
     this.scene.add(this.props.group);
     this.applySurface();
@@ -1041,7 +1045,7 @@ export class Stage {
     if (!map) return;
     this.silver = buildSilverTokens(this.present.map((token) => ({
       ...token, drop: dropBelow(map, token.at),
-    })), this.pictures ?? undefined);
+    })), this.pictures ?? undefined, this.xray);
     this.lamps.light(this.silver.group);
     this.scene.add(this.silver.group);
     if (this.silverAimed) this.silver.aimAt(this.silverAimed);
@@ -1139,7 +1143,7 @@ export class Stage {
     this.tokens = buildPartyTokens(this.standing.map((token) => ({
       ...token,
       drop: dropBelow(map, token.at),
-    })), this.pictures ?? undefined);
+    })), this.pictures ?? undefined, this.xray);
     this.lamps.light(this.tokens.group);
     this.scene.add(this.tokens.group);
     // A rebuild under a ghost that is mid-aim must not drop it: the pointer has
@@ -1983,6 +1987,7 @@ export class Stage {
       this.renderer.shadowMap.needsUpdate = true;
       this.shadowsStale = false;
     }
+    this.xray.frame(this.camera, this.renderer, this.live.pitchDeg);
     if (this.occluding) this.composer.render();
     else this.renderer.render(this.scene, this.camera);
     /*
@@ -2024,6 +2029,7 @@ export class Stage {
     this.ghostShape?.dispose();
     this.props?.dispose();
     this.lamps.dispose();
+    this.xray.dispose();
     for (const lamp of this.lampPool) lamp.dispose();
     this.captions.domElement.remove();
     this.renderer.dispose();

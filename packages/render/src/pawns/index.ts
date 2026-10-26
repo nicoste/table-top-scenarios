@@ -12,7 +12,7 @@
 // being pickable on both screens.
 
 import { Group } from 'three';
-import type { Mesh } from 'three';
+import type { BufferGeometry, Mesh } from 'three';
 import type { Campaign, PartyMember, Placement, WorldCell } from '@tt/domain';
 import { CHUNK_SIZE, pawns as pawnsOf } from '@tt/domain';
 import { surfaceAt } from '../world/index.js';
@@ -20,6 +20,7 @@ import type { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { caption, dropCaption } from '../captions/index.js';
 import type { Pictures } from '../standee/index.js';
 import { STANDEE_HEIGHT, standees } from '../standee/index.js';
+import type { XRay } from '../xray/index.js';
 
 /** Which pawn was picked: a member, or the whole party travelling together. */
 export interface PawnRef {
@@ -86,6 +87,8 @@ export function buildPartyPawns(
   campaign: Campaign,
   placement: Placement,
   pictures?: Pictures,
+  /** Has each pawn show through the hills that hide it (R-216). */
+  xray?: XRay,
 ): PartyPawns {
   const signature = pawnSignature(campaign, placement);
   /** The campaign aiming reads the ground from: the latest one these pawns were kept for. */
@@ -96,6 +99,7 @@ export function buildPartyPawns(
   const turning: Group[] = [];
   const captions: CSS2DObject[] = [];
   const shop = standees(pictures);
+  const throughs: BufferGeometry[] = [];
 
   const byId = new Map<string, PartyMember>(campaign.party.map((m) => [m.id, m]));
 
@@ -130,6 +134,7 @@ export function buildPartyPawns(
     }
 
     group.add(root, proxy);
+    if (xray) throughs.push(...xray.add(root, 'tokens'));
   }
 
   for (const pawn of pawnsOf(placement, campaign.party)) {
@@ -166,6 +171,7 @@ export function buildPartyPawns(
     },
     dispose() {
       shop.dispose();
+      for (const geometry of throughs) geometry.dispose();
       // The pawns are rebuilt whenever the party moves, so this leaks faster
       // than the places do if it is left out (D-289).
       for (const label of captions) dropCaption(label);

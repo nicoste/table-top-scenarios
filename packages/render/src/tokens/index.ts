@@ -11,6 +11,7 @@ import type { Material, Mesh } from 'three';
 import type { BlockCoord } from '@tt/domain';
 import type { Pictures } from '../standee/index.js';
 import { GOLD, standees } from '../standee/index.js';
+import type { XRay } from '../xray/index.js';
 
 /** Which token was picked: a member of the party (silver tokens are later, D-255). */
 export interface TokenRef {
@@ -58,13 +59,19 @@ export interface PartyTokens {
 
 const centre = (at: BlockCoord) => ({ x: at.x + 0.5, y: at.y, z: at.z + 0.5 });
 
-export function buildPartyTokens(tokens: readonly TokenSpec[], pictures?: Pictures): PartyTokens {
+export function buildPartyTokens(
+  tokens: readonly TokenSpec[],
+  pictures?: Pictures,
+  /** Has each token show through what hides it (R-216). */
+  xray?: XRay,
+): PartyTokens {
   const group = new Group();
   const owners = new Map<object, TokenRef>();
   const proxies: Mesh[] = [];
   const turning: Group[] = [];
   const shop = standees(pictures);
   const stalks: BufferGeometry[] = [];
+  const throughs: BufferGeometry[] = [];
   const stalkMaterial: Material = new LineBasicMaterial({ color: GOLD });
 
   for (const token of tokens) {
@@ -76,6 +83,7 @@ export function buildPartyTokens(tokens: readonly TokenSpec[], pictures?: Pictur
     owners.set(proxy, { memberId: token.memberId });
     proxies.push(proxy);
     group.add(root, proxy);
+    if (xray) throughs.push(...xray.add(root, 'tokens'));
 
     // A token with nothing under it draws a line down to what it would land
     // on, the one case its base cannot answer (R-34).
@@ -113,7 +121,7 @@ export function buildPartyTokens(tokens: readonly TokenSpec[], pictures?: Pictur
     },
     dispose() {
       shop.dispose();
-      for (const geometry of stalks) geometry.dispose();
+      for (const geometry of [...stalks, ...throughs]) geometry.dispose();
       stalkMaterial.dispose();
     },
   };

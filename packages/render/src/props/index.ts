@@ -34,6 +34,7 @@ import type { BlockCoord, Facing, Material as Family, Opened, Prop, SwatchId } f
 import { familyOf, flameColour, flameOf, paintOf, propBox, propType, swatchColour, turnedSize } from '@tt/domain';
 import { grainAt } from '../grain/index.js';
 import { figure, isFigured } from '../patterns/index.js';
+import type { XRay } from '../xray/index.js';
 
 /**
  * What a part is coloured: its paint (`base`), darker or lighter (D-352); a
@@ -372,6 +373,14 @@ function holderFor(prop: Pick<Prop, 'type' | 'at' | 'facing'>): { holder: Group;
 }
 
 /**
+ * What shows through a wall (R-216): the things in a room — furniture and
+ * lights. Not what a wall is built of: a door, bars, a ladder stand in a wall
+ * or against one, and would show through the blocks beside them from every
+ * angle, a fence of outlines around every room.
+ */
+const SHOWS_THROUGH: ReadonlySet<string> = new Set(['furniture', 'lights']);
+
+/**
  * `inSight` says whether the party sees a prop now — `null` when nobody is
  * asking, the GM's own view, where nothing is greyed.
  */
@@ -381,6 +390,12 @@ export function buildProps(
   inSight: ((prop: Prop) => boolean) | null = null,
   /** Whether the large parts draw their paint's figure, as the screen's switch says (R-177). */
   figures = true,
+  /**
+   * Has each piece of furniture and each light the party sees now show
+   * through what hides it (R-216) — only with `inSight` to say which: without
+   * it, the GM's own view, every one in the map would show through every wall.
+   */
+  xray?: XRay,
 ): PropMeshes {
   const group = new Group();
   const proxies: Mesh[] = [];
@@ -450,6 +465,14 @@ export function buildProps(
       inner.add(mesh);
     });
     group.add(holder);
+    if (xray && inSight && seen && SHOWS_THROUGH.has(type?.group ?? '')) {
+      geometries.push(...xray.add(holder, 'props'));
+    } else if (xray && type && !SHOWS_THROUGH.has(type.group)
+      && !(type.opens && opened.has(prop.id) ? type.open : type.closed).blocksSight) {
+      // Bars, an open door, a ladder: seen past, so nothing behind them is
+      // outlined rod by rod.
+      xray.seenPast(holder);
+    }
 
     const volume = new BoxGeometry(turned.x, turned.y, turned.z);
     geometries.push(volume);

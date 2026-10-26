@@ -13,6 +13,7 @@ import type { BlockCoord } from '@tt/domain';
 import type { Pictures } from '../standee/index.js';
 import { SILVER, SILVER_CARD, STANDEE_HEIGHT, standees } from '../standee/index.js';
 import { caption, dropCaption } from '../captions/index.js';
+import type { XRay } from '../xray/index.js';
 
 /** One silver token, as the stage is handed it. */
 export interface SilverSpec {
@@ -45,7 +46,12 @@ export interface SilverTokens3D {
 
 const centre = (at: BlockCoord) => ({ x: at.x + 0.5, y: at.y, z: at.z + 0.5 });
 
-export function buildSilverTokens(specs: readonly SilverSpec[], pictures?: Pictures): SilverTokens3D {
+export function buildSilverTokens(
+  specs: readonly SilverSpec[],
+  pictures?: Pictures,
+  /** Has each token show through what hides it (R-216). */
+  xray?: XRay,
+): SilverTokens3D {
   const group = new Group();
   const shop = standees(pictures, SILVER);
   const owners = new Map<object, string>();
@@ -73,6 +79,7 @@ export function buildSilverTokens(specs: readonly SilverSpec[], pictures?: Pictu
     captions.push(label);
 
     group.add(root, proxy);
+    if (xray) own.push(...xray.add(root, 'tokens'));
 
     if (spec.drop > 0) {
       const line = new BufferGeometry();

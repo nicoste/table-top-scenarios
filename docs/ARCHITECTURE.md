@@ -445,6 +445,28 @@ cube and a short far cube can land on the same pixels. These are not polish.
 > camera then raycasts through a stale one and returns the wrong cell, or none —
 > silently, because there is nothing to throw.
 
+> **R-216.** **What stands behind a block shows through it** (D-368), on both
+> screens: every token, and the furniture and lights the party sees now. The
+> hidden part only — itself, in its own colours and picture, unlit, darkened,
+> every other square of a 2-pixel checker left out, inside a light outline. It
+> must read as *behind*: where the thing comes out from behind the wall it is
+> solid again, and the change sits on the wall's edge.
+>
+> - **Props, then tokens.** A goblin behind a bookcase shows through the
+>   bookcase; a chest never shows through the goblin in front of it.
+> - **What is seen past hides nothing**: bars, an open door, the ways up. A
+>   goblin in a cell is not outlined bar by bar.
+> - **Not the walls' own props.** Doors, bars and the ways up stand in a wall
+>   or against one and would show through the blocks beside them from every
+>   angle.
+> - **No prop on the GM's own view**, which does not know what the party sees:
+>   every prop in the map would show through every wall. Its tokens do.
+> - **Never picked** (R-36): what shows through is drawn, not hit.
+>
+> Nothing is faded and nothing is asked of `geometry`: this is the stage
+> drawing a thing twice, and R-33 — the walls themselves fading — is still
+> unbuilt.
+
 ### Rendering strategy
 
 > **R-69.** **Fog state is never baked into geometry.** It is a per-cube attribute

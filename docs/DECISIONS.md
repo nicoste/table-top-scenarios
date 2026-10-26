@@ -9408,3 +9408,51 @@ on its own while the others keep moving, closing in on it (`liftArea`).
 Checked on a copy of the GM's data: two drags of a 9×9 over the Mines of
 Dulubin's foothills moved its 69 columns by 6 and by 5, 11 where they
 overlapped, every slope kept.
+
+### D-368 — What stands behind a block shows through it · `agreed`
+*"Do we have any available API to handle dithering? I'm thinking on adding it
+to show players behind blocks, or objects that are currently visible but
+occluded by blocks."* Then, on both screens, and of the real thing: *"the color
+of the token is cool for the players, but enemies and possible friendly npcs
+will be grey… I don't want to think the object is on top of everything, so an
+effect that says out loud 'this is a representation of the thing hidden by
+walls' is ok."* Picked from four drawn side by side: the checker, darkened,
+with the outline.
+
+Now a token, or a piece of furniture or a light the party sees, hidden by a
+block shows through it (R-216): the hidden part only, as itself — its colours
+and picture — unlit, darkened, every other square of a checker left out,
+inside a light outline. Where it comes out from behind the wall it is solid,
+and that edge is what says *behind*.
+
+- **How.** Three.js draws a thing twice more, before itself: its shape marking
+  in the stencil where something already drawn is nearer, its outline — that
+  shape nudged two pixels each way diagonally, outside the marked part — and
+  its ghost, each part in its own material where it is hidden. Before itself,
+  so its own front never counts as hiding its back. Props, then tokens, so a
+  goblin shows through a bookcase and a chest never through a goblin.
+- **Unlit, and darkened as the screen shows it.** Lit, a goblin in a dark
+  dungeon came out black, every ghost the same. And darkening after three.js
+  had made the colour what the target wants was right on the canvas but a grey
+  wash under ambient occlusion, whose target is linear.
+- **A two-pixel checker**, at the device's scale: one pixel blurs into plain
+  see-through on a large screen, which is the "on top" look this avoids.
+- **A margin before anything counts as hiding**: a base stands face to face
+  with its floor, and the outline, nudged out over the floor in front of it,
+  needs a little more, more the lower the camera looks — or every token would
+  be underlined.
+- **Furniture and lights, not doors, bars or the ways up.** Shown first for
+  every prop, the cell bars of Tollkeep's dungeon were a fence of outlines:
+  they stand in walls, and the blocks beside them hide a sliver from every
+  angle. And **what is seen past hides nothing** — bars, an open door, a
+  ladder — or a goblin in a cell and the table behind the bars were outlined
+  rod by rod.
+- **No prop on the GM's own view**: it does not know what the party sees, and
+  every prop in a map would show through every wall. Tokens do, everywhere.
+
+Checked on a copy of the GM's data in Tollkeep: goblins under the grass and
+behind the house's roof on the console, solid above the roof's edge; on the
+table, a party member half behind a pillar, the dungeon's tables, chairs and
+candles through its walls, the goblin in the cell drawn plainly behind its
+bars. A frame of the table's dungeon took 3.4 ms with it and 3.2 without.
+
