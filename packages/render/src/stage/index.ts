@@ -54,7 +54,7 @@ import type { BlockBody, FacePick } from '../blocks/index.js';
 import { buildBlockBody } from '../blocks/index.js';
 import type { PartyTokens, TokenRef } from '../tokens/index.js';
 import { buildPartyTokens } from '../tokens/index.js';
-import { buildXRay } from '../xray/index.js';
+import { buildXRay, isTwin } from '../xray/index.js';
 import { intendedCell } from '../picking/index.js';
 
 /** One member standing in a cube, as an app hands it over (R-184). */
@@ -183,6 +183,24 @@ export const IDLE_HEARTBEAT_MS = 500;
 const OCCLUSION_RADIUS_PX = 15;
 
 /**
+ * Ambient occlusion that leaves out what shows through a wall (R-216).
+ *
+ * It reads the scene's shapes from a drawing of its own, every mesh in one
+ * material of its choosing — which takes the twins for more of the scene.
+ * They lie exactly where their parts do, and a mask has no normals: drawn
+ * there, they streaked crates and campfires black wherever the two fought
+ * for a pixel.
+ */
+class Occlusion extends GTAOPass {
+  override overrideVisibility(): void {
+    super.overrideVisibility();
+    this.scene.traverse((object) => {
+      if (isTwin(object)) object.visible = false;
+    });
+  }
+}
+
+/**
  * How tall a thing the shadow box is sized to clear, in cells.
  *
  * Not `MAP_MAX_HEIGHT`: a map *may* be 32 tall and almost none are, and sizing
@@ -266,7 +284,7 @@ export class Stage {
   readonly id = ++instances;
   private readonly renderer: WebGLRenderer;
   private readonly composer: EffectComposer;
-  private readonly occlusion: GTAOPass;
+  private readonly occlusion: Occlusion;
   /**
    * The captions' layer: a `<div>` over the canvas, not pixels in it (R-196).
    *
@@ -658,7 +676,7 @@ export class Stage {
       new WebGLRenderTarget(1, 1, { type: HalfFloatType, samples: 4, stencilBuffer: true }),
     );
     this.composer.addPass(new RenderPass(this.scene, this.camera));
-    this.occlusion = new GTAOPass(this.scene, this.camera, 1, 1);
+    this.occlusion = new Occlusion(this.scene, this.camera, 1, 1);
     /*
      * **The radius is in pixels, not in cubes** (R-175).
      *

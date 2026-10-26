@@ -9456,3 +9456,14 @@ table, a party member half behind a pillar, the dungeon's tables, chairs and
 candles through its walls, the goblin in the cell drawn plainly behind its
 bars. A frame of the table's dungeon took 3.4 ms with it and 3.2 without.
 
+**Amended the same day.** *"Look how some props get black layering issues on
+top, like the crate on the scene, or the rocks around the fire… the only one
+that looks like adding this conflict is the occlusion."* Ambient occlusion
+reads the scene's shapes from a drawing of its own, every mesh in one material
+— and took the twins for more of the scene: lying exactly on their parts, a
+mask without normals, they streaked crates, barrels and a campfire's stones
+black wherever the two fought for a pixel. It leaves them out now. And an
+area's handle, drawn with the world rather than over it with the rest of its
+area, stood in front of the token whose cube it was in, and the token showed
+through it as a checkered marker: it is drawn with its area now.
+

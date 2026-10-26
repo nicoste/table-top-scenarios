@@ -81,6 +81,11 @@ const CONTACT = 0.05;
 /** The outline's four nudges, diagonally, as many widths each way. */
 const NUDGES: readonly (readonly [number, number])[] = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
 
+/** Whether this is one of the twins drawn for what shows through a wall, rather than a thing. */
+export function isTwin(object: Object3D): boolean {
+  return object.userData.xray === true;
+}
+
 export interface XRay {
   /**
    * Has every part under `root` show through what hides it, in its tier — and
@@ -230,7 +235,7 @@ void main() {
       // Gathered first: the twins are added under the very things being walked.
       const byParent = new Map<Object3D, Mesh[]>();
       root.traverse((object) => {
-        if (!(object instanceof Mesh) || object.userData.xray || !object.parent) return;
+        if (!(object instanceof Mesh) || isTwin(object) || !object.parent) return;
         if (Array.isArray(object.material) || !(object.material as Material).visible) return;
         const siblings = byParent.get(object.parent) ?? [];
         siblings.push(object);

@@ -161,6 +161,10 @@ export function buildAreas(map: EncounterMap, areas: readonly AreaDrawn[], ceili
     const knob = new MeshBasicMaterial({ color: area.colour, transparent: !!area.faint, opacity: area.faint ? 0.5 : 1 });
     const start = new Mesh(handle, knob);
     start.position.set(area.at.x + 0.5, area.at.y + 0.3, area.at.z + 0.5);
+    // With the rest of the area, over the world: drawn with it, it stood in
+    // front of the token whose cube it is in, and the token showed through
+    // it (R-216).
+    start.renderOrder = 3;
     start.raycast = () => {};
 
     geometries.push(patches, lines);
