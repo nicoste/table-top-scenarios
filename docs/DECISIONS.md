@@ -9504,3 +9504,18 @@ moving; *Show the table* brought the table down to the dungeon with it. With
 the whole place shown, the furniture the party sees in the dungeon showed
 through the grass, and the goblins they do not see did not.
 
+### D-370 — One button: Apply to table · `agreed`
+*"I will combine the 3 buttons 'Show the table', 'Back to the table's' and
+'Showing everything' to just a button that says 'Apply to table', since the GM
+now moves around levels freely."* With a band of their own (D-369), the
+toggle between the whole place and the band (R-159) was a second way of saying
+what the ladder says: the whole place is the band from Bedrock to the Sun.
+
+Now the console **always draws the GM's band**, and the Levels card has one
+button, *Apply to table*, which sends it — there when the two differ, and
+greyed, saying so, when the table already has it. *Back to the table's* is
+gone with it: the amber line shows where the table's band is, and the GM drags
+theirs there. Everything R-159 says of the band — what is cut away cannot be
+clicked or built into — holds all the time now, and the sun reaches the
+console's view when the GM's band reaches the Sun.
+

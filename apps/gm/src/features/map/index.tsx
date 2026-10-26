@@ -84,20 +84,15 @@ interface Props {
   /** Can they see it at all — Revealed, chunk Known, point of interest shown? */
   readonly partyCanSee: boolean;
   /**
-   * The GM's own band (D-369), which the ladder moves. Always present — an
-   * uncut map is its whole body.
+   * The GM's own band (D-369), which the ladder moves and the console draws
+   * (D-370). Always present — an uncut map is its whole body.
    */
   readonly range: LevelRange;
-  /** The band the table is shown, which only changes when the GM sends theirs. */
+  /** The band the table is shown, which only changes when the GM applies theirs. */
   readonly tableRange: LevelRange;
   onRange: (range: LevelRange) => void;
   /** Shows the table the GM's band. */
-  onSendRange: () => void;
-  /** Puts the GM's band back where the table's is. */
-  onTableRange: () => void;
-  /** Is the console showing only the band, like the table (R-159)? */
-  readonly levelling: boolean;
-  onLevelling: (on: boolean) => void;
+  onApplyRange: () => void;
   /**
    * Is the console drawing the table's picture — the band, and the party's
    * fog over it (R-76, D-274)? Off by default: the GM builds on everything.
@@ -120,8 +115,7 @@ const BRUSH_KEYS: Readonly<Record<string, string>> = { cube: '8', flat3: '9', fl
 
 export function MapPanel({
   placeName, poiName, map, blocks, dug, tool, brush, shifting, materials, swatch, hoverLabel,
-  partyHere, party, partyCanSee, range, tableRange, onRange, onSendRange, onTableRange,
-  levelling, onLevelling, partyView, onPartyView, seen,
+  partyHere, party, partyCanSee, range, tableRange, onRange, onApplyRange, partyView, onPartyView, seen,
   onTool, onBrush, onSwatch, onLeave, dispatch, placeId, poiId,
 }: Props) {
   const waiting = party.filter((member) => !member.standing).length;
@@ -452,60 +446,31 @@ export function MapPanel({
         />
 
         {/*
-          Yours and the table's (D-369). The ladder moves yours; the table
-          follows only when it is sent, so a GM can look at the floor above the
-          party without the players' view moving with them.
+          Yours and the table's (D-369, D-370). The ladder moves yours, and it
+          is what this screen draws — the whole place is Bedrock to the Sun.
+          The table follows only when it is applied, so a GM can look at the
+          floor above the party without the players' view moving with them.
         */}
-        {sameRange(range, tableRange) ? (
-          <p className="hint">
-            {partyHere
+        <p className="hint">
+          {sameRange(range, tableRange)
+            ? partyHere
               ? 'The table is shown this band too.'
-              : 'The table is shown this band when the party comes in.'}
-          </p>
-        ) : (
-          <>
-            <p className="hint">
-              The table is shown {bandWords(tableRange, map.planes)}: the amber line. Yours stays yours until you send it.
-            </p>
-            <div className="btn-grid campaign-actions">
-              <Tooltip label="Show the table the band you are looking at" placement="bottom" stretch>
-                <button className="wide" onClick={onSendRange}>Show the table</button>
-              </Tooltip>
-              <Tooltip label="Put your band back on the table's" placement="bottom" stretch>
-                <button className="wide" onClick={onTableRange}>Back to the table's</button>
-              </Tooltip>
-            </div>
-          </>
-        )}
-
-        {/*
-          The toggle (R-159). Two views of one body: everything, or the band the
-          table gets. Not a dimming — while it is on, the levels outside the
-          band are *absent*, which is what stops the GM editing a block they
-          cannot see (D-202).
-        */}
-        <div className="btn-grid tools" style={{ marginTop: 6 }}>
+              : 'The table is shown this band when the party comes in.'
+            : `The table is shown ${bandWords(tableRange, map.planes)}: the amber line.`}
+        </p>
+        <div className="btn-grid campaign-actions">
           <Tooltip
-            label={levelling
-              ? 'Show the whole body again'
-              : 'Show only your band, and nothing else'}
+            label={sameRange(range, tableRange)
+              ? 'The table is already shown this band'
+              : 'Show the table the band you are looking at'}
             placement="bottom"
             stretch
           >
-            <button
-              className={`wide${levelling ? ' on' : ''}`}
-              aria-pressed={levelling}
-              onClick={() => onLevelling(!levelling)}
-            >
-              {levelling ? '◧ Showing the band' : '▦ Showing everything'}
+            <button className="wide" disabled={sameRange(range, tableRange)} onClick={onApplyRange}>
+              Apply to table
             </button>
           </Tooltip>
         </div>
-        <p className="hint">
-          {levelling
-            ? 'Only your band is drawn, so nothing outside it can be clicked by mistake.'
-            : 'You see the whole place.'}
-        </p>
       </div>
 
       <div className="card">

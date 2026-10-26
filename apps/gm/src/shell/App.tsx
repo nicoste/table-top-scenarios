@@ -177,16 +177,6 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    */
   const [stride, setStride] = useState<Stride>(still);
   /**
-   * Is the console showing only the band, like the table (R-159)?
-   *
-   * The GM's toggle, and view state (R-64): which levels *they* are looking at
-   * is nobody else's business, and it must not follow them between maps or
-   * survive a reload as a surprise. Off by default, because the whole body is
-   * the safe view to build in and a permanently dimmed screen was a tax on
-   * every session to answer a question the GM asks occasionally.
-   */
-  const [levelling, setLevelling] = useState(false);
-  /**
    * The console drawing the table's picture (R-76, D-274): the band, and the
    * party's fog over it. View state (R-64), off by default — the GM builds on
    * the whole map — and only while the party is in the open map, because the
@@ -358,13 +348,6 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   /** The Party's view, while there is a party in the open map to see it. */
   const previewing = partyView && partyHere;
   /**
-   * Showing the band alone, for either reason: levelling, or the Party's view,
-   * which is the band with the fog over it. Everything R-159 says about the
-   * first holds for the second — what is cut away is absent, so it is refused
-   * rather than built into and lost.
-   */
-  const banded = levelling || previewing;
-  /**
    * The band the table is shown of the open map (R-146): play state, moved
    * only when the GM sends theirs (D-369), or by the host when the levels
    * under it change.
@@ -381,18 +364,15 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   // A map opened again starts at the table's band.
   useEffect(() => { setOwnLevels(null); }, [openMap?.placeId, openMap?.poiId]);
   /**
-   * The band the console draws, when it draws one (R-159): the table's in the
-   * Party's view — that is the table's picture — and otherwise the GM's own.
+   * The band the console draws (R-159): the table's in the Party's view —
+   * that is the table's picture — and otherwise the GM's own, always (D-370).
+   * What is cut away is absent, so it is refused rather than built into and
+   * lost. The whole place is the band from Bedrock to the Sun.
    */
   const openRange = previewing ? tableRange : ownRange;
 
-  /**
-   * Whether the sun is in what the GM is looking at (R-183).
-   *
-   * Only while levelling: with the whole body on screen the roof is there and
-   * the sun belongs, however the band is set for the table.
-   */
-  const sunlit = !levelling || !openRange || sunReaches(openRange, MAP_MAX_HEIGHT);
+  /** Whether the sun is in what the GM is looking at: their band reaches it (R-183). */
+  const sunlit = !openRange || sunReaches(openRange, MAP_MAX_HEIGHT);
   useEffect(() => {
     stage?.setLighting(litBy(lighting, ambience, sunlit));
   }, [stage, lighting, ambience, sunlit]);
@@ -549,25 +529,24 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     [openMapWire],
   );
   /**
-   * What the console actually draws: the band alone while levelling, otherwise
-   * everything (R-159).
+   * What the console actually draws: the band (R-159).
    *
    * A *slice*, not a dimming. It is the same function the boundary uses to cut
-   * the table's payload, which means the GM levelling is looking at precisely
-   * what the table is looking at — and, just as importantly, that hidden blocks
-   * are absent from the scene and so cannot be picked. A dimmed block is still
+   * the table's payload, which means a band sent is precisely what the table
+   * will look at — and, just as importantly, that hidden blocks are absent from
+   * the scene and so cannot be picked. A dimmed block is still
    * clickable, which is how a GM ends up editing something they cannot see.
    */
   const exploredWire = openMap ? view?.save?.explored?.[openMap.poiId] : undefined;
   const shownBody = useMemo(() => {
-    const sliced = openBody && banded && openRange ? sliceOf(openBody, openRange) : openBody;
+    const sliced = openBody && openRange ? sliceOf(openBody, openRange) : openBody;
     // The Party's view draws only the props the party has seen, by the rule
     // the table's payload is cut with (D-331); the fog hides blocks, but a
     // prop is no block, and a fresh start left the furniture standing.
     if (!sliced || !previewing) return sliced;
     const props = propsSeen(sliced.props, exploredWire ? cellsFromWire(exploredWire) : NO_CELLS);
     return props === sliced.props ? sliced : { ...sliced, props };
-  }, [openBody, banded, previewing, exploredWire, openRange?.lower, openRange?.upper]);
+  }, [openBody, previewing, exploredWire, openRange?.lower, openRange?.upper]);
 
   /**
    * The party's fog, for the console's preview of the table (R-76, D-274):
@@ -692,44 +671,42 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   }, [openMap, openMapWire]);
 
   /*
-   * The party in the open map (R-184). While levelling, only the ones standing
-   * inside the band — the console then shows exactly what the table does
-   * (R-159, R-185), and a token standing on a level that is not drawn would be
+   * The party in the open map (R-184): the ones standing inside the band
+   * (R-159, R-185) — a token standing on a level that is not drawn would be
    * hanging over nothing.
    */
   useEffect(() => {
     if (!stage) return;
-    const shown = banded && openRange ? tokensInBand(present, openRange) : present;
+    const shown = openRange ? tokensInBand(present, openRange) : present;
     const standing: Standing[] = [...shown].map(([memberId, at]) => ({
       memberId, at, colour: memberColour(memberId), picture: memberPicture(memberId),
       light: carried.get(memberId) ?? null,
     }));
     stage.setTokens(standing);
-  }, [stage, present, banded, openRange?.lower, openRange?.upper, roster, carried]);
+  }, [stage, present, openRange?.lower, openRange?.upper, roster, carried]);
 
   /**
    * Everyone in the open map who is not the party (R-206), hidden ones too —
-   * drawn faint, so the GM sees what the players do not. While levelling,
-   * only the ones inside the band, for the party tokens' reason (R-185).
+   * drawn faint, so the GM sees what the players do not. Only the ones inside
+   * the band, for the party tokens' reason (R-185).
    */
   useEffect(() => {
     if (!stage) return;
     /*
      * The Party's view draws what the table is sent, by the rule that cuts
      * it (R-206): nobody hidden, nobody out of the party's present sight.
-     * Otherwise, while levelling, the band; otherwise everyone, hidden ones
-     * faint — the GM's own view.
+     * Otherwise everyone in the band, hidden ones faint — the GM's own view.
      */
     const shown = previewing
       ? silverShown(silverHere, sightWire ? cellsFromWire(sightWire) : NO_CELLS, openRange ?? WHOLE_MAP)
-      : banded && openRange ? silverInBand(silverHere, openRange) : silverHere;
+      : openRange ? silverInBand(silverHere, openRange) : silverHere;
     const pictureOf = (templateId: string) => library.find((entry) => entry.id === templateId)?.image ?? null;
     const present3d: Present[] = shown.map((token) => ({
       id: token.id, name: token.name, at: token.at, hidden: token.hidden, picture: pictureOf(token.templateId),
       light: token.light ?? null,
     }));
     stage.setSilver(present3d);
-  }, [stage, silverHere, banded, previewing, sightWire, openRange?.lower, openRange?.upper, library]);
+  }, [stage, silverHere, previewing, sightWire, openRange?.lower, openRange?.upper, library]);
 
   // The ghost of a silver token being moved, where it would stand.
   useEffect(() => {
@@ -807,17 +784,17 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     if (!stage) return;
     const seen = previewing ? areasHere.filter((area) => !area.hidden) : areasHere;
     /*
-     * While levelling, or in the Party's view, only the areas that start on a
-     * level being drawn, and their outlines cut where the levels are (D-348):
+     * Only the areas that start on a level being drawn, and their outlines
+     * cut where the levels are (D-348):
      * an area on a level cut away is cut away with it, as a token is (R-185).
      */
-    const range = banded && openRange ? openRange : null;
+    const range = openRange;
     const shown = range ? seen.filter((area) => standsInBand(range, areaAt(area, standingById))) : seen;
     stage.setAreas(
       openMap ? areasShown(shown, mapTool === 'measure' ? measure : null, standingById) : null,
       range ? range.upper : null,
     );
-  }, [stage, openMap, areasHere, measure, mapTool, standingById, previewing, banded, openRange?.lower, openRange?.upper]);
+  }, [stage, openMap, areasHere, measure, mapTool, standingById, previewing, openRange?.lower, openRange?.upper]);
   // The ruler: this screen's alone (D-341).
   useEffect(() => {
     stage?.showRuler(openMap && mapTool === 'measure' ? rulerShown(measure) : null);
@@ -917,29 +894,29 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
 
   /**
    * Whether the member being moved may stand in a cube, judged from the whole
-   * body — the console holds all of it — and, while levelling, from the band
-   * the GM is looking at, which is R-159's rule for building too (R-185).
+   * body — the console holds all of it — and from the band the GM is looking
+   * at, which is R-159's rule for building too (R-185).
    */
   const strideVerdict = (memberId: string, at: BlockCoord) => (openBody
     ? standVerdict(
-      openBody, present, memberId, at, banded && openRange ? { band: openRange } : null,
+      openBody, present, memberId, at, openRange ? { band: openRange } : null,
       null, silverCubes(silverHere), openedHere,
     )
     : 'outside the map');
   /** Whether a silver token may stand there, or why not (R-206). */
   const silverVerdictAt = (at: BlockCoord, self?: string) => (openBody
-    ? silverVerdict(openBody, present, silverHere, at, banded && openRange ? openRange : null, self, openedHere)
+    ? silverVerdict(openBody, present, silverHere, at, openRange, self, openedHere)
     : 'outside the map');
 
   /**
    * The walk the token being moved would take, and how far (R-209) — a party
-   * member's or a silver token's, whichever is in hand. Over the whole body,
-   * and while levelling only the band's floors, which are the ones drawn.
+   * member's or a silver token's, whichever is in hand. Over the band's
+   * floors, which are the ones drawn.
    * Worked out when the aim changes cube, since both aims keep their identity
    * until then.
    */
   const walk = useMemo(() => {
-    const may = banded && openRange
+    const may = openRange
       ? (at: BlockCoord) => standsInBand(openRange, at)
       : undefined;
     if (stride.step === 'aiming') {
@@ -950,7 +927,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       return walkShown(openBody, from, silverMoveGhost(silverMove), may, openedHere);
     }
     return null;
-  }, [openBody, stride, silverMove, mapTool, present, silverHere, banded, openRange?.lower, openRange?.upper, openedHere]);
+  }, [openBody, stride, silverMove, mapTool, present, silverHere, openRange?.lower, openRange?.upper, openedHere]);
   useEffect(() => {
     stage?.showWalk(walk, stride.step === 'aiming' ? memberColour(stride.memberId) : SILVER);
   }, [walk, stage]);
@@ -1137,7 +1114,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     brush: brushById(mapBrush),
     alt: digging,
     shift: shifting,
-    within: banded ? openRange ?? WHOLE_MAP : null,
+    within: openRange,
   };
 
   /**
@@ -1595,15 +1572,15 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       }
       const action = mapAction(mapTool, picked.face, reach);
       const verdict = aimAt(action);
-      // A fill follows connected material straight through a cut, so while
-      // levelling it also reports how much of its reach is out of sight.
+      // A fill follows connected material straight through a cut, so it also
+      // reports how much of its reach is out of sight.
       const fill = action.kind === 'fill' && openBody
         ? (() => {
           const cells = fillRegion(openBody, action.at);
           const range = openRange ?? WHOLE_MAP;
           return {
             total: cells.length,
-            unseen: banded ? cells.filter((c) => !inRange(range, c.y)).length : 0,
+            unseen: cells.filter((c) => !inRange(range, c.y)).length,
           };
         })()
         : undefined;
@@ -2036,17 +2013,13 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
             tableRange={tableRange ?? WHOLE_MAP}
             onRange={(range) => {
               setOwnLevels({ poiId: openPoi.id, range });
-              // Moving your band is looking at it: drawn alone, as you see it
-              // rather than as the table does.
-              setLevelling(true);
+              // Moving your band is looking at it, as you see it rather than as
+              // the table does.
               setPartyView(false);
             }}
-            onSendRange={() => {
+            onApplyRange={() => {
               if (ownRange) dispatch({ kind: 'setRange', placeId: openPlace.id, poiId: openPoi.id, ...ownRange });
             }}
-            onTableRange={() => setOwnLevels(null)}
-            levelling={levelling}
-            onLevelling={setLevelling}
             partyView={previewing}
             onPartyView={setPartyView}
             seen={exploredWire ? cellsFromWire(exploredWire).size : 0}

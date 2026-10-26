@@ -2084,9 +2084,9 @@ apps/host/src/
 > moves only when the GM sends theirs — or when the host settles it because the
 > levels under it changed. The ladder moves **the GM's own**: view state
 > (R-64), one map at a time, starting at the table's whenever a map is opened.
-> The table's band is drawn beside it as a thin amber line, and the two can be
-> made one either way: *Show the table*, or *Back to the table's*. So the GM can
-> work on the floor above the party without the players' view moving.
+> The table's band is drawn beside it as a thin amber line, and *Apply to
+> table* sends the GM's (D-370). So the GM can work on the floor above the party
+> without the players' view moving.
 
 > **R-147.** Blocks are placed by **face adjacency** — click the face of an
 > existing block and the new one attaches there (D-181).
@@ -2593,9 +2593,10 @@ apps/host/src/
 > build in. While it is on, the GM sees exactly the levels the table sees — and
 > since vision, the Party's view adds the fog over them (R-76, D-274).
 >
-> **Amended by D-369.** The band shown is the GM's own (R-146), which is the
-> table's until they move it; moving it turns this on, because moving your band
-> is looking at it. The Party's view always draws the table's.
+> **Amended by D-369 and D-370: no toggle.** The console always draws the
+> GM's own band (R-146), which is the table's until they move it; the whole
+> place is the band from Bedrock to the Sun. The Party's view draws the
+> table's. Everything below holds for the band as it held for the toggle.
 >
 > The band is a **slice**, not a dimming, and that is the load-bearing part: the
 > hidden levels are **absent from the scene**, so they cannot be picked. A dimmed
