@@ -6,7 +6,7 @@
 // same, and the readout says so in two words.
 
 import type { BlockCoord, EncounterMap, Opened } from '@tt/domain';
-import { walkAcross } from '@tt/domain';
+import { jumpAcross, walkAcross } from '@tt/domain';
 import type { WalkDrawn } from '@tt/render';
 
 export const NO_PATH = 'no path';
@@ -27,8 +27,11 @@ export function walkLength(length: number): string {
  * cube.
  *
  * `may` is the screen's own limits on the floors a path may cross: the band
- * on the console while levelling, and on the table its ceiling and the floors
- * the party has seen, so a path never draws a room nobody has looked into.
+ * on the console, and on the table its ceiling and the floors the party has
+ * seen, so a path never draws a room nobody has looked into.
+ *
+ * **Or a jump**, with Shift held (D-371): an arc straight from the token to
+ * the ghost, and how far that is. Nothing is searched, so there is always one.
  */
 export function walkShown(
   map: EncounterMap | null,
@@ -37,9 +40,11 @@ export function walkShown(
   may?: (at: BlockCoord) => boolean,
   /** Which props stand open (D-322): a walk goes through an open door and round a shut one. */
   opened?: Opened,
+  jumping = false,
 ): WalkDrawn | null {
   if (!map || !from || !to) return null;
   if (from.x === to.x && from.y === to.y && from.z === to.z) return null;
+  if (jumping) return { to, cubes: [], label: walkLength(jumpAcross(from, to).length), jumpFrom: from };
   const walk = walkAcross(map, from, to, may, undefined, opened);
   return walk
     ? { to, cubes: walk.cubes, label: walkLength(walk.length) }

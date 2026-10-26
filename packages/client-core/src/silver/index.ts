@@ -10,6 +10,7 @@ import type { Intent } from '@tt/protocol';
 import type { BlockCoord, EncounterMap, LevelRange, SilverTokens, Tokens } from '@tt/domain';
 import { NONE_OPEN, standsInBand, whyNotPlace } from '@tt/domain';
 import type { Opened } from '@tt/domain';
+import { moveQuestion } from '../tokens/index.js';
 
 /** A silver token being moved, if one is. */
 export type SilverMove =
@@ -88,12 +89,16 @@ export function spawnIntent(templateId: string, at: BlockCoord, placeId: string,
 }
 
 /** What the readout says while a silver token is being moved. */
-export function silverMovePrompt(move: SilverMove, nameOf: (id: string) => string | null): string | null {
+export function silverMovePrompt(
+  move: SilverMove,
+  nameOf: (id: string) => string | null,
+  jumping = false,
+): string | null {
   if (move.step !== 'aiming') return null;
   const who = nameOf(move.id) ?? 'them';
   if (!move.at) return `Moving ${who} — point at a floor.`;
   if (move.why) return `${who}: ${move.why}.`;
-  return `Move ${who} here? Click to confirm, Escape or right-click to cancel.`;
+  return moveQuestion(who, jumping);
 }
 
 /**

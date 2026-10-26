@@ -18,6 +18,11 @@
 // vines. Through those, and only those, a step may go straight up or straight
 // down, and it counts 1, as a step across does. How hard the climb is, is the
 // GM's (R-1); the tool says how far.
+//
+// **Or jumping** (D-371): straight through the air from one cube to the other,
+// as far as the line between them — an acrobat's leap across a pit, or a drop
+// from a ledge to the floor below. One or the other, never a walk that ends in
+// a jump; whether it can be made is the GM's, as a climb is.
 
 import type { BlockCoord, EncounterMap } from '../map/index.js';
 import { blockAt, blockKey, inMap, MAP_MIN_DEPTH } from '../map/index.js';
@@ -182,3 +187,17 @@ export function walkAcross(
   }
   return null;
 }
+
+/**
+ * A jump from one cube to another (D-371): the two of them, and the straight
+ * distance between them — real distance, as a walk's steps are (D-316), so
+ * three across and four down is 5. Nothing is in the way of a jump: what it
+ * passes through, and whether it can be made at all, is the GM's to say.
+ */
+export function jumpAcross(from: BlockCoord, to: BlockCoord): Walk {
+  return {
+    cubes: [{ x: from.x, y: from.y, z: from.z }, { x: to.x, y: to.y, z: to.z }],
+    length: Math.hypot(to.x - from.x, to.y - from.y, to.z - from.z),
+  };
+}
+

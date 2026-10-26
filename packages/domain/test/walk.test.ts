@@ -3,7 +3,7 @@
 
 import { describe, it, expect } from 'vitest';
 import type { BlockCoord, EncounterMap } from '@tt/domain';
-import { createMap, setBlocks, DEFAULT_FLOOR, walkAcross, sameCube } from '@tt/domain';
+import { createMap, setBlocks, DEFAULT_FLOOR, jumpAcross, walkAcross, sameCube } from '@tt/domain';
 
 const cube = (x: number, y: number, z: number): BlockCoord => ({ x, y, z });
 /** A new map: a floor at y0 across 16×16, so everybody stands at y1. */
@@ -108,3 +108,20 @@ describe('what a path may cross', () => {
     });
   });
 });
+
+describe('jumping (D-371)', () => {
+  it('goes straight, as far as the line between the two cubes', () => {
+    // Three across and four down: off a ledge onto the floor below.
+    const jump = jumpAcross(cube(1, 5, 1), cube(4, 1, 1));
+    close(jump.length, 5);
+    expect(jump.cubes).toEqual([cube(1, 5, 1), cube(4, 1, 1)]);
+  });
+
+  it('goes over what a walk would have to go round', () => {
+    // The pillar's top cannot be walked to; it can be jumped to, from beside it.
+    const map = build(floor(), pillar(5, 5, 2));
+    expect(walkAcross(map, cube(4, 1, 5), cube(5, 3, 5))).toBeNull();
+    close(jumpAcross(cube(4, 1, 5), cube(5, 3, 5)).length, Math.sqrt(5));
+  });
+});
+

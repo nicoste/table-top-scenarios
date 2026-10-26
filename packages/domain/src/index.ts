@@ -75,7 +75,7 @@ export {
   carriedOnRoster, carriedToJSON, carriedFromJSON, propLights, carriedAt, glow, lampField, lightIn,
 } from './lamps/index.js';
 export type { Walk } from './walk/index.js';
-export { walkAcross, WALK_BUDGET } from './walk/index.js';
+export { jumpAcross, walkAcross, WALK_BUDGET } from './walk/index.js';
 export type { Material, Cut, Difficulty } from './materials/index.js';
 export type { Cover, CoverPart } from './covers/index.js';
 export {

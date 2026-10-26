@@ -179,7 +179,13 @@ describe('the prompt says who and what', () => {
   it('asks for a floor, a confirm, or says why not', () => {
     expect(stridePrompt(grab('aldra'), name, true)).toBe('Placing Aldra — point at a floor.');
     expect(stridePrompt(aimStride(grab('aldra'), cube(1, 1, 1), null), name, false))
-      .toBe('Move Aldra here? Click to confirm, Escape or right-click to cancel.');
+      .toBe('Move Aldra here? Click to confirm, hold Shift to jump, Escape or right-click to cancel.');
+    // Shift held: the move is a jump, and says how to walk instead (D-371).
+    expect(stridePrompt(aimStride(grab('aldra'), cube(1, 1, 1), null), name, false, true))
+      .toBe('Jump Aldra here? Click to confirm, let go of Shift to walk, Escape or right-click to cancel.');
+    // Placing somebody for the first time is neither a walk nor a jump.
+    expect(stridePrompt(aimStride(grab('aldra'), cube(1, 1, 1), null), name, true, true))
+      .toBe('Place Aldra here? Click to confirm, Escape or right-click to cancel.');
     expect(stridePrompt(aimStride(grab('aldra'), cube(1, 1, 1), 'a block is there'), name, false))
       .toBe('Aldra: a block is there.');
     expect(stridePrompt(still, name, false)).toBeNull();

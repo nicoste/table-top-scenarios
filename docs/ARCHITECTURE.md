@@ -4061,6 +4061,14 @@ apps/host/src/
 >
 > `walkAcross` in `domain` is the search (A*, with a budget, as the world's);
 > `walkShown` in `client-core` is what both screens draw; the stage draws it.
+>
+> **Or a jump, with Shift held** (D-371), on both screens and for any token
+> that moves: straight through the air, as far as the line from the token's
+> cube to the ghost's (`jumpAcross`) — three across and four down is 5 — drawn
+> as an arc in the mover's colour. One or the other, never a walk that ends in
+> a jump; nothing is searched, so a jump always has a length. It limits nothing
+> either: the move it confirms is the same move, to a cube somebody could stand
+> in, and what it passes through and whether it can be made are the GM's.
 
 > **R-188.** **Move: pick a token, aim at a floor, confirm** — the world's
 > travel sequence one surface down (R-132), on both screens.

@@ -41,3 +41,17 @@ describe('what a move being aimed shows', () => {
     expect(walkShown(createMap(), cube(1, 1, 1), cube(4, 1, 4), (at) => at.x < 3)?.label).toBe(NO_PATH);
   });
 });
+
+describe('what a jump being aimed shows (D-371)', () => {
+  it('an arc from the token, no floors, and the straight distance', () => {
+    const shown = walkShown(createMap(), cube(1, 5, 1), cube(4, 1, 1), undefined, undefined, true);
+    expect(shown).toEqual({ to: cube(4, 1, 1), cubes: [], label: '5', jumpFrom: cube(1, 5, 1) });
+  });
+
+  it('is always there to be shown, where no walk is', () => {
+    const map = setBlocks(createMap(), [cube(5, 1, 5), cube(5, 2, 5)], DEFAULT_FLOOR);
+    expect(walkShown(map, cube(1, 1, 1), cube(5, 3, 5))?.label).toBe(NO_PATH);
+    expect(walkShown(map, cube(1, 1, 1), cube(5, 3, 5), undefined, undefined, true)?.label).toBe('6');
+  });
+});
+

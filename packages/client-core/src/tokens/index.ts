@@ -222,15 +222,28 @@ export function tokenAction(
   return { kind: 'nothing' };
 }
 
-/** What to tell whoever is moving a token, on either screen. */
+/**
+ * What to tell whoever is moving a token, on either screen — and, once they
+ * have somewhere to go, that Shift makes the move a jump (D-371). Placing
+ * somebody for the first time is neither.
+ */
 export function stridePrompt(
   stride: Stride,
   nameOf: (id: string) => string | null,
   placing: boolean,
+  jumping = false,
 ): string | null {
   if (stride.step !== 'aiming') return null;
   const who = nameOf(stride.memberId) ?? 'them';
   if (!stride.at) return `${placing ? 'Placing' : 'Moving'} ${who} — point at a floor.`;
   if (stride.why) return `${who}: ${stride.why}.`;
-  return `${placing ? 'Place' : 'Move'} ${who} here? Click to confirm, Escape or right-click to cancel.`;
+  if (placing) return `Place ${who} here? Click to confirm, Escape or right-click to cancel.`;
+  return moveQuestion(who, jumping);
+}
+
+/** The question a move asks before the click: walk or jump, and how to switch (D-371). */
+export function moveQuestion(who: string, jumping: boolean): string {
+  return jumping
+    ? `Jump ${who} here? Click to confirm, let go of Shift to walk, Escape or right-click to cancel.`
+    : `Move ${who} here? Click to confirm, hold Shift to jump, Escape or right-click to cancel.`;
 }

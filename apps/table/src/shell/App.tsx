@@ -66,6 +66,24 @@ export function App({ view, status, rejection, dispatch }: Props) {
   const [travel, setTravel] = useState<Travel>(idle);
   /** A party token being moved inside the map (R-188). Never armed here (D-167). */
   const [stride, setStride] = useState<Stride>(still);
+  /**
+   * Is Shift held — is a move a jump rather than a walk (D-371)? State, so the
+   * preview turns into an arc the moment the key goes down, with the pointer
+   * still; and cleared on blur, which never sees the keyup.
+   */
+  const [jumping, setJumping] = useState(false);
+  useEffect(() => {
+    const read = (e: KeyboardEvent) => setJumping(e.shiftKey);
+    const onBlur = () => setJumping(false);
+    addEventListener('keydown', read);
+    addEventListener('keyup', read);
+    addEventListener('blur', onBlur);
+    return () => {
+      removeEventListener('keydown', read);
+      removeEventListener('keyup', read);
+      removeEventListener('blur', onBlur);
+    };
+  }, []);
   const [selectedPlace, setSelectedPlace] = useState<string | null>(null);
   const campaign = view?.campaign ?? null;
 
@@ -368,8 +386,9 @@ export function App({ view, status, rejection, dispatch }: Props) {
       strideGhost(stride),
       (at) => at.y < ceiling && (!seen || seen.has(blockKey(at))),
       opened,
+      jumping,
     );
-  }, [stride, body, standing, seen, opened]);
+  }, [stride, body, standing, seen, opened, jumping]);
   useEffect(() => {
     stage?.showWalk(walk, stride.step === 'aiming' ? colourOf(stride.memberId) : undefined);
   }, [walk, stage]);
@@ -531,7 +550,7 @@ export function App({ view, status, rejection, dispatch }: Props) {
 
   // The table only ever moves somebody already standing, so it is never placing.
   const prompt = insideWire
-    ? measuring ? measurePrompt(hand, overHandle) : stridePrompt(stride, nameOf, false)
+    ? measuring ? measurePrompt(hand, overHandle) : stridePrompt(stride, nameOf, false, jumping)
     // The days go in the sentence: this screen has no panel to put them in,
     // and how long it takes is the whole output of a route (R-199, D-304).
     : travelPrompt(travel, nameOf, route);

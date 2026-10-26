@@ -9519,3 +9519,32 @@ theirs there. Everything R-159 says of the band — what is cut away cannot be
 clicked or built into — holds all the time now, and the sun reaches the
 console's view when the GM's band reaches the Sun.
 
+### D-371 — A move is a walk or a jump: Shift jumps · `agreed`
+*"I want users (GM included) to be able to decide if the path should be
+calculated as a jump or as a walk… the user might want to do an acrobatic
+move, or jump from the ceiling to the ground. It should be one or the other.
+If you tap on a token then with shift hold down you calculate a jump
+trajectory, if not, a grounded path."* The distance: *"straight distance from
+A to B, like a normal path"*; drawn as a line, or a curve if that was easy.
+
+Now, while a token is being moved, **holding Shift makes the move a jump** —
+on the table and on the console, for the party and for silver tokens alike —
+and letting go makes it a walk again, with the pointer still. A jump goes
+straight from the token's cube to the ghost's, and **its length is the
+distance between them** (`jumpAcross`): real distance, as a walk's steps are
+(D-316). It is drawn as **an arc** in the mover's colour, from waist to waist,
+rising over the higher end by more the longer it is.
+
+- **A preview, like the walk** (R-209). The move a click confirms is the same
+  move either way, to a cube somebody could stand in. Nothing in between is
+  checked: a jump over a wall or out of a window is drawn and measured, and
+  whether it can be made is the GM's, as a climb is.
+- **The prompt says which**, and how to switch: *"Move Goblin M9 here? Click
+  to confirm, hold Shift to jump, …"*, and with Shift down *"Jump Goblin M9
+  here? … let go of Shift to walk, …"*. Placing somebody for the first time is
+  neither, and says neither.
+
+Checked on a copy of the GM's data in Tollkeep's dungeon: Goblin M9 aimed at
+the next room walked 12.2 round the wall, and with Shift held jumped it — an
+arc over the wall, 9.5.
+

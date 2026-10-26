@@ -919,15 +919,18 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     const may = openRange
       ? (at: BlockCoord) => standsInBand(openRange, at)
       : undefined;
+    // Shift held makes it a jump (D-371), the same key on both screens.
     if (stride.step === 'aiming') {
-      return walkShown(openBody, present.get(stride.memberId as MemberId) ?? null, strideGhost(stride), may, openedHere);
+      return walkShown(
+        openBody, present.get(stride.memberId as MemberId) ?? null, strideGhost(stride), may, openedHere, shifting,
+      );
     }
     if (silverMove.step === 'aiming' && mapTool !== 'spawn') {
       const from = silverHere.find((token) => token.id === silverMove.id)?.at ?? null;
-      return walkShown(openBody, from, silverMoveGhost(silverMove), may, openedHere);
+      return walkShown(openBody, from, silverMoveGhost(silverMove), may, openedHere, shifting);
     }
     return null;
-  }, [openBody, stride, silverMove, mapTool, present, silverHere, openRange?.lower, openRange?.upper, openedHere]);
+  }, [openBody, stride, silverMove, mapTool, present, silverHere, openRange?.lower, openRange?.upper, openedHere, shifting]);
   useEffect(() => {
     stage?.showWalk(walk, stride.step === 'aiming' ? memberColour(stride.memberId) : SILVER);
   }, [walk, stage]);
@@ -2000,7 +2003,8 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
                 stride,
                 memberName,
                 stride.step === 'aiming' && !present.has(stride.memberId as MemberId),
-              ) ?? silverMovePrompt(silverMove, silverName) ?? hoverLabel
+                shifting,
+              ) ?? silverMovePrompt(silverMove, silverName, shifting) ?? hoverLabel
               : hoverLabel}
             partyHere={partyHere}
             party={partyRows}
