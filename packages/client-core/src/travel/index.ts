@@ -154,7 +154,7 @@ export function travelIntent(pawn: PawnRef, cell: WorldCell): Intent {
  * that matters: "a day" for everything between half a day and a day put a
  * forced march and a mounted ride on the same line when one is half again
  * faster than the other (D-298). Over a day it is days to one decimal, which
- * is as much precision as a 1.5 km cell honestly carries.
+ * is as much precision as a 600 m cell honestly carries.
  */
 export function journeyLength(days: number): string {
   if (!Number.isFinite(days) || days < 0) return '—';

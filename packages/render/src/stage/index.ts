@@ -45,7 +45,7 @@ import type { SilverTokens3D } from '../silver/index.js';
 import { buildSilverTokens } from '../silver/index.js';
 import type { CoverField } from '../covers/index.js';
 import { buildCovers } from '../covers/index.js';
-import { buildWorldMeshes, columnCentre, worldCentre, HEIGHT_SCALE } from '../world/index.js';
+import { buildWorldMeshes, columnCentre, columnTop, worldCentre } from '../world/index.js';
 import type { MarkerGhost, PlaceMarkers } from '../places/index.js';
 import { buildMarkerGhost, buildPlaceMarkers, facingAngle, MARKER_ZOOM } from '../places/index.js';
 import type { PartyPawns, PawnRef } from '../pawns/index.js';
@@ -1768,7 +1768,7 @@ export class Stage {
     if (!address) { this.highlight.visible = false; return; }
     const n = Math.max(1, Math.round(size));
     const centre = columnCentre(address);
-    const top = height <= 0 ? 0.25 : height * HEIGHT_SCALE;
+    const top = columnTop(height);
     // Even brushes extend forward from the anchor, so the outline's centre is
     // offset by half a cell. The offset comes from domain so it cannot drift
     // from what brushCells actually edits.

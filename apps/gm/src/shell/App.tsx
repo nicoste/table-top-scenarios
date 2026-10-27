@@ -6,7 +6,7 @@ import {
   MAX_HEIGHT, WHOLE_MAP, rangeIn, stepBrush, WORLD_BRUSHES, BRUSHES, DEFAULT_BRUSH, brushById,
   routeAcross, toGlobal, DEFAULT_TRAVEL_MODES, discoveryFromJSON, asFacing, turned,
   silverFromJSON, silverCubes, silverInBand, silverShown, NO_SILVER,
-  chunkAt, columnAt,
+  chunkAt, columnAt, DEFAULT_METRES_PER_CELL, LEVEL_HEIGHT,
   creatableSlots, sameWorldCell,
   DEFAULT_MATERIALS, DEFAULT_FLOOR, mapFromJSON, fillRegion, sliceOf, inRange, inMap, blockAt,
   bottomOfMap, cutOf, cutIdIn, familyOf, sunReaches, litBy, MAP_MAX_HEIGHT,
@@ -2181,6 +2181,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
               ground={ground}
               cover={cover}
               brush={brush}
+              metresPerStep={(campaign?.world.metresPerCell ?? DEFAULT_METRES_PER_CELL) * LEVEL_HEIGHT}
               // Mid-sequence the readout says what the click will do, since that
               // is more useful than the ground under the pointer (R-132).
               hoverLabel={travelPrompt(travel, memberName, route) ?? hoverLabel}

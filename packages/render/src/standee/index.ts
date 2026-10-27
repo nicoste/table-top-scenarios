@@ -13,7 +13,7 @@
 // differs and what they look like does not.
 //
 // Sized against **one cell**, which is what makes it portable: a map cell is
-// 1.5 m and a world cell is 1.5 km, and the token is a symbol at both.
+// 1.5 m and a world cell is 600 m, and the token is a symbol at both.
 
 import {
   BoxGeometry, CanvasTexture, CylinderGeometry, DoubleSide, Group, Mesh, MeshBasicMaterial,

@@ -21,6 +21,8 @@ interface Props {
   /** What the cover brush is loaded with; null is the eraser (R-193). */
   cover: CoverId | null;
   brush: number;
+  /** How far one height step rises: a quarter of the campaign's cell (D-373). */
+  metresPerStep: number;
   hoverLabel: string | null;
   onTool: (tool: Tool) => void;
   onGround: (ground: SwatchId) => void;
@@ -34,7 +36,7 @@ const costOf = (difficulty: number | 'impassable') =>
 
 
 export function BuildWorldPanel({
-  tool, ground, cover, brush, hoverLabel, onTool, onGround, onCover, onBrush,
+  tool, ground, cover, brush, metresPerStep, hoverLabel, onTool, onGround, onCover, onBrush,
 }: Props) {
   const family = familyOf(ground);
   const selected = family ? cutOf(family, cutIdIn(ground)) : null;
@@ -93,7 +95,7 @@ export function BuildWorldPanel({
               : tool === 'cover'
                 ? <>Click, or drag. {standing ? <>Planting <b>{standing.name}</b>.</> : <>Clearing what is there.</>} The ground underneath is untouched.</>
                 : tool === 'height'
-                  ? <>Drag a cell up or down: the ground under the brush moves as one, keeping its shape. Each step is 150&nbsp;m.</>
+                  ? <>Drag a cell up or down: the ground under the brush moves as one, keeping its shape. Each step is {metresPerStep}&nbsp;m.</>
                   : tool === 'travel'
                     ? <>Click a pawn, aim, then click to confirm. Escape or right-click cancels.</>
                     : <>Click an empty cell to place one, or a place to pick it up and move it. <b>Z / X</b> turn it; right-click puts it back.</>}

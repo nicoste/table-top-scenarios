@@ -1234,7 +1234,7 @@ Three ways out, and this needs your call rather than mine:
 There is a test asserting the two-day figure, so whichever way this goes, the
 number stops being a surprise.
 
-### D-098 — A world cell is 1.5 km, not 200 m · `agreed`
+### D-098 — A world cell is 1.5 km, not 200 m · `superseded by D-373`
 **Supersedes D-021.** Asked whether 200 m is a normal tabletop scale. It is not —
 by a wide margin.
 
@@ -1257,7 +1257,7 @@ and exactly 1000× the 1.5 m encounter cell. Consequences:
 - a place's encounter map now fits comfortably inside its cell, which quietly
   removes the awkwardness D-042 had to wave away
 
-### D-099 — Vertical scale is decoupled from horizontal · `agreed`
+### D-099 — Vertical scale is decoupled from horizontal · `superseded by D-373`
 Cascaded straight out of D-098 and would have been a silent absurdity. Height is
 counted in **levels of 200 m**, not cell widths; `World` carries both
 `metresPerCell` and `metresPerLevel`. Otherwise the 20-level cap became a 30 km
@@ -9566,3 +9566,46 @@ the dungeon to the grass showed an arc, 5.8; with Shift held it walked — *no
 path* — and said *let go of Shift to jump*. The table shows the same pair
 under its Play.
 
+### D-373 — One scale for x, y and z: a level is a quarter of a 600 m cell · `agreed`
+The route took Galion straight up a four-level brick wall instead of the stair
+the GM had built beside it. Asked why, the answer was two scales. The route
+read slopes from metres — 150 m levels over 1.5 km cells, **10% a level** —
+while the world was drawn 0.6 cell widths a level, **60%**. By the route's
+figure the wall was a 40% ramp, and Tobler's function (R-52a) says go straight
+up anything under about 29%; by the drawing it was a cliff.
+
+Then the GM, questioning the premise: *"our grid size is full fictional, there
+is no impact on changing that to a smaller or bigger number."* Right, and
+Tobler agrees — it reads slope, a ratio, so the size of a cell never chooses a
+route; only **how tall a level is against how wide a cell is** does, and we
+had two of those. The GM's answer: *"same scale visually and in real
+dimensions for xyz. Lets say a cube is 1x1x1, and height snaps at 0.25,
+starting in a minimum of 0.25."* And, from the sizes that keeps sensible,
+*"Lets try the 600."*
+
+- **A level is a quarter of a cell** (`LEVEL_HEIGHT`), drawn at that and
+  climbed at that (R-104). A column stands a quarter for each level and one
+  more beneath them (`columnTop`), so sea level is a quarter-cell slab and
+  every step is the same quarter — the old first step, 0.25 to 0.6, is gone.
+- **One level up is a hike, two a hard climb, three scree**: 25%, 50% and 75%
+  — 14°, 27° and 37° — at 2.4, 5.8 and 13.8 times a flat cell on foot.
+  Tobler's turning point falls between one level and two, so a route walks
+  over single steps and goes round a double one when a stair is near. The
+  angle on screen is the angle in the fiction now.
+- **A cell is 600 m** (R-103), because a quarter of it is 150 m: no height
+  already painted changes its metres, and the 30-level cap is still a 4.5 km
+  mountain, now seven and a half cells tall. The cell's size decides how many
+  days a journey takes and never which way it goes, and a test says so.
+- **`metresPerLevel` is gone** from `World` and the wire; older files carry
+  one and reading drops it. The Height tool's *"Each step is 150 m"* is worked
+  out from the campaign's cell.
+
+What moves with it: a chunk is 18 km, about half a day on foot, so D-103's
+day-a-chunk picture goes; a default world is 540 km, about two weeks across;
+any journey takes 2.5 times fewer days than it did; and mountains are drawn a
+little under half as tall as before. Supersedes D-098's cell and D-099.
+
+Tried first on a copy of the GM's data at 600 m: Galion aimed at the brick
+peak climbed the stair, 0 → 1 → 2 → 3 → 4, about 3 hours — straight up the
+wall would take about three times that. Then, with the GM's go-ahead, their
+own campaign was moved to 600 m, after a snapshot in `data/backups`.

@@ -24,22 +24,10 @@ import {
 import type { Intersection } from 'three';
 import type { Campaign, Chunk, Material, SwatchId, World, WorldCell } from '@tt/domain';
 import {
-  CHUNK_SIZE, MAX_HEIGHT, chunkAt, columnAt, colourOf, cutIdIn, familyOf,
+  CHUNK_SIZE, LEVEL_HEIGHT, MAX_HEIGHT, chunkAt, columnAt, colourOf, cutIdIn, familyOf,
 } from '@tt/domain';
 import { grainAt } from '../grain/index.js';
 import { figure } from '../patterns/index.js';
-
-/**
- * Vertical exaggeration, in cell widths per height level.
- *
- * True scale would be 200 m of elevation over a 1500 m cell = 0.133, which makes
- * a 4 km mountain range read as a gentle swell from a god view. 0.6 is roughly a
- * 4.5x exaggeration — the same liberty printed relief maps take, and for the same
- * reason. It is a legibility choice, not a measurement.
- */
-export const HEIGHT_SCALE = 0.6;
-/** Water and bare sea floor still need a visible slab. */
-const SEA_SLAB = 0.25;
 
 /**
  * How much the height cue brightens the ground, top to bottom.
@@ -78,8 +66,14 @@ export function columnCentre(address: ColumnAddress): Vector3 {
   );
 }
 
-function columnTop(height: number): number {
-  return height <= 0 ? SEA_SLAB : height * HEIGHT_SCALE;
+/**
+ * How tall a column stands, in cell widths: a level for each level, and one
+ * more beneath them all, so the sea and the shore beside it are a slab and
+ * every step up is the same quarter (D-373). True scale — no exaggeration, so
+ * the slope drawn is the slope the route pays for (R-52a).
+ */
+export function columnTop(height: number): number {
+  return (Math.max(0, height) + 1) * LEVEL_HEIGHT;
 }
 
 /**

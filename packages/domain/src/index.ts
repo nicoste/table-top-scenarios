@@ -13,7 +13,7 @@ export type {
 
 export type { Column, Chunk, ChunkCoord, World, GlobalCell, WorldCell } from './world/index.js';
 export {
-  CHUNK_SIZE, MAX_HEIGHT, DEFAULT_METRES_PER_CELL, DEFAULT_METRES_PER_LEVEL,
+  CHUNK_SIZE, MAX_HEIGHT, DEFAULT_METRES_PER_CELL, LEVEL_HEIGHT,
   DEFAULT_WORLD_BOUNDS, SEA_LEVEL_WATER, OPEN_WATER, GROUND_FROM_TERRAIN, centreOfBounds,
   chunkKey, parseChunkKey, createChunk, emptyWorld, inBounds, chunkAt, isAuthored,
   sameWorldCell, chunkOf, isValidWorldCell,

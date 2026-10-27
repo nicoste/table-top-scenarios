@@ -7,7 +7,7 @@ import type {
   Placement, Inside, EncounterMap, LevelRange, Cells, Travelling, TravelModeId, ImageId,
 } from '@tt/domain';
 import {
-  CHUNK_SIZE, DEFAULT_METRES_PER_LEVEL,
+  CHUNK_SIZE,
   chunkKey, registryId, discoveryToJSON, discoveryFromJSON, mapToJSON, mapFromJSON, sliceOf,
   packRuns, unpackRuns,
   placementToJSON, placementFromJSON, tokensToJSON, tokensFromJSON,
@@ -483,9 +483,8 @@ export const WorldWireSchema = z.object({
    */
   unknownChunks: z.array(ChunkCoordSchema).default([]),
   metresPerCell: z.number(),
-  // Older campaigns predate the horizontal/vertical split (D-099); default
-  // rather than reject, since the value they implied is the one we now name.
-  metresPerLevel: z.number().default(DEFAULT_METRES_PER_LEVEL),
+  // No `metresPerLevel`: a level is a quarter of a cell (D-373), so it is not a
+  // number of its own. Older files still carry one, and reading drops it.
   chunks: z.array(ChunkWireSchema),
 });
 
@@ -549,7 +548,6 @@ export function encodeWorld(world: World): z.infer<typeof WorldWireSchema> {
     bounds: { x: world.bounds.x, z: world.bounds.z },
     unknownChunks: [],
     metresPerCell: world.metresPerCell,
-    metresPerLevel: world.metresPerLevel,
     chunks: [...world.chunks.values()].map(encodeChunk),
   };
 }
@@ -890,7 +888,6 @@ export function decodeWorld(wire: z.infer<typeof WorldWireSchema>): World {
   const world: World = {
     bounds: wire.bounds,
     metresPerCell: wire.metresPerCell,
-    metresPerLevel: wire.metresPerLevel,
     chunks,
   };
   decodedWorlds.set(wire, world);

@@ -306,20 +306,35 @@ Two cell sizes, both explicit, both stored on the campaign rather than hardcoded
 
 | Scale | Size | Grid | Real extent |
 |---|---|---|---|
-| World cell | **1.5 km** | 30×30 per chunk | chunk = **45 km** ≈ 1.15 days on foot |
-| World | — | 30×30 chunks (**default**, per campaign) | **1350 km** ≈ 35 days on foot |
-| Height level | **150 m** | 0–30 | cap = a **4.5 km** mountain |
+| World cell | **600 m** | 30×30 per chunk | chunk = **18 km** ≈ half a day on foot |
+| World | — | 30×30 chunks (**default**, per campaign) | **540 km** ≈ 14 days on foot |
+| Height level | **150 m**, a quarter of a cell | 0–30 | cap = a **4.5 km** mountain, 7.5 cells tall |
 | Encounter cell | **1.5 m** (5 ft) | sparse, unbounded | — |
 
-> **R-103.** World cell size is **1.5 km**, for two independent reasons: it is
-> within 7% of the 5e DMG's *province scale* of one mile per hex — the finest
-> scale any published map uses — and it is exactly **1000×** the encounter cell,
-> so the two scales relate by a round factor.
+> **R-103.** World cell size is **600 m** (D-373), because a quarter of it is
+> the 150 m level every campaign was painted in: when x, y and z came to share
+> one scale (R-104), no height already painted changed its metres. It is
+> **400×** the encounter cell. It names a size and shapes nothing — a journey
+> across 600 m cells goes the way it would across any other, and only its days
+> change.
+>
+> ~~World cell size is **1.5 km**, for two independent reasons: it is within 7%
+> of the 5e DMG's *province scale* of one mile per hex — the finest scale any
+> published map uses — and it is exactly **1000×** the encounter cell, so the
+> two scales relate by a round factor.~~ Superseded by D-373.
 
-> **R-104.** **Vertical scale is not horizontal scale.** Column height is counted
-> in *levels* of 150 m, not in cell widths. Conflating them would make the
+> **R-104.** **One scale for x, y and z** (D-373). A level is **a quarter of a
+> cell** (`LEVEL_HEIGHT`): the world is drawn at it and the route climbs at it,
+> so the slope on screen is the slope the party pays for (R-52a). Ground at
+> level 0 is a quarter-cell slab, and every level adds a quarter (`columnTop`).
+> `World` carries `metresPerCell` alone; a level's metres is a quarter of it.
+>
+> ~~**Vertical scale is not horizontal scale.** Column height is counted in
+> *levels* of 150 m, not in cell widths. Conflating them would make the
 > 30-level cap a 45 km mountain. `World` carries both `metresPerCell` and
-> `metresPerLevel`.
+> `metresPerLevel`.~~ Superseded by D-373: levels of 150 m on 1.5 km cells,
+> drawn 4.5× taller than that, had the screen and the route disagreeing six
+> times over about every slope.
 
 > **R-105.** World **bounds are a per-campaign setting**, defaulting to 30×30
 > chunks. The bound exists so the `+` affordance (R-79) terminates and coordinates
@@ -530,7 +545,7 @@ cube and a short far cube can land on the same pixels. These are not polish.
 
 > **R-51.** A point of interest's map has **no geometric relationship to the world
 > cell its place sits on**, and the tool never implies one. A place occupies one
-> **1.5 km** cell (D-098); its market map may be 150 m across and its dungeon may
+> **600 m** cell (D-373); its market map may be 150 m across and its dungeon may
 > be larger than the realm above it. An accepted abstraction, resolved by D-042
 > and never surfaced in the UI.
 >
@@ -824,7 +839,7 @@ most time in, so it gets specified rather than improvised.
 > because the GM already owns the physical object it is a picture of.
 >
 > **Sized against one cell**, which is what lets it travel: a map cell is
-> 1.5 m and a world cell is 1.5 km, and the token is a symbol at both — it
+> 1.5 m and a world cell is 600 m, and the token is a symbol at both — it
 > says *somebody is here*, not *somebody is this big*.
 >
 > Everything R-187 settles comes with it, at both scales: the plate stays
@@ -893,23 +908,34 @@ category (R-1), and squarely in scope.
 > anything afloat takes 0 and ignores gradient entirely — which is also the
 > whole of what a flying mode will need.
 >
-> **No caps.** Nothing is forbidden for being steep; the cost says no. A
-> thirty-three-level drop — 4,950 m over one cell — is 73,000 times a flat
-> cell on foot, so a party may climb or descend anything they like if they
-> genuinely mean to pay for it.
+> **No caps.** Nothing is forbidden for being steep; the cost says no. Four
+> levels up onto a neighbour — a 45° face — is 33 times a flat cell on foot,
+> and the full thirty is past any number worth quoting, so a party may climb
+> or descend anything they like if they genuinely mean to pay for it.
 >
 > **Down is cheaper than up, and it falls out rather than being a rule.**
 > `easiest` is the gradient that is *fastest*, a gentle descent, so going down
-> N levels costs about what going up N−1 does. Nothing is ever cheaper than
-> flat ground.
+> N levels costs about what going up half a level fewer does. Nothing is ever
+> cheaper than flat ground.
 >
-> **It moves when the scales move.** The gradient is computed from the
+> **The slope is the drawing's** (D-373): `rise = levels × LEVEL_HEIGHT`, in
+> cell widths, the same quarter the world is drawn at (R-104). A neighbour one
+> level up is **25% (14°)**, two **50% (27°)**, three **75% (37°)** — a hike, a
+> hard climb, and scree — at 2.4, 5.8 and 13.8 times a flat cell on foot.
+> Tobler's turning point, 1 ÷ 3.5 ≈ 29%, falls between one level and two, so a
+> route walks straight over single steps and goes round a double one when a
+> stair is near. The campaign's `metresPerCell` decides how long a journey
+> takes and **never which way it goes**, and a test says so.
+>
+> ~~**It moves when the scales move.** The gradient is computed from the
 > campaign's own `metresPerCell` and `metresPerLevel`, so changing either
-> changes every slope with it, and a test says so.
+> changes every slope with it, and a test says so.~~
 >
-> **Degrees are the wrong unit to discuss this in.** The renderer draws height
-> at 4.5× exaggeration (`HEIGHT_SCALE`), so one level is 5.7° in the fiction
-> and **31° on screen**. Quote levels per cell, which is what a GM paints.
+> ~~**Degrees are the wrong unit to discuss this in.** The renderer draws
+> height at 4.5× exaggeration (`HEIGHT_SCALE`), so one level is 5.7° in the
+> fiction and **31° on screen**. Quote levels per cell, which is what a GM
+> paints.~~ Both superseded by D-373: with one scale, the angle on screen is
+> the angle in the fiction.
 
 > **R-53.** The route is **weighted shortest path** over chunk columns, 8-way with
 > `√2` diagonal cost. Generic weighted pathfinding lives in `geometry`; paces,
@@ -1877,8 +1903,8 @@ apps/host/src/
 > because it has not been there — the GM cannot do it either.
 
 > **R-135.** `visionRange` is **not shown on the world map**. It is an point of interest
-> quantity — R-46a pins it to 12 cells at the encounter cell, which on a 1.5 km
-> world cell would read as 18 km — and showing it beside a world position invites
+> quantity — R-46a pins it to 12 cells at the encounter cell, which on a 600 m
+> world cell would read as 7 km — and showing it beside a world position invites
 > exactly the wrong inference. It stays in the model, unrendered, until points of interest
 > exist.
 
@@ -3073,7 +3099,7 @@ apps/host/src/
 >
 > The squeeze between two impassable cells meeting at a point is left open
 > deliberately, and the reason is about **how water is drawn**: a river is
-> painted as an orthogonal zig-zag, because a diagonal chain of 1.5 km cells
+> painted as an orthogonal zig-zag, because a diagonal chain of world cells
 > does not read as a river — it reads as a dotted line. The case needs a shape
 > nobody paints, and guarding it would cost a check on every diagonal step of
 > every search to forbid something the map cannot honestly show.
@@ -3151,7 +3177,7 @@ apps/host/src/
 >
 > **Hours right up to the day, then days to one decimal.** Saying "a day" for
 > everything between half a day and a day put a forced march and a mounted
-> ride on the same line when one was half again faster (D-298). A 1.5 km cell
+> ride on the same line when one was half again faster (D-298). A 600 m cell
 > carries no more precision than that.
 >
 > **The map stops taking clicks while the menu is open.** The answer is in the

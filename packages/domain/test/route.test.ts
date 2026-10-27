@@ -185,6 +185,21 @@ describe('altitude is free and slope is not (R-52a)', () => {
     expect(route.cells.some((c) => c.gz === cell(0, 8).gz)).toBe(true);
   });
 
+  it('goes the same way whatever a cell is called, and only the days change (D-373)', () => {
+    // The slopes are the drawing's own; metres per cell is a name for a size.
+    const { world: flat, discovery } = grassland();
+    let chunk = only(flat);
+    for (let z = 0; z < 30; z += 1) for (let x = 12; x < 30; x += 1) chunk = setHeight(chunk, x, z, 4);
+    for (let x = 8; x <= 11; x += 1) chunk = setHeight(chunk, x, 8, x - 7);
+    const world = put(flat, chunk);
+    const small = routeAcross({ ...world, metresPerCell: 600 }, discovery, foot, cell(2, 2), cell(14, 2))!;
+    const large = routeAcross({ ...world, metresPerCell: 1500 }, discovery, foot, cell(2, 2), cell(14, 2))!;
+    expect(large.cells).toEqual(small.cells);
+    expect(large.days / small.days).toBeCloseTo(2.5, 6);
+    // And four levels in one step is worth a detour to a stair of one-level steps.
+    expect(small.cells.some((c) => c.gz === cell(0, 8).gz)).toBe(true);
+  });
+
   it('leaves a plateau alone, because being high costs nothing', () => {
     const { world: flat, discovery } = grassland();
     let chunk = only(flat);
@@ -213,7 +228,7 @@ describe('a diagonal crosses a corner, and that is the decision (D-294)', () => 
     /*
      * Deliberate, and the reason is about **how water is drawn**, not about
      * pathfinding: a river is painted as an orthogonal zig-zag, because a
-     * diagonal chain of 1.5 km cells does not read as a river — it reads as a
+     * diagonal chain of world cells does not read as a river — it reads as a
      * dotted line. So the squeeze needs a shape nobody paints, and guarding
      * it would cost a check on every diagonal step of every search to forbid
      * a case the map cannot honestly show (D-294).
@@ -278,8 +293,8 @@ describe('the route is measured in days, because the ways do not share a pace', 
   it('turns ten cells of grassland into the time it takes', () => {
     const { world, discovery } = grassland();
     const route = routeAcross(world, discovery, foot, cell(2, 2), cell(12, 2))!;
-    // Ten cells at 1.5 km, against 39 km a day on foot.
-    expect(route.days).toBeCloseTo(15 / mode('foot').kmPerDay, 6);
+    // Ten cells at 600 m, against 39 km a day on foot.
+    expect(route.days).toBeCloseTo(6 / mode('foot').kmPerDay, 6);
     expect(route.days).toBeLessThan(0.5);
   });
 

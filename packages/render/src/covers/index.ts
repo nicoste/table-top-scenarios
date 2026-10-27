@@ -30,7 +30,7 @@ import {
   CHUNK_SIZE, DEFAULT_COVERS, clumpsIn, coverById, colourOf, cutIdIn, familyOf,
 } from '@tt/domain';
 import { grainAt } from '../grain/index.js';
-import { HEIGHT_SCALE } from '../world/index.js';
+import { columnTop } from '../world/index.js';
 
 /**
  * How far a clump may wander from where the registry stands it, in cell
@@ -81,11 +81,6 @@ function geometryFor(part: CoverPart): BufferGeometry {
     case 'box':
     default: return new BoxGeometry(w, h, d);
   }
-}
-
-/** Where the ground is, so a cover stands on it rather than in it. */
-function columnTop(height: number): number {
-  return height <= 0 ? 0.25 : height * HEIGHT_SCALE;
 }
 
 interface Standing {

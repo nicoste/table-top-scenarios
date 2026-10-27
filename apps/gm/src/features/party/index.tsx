@@ -2,7 +2,7 @@
 // later (R-91). Plus where they are standing, which is play state (D-155).
 //
 // **No vision field here.** It is an poi quantity — 12 cells at the
-// poi cell (R-46a) — and beside a 1.5 km world cell it reads as 18 km of
+// poi cell (R-46a) — and beside a 600 m world cell it reads as 7 km of
 // sight. It stays in the model, unrendered, until pois exist (R-135).
 
 import { useState } from 'react';

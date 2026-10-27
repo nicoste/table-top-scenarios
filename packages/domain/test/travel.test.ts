@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   DEFAULT_TRAVEL_MODES, groundCost, isPassable, swatchOf, isKnownSwatch,
-  DEFAULT_METRES_PER_CELL, DEFAULT_METRES_PER_LEVEL, DEFAULT_BOUNDS, CHUNK_SIZE, MAX_HEIGHT,
+  DEFAULT_METRES_PER_CELL, LEVEL_HEIGHT, DEFAULT_BOUNDS, CHUNK_SIZE, MAX_HEIGHT,
   climbFactor,
 } from '@tt/domain';
 import type { MaterialId, SwatchId, TravelMode } from '@tt/domain';
@@ -157,57 +157,63 @@ describe('travel modes', () => {
 });
 
 describe('the scales, derived so they cannot go stale', () => {
-  it('puts a world cell within 7% of the DMG province scale of one mile', () => {
-    const miles = DEFAULT_METRES_PER_CELL / 1609.34;
-    expect(Math.abs(miles - 1)).toBeLessThan(0.07);
+  it('makes a level a quarter of a cell and still 150 m, so no painted height moves (D-373)', () => {
+    expect(DEFAULT_METRES_PER_CELL * LEVEL_HEIGHT).toBe(150);
   });
 
-  it('makes a world cell exactly 1000 poi cells', () => {
-    expect(DEFAULT_METRES_PER_CELL / 1.5).toBe(1000);
+  it('makes a world cell a round number of poi cells', () => {
+    expect(DEFAULT_METRES_PER_CELL / 1.5).toBe(400);
   });
 
-  it('makes a chunk about a day on foot, which is the useful mental model', () => {
+  it('makes a chunk 18 km, about half a day on foot', () => {
     const chunkKm = (CHUNK_SIZE * DEFAULT_METRES_PER_CELL) / 1000;
-    expect(chunkKm).toBe(45);
+    expect(chunkKm).toBe(18);
     const days = chunkKm / mode('foot').kmPerDay;
-    expect(days).toBeGreaterThan(0.8);
-    expect(days).toBeLessThan(1.3);
+    expect(days).toBeGreaterThan(0.4);
+    expect(days).toBeLessThan(0.5);
   });
 
-  it('gives a default world of continent scale', () => {
+  it('gives a default world two weeks across on foot', () => {
     const worldKm = (DEFAULT_BOUNDS.x * CHUNK_SIZE * DEFAULT_METRES_PER_CELL) / 1000;
-    expect(worldKm).toBe(1350);
-    expect(Math.round(worldKm / mode('foot').kmPerDay)).toBe(35);
+    expect(worldKm).toBe(540);
+    expect(Math.round(worldKm / mode('foot').kmPerDay)).toBe(14);
   });
 
-  it('caps mountains at 4.5 km, because height is levels not cells', () => {
-    expect(MAX_HEIGHT * DEFAULT_METRES_PER_LEVEL).toBe(4500);
+  it('caps mountains at 4.5 km: thirty levels, seven and a half cells', () => {
+    expect(MAX_HEIGHT * LEVEL_HEIGHT * DEFAULT_METRES_PER_CELL).toBe(4500);
   });
 
   it('answers a gradient with Tobler, and the modes answer it differently (R-52a)', () => {
-    const grade = (levels: number) => (levels * DEFAULT_METRES_PER_LEVEL) / DEFAULT_METRES_PER_CELL;
+    const grade = (levels: number) => levels * LEVEL_HEIGHT;
     const walk = mode('foot').slope;
     const ride = mode('horse').slope;
 
     // Flat is one by construction, whatever the constants are.
     expect(climbFactor(walk, 0)).toBeCloseTo(1, 6);
-    // One level over a cell is a tenth of a gradient — a gentle hill, and it
-    // costs about half as much again. Tobler's own figure for a walker.
-    expect(climbFactor(walk, grade(1))).toBeCloseTo(1.42, 2);
+    // One level over a cell is a quarter of a gradient — a steep path, and
+    // it takes about two and a half times as long. Tobler's own figure.
+    expect(climbFactor(walk, grade(1))).toBeCloseTo(2.4, 1);
     // A horse is worse on everything steep and never barred from any of it.
     expect(climbFactor(ride, grade(1))).toBeGreaterThan(climbFactor(walk, grade(1)));
     expect(Number.isFinite(climbFactor(ride, grade(33)))).toBe(true);
   });
 
+  it('makes one level a hike, two a hard climb and three a scramble up scree (D-373)', () => {
+    // 25%, 50% and 75%: 14°, 27° and 37°, the last about as steep as loose
+    // rock will lie. What the GM asked a step to mean, at any size of cell.
+    const walk = mode('foot').slope;
+    const up = [1, 2, 3].map((levels) => climbFactor(walk, levels * LEVEL_HEIGHT));
+    expect(up.map((factor) => Number(factor.toFixed(1)))).toEqual([2.4, 5.8, 13.8]);
+  });
+
   it('makes a descent cheaper than the climb, without a second rule for it', () => {
     // The `easiest` offset does it: the fastest ground is a gentle downhill,
-    // so going down costs about what going up one level less does (D-296).
-    const grade = (levels: number) => (levels * DEFAULT_METRES_PER_LEVEL) / DEFAULT_METRES_PER_CELL;
+    // so going down costs a little less than coming up the same (D-296).
+    const grade = (levels: number) => levels * LEVEL_HEIGHT;
     const walk = mode('foot').slope;
-    for (const levels of [2, 3, 5, 10]) {
+    for (const levels of [1, 2, 3, 5, 10]) {
       expect(climbFactor(walk, -grade(levels))).toBeLessThan(climbFactor(walk, grade(levels)));
     }
-    expect(climbFactor(walk, -grade(1))).toBeCloseTo(1, 2);
     // And never a bargain: nothing is cheaper than flat ground.
     expect(climbFactor(walk, -grade(1))).toBeGreaterThanOrEqual(1);
   });
@@ -218,13 +224,5 @@ describe('the scales, derived so they cannot go stale', () => {
       expect(climbFactor(mode(id).slope, 2)).toBe(1);
       expect(climbFactor(mode(id).slope, -2)).toBe(1);
     }
-  });
-
-  it('moves with the scales, so the model cannot drift from the map (R-52a)', () => {
-    // Halving the level makes every slope half as steep, and so cheaper.
-    const walk = mode('foot').slope;
-    const steep = climbFactor(walk, (2 * DEFAULT_METRES_PER_LEVEL) / DEFAULT_METRES_PER_CELL);
-    const gentle = climbFactor(walk, (2 * (DEFAULT_METRES_PER_LEVEL / 2)) / DEFAULT_METRES_PER_CELL);
-    expect(gentle).toBeLessThan(steep);
   });
 });

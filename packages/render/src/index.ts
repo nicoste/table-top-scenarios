@@ -7,7 +7,7 @@ export {
 } from './camera/index.js';
 export type { CameraTarget, CameraView } from './camera/index.js';
 
-export { HEIGHT_SCALE, buildWorldMeshes, columnCentre, worldCentre, surfaceAt } from './world/index.js';
+export { buildWorldMeshes, columnCentre, columnTop, worldCentre, surfaceAt } from './world/index.js';
 export type { ColumnAddress, WorldMeshes } from './world/index.js';
 export { buildCovers, coverSignature } from './covers/index.js';
 export { routePatches, ROUTE_PATCH, ROUTE_LIFT } from './route/index.js';

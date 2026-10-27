@@ -17,7 +17,7 @@
 // from the shape of the line drawn across it.
 
 import type { ChunkCoord, GlobalCell, World } from '../world/index.js';
-import { chunkAt, columnAt, fromGlobal } from '../world/index.js';
+import { LEVEL_HEIGHT, chunkAt, columnAt, fromGlobal } from '../world/index.js';
 import type { Discovery } from '../discovery/index.js';
 import { isChunkKnown } from '../discovery/index.js';
 import type { TravelMode, TravelModeId, Travelling } from '../travel/index.js';
@@ -216,10 +216,9 @@ export function routeAcross(
 ): Route | null {
   const ways = waysOf(DEFAULT_TRAVEL_MODES, travelling);
   if (ways.length === 0) return null;
-  // The campaign's own scales, not the defaults: R-52a moves when they move.
-  const metresPerCell = world.metresPerCell;
-  const metresPerLevel = world.metresPerLevel;
-  const kmPerCell = metresPerCell / 1000;
+  // The campaign's own cell, not the default: it says how long, never which
+  // way, since the slopes are the drawing's own (D-373).
+  const kmPerCell = world.metresPerCell / 1000;
   /** The fastest anything the party has could cross one flat cell, in days. */
   const quickest = ways.reduce(
     (best, way) => Math.min(best, (kmPerCell / way.kmPerDay) * CHEAPEST_STEP),
@@ -281,7 +280,7 @@ export function routeAcross(
        * diagonal covers √2 cells of ground for the same rise, so it is less
        * steep than an orthogonal one and costs accordingly (R-52a).
        */
-      const grade = ((step.height - height) * metresPerLevel) / (span * metresPerCell);
+      const grade = ((step.height - height) * LEVEL_HEIGHT) / span;
       /*
        * The quickest way across *this* cell, which is how a journey comes to
        * be mixed: a boat is impassable on grass and a walker in the sea, so

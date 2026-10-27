@@ -19,7 +19,7 @@
 // wanders and resizes on its own: the parts of one tree hold together while
 // the two trees do not (D-285).
 //
-// **It is a representation.** A world cell is 1.5 km across, so a pair of
+// **It is a representation.** A world cell is 600 m across, so a pair of
 // trees is a map symbol and not a wood — the same idiom as the place markers,
 // which have been drawing a whole village as two houses since R-82.
 

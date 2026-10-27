@@ -129,8 +129,7 @@ describe('saves', () => {
     // the Known ones and nothing has to be told to it.
     const world = {
       bounds: { x: 30, z: 30 },
-      metresPerCell: 1500,
-      metresPerLevel: 150,
+      metresPerCell: 600,
       chunks: new Map([['4,4', {}], ['5,4', {}]]),
     } as unknown as World;
     const known = allKnownIn(world);

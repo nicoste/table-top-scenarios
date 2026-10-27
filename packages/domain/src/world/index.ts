@@ -8,32 +8,34 @@ import type { Difficulty } from '../materials/index.js';
 import { DEFAULT_MATERIALS, swatchOf } from '../materials/index.js';
 import { BRUSH_SPANS, footprintOf } from '../footprint/index.js';
 
-/** Cells along one edge of a chunk: 30 x 1.5 km = a 45 km chunk (D-103). */
+/** Cells along one edge of a chunk: 30 x 600 m = an 18 km chunk (D-103, D-373). */
 export const CHUNK_SIZE = 30;
 
 /** Chunks along one edge of a new world. Per campaign; this is the default. */
 export const DEFAULT_WORLD_BOUNDS = { x: 30, z: 30 } as const;
 
 /**
- * Metres per world cell, horizontally: 1.5 km (D-098).
+ * Metres per world cell, horizontally: 600 m (D-373).
  *
- * Two independent reasons for this number. It is within 7% of the 5e DMG's
- * *province scale* of one mile per hex — the finest scale any published map
- * uses — and it is exactly 1000x the 1.5 m poi cell, so the two scales
- * relate by a round factor.
+ * A name for a size, not a shape: it says how long a journey takes and never
+ * which way it goes, because the slopes come from `LEVEL_HEIGHT` alone. 600
+ * because a quarter of it is 150 m, the level every campaign was painted in
+ * before x, y and z shared a scale — so no height already painted changes its
+ * metres, and the 30-level cap is still a 4.5 km mountain.
  */
-export const DEFAULT_METRES_PER_CELL = 1500;
+export const DEFAULT_METRES_PER_CELL = 600;
 
 /**
- * Metres per unit of column height: 150 m (D-103).
+ * How tall a level stands, in cell widths: a quarter (D-373).
  *
- * Vertical scale is deliberately **not** the horizontal scale. A column's height
- * is counted in levels, and a level is 150 m of elevation — so the 30-level cap
- * is a 4.5 km mountain. Measuring height in 1.5 km units would make it 45 km.
+ * One scale for x, y and z. The world is drawn at it and the route climbs at
+ * it, so the slope a GM sees is the slope the party pays for (R-52a): a
+ * neighbour one level up is 25%, two is 50%, three is 75% — a hike, a hard
+ * climb, and scree.
  */
-export const DEFAULT_METRES_PER_LEVEL = 150;
+export const LEVEL_HEIGHT = 0.25;
 
-/** Highest a column may stand, in levels. 30 x 150 m = 4.5 km (R-80). */
+/** Highest a column may stand, in levels: 7.5 cells, 4.5 km at 600 m (R-80). */
 export const MAX_HEIGHT = 30;
 
 export interface Column {
@@ -108,7 +110,6 @@ export interface Chunk {
 export interface World {
   readonly bounds: { readonly x: number; readonly z: number };
   readonly metresPerCell: number;
-  readonly metresPerLevel: number;
   /** Keyed by chunkKey(). Absent = never authored = Unknown (R-16). */
   readonly chunks: ReadonlyMap<string, Chunk>;
 }
@@ -180,9 +181,8 @@ export function createChunk(coord: ChunkCoord): Chunk {
 export function emptyWorld(
   bounds: { x: number; z: number } = DEFAULT_WORLD_BOUNDS,
   metresPerCell = DEFAULT_METRES_PER_CELL,
-  metresPerLevel = DEFAULT_METRES_PER_LEVEL,
 ): World {
-  return { bounds, metresPerCell, metresPerLevel, chunks: new Map() };
+  return { bounds, metresPerCell, chunks: new Map() };
 }
 
 /** The middle of the world, where a new campaign's first chunk goes. */
