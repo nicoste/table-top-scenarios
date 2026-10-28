@@ -101,6 +101,8 @@ dispatch({ kind: 'paintGround', ...action.cell, ground, size: brush, stroke: new
 ## Definition of done
 
 - [ ] `npm run verify` green — typecheck, dependency graph, lint, tests
+- [ ] once pushed, the commit's check on GitHub green too: the same commands on a
+      clean machine, which is what catches a file you forgot to commit (D-378)
 - [ ] every new rule-bearing behaviour has a test **named after the rule it defends**
 - [ ] a package's `README.md` updated if what it owns or must-never-know changed
 - [ ] a numbered entry in [DECISIONS.md](DECISIONS.md) for anything the docs did not

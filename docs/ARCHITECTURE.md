@@ -132,9 +132,9 @@ Consequences worth stating out loud, because they are the point:
 
 ### Enforcement — the teeth
 
-Rules that aren't checked are decoration. All three run by hand with
-`npm run verify` for now. CI and a pre-commit hook wait until the repository is
-pushed to a remote, and CI/CD comes then (D-375):
+Rules that aren't checked are decoration. All three run with `npm run verify`,
+by hand and on GitHub for every push and pull request; there is no pre-commit
+hook (D-378):
 
 1. **`dependency-cruiser`** — *the authority on the graph.* `npm run arch`. The
    rules are generated from the same graph object above, are repo-root aware, and

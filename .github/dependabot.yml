@@ -1,0 +1,33 @@
+# Pull requests for outdated dependencies, once a week (D-378).
+#
+# Minor and patch updates arrive together, one pull request per week, and the
+# checks run on it: green means it can be merged as it is.
+#
+# Major versions are not asked for. Each one changes how the tool works, so it
+# is an upgrade to plan and test, not a merge to click (D-378 lists the ones
+# outstanding). three.js counts as major on every release: below 1.0, its
+# "minor" versions are the ones that change things.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      - dependency-name: "*"
+        update-types: [version-update:semver-major]
+      - dependency-name: three
+        update-types: [version-update:semver-minor]
+      - dependency-name: "@types/three"
+        update-types: [version-update:semver-minor]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
