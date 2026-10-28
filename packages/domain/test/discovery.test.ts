@@ -3,7 +3,7 @@ import {
   emptyDiscovery, isChunkKnown, isPlaceRevealed, setChunkKnown, setPlaceRevealed,
   setPlacesRevealed, isPlaceOnTable, discoveryToJSON, discoveryFromJSON,
   createLiveSave, liveSaveId, pruneDiscovery, allKnownIn,
-  belongsTo, matchesCampaignVersion, withDiscovery, LIVE_LABEL,
+  belongsTo, withDiscovery,
   createCampaign, duplicateCampaign, ON_FOOT, withTravelling,
 } from '@tt/domain';
 import type { PlaceId, TravelModeId, World } from '@tt/domain';
@@ -92,16 +92,13 @@ describe('saves', () => {
     const c = campaign();
     const live = createLiveSave(c, AT);
     expect(live.id).toBe(liveSaveId(c.id));
-    expect(live.label).toBe(LIVE_LABEL);
     expect(createLiveSave(c, '2027-01-01T00:00:00.000Z').id).toBe(live.id);
   });
 
-  it('records which campaign and which campaign version it was made against', () => {
+  it('records which campaign it was made against', () => {
     const c = campaign();
     const live = createLiveSave(c, AT);
     expect(belongsTo(live, c)).toBe(true);
-    expect(matchesCampaignVersion(live, c)).toBe(true);
-    expect(matchesCampaignVersion(live, { ...c, schemaVersion: 99 })).toBe(false);
   });
 
   it('does not belong to a duplicate of its campaign', () => {

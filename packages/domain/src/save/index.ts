@@ -40,16 +40,12 @@ import { placeById, poiById } from '../place/index.js';
 // Like the campaign, there is no migration: the same field name meant a
 // different thing before, and guessing which is worse than starting clean.
 export const SAVE_SCHEMA_VERSION = 3;
-export const LIVE_LABEL = 'Live';
 
 export interface Save {
   readonly id: SaveId;
   readonly campaignId: CampaignId;
-  /** The campaign schema this play state was recorded against (R-8, R-61). */
-  readonly campaignSchemaVersion: number;
   /** This save's own format version. */
   readonly schemaVersion: number;
-  readonly label: string;
   /** ISO-8601. Supplied by the host: `domain` and `sim` have no clock (R-97). */
   readonly savedAt: string;
   readonly discovery: Discovery;
@@ -211,9 +207,7 @@ export function createLiveSave(campaign: Campaign, savedAt: string): Save {
   return {
     id: liveSaveId(campaign.id),
     campaignId: campaign.id,
-    campaignSchemaVersion: campaign.schemaVersion,
     schemaVersion: SAVE_SCHEMA_VERSION,
-    label: LIVE_LABEL,
     savedAt,
     discovery: emptyDiscovery(),
     placement: emptyPlacement(),
@@ -232,13 +226,9 @@ export function createLiveSave(campaign: Campaign, savedAt: string): Save {
   };
 }
 
-/** Does this save belong to this campaign, and was it written against it? */
+/** Does this save belong to this campaign? */
 export function belongsTo(save: Save, campaign: Campaign): boolean {
   return save.campaignId === campaign.id;
-}
-
-export function matchesCampaignVersion(save: Save, campaign: Campaign): boolean {
-  return save.campaignSchemaVersion === campaign.schemaVersion;
 }
 
 /**

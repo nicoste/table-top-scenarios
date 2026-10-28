@@ -8,8 +8,8 @@
   },
   "dependencies": {
     "@tt/domain": "*",
-    "@tt/geometry": "*",
     "@tt/protocol": "*",
-    "@tt/render": "*"
+    "@tt/render": "*",
+    "react": "^19.2.8"
   }
 }

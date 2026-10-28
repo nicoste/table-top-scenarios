@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { MemberId, WorldCell } from '@tt/domain';
 import {
-  emptyPlacement, isPartyPlaced, memberCell, pawns,
+  emptyPlacement, memberCell, pawns,
   withGroupAt, withMemberAt, gathered, scattered, prunePlacement,
   placementToJSON, placementFromJSON,
   createCampaign, createLiveSave, upgraded, SAVE_SCHEMA_VERSION,
@@ -17,7 +17,6 @@ describe('an unplaced party', () => {
     const p = emptyPlacement();
     expect(p.together).toBe(true);
     expect(p.at).toBeNull();
-    expect(isPartyPlaced(p)).toBe(false);
   });
 
   it('draws no pawns at all, rather than a pawn at the origin', () => {

@@ -22,7 +22,7 @@ export default defineConfig({
     // included too — its seat arbitration is a rule, and it is testable against
     // a real socket with no mocks (R-23a).
     include: ['packages/*/test/**/*.test.ts', 'apps/host/test/**/*.test.ts', 'test/**/*.test.ts'],
-    exclude: ['prototype/**', '**/node_modules/**'],
+    exclude: ['**/node_modules/**'],
     passWithNoTests: true,
   },
 });

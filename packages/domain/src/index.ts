@@ -21,7 +21,7 @@ export {
   addChunk, replaceChunk, creatableSlots, isCreatableSlot, CHUNK_NEIGHBOURS,
   WORLD_BRUSHES, MAX_BRUSH, clampBrush, stepBrush, toGlobal, fromGlobal,
   brushCells, brushCentreOffset, liftArea,
-  paintArea, coverArea, setHeightArea,
+  paintArea, coverArea,
 } from './world/index.js';
 
 export { packRuns, unpackRuns } from './runs/index.js';
@@ -63,7 +63,7 @@ export type {
   Prop, Props, PropType, PropFlame, PropEffect, PropFooting, PropRules, PropStates, Opened,
 } from './props/index.js';
 export {
-  PROP_TYPES, NO_PROPS, NONE_OPEN, FLAMES, propType, propBox, propCubes, propAt, propById, whyNotPut, putProp, editProp,
+  PROP_TYPES, NONE_OPEN, FLAMES, propType, propBox, propCubes, propAt, propById, whyNotPut, putProp, editProp,
   removeProp, propRules, statesOf, isLit, reachOf, flameColour, floorUnder, paintOf, flameOf,
   stackOf, landedStack, whyNotMove, moveProp, framingOf,
 } from './props/index.js';
@@ -82,7 +82,7 @@ export {
   DEFAULT_COVERS, coverById, isKnownCover, overCover, clumpsIn,
 } from './covers/index.js';
 export {
-  DEFAULT_MATERIALS, DEFAULT_FLOOR, materialById, isKnownMaterial, requireMaterial,
+  DEFAULT_MATERIALS, DEFAULT_FLOOR, materialById,
   swatchOf, swatchFor, materialIn, cutIdIn, cutOf, colourOf, isKnownSwatch, difficultyOf,
   familyOf, swatchColour, swatchName,
 } from './materials/index.js';
@@ -104,14 +104,13 @@ export {
   fillRegion, fillMaterial, mapCentre, enclosing, sliceOf, MIN_LIGHT_REACH, MAX_LIGHT_REACH, cleanReach, MAX_PROP_NOTE,
 } from './map/index.js';
 export {
-  MAX_PLACE_NAME, MAX_NOTE_TEXT, sameCell, placeGlobal, placeCellFromGlobal, isValidPlaceCell,
+  MAX_PLACE_NAME, MAX_NOTE_TEXT, sameCell, isValidPlaceCell,
   placeAt, placeById, placesInChunk,
   addPlace, renamePlace, setPlaceMarker, movePlace, removePlace, asFacing, turned,
-  addNote, editNote, setNoteVisible, removeNote, moveNote, partyVisibleNotes,
+  addNote, editNote, setNoteVisible, removeNote, moveNote, partyVisible,
   MAX_POI_NAME, moveWithin,
   addPoi, renamePoi, setPoiVisible, removePoi, movePoi,
-  partyVisiblePois,
-  setMapBlock, clearMapBlock, setMapBlocks, paintMapBlocks, clearMapBlocks,
+  setMapBlocks, paintMapBlocks, clearMapBlocks,
   fillPoiMaterial, growPoiMap, editPoiMap, poiById, withPoiMaps,
   addPoiPlane, renamePoiPlane, movePoiPlane, removePoiPlane,
 } from './place/index.js';
@@ -124,8 +123,8 @@ export {
 
 export type { Save, Inside } from './save/index.js';
 export {
-  SAVE_SCHEMA_VERSION, LIVE_LABEL,
-  liveSaveId, createLiveSave, belongsTo, matchesCampaignVersion,
+  SAVE_SCHEMA_VERSION,
+  liveSaveId, createLiveSave, belongsTo,
   touch, upgraded, withDiscovery, withPlacement, pruneDiscovery, pruneMembers,
   enteringMap, leavingMap, rangeFor, rangeIn, withRange, withLighting, withTravelling,
   pruneInside, pruneRanges, settleRanges,
@@ -179,7 +178,7 @@ export {
 
 export type { Placement, PlacementJSON } from './placement/index.js';
 export {
-  emptyPlacement, isPartyPlaced, memberCell, pawns,
+  emptyPlacement, memberCell, pawns,
   withGroupAt, withMemberAt, gathered, scattered, prunePlacement,
   placementToJSON, placementFromJSON,
 } from './placement/index.js';

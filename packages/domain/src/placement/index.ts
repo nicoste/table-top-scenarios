@@ -24,10 +24,6 @@ export function emptyPlacement(): Placement {
   return { together: true, at: null, members: new Map() };
 }
 
-export function isPartyPlaced(placement: Placement): boolean {
-  return placement.at !== null || placement.members.size > 0;
-}
-
 /**
  * Where one member's pawn stands.
  *

@@ -28,8 +28,7 @@ import {
 } from '@tt/client-core';
 import { defaultTarget, worldCentre } from '@tt/render';
 import type { Picked, RulerPoint, Standing, StageFog } from '@tt/render';
-import { useStage } from '../scene/use-stage.js';
-import { useCost, COST_HINT } from '../scene/use-cost.js';
+import { useStage, useCost, COST_HINT } from '@tt/client-core';
 import { PlaceCard } from '../features/place/index.js';
 import { TableTools } from '../features/tools/index.js';
 import { Compass, Metrics } from '@tt/ui';
@@ -170,11 +169,11 @@ export function App({ view, status, rejection, dispatch }: Props) {
     stage.setCampaign(decoded, fresh);
     // Chunks the party has not been shown arrive as coordinates only (R-16) and
     // are drawn as featureless placeholders.
-    stage.setFogChunks(campaign.world.unknownChunks);
+    stage.setFogChunks(campaign.world.unknownChunks ?? []);
     if (fresh) {
       // A table that has been shown nothing yet has no known chunks to centre
       // on, so fall back to the placeholders.
-      const placeholders = campaign.world.unknownChunks;
+      const placeholders = campaign.world.unknownChunks ?? [];
       const centre = decoded.world.chunks.size > 0 || placeholders.length === 0
         ? worldCentre(decoded.world)
         : {

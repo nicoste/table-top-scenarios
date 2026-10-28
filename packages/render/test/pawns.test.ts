@@ -6,7 +6,7 @@ import { describe, it, expect } from 'vitest';
 import type { Campaign, Placement, WorldCell } from '@tt/domain';
 import {
   createCampaign, addPlace, createMember, emptyPlacement, withGroupAt, withMemberAt, scattered,
-  setHeightArea, toGlobal,
+  setHeight, chunkAt, replaceChunk,
 } from '@tt/domain';
 import { pawnSignature } from '../src/pawns/index.js';
 
@@ -23,7 +23,7 @@ function seeded(): { campaign: Campaign; placement: Placement } {
 }
 
 const raised = (campaign: Campaign, at: WorldCell, height: number): Campaign => ({
-  ...campaign, world: setHeightArea(campaign.world, toGlobal({ cx: at.cx, cz: at.cz }, at.x, at.z), 1, height),
+  ...campaign, world: replaceChunk(campaign.world, setHeight(chunkAt(campaign.world, at)!, at.x, at.z, height)),
 });
 
 describe('pawns kept while nothing they draw has changed (D-366)', () => {

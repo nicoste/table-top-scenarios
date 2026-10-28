@@ -250,8 +250,6 @@ export type { Prop } from '../map/index.js';
 /** In the order they were placed. */
 export type Props = readonly Prop[];
 
-export const NO_PROPS: Props = [];
-
 /** The box a prop fills. A prop of an unknown type fills its own cube. */
 export function propBox(prop: { readonly type: string; readonly at: BlockCoord; readonly facing: Facing }): Box {
   const type = propType(prop.type);

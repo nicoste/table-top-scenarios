@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   addPlace, renamePlace, setPlaceMarker, movePlace, removePlace, placeAt, placeById, placesInChunk,
-  addNote, editNote, setNoteVisible, removeNote, moveNote, partyVisibleNotes,
-  placeGlobal, placeCellFromGlobal, isValidPlaceCell, sameCell,
+  addNote, editNote, setNoteVisible, removeNote, moveNote, partyVisible,
+  isValidPlaceCell, sameCell,
   DEFAULT_MARKERS, DEFAULT_MARKER, markerById, isKnownMarker,
   CHUNK_SIZE, MAX_PLACE_NAME, registryId,
 } from '@tt/domain';
@@ -61,11 +61,6 @@ describe('finding places', () => {
     expect(placeById(places, idOf(places))?.name).toBe('Ash Village');
     expect(placesInChunk(places, { cx: 3, cz: 4 })).toHaveLength(2);
     expect(placesInChunk(places, { cx: 0, cz: 0 })).toHaveLength(0);
-  });
-
-  it('round-trips a cell through global coordinates', () => {
-    const places = one();
-    expect(placeCellFromGlobal(placeGlobal(places[0]!))).toEqual(places[0]!.cell);
   });
 });
 
@@ -202,7 +197,7 @@ describe('notes', () => {
     const { places: p0, id } = withNotes();
     let places = p0;
     places = setNoteVisible(places, id, places[0]!.notes[2]!.id, true);
-    expect(partyVisibleNotes(places[0]!).map((n) => n.text)).toEqual(['Smells of ash', 'Well is poisoned']);
+    expect(partyVisible(places[0]!.notes).map((n) => n.text)).toEqual(['Smells of ash', 'Well is poisoned']);
   });
 });
 

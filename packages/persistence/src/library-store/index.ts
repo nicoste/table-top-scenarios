@@ -33,11 +33,3 @@ export function fileLibraryStore(path: string): LibraryStore {
     },
   };
 }
-
-export function memoryLibraryStore(initial: TokensLibrary = EMPTY_LIBRARY): LibraryStore {
-  let library = initial;
-  return {
-    load: () => library,
-    save(next) { library = next; },
-  };
-}

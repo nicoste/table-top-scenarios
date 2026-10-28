@@ -2,7 +2,7 @@
 
 export {
   YAW_STEPS, YAW_OFFSET, PITCH_STEPS, MIN_ZOOM, MAX_ZOOM, yawRadians,
-  defaultTarget, clampTarget, createCamera, applyTarget, placeCamera, northBearing,
+  defaultTarget, clampTarget, createCamera, placeCamera, northBearing,
   yawDegrees, pitchDegrees, nearestAngle, approach, TURN_TAU,
 } from './camera/index.js';
 export type { CameraTarget, CameraView } from './camera/index.js';

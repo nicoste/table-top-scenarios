@@ -8,7 +8,6 @@
   },
   "dependencies": {
     "@tt/domain": "*",
-    "@tt/geometry": "*",
     "@tt/protocol": "*"
   }
 }

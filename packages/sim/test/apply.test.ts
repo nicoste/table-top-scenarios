@@ -25,7 +25,7 @@ describe('permissions (R-3, R-4)', () => {
     { kind: 'createCampaign', name: 'x' },
     { kind: 'addChunk', cx: 10, cz: 11 },
     { kind: 'paintGround', cx: 10, cz: 10, x: 1, z: 1, ground: 'material:grass' },
-    { kind: 'setHeight', cx: 10, cz: 10, x: 1, z: 1, height: 3 },
+    { kind: 'raiseHeight', cx: 10, cz: 10, x: 1, z: 1, delta: 3 },
     { kind: 'addMember' },
     { kind: 'removeMember', id: 'whatever' },
   ];
@@ -45,7 +45,7 @@ describe('purity (R-97)', () => {
   it('never mutates the state it was given', () => {
     const state = withCampaign();
     const before = JSON.stringify([...(state.active?.world.chunks.keys() ?? [])]);
-    run(state, { kind: 'setHeight', cx: ORIGIN.cx, cz: ORIGIN.cz, x: 2, z: 2, height: 5 });
+    run(state, { kind: 'raiseHeight', cx: ORIGIN.cx, cz: ORIGIN.cz, x: 2, z: 2, delta: 5 });
     expect(columnAt(chunkAt(state.active!.world, ORIGIN)!, 2, 2)?.height).toBe(0);
     expect(JSON.stringify([...state.active!.world.chunks.keys()])).toBe(before);
   });
@@ -149,8 +149,8 @@ describe('the two tools (R-88, R-89)', () => {
     let state = withCampaign();
     const at = { cx: ORIGIN.cx, cz: ORIGIN.cz, x: 5, z: 5 };
     // A slope under a 3-cross: 2 in the middle, 1 to the west, 0 elsewhere.
-    state = run(state, { kind: 'setHeight', ...at, height: 2 }).state;
-    state = run(state, { kind: 'setHeight', ...at, x: 4, height: 1 }).state;
+    state = run(state, { kind: 'raiseHeight', ...at, delta: 2 }).state;
+    state = run(state, { kind: 'raiseHeight', ...at, x: 4, delta: 1 }).state;
     const height = (s: HostState, x: number, z: number) => columnAt(chunkAt(s.active!.world, ORIGIN)!, x, z)!.height;
     const lift = (delta: number): Intent => ({ kind: 'raiseHeight', ...at, delta, size: 3, stroke: 'drag-1' });
     const undoDepth = state.history.past.length;
@@ -168,14 +168,15 @@ describe('the two tools (R-88, R-89)', () => {
 
   it('does not ask for a save when nothing changed', () => {
     const state = withCampaign();
-    const result = run(state, { kind: 'setHeight', cx: ORIGIN.cx, cz: ORIGIN.cz, x: 1, z: 1, height: 0 });
+    // Lowered at sea level: clamped, so nothing moved.
+    const result = run(state, { kind: 'raiseHeight', cx: ORIGIN.cx, cz: ORIGIN.cz, x: 1, z: 1, delta: -1 });
     expect(result.effects).toEqual([]);
     expect(result.state).toBe(state);
   });
 
   it('rejects edits to a chunk that does not exist', () => {
     const state = withCampaign();
-    expect(run(state, { kind: 'setHeight', cx: 0, cz: 0, x: 1, z: 1, height: 2 }).rejected).toBeTruthy();
+    expect(run(state, { kind: 'raiseHeight', cx: 0, cz: 0, x: 1, z: 1, delta: 2 }).rejected).toBeTruthy();
   });
 });
 
@@ -253,7 +254,7 @@ describe('the party roster', () => {
 describe('the wire boundary (R-17)', () => {
   it('rejects malformed intents before they reach sim', () => {
     expect(parseIntent({ kind: 'nope' }).ok).toBe(false);
-    expect(parseIntent({ kind: 'setHeight', cx: 0, cz: 0, x: 99, z: 0, height: 1 }).ok).toBe(false);
+    expect(parseIntent({ kind: 'raiseHeight', cx: 0, cz: 0, x: 99, z: 0, delta: 1 }).ok).toBe(false);
     expect(parseIntent({ kind: 'paintGround', cx: 0, cz: 0, x: 0, z: 0, ground: 'NOT VALID' }).ok).toBe(false);
     expect(parseIntent({ kind: 'createCampaign', name: '' }).ok).toBe(false);
   });

@@ -9,7 +9,6 @@
   "dependencies": {
     "@tt/client-core": "*",
     "@tt/domain": "*",
-    "@tt/geometry": "*",
     "@tt/protocol": "*",
     "@tt/render": "*",
     "@tt/ui": "*",

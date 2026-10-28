@@ -2,13 +2,13 @@
 
 export {
   TerrainIdSchema, GroundSchema, MarkerIdSchema, CellIndex, ChunkCoordSchema,
-  MarkerWireSchema, PlaceCellSchema, WorldCellSchema, PlaceNoteWireSchema, PlaceWireSchema,
+  PlaceCellSchema, WorldCellSchema, PlaceNoteWireSchema, PlaceWireSchema,
   MapWireSchema, PoiWireSchema,
   encodePoi, decodePoi, parseMarkerId,
   DiscoveryWireSchema, PlacementWireSchema, SaveWireSchema, encodeSave, decodeSave,
   TravellingWireSchema, travellingToWire, travellingFromWire, ImageIdSchema,
   IMAGE_PATH, imageUrl, SilverTokenWireSchema, TokenTemplateWireSchema, PrefabWireSchema,
-  encodePlacement, decodePlacement, CubeWireSchema, TokensWireSchema,
+  decodePlacement, CubeWireSchema, TokensWireSchema,
   CellsWireSchema, cellsWire, cellsFromWire,
   ChunkWireSchema, TerrainWireSchema, MemberWireSchema, WorldWireSchema, CampaignWireSchema,
   encodeChunk, encodeWorld, encodeCampaign, decodeChunk, decodeWorld, decodeCampaign,
@@ -21,7 +21,7 @@ export type {
 } from './wire/index.js';
 
 export { IntentSchema, parseIntent } from './intents/index.js';
-export type { Intent, IntentKind } from './intents/index.js';
+export type { Intent } from './intents/index.js';
 
 export { viewFor } from './view/index.js';
 

@@ -6,7 +6,7 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-  createCampaign, addPlace, addPoi, setMapBlock, blockAt, mapFromJSON,
+  createCampaign, addPlace, addPoi, setMapBlocks, blockAt, mapFromJSON,
   DEFAULT_MATERIALS, ORIGIN, swatchOf, createLiveSave, DAYLIGHT,
 } from '@tt/domain';
 import type { Campaign } from '@tt/domain';
@@ -50,7 +50,7 @@ describe('mapWire', () => {
     const place = campaign.places[0]!;
     const poi = place.pois[0]!;
     const before = mapWire(poi.map!);
-    const edited = setMapBlock(campaign.places, place.id, poi.id, { x: 2, y: 9, z: 2 }, STONE);
+    const edited = setMapBlocks(campaign.places, place.id, poi.id, [{ x: 2, y: 9, z: 2 }], STONE);
     const after = mapWire(edited[0]!.pois[0]!.map!);
     expect(after).not.toBe(before);
     expect(blockAt(mapFromJSON(after)!, { x: 2, y: 9, z: 2 })).toBe(STONE);
@@ -63,7 +63,7 @@ describe('mapWire', () => {
     const campaign = twoMaps();
     const place = campaign.places[0]!;
     const poi = place.pois[0]!;
-    const tall = setMapBlock(campaign.places, place.id, poi.id, { x: 2, y: 9, z: 2 }, STONE);
+    const tall = setMapBlocks(campaign.places, place.id, poi.id, [{ x: 2, y: 9, z: 2 }], STONE);
     const map = tall[0]!.pois[0]!.map!;
 
     const whole = mapWire(map);
@@ -88,8 +88,8 @@ describe('an edit to one map costs nothing for the others (D-219)', () => {
     const place = campaign.places[0]!;
     const edited: Campaign = {
       ...campaign,
-      places: setMapBlock(campaign.places, place.id, place.pois[0]!.id,
-        { x: 3, y: 3, z: 3 }, STONE),
+      places: setMapBlocks(campaign.places, place.id, place.pois[0]!.id,
+        [{ x: 3, y: 3, z: 3 }], STONE),
     };
     const second = encodeCampaign(edited);
 

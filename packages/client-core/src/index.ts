@@ -8,8 +8,10 @@ export {
 export type { Frame, Corner } from './images/index.js';
 export type { Connection, Handlers } from './net/index.js';
 
-export { initialServerState, initialViewState, keepUnchanged } from './store/index.js';
-export type { ServerState, ViewState, Tool, MapTool } from './store/index.js';
+export { keepUnchanged } from './store/index.js';
+export { useStage, useCost, recordTraffic, COST_HINT } from './scene/index.js';
+export type { Reading } from './scene/index.js';
+export type { Tool, MapTool } from './store/index.js';
 
 export {
   idle, GROUP, pick, armed, aim, choose, ghostCell, aimedAt,
@@ -18,7 +20,7 @@ export {
 export type { Travel } from './travel/index.js';
 
 export {
-  still, grab, armedStride, tokenAim, onRung, aimStride, strideGhost, canStride, strideIntent,
+  still, grab, armedStride, tokenAim, onRung, aimStride, strideGhost, strideIntent,
   tableCeiling, standVerdict, tokenAction, stridePrompt, jumps,
 } from './tokens/index.js';
 export type { Stride, Headroom, TokenAction } from './tokens/index.js';

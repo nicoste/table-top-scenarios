@@ -1,21 +1,7 @@
-// Server state and view state are separate stores (R-64). The snapshot is
-// replaced wholesale and never mutated; view state is local and a snapshot must
-// never overwrite it.
-
-import type { CameraTarget } from '@tt/render';
-import type { Role, View } from '@tt/protocol';
-
-/** Server state: whatever the host last sent. Read-only, replaced wholesale. */
-export interface ServerState {
-  readonly role: Role | null;
-  readonly view: View | null;
-  readonly status: 'connecting' | 'open' | 'closed';
-  readonly lastRejection: string | null;
-}
-
-export const initialServerState: ServerState = {
-  role: null, view: null, status: 'connecting', lastRejection: null,
-};
+// Server state and view state are separate (R-64). What the host sent is
+// replaced wholesale and never mutated; what a screen holds for itself — the
+// tool in hand, the camera — is local and a view arriving never overwrites it.
+// Each app keeps both as its own React state; this is what they share.
 
 /**
  * The view that just arrived, with every part that did not change replaced by
@@ -61,7 +47,6 @@ export function keepUnchanged<T>(previous: unknown, next: T): T {
   return (same ? before : kept) as T;
 }
 
-/** View state: local only. Never persisted, never transmitted (R-84). */
 /**
  * `select` is the neutral tool: it changes nothing and only picks things out.
  *
@@ -86,17 +71,3 @@ export type Tool = 'select' | 'paint' | 'cover' | 'height' | 'places' | 'travel'
 /** `props` places doors, bars and furniture, and changes them (D-328). */
 /** `measure` is the ruler, and draws and moves areas (D-341). */
 export type MapTool = 'build' | 'paint' | 'move' | 'spawn' | 'prefabs' | 'props' | 'measure';
-
-export interface ViewState {
-  readonly camera: CameraTarget;
-  readonly tool: Tool;
-  readonly ground: string;
-  /** What the cover brush is loaded with; null is the eraser (R-193). */
-  readonly cover: string | null;
-  readonly hover: { cx: number; cz: number; x: number; z: number } | null;
-  readonly panel: 'none' | 'party';
-}
-
-export function initialViewState(camera: CameraTarget): ViewState {
-  return { camera, tool: 'select', ground: 'material:grass', cover: 'cover:trees', hover: null, panel: 'party' };
-}

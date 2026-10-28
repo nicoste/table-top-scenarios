@@ -9,10 +9,10 @@ export type { SaveStore } from './save-store/index.js';
 export { fileImageStore, imageIdFor, looksLike } from './image-store/index.js';
 export type { ImageStore } from './image-store/index.js';
 
-export { fileLibraryStore, memoryLibraryStore } from './library-store/index.js';
+export { fileLibraryStore } from './library-store/index.js';
 export type { LibraryStore } from './library-store/index.js';
 
-export { filePrefabStore, memoryPrefabStore } from './prefab-store/index.js';
+export { filePrefabStore } from './prefab-store/index.js';
 export type { PrefabStore } from './prefab-store/index.js';
 
 export { backUpData, pruneBackups, backupName, BACKED_UP, BACKUPS } from './backups/index.js';

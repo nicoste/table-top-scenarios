@@ -9,7 +9,7 @@ import {
   MAP_PATCH, MAP_MAX_HEIGHT, MAP_MIN_DEPTH, bottomOfMap,
   BRUSHES, DEFAULT_BRUSH, MAP_BRUSH_CELLS, brushById, brushPatch,
   setBlocks, paintBlocks, clearBlocks,
-  DEFAULT_FLOOR, DEFAULT_MATERIALS, swatchOf, isKnownMaterial,
+  DEFAULT_FLOOR, DEFAULT_MATERIALS, swatchOf,
   materialIn, cutIdIn, cutOf, colourOf, isKnownSwatch, swatchFor, difficultyOf, materialById,
   footprintOf,
 } from '@tt/domain';
@@ -218,12 +218,12 @@ describe('the materials registry (R-75)', () => {
   it('is namespaced and append-only in shape', () => {
     for (const material of DEFAULT_MATERIALS) {
       expect(material.id).toMatch(/^material:[a-z0-9-]+$/);
-      expect(isKnownMaterial(material.id)).toBe(true);
+      expect(materialById(DEFAULT_MATERIALS, material.id)).toBe(material);
     }
   });
 
   it('rejects a material nobody registered', () => {
-    expect(isKnownMaterial('material:unobtanium' as MaterialId)).toBe(false);
+    expect(materialById(DEFAULT_MATERIALS, 'material:unobtanium' as MaterialId)).toBeNull();
   });
 
   it('carries blocksSight as a material property, transparent ones included', () => {

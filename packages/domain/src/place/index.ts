@@ -8,7 +8,7 @@ import type { EncounterMap } from '../map/index.js';
 import type { Ambience } from '../light/index.js';
 import { OPEN_SKY, clampAmbience } from '../light/index.js';
 import {
-  createMap, setBlock, clearBlock, setBlocks, paintBlocks, clearBlocks, growMap, fillMaterial,
+  createMap, setBlocks, paintBlocks, clearBlocks, growMap, fillMaterial,
 } from '../map/index.js';
 import type { Expand } from '../map/index.js';
 import type { PlaneId } from '../ids/index.js';
@@ -16,8 +16,8 @@ import { addPlane, renamePlane, movePlane, removePlane } from '../planes/index.j
 import { MAP_MAX_HEIGHT, MAP_MIN_DEPTH } from '../map/index.js';
 import type { BlockCoord } from '../map/index.js';
 import type { SwatchId } from '../ids/index.js';
-import type { ChunkCoord, GlobalCell, WorldCell } from '../world/index.js';
-import { toGlobal, fromGlobal, sameWorldCell, isValidWorldCell } from '../world/index.js';
+import type { ChunkCoord, WorldCell } from '../world/index.js';
+import { sameWorldCell, isValidWorldCell } from '../world/index.js';
 
 /**
  * Where a place sits: a chunk plus a cell inside it (R-50, exactly one cell).
@@ -120,15 +120,6 @@ export const MAX_NOTE_TEXT = 2000;
 export const MAX_POI_NAME = 80;
 
 export const sameCell = sameWorldCell;
-
-export function placeGlobal(place: Place): GlobalCell {
-  return toGlobal({ cx: place.cell.cx, cz: place.cell.cz }, place.cell.x, place.cell.z);
-}
-
-export function placeCellFromGlobal(cell: GlobalCell): PlaceCell {
-  const { coord, x, z } = fromGlobal(cell);
-  return { cx: coord.cx, cz: coord.cz, x, z };
-}
 
 export const isValidPlaceCell = isValidWorldCell;
 
@@ -322,9 +313,14 @@ export function moveNote(
   });
 }
 
-/** What the table display may see: the visible notes, in the GM's order (R-85). */
-export function partyVisibleNotes(place: Place): readonly PlaceNote[] {
-  return place.notes.filter((note) => note.visibleToParty);
+/**
+ * What the table display may see of a place's notes or its points of
+ * interest: the visible ones, in the GM's order (R-85). Generic so the view
+ * the host sends applies this very rule to its wire copies — the rule is
+ * written once, and the tested copy is the one that runs.
+ */
+export function partyVisible<T extends { readonly visibleToParty: boolean }>(entries: readonly T[]): T[] {
+  return entries.filter((entry) => entry.visibleToParty);
 }
 
 // -- pois --------------------------------------------------------------
@@ -421,11 +417,6 @@ export function movePoi(
   });
 }
 
-/** What the table display may see: the visible pois, in the GM's order. */
-export function partyVisiblePois(place: Place): readonly Poi[] {
-  return place.pois.filter((e) => e.visibleToParty);
-}
-
 // -- a point of interest's map -----------------------------------------------
 
 /**
@@ -454,25 +445,6 @@ function mapOfPoi(
       const next = change(poi.map);
       return next === poi.map ? poi : { ...poi, map: next };
     }));
-}
-
-export function setMapBlock(
-  places: readonly Place[],
-  placeId: PlaceId,
-  poiId: PoiId,
-  at: BlockCoord,
-  swatch: SwatchId,
-): readonly Place[] {
-  return mapOfPoi(places, placeId, poiId, (map) => setBlock(map, at, swatch));
-}
-
-export function clearMapBlock(
-  places: readonly Place[],
-  placeId: PlaceId,
-  poiId: PoiId,
-  at: BlockCoord,
-): readonly Place[] {
-  return mapOfPoi(places, placeId, poiId, (map) => clearBlock(map, at));
 }
 
 // One patch, one edit, one undo (R-162). A brush that sent a cell at a time

@@ -61,7 +61,6 @@ export const IntentSchema = z.discriminatedUnion('kind', [
     cover: z.string().regex(/^cover:[a-z0-9]+(-[a-z0-9]+)*$/).nullable(),
     size, stroke,
   }),
-  z.object({ kind: z.literal('setHeight'), ...cell, height: z.number().int().min(0).max(MAX_HEIGHT), size, stroke }),
   /**
    * Every column under the brush moved up or down together by `delta` (D-367),
    * keeping its shape: measured from the ground as the stroke found it, so a
@@ -393,7 +392,6 @@ export const IntentSchema = z.discriminatedUnion('kind', [
 ]);
 
 export type Intent = z.infer<typeof IntentSchema>;
-export type IntentKind = Intent['kind'];
 
 export function parseIntent(value: unknown): { ok: true; intent: Intent } | { ok: false; reason: string } {
   const result = IntentSchema.safeParse(value);

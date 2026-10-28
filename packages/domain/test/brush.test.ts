@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   CHUNK_SIZE, MAX_BRUSH, clampBrush, brushCells, brushCentreOffset, toGlobal, fromGlobal,
-  paintArea, setHeightArea, emptyWorld, addChunk, chunkAt, columnAt,
+  paintArea, emptyWorld, addChunk, chunkAt, columnAt,
   WORLD_BRUSHES, stepBrush, BRUSHES, liftArea, MAX_HEIGHT,
 } from '@tt/domain';
 import type { SwatchId } from '@tt/domain';
@@ -120,9 +120,9 @@ describe('brushes across chunk boundaries', () => {
     expect(columnAt(chunkAt(painted, { cx: 5, cz: 5 })!, CHUNK_SIZE - 1, 10)?.ground).toBe(grass);
   });
 
-  it('stamps a flat plateau with setHeightArea, in the brush\'s round shape', () => {
+  it('lifts flat ground into a plateau, in the brush\'s round shape', () => {
     const world = addChunk(emptyWorld(), { cx: 0, cz: 0 });
-    const raised = setHeightArea(world, { gx: 10, gz: 10 }, 3, 6);
+    const raised = liftArea(world, world, { gx: 10, gz: 10 }, 3, 6);
     const chunk = chunkAt(raised, { cx: 0, cz: 0 })!;
     for (const [x, z] of [[10, 10], [9, 10], [11, 10], [10, 9], [10, 11]]) {
       expect(columnAt(chunk, x!, z!)?.height, `${x},${z}`).toBe(6);
@@ -134,7 +134,7 @@ describe('brushes across chunk boundaries', () => {
 
   it('returns the same world when the brush changes nothing', () => {
     const world = addChunk(emptyWorld(), { cx: 0, cz: 0 });
-    expect(setHeightArea(world, { gx: 10, gz: 10 }, 3, 0)).toBe(world);
+    expect(liftArea(world, world, { gx: 10, gz: 10 }, 3, 0)).toBe(world);
   });
 });
 
@@ -143,7 +143,7 @@ describe('lifting the ground under a brush (D-367)', () => {
   const ridge = () => {
     let world = addChunk(emptyWorld(), { cx: 0, cz: 0 });
     for (const [x, z, h] of [[10, 10, 4], [9, 10, 1], [11, 10, 2], [10, 9, 3]] as const) {
-      world = setHeightArea(world, { gx: x, gz: z }, 1, h);
+      world = liftArea(world, world, { gx: x, gz: z }, 1, h);
     }
     return world;
   };

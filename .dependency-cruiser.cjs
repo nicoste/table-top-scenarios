@@ -210,7 +210,7 @@ module.exports = {
     doNotFollow: { path: 'node_modules' },
     tsPreCompilationDeps: true,
     tsConfig: { fileName: 'tsconfig.json' },
-    exclude: { path: '(^|/)(dist|node_modules|prototype)/' },
+    exclude: { path: '(^|/)(dist|node_modules)/' },
     reporterOptions: { text: { highlightFocused: true } },
   },
 };

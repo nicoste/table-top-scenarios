@@ -8,7 +8,7 @@ import {
   tokensFor, onRoster, tokensInBand, tokensToJSON,
   exploredIn, partySight, seenPart, inRange, placeById, poiById, ON_FOOT,
   silverIn, silverShown, templateById, libraryToJSON, prefabToJSON, openedIn, sliceOf, sightShows,
-  carriedLightToJSON, areasIn, areasToJSON, standsInBand,
+  carriedLightToJSON, areasIn, areasToJSON, standsInBand, partyVisible,
 } from '@tt/domain';
 import type { CarriedLightJSON } from '@tt/domain';
 import type {
@@ -565,12 +565,11 @@ function forTheTable(campaign: Campaign | null, save: Save | null): CampaignWire
       // unrendered on the table — it never leaves the host (R-85, D-175).
       .map((place) => ({
         ...place,
-        notes: place.notes.filter((note) => note.visibleToParty),
+        notes: partyVisible(place.notes),
         // A revealed point of interest reaches the table as a *name*, and gets
         // a body only when the party is standing in it — and then only the band
         // the GM has cut to (R-158, and D-184 finally answered).
-        pois: place.pois
-          .filter((e) => e.visibleToParty)
+        pois: partyVisible(place.pois)
           .map((e) => ({
             ...e,
             map: bodyForTheTable(campaign, save, place.id, e.id),

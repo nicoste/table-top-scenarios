@@ -286,16 +286,6 @@ export function materialById(
   return materials.find((material) => material.id === id) ?? null;
 }
 
-export function isKnownMaterial(id: MaterialId): boolean {
-  return DEFAULT_MATERIALS.some((material) => material.id === id);
-}
-
-export function requireMaterial(id: MaterialId): Material {
-  const material = materialById(DEFAULT_MATERIALS, id);
-  if (!material) throw new Error(`unknown material: ${id}`);
-  return material;
-}
-
 // -- swatches (R-176) --------------------------------------------------------
 
 /**

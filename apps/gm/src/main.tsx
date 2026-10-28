@@ -2,11 +2,10 @@
 
 import { createRoot } from 'react-dom/client';
 import { StrictMode, useEffect, useMemo, useRef, useState } from 'react';
-import { connect } from '@tt/client-core';
+import { connect, recordTraffic } from '@tt/client-core';
 import type { Connection } from '@tt/client-core';
 import type { GmView, Intent, View } from '@tt/protocol';
 import { App } from './shell/App.js';
-import { recordTraffic } from './scene/use-cost.js';
 
 function Root() {
   const [view, setView] = useState<View | null>(null);

@@ -10,7 +10,7 @@ import type {
 import {
   createCampaign, duplicateCampaign, uniqueCampaignName, createMember, editMember, removeMember,
   addChunk, chunkAt, isCreatableSlot, isKnownCover,
-  toGlobal, paintArea, coverArea, setHeightArea, liftArea,
+  toGlobal, paintArea, coverArea, liftArea,
   addPlace, renamePlace, setPlaceMarker, movePlace, removePlace, placeById, placeAt, isValidPlaceCell,
   asFacing,
   addNote, editNote, setNoteVisible, removeNote, moveNote, isKnownMarker,
@@ -518,13 +518,11 @@ function applyToCampaign(state: HostState, role: Role, intent: Intent, now: stri
       return commitWorld(coverArea(campaign.world, at, intent.size ?? 1, cover));
     }
 
-    case 'setHeight':
     case 'raiseHeight': {
       const anchorChunk = { cx: intent.cx, cz: intent.cz };
       if (!chunkAt(campaign.world, anchorChunk)) return reject(state, 'that chunk does not exist');
       const at = toGlobal(anchorChunk, intent.x, intent.z);
       const size = intent.size ?? 1;
-      if (intent.kind === 'setHeight') return commitWorld(setHeightArea(campaign.world, at, size, intent.height));
       // Raised from the ground as the drag found it (D-367): mid-stroke, that
       // is the state its first intent put in the undo history.
       const midStroke = intent.stroke !== undefined && intent.stroke === state.history.stroke;

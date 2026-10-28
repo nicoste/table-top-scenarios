@@ -113,7 +113,7 @@ describe('saves are separate files beside the campaign (R-60)', () => {
     const { campaign, live } = seeded();
     for (const store of [fileSaveStore(root), memorySaveStore()]) {
       store.save(live);
-      expect(store.load(live.id)?.label).toBe(live.label);
+      expect(store.load(live.id)?.campaignId).toBe(live.campaignId);
       expect(store.removeForCampaign(campaign.id)).toBe(1);
     }
   });

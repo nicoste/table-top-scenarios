@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { fileCampaignStore, memoryCampaignStore } from '@tt/persistence';
 import {
   createCampaign, addChunk, ORIGIN, chunkAt, columnAt, setHeight, replaceChunk,
-  addPlace, addPoi, setMapBlock, blockAt, DEFAULT_FLOOR, DEFAULT_MARKERS, DEFAULT_MATERIALS,
+  addPlace, addPoi, setMapBlocks, blockAt, DEFAULT_FLOOR, DEFAULT_MARKERS, DEFAULT_MATERIALS,
 } from '@tt/domain';
 import { encodeCampaign } from '@tt/protocol';
 
@@ -327,7 +327,7 @@ describe('each map is its own file, and only what changed is written (R-59, R-60
     const poi = poiOf(campaign);
     const edited = {
       ...campaign,
-      places: setMapBlock(campaign.places, campaign.places[0]!.id, poi.id, { x: 1, y: 1, z: 1 },
+      places: setMapBlocks(campaign.places, campaign.places[0]!.id, poi.id, [{ x: 1, y: 1, z: 1 }],
         DEFAULT_FLOOR),
     };
     store.save(edited);
@@ -355,7 +355,7 @@ describe('each map is its own file, and only what changed is written (R-59, R-60
     const poi = poiOf(campaign);
     const edited = {
       ...campaign,
-      places: setMapBlock(campaign.places, campaign.places[0]!.id, poi.id, { x: 3, y: 7, z: 3 },
+      places: setMapBlocks(campaign.places, campaign.places[0]!.id, poi.id, [{ x: 3, y: 7, z: 3 }],
         DEFAULT_FLOOR),
     };
     store.save(edited);

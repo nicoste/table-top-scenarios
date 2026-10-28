@@ -99,11 +99,6 @@ export function strideGhost(stride: Stride): BlockCoord | null {
   return stride.step === 'aiming' && stride.why === null ? stride.at : null;
 }
 
-/** Whether a click right now would send a move. */
-export function canStride(stride: Stride): boolean {
-  return stride.step === 'aiming' && stride.at !== null && stride.why === null;
-}
-
 /**
  * The move a confirm sends. It names the map, so the host can refuse it if the
  * party has left that map in the meantime rather than land it in another one.

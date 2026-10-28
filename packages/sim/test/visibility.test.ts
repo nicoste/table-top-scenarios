@@ -44,13 +44,13 @@ describe('nothing reaches the table until the GM says so', () => {
     const world = tableWorld(state);
     expect(world?.chunks).toEqual([]);
     expect(world?.unknownChunks).toHaveLength(1);
-    expect(world?.unknownChunks[0]).toEqual({ cx: ORIGIN.cx, cz: ORIGIN.cz });
+    expect(world?.unknownChunks?.[0]).toEqual({ cx: ORIGIN.cx, cz: ORIGIN.cz });
   });
 
   it('sends an unknown chunk as coordinates only, with no terrain field to carry data', () => {
     const { state } = seeded();
     const world = tableWorld(state);
-    const placeholder = world!.unknownChunks[0] as Record<string, unknown>;
+    const placeholder = world!.unknownChunks![0] as Record<string, unknown>;
     expect(Object.keys(placeholder).sort()).toEqual(['cx', 'cz']);
     expect(placeholder).not.toHaveProperty('heights');
     expect(placeholder).not.toHaveProperty('terrain');

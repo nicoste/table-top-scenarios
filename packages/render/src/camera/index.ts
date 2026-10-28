@@ -180,20 +180,6 @@ export function placeCamera(
   camera.lookAt(new Vector3(view.focus.x, view.focus.y, view.focus.z));
 }
 
-export function applyTarget(
-  camera: OrthographicCamera,
-  target: CameraTarget,
-  aspect: number,
-): void {
-  const t = clampTarget(target);
-  placeCamera(camera, {
-    focus: t.focus,
-    zoom: t.zoom,
-    yawDeg: yawDegrees(t),
-    pitchDeg: PITCH_STEPS[t.pitchStep] ?? 45,
-  }, aspect);
-}
-
 /** The pitch in degrees a target is asking for. */
 export function pitchDegrees(target: Pick<CameraTarget, 'pitchStep'>): number {
   return PITCH_STEPS[MathUtils.clamp(target.pitchStep, 0, PITCH_STEPS.length - 1)] ?? 45;

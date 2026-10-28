@@ -8,7 +8,7 @@ import {
 } from '@tt/domain';
 import type { FacePick } from '@tt/render';
 import {
-  still, grab, armedStride, tokenAim, aimStride, strideGhost, canStride, strideIntent,
+  still, grab, armedStride, tokenAim, aimStride, strideGhost, strideIntent,
   tableCeiling, standVerdict, tokenAction, stridePrompt, jumps, mapAction, mapAllowed,
 } from '@tt/client-core';
 import type { Stride } from '@tt/client-core';
@@ -71,10 +71,8 @@ describe('aiming (R-132, R-138)', () => {
   it('shows a ghost only where the move would be made', () => {
     const fine = aimStride(grab('aldra'), cube(2, 1, 2), null);
     expect(strideGhost(fine)).toEqual(cube(2, 1, 2));
-    expect(canStride(fine)).toBe(true);
     const refused = aimStride(grab('aldra'), cube(2, 1, 2), 'a block is there');
     expect(strideGhost(refused)).toBeNull();
-    expect(canStride(refused)).toBe(false);
   });
 
   it('preserves identity while the pointer stays on one cube', () => {

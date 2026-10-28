@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   createCampaign, duplicateCampaign, uniqueCampaignName,
   chunkAt, columnAt, setHeight, paintGround, replaceChunk, ORIGIN,
-  addPlace, addNote, addPoi, setMapBlock, blockAt, DEFAULT_FLOOR,
+  addPlace, addNote, addPoi, setMapBlocks, blockAt, DEFAULT_FLOOR,
 } from '@tt/domain';
 import type { Campaign, SwatchId } from '@tt/domain';
 
@@ -45,8 +45,8 @@ function built(): Campaign {
   const placeId = places[0]!.id;
   places = addNote(places, placeId, 'The elder is a spy');
   places = addPoi(places, placeId, 'The tavern');
-  places = setMapBlock(
-    places, placeId, places[0]!.pois[0]!.id, { x: 2, y: 1, z: 3 }, DEFAULT_FLOOR,
+  places = setMapBlocks(
+    places, placeId, places[0]!.pois[0]!.id, [{ x: 2, y: 1, z: 3 }], DEFAULT_FLOOR,
   );
   return {
     ...c,

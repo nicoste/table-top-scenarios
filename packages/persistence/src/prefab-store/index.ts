@@ -67,13 +67,3 @@ export function filePrefabStore(dir: string): PrefabStore {
     },
   };
 }
-
-/** In-memory store, for tests and for a host started with no disk. */
-export function memoryPrefabStore(initial: Prefabs = NO_PREFABS): PrefabStore {
-  let prefabs = initial;
-  return {
-    load: () => prefabs,
-    save(prefab) { prefabs = [...prefabs.filter((one) => one.id !== prefab.id), prefab]; },
-    remove(id) { prefabs = prefabs.filter((one) => one.id !== id); },
-  };
-}

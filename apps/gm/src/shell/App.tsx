@@ -43,8 +43,7 @@ import {
   measurePrompt, faceCentre, floorCentre, ownBand,
 } from '@tt/client-core';
 import type { MapAction, MapReach, MapTool } from '@tt/client-core';
-import { useStage } from '../scene/use-stage.js';
-import { useCost, COST_HINT } from '../scene/use-cost.js';
+import { useStage, useCost, COST_HINT } from '@tt/client-core';
 import { Launcher } from '../features/launcher/index.js';
 import { LightPanel } from '../features/light/index.js';
 import { BuildWorldPanel } from '../features/build-world/index.js';
@@ -267,6 +266,9 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   const pendingPlaceCell = useRef<string | null>(null);
   const { setCanvas, canvas, stage, frames, draws } = useStage();
   const cost = useCost(stage, frames, draws);
+  // Debug handle: the GM console only, and it exposes nothing the GM does not
+  // already have on screen. Used to diagnose picking.
+  useEffect(() => { (window as unknown as { __stage?: unknown }).__stage = stage; }, [stage]);
   const openedId = useRef<string | null>(null);
   const drag = useRef<{ startY: number; base: number; cell: { cx: number; cz: number; x: number; z: number } } | null>(null);
   const panning = useRef<{ x: number; y: number } | null>(null);

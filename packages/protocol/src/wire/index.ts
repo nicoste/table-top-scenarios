@@ -22,7 +22,6 @@ export const AmbienceWireSchema = z.object({
   colour: z.string(),
   level: z.number(),
 });
-export type AmbienceWire = z.infer<typeof AmbienceWireSchema>;
 
 /**
  * The GM's description of the light (R-181), as it travels.
@@ -164,19 +163,6 @@ export const TerrainWireSchema = z.object({
 });
 
 export const MarkerIdSchema = z.string().regex(/^marker:[a-z0-9]+(-[a-z0-9]+)*$/);
-
-const Vec3Schema = z.tuple([z.number(), z.number(), z.number()]);
-
-export const MarkerWireSchema = z.object({
-  id: MarkerIdSchema,
-  name: z.string(),
-  parts: z.array(z.object({
-    shape: z.enum(['box', 'cone', 'cylinder']),
-    at: Vec3Schema,
-    size: Vec3Schema,
-    colour: z.string(),
-  })),
-});
 
 /** One world cell (D-156). `PlaceCellSchema` is the same shape under its own name. */
 export const WorldCellSchema = z.object({
@@ -356,9 +342,9 @@ export type PrefabWire = z.infer<typeof PrefabWireSchema>;
 export const SaveWireSchema = z.object({
   id: z.string(),
   campaignId: z.string(),
-  campaignSchemaVersion: z.number().int(),
+  // No `campaignSchemaVersion` and no `label`: both were written and never
+  // read. Older files still carry them, and reading drops them.
   schemaVersion: z.number().int(),
-  label: z.string(),
   savedAt: z.string(),
   discovery: DiscoveryWireSchema,
   // Absent in a schema-version-1 save, which decodes with the party unplaced.
@@ -480,8 +466,11 @@ export const WorldWireSchema = z.object({
    * featureless placeholders of R-16. Coordinates only — deliberately a separate
    * list rather than a `known` flag on each Chunk, so an Unknown chunk has no
    * field that *could* carry terrain.
+   *
+   * Only the table's view has one; a campaign on disk has no party to be
+   * unknown to. Older files carry an empty one, and reading keeps it.
    */
-  unknownChunks: z.array(ChunkCoordSchema).default([]),
+  unknownChunks: z.array(ChunkCoordSchema).optional(),
   metresPerCell: z.number(),
   // No `metresPerLevel`: a level is a quarter of a cell (D-373), so it is not a
   // number of its own. Older files still carry one, and reading drops it.
@@ -494,12 +483,6 @@ export const CampaignWireSchema = z.object({
   name: z.string(),
   world: WorldWireSchema,
   party: z.array(MemberWireSchema),
-  /**
-   * Sent so the apps can draw names and colours, but **not** authoritative and
-   * not stored (D-107): decode discards it and encode always emits the current
-   * palette. Optional so files written before this change still load.
-   */
-  /** Like terrain, code rather than campaign data (D-107): never stored. */
   places: z.array(PlaceWireSchema).default([]),
 });
 export type CampaignWire = z.infer<typeof CampaignWireSchema>;
@@ -546,7 +529,6 @@ export function encodeChunk(chunk: Chunk): ChunkWire {
 export function encodeWorld(world: World): z.infer<typeof WorldWireSchema> {
   return {
     bounds: { x: world.bounds.x, z: world.bounds.z },
-    unknownChunks: [],
     metresPerCell: world.metresPerCell,
     chunks: [...world.chunks.values()].map(encodeChunk),
   };
@@ -596,9 +578,7 @@ export function encodeSave(save: Save): SaveWire {
   return {
     id: save.id,
     campaignId: save.campaignId,
-    campaignSchemaVersion: save.campaignSchemaVersion,
     schemaVersion: save.schemaVersion,
-    label: save.label,
     savedAt: save.savedAt,
     discovery: discoveryToJSON(save.discovery),
     placement: placementToJSON(save.placement),
@@ -670,9 +650,7 @@ export function decodeSave(wire: SaveWire): Save {
   return {
     id: wire.id as Save['id'],
     campaignId: wire.campaignId as Save['campaignId'],
-    campaignSchemaVersion: wire.campaignSchemaVersion,
     schemaVersion: wire.schemaVersion,
-    label: wire.label,
     savedAt: wire.savedAt,
     discovery: discoveryFromJSON(wire.discovery),
     placement: placementFromJSON(wire.placement),
@@ -766,14 +744,6 @@ export function mapWire(map: EncounterMap, range?: LevelRange): MapWire {
   const made = mapToJSON(range ? sliceOf(map, range) : map);
   byRange.set(key, made);
   return made;
-}
-
-/**
- * Symmetry with `decodeCampaign`: an app reads the wire through `protocol` and
- * gets domain types back, rather than reaching into `domain` for a JSON helper.
- */
-export function encodePlacement(placement: Placement): PlacementWire {
-  return placementToJSON(placement);
 }
 
 export function decodePlacement(wire: PlacementWire | null): Placement {
