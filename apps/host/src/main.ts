@@ -59,7 +59,14 @@ const apps = serveStatic({
   table: join(ROOT, 'apps', 'table', 'dist'),
 });
 const server = createServer((req, res) => {
-  if (!images(req, res)) apps(req, res);
+  // The last word on a request gone wrong: it fails, the host does not.
+  try {
+    if (!images(req, res)) apps(req, res);
+  } catch (error) {
+    console.error(`  ${req.method} ${req.url} failed:`, error);
+    if (!res.headersSent) res.writeHead(500);
+    res.end();
+  }
 });
 
 serveSockets(server, session);

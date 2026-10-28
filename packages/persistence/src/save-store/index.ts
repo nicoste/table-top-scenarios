@@ -25,6 +25,12 @@ export function fileSaveStore(root: string): SaveStore {
     renameSync(tmp, path);
   }
 
+  /**
+   * An unreadable save reads as none — and is **moved aside**, because "none"
+   * makes the host start a fresh one under the same name, and the write of
+   * that fresh save would destroy whatever the party had (the library's
+   * habit, D-108's reason).
+   */
   function readOne(id: string): Save | null {
     const path = fileFor(id);
     if (!existsSync(path)) return null;
@@ -32,9 +38,12 @@ export function fileSaveStore(root: string): SaveStore {
     try {
       parsed = SaveWireSchema.safeParse(JSON.parse(readFileSync(path, 'utf8')));
     } catch {
+      parsed = null;
+    }
+    if (!parsed?.success) {
+      renameSync(path, `${path}.unreadable-${Date.now()}`);
       return null;
     }
-    if (!parsed.success) return null;
     if (parsed.data.schemaVersion > SAVE_SCHEMA_VERSION) {
       throw new Error(`save ${id} was written by a newer version (${parsed.data.schemaVersion})`);
     }

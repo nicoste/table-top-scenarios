@@ -40,6 +40,35 @@ interface LastSaved {
   readonly maps: ReadonlyMap<string, EncounterMap>;
 }
 
+/** A campaign's files put back together as one wire object, unvalidated. */
+function assembled(manifestPath: string, worldPath: string, bodies: string): unknown {
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as Record<string, unknown>;
+  const world = JSON.parse(readFileSync(worldPath, 'utf8')) as unknown;
+  /*
+   * Each map comes from its own file (R-60). A manifest that still carries
+   * its maps inline was written before the split and is read exactly as it
+   * is — the next save moves it (R-137a). No schema bump: a map in the
+   * manifest and a map in a file are the same map, and the absence of one
+   * says where to look for the other (D-187's reasoning).
+   */
+  type WirePoi = { id?: unknown; map?: unknown };
+  type WirePlace = { pois?: unknown };
+  const places = Array.isArray(manifest.places)
+    ? (manifest.places as WirePlace[]).map((place) => ({
+      ...place,
+      pois: Array.isArray(place.pois)
+        ? (place.pois as WirePoi[]).map((poi) => {
+          if (poi?.map) return poi;
+          const file = join(bodies, `${String(poi?.id)}.json`);
+          if (!existsSync(file)) return poi;
+          return { ...poi, map: JSON.parse(readFileSync(file, 'utf8')) as unknown };
+        })
+        : place.pois,
+    }))
+    : manifest.places;
+  return { ...manifest, places, world };
+}
+
 /** Filesystem-backed store. The only adapter that touches the disk. */
 export function fileCampaignStore(root: string): CampaignStore {
   mkdirSync(root, { recursive: true });
@@ -95,32 +124,16 @@ export function fileCampaignStore(root: string): CampaignStore {
       const manifestPath = join(base, MANIFEST);
       const worldPath = join(base, WORLD);
       if (!existsSync(manifestPath) || !existsSync(worldPath)) return null;
-      const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as Record<string, unknown>;
-      const world = JSON.parse(readFileSync(worldPath, 'utf8')) as unknown;
-      /*
-       * Each map comes from its own file (R-60). A manifest that still carries
-       * its maps inline was written before the split and is read exactly as it
-       * is — the next save moves it (R-137a). No schema bump: a map in the
-       * manifest and a map in a file are the same map, and the absence of one
-       * says where to look for the other (D-187's reasoning).
-       */
-      const bodies = bodyDir(id);
-      type WirePoi = { id?: unknown; map?: unknown };
-      type WirePlace = { pois?: unknown };
-      const places = Array.isArray(manifest.places)
-        ? (manifest.places as WirePlace[]).map((place) => ({
-          ...place,
-          pois: Array.isArray(place.pois)
-            ? (place.pois as WirePoi[]).map((poi) => {
-              if (poi?.map) return poi;
-              const file = join(bodies, `${String(poi?.id)}.json`);
-              if (!existsSync(file)) return poi;
-              return { ...poi, map: JSON.parse(readFileSync(file, 'utf8')) as unknown };
-            })
-            : place.pois,
-        }))
-        : manifest.places;
-      const wire: unknown = { ...manifest, places, world };
+      // Text that is not JSON is unreadable in the same way as JSON of the
+      // wrong shape, below: null. A map body is no exception — a campaign
+      // missing one map would open, and look whole, with that map gone.
+      let wire: unknown;
+      try {
+        wire = assembled(manifestPath, worldPath, bodyDir(id));
+      } catch (error) {
+        if (error instanceof SyntaxError) return null;
+        throw error;
+      }
       const parsed = CampaignWireSchema.safeParse(wire);
       // `null`, not a throw. This runs inside an intent, and a store that throws
       // takes the whole message handler with it; returning null becomes "that

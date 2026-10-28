@@ -136,6 +136,14 @@ describe('listing is defensive', () => {
     expect(fileCampaignStore(root).load('missing')).toBeNull();
   });
 
+  it('returns null for a file that is not JSON, rather than throwing inside an intent', () => {
+    const store = fileCampaignStore(root);
+    const campaign = createCampaign('Torn');
+    store.save(campaign);
+    writeFileSync(join(root, campaign.id, 'world.json'), '{ not json', 'utf8');
+    expect(store.load(campaign.id)).toBeNull();
+  });
+
   it('refuses a campaign written by a newer schema (R-61)', () => {
     const store = fileCampaignStore(root);
     const campaign = createCampaign('Future');
@@ -281,6 +289,14 @@ describe('each map is its own file, and only what changed is written (R-59, R-60
     // The manifest keeps the point of interest and none of its cubes.
     expect(manifest).toContain('The tavern');
     expect(JSON.parse(manifest).places[0].pois[0].map).toBeNull();
+  });
+
+  it('will not open with a map missing: an unreadable body makes the campaign unreadable', () => {
+    const store = fileCampaignStore(root);
+    const campaign = built();
+    store.save(campaign);
+    writeFileSync(body(campaign), '{ not json', 'utf8');
+    expect(fileCampaignStore(root).load(campaign.id)).toBeNull();
   });
 
   it('writes the body packed, not one entry per cube', () => {

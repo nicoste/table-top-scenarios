@@ -113,14 +113,29 @@ export function serveSockets(
         send(ws, { type: 'rejected', reason: parsed.reason });
         return;
       }
-      const result = session.handle(seat, parsed.intent);
-      if (!result.ok) {
-        send(ws, { type: 'rejected', reason: result.reason ?? 'rejected' });
-        return;
+      // Anything that throws past the session is a bug, and one bad intent
+      // must not end the evening for everyone at the table. `sim` is pure, so
+      // a throw from it has changed nothing.
+      try {
+        const result = session.handle(seat, parsed.intent);
+        if (!result.ok) {
+          send(ws, { type: 'rejected', reason: result.reason ?? 'rejected' });
+          return;
+        }
+        broadcast();
+        // It happened, so everyone sees it; the sender also hears that it is
+        // not on disk yet.
+        if (result.unsaved) send(ws, { type: 'rejected', reason: result.unsaved });
+      } catch (error) {
+        console.error(`  ${parsed.intent.kind} failed:`, error);
+        send(ws, { type: 'rejected', reason: 'the host hit an error; see its console' });
       }
-      broadcast();
     });
 
+    // A malformed frame is an 'error' on the socket, and an 'error' nobody
+    // listens for is thrown — by any device on the LAN. `ws` closes the socket
+    // after it; the seat goes with the close.
+    ws.on('error', (error) => { console.warn(`  A socket failed: ${error.message}`); });
     ws.on('close', () => { seats.delete(ws); alive.delete(ws); });
   });
 

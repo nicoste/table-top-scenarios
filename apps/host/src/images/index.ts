@@ -30,7 +30,10 @@ export function serveImages(store: ImageStore) {
     }
 
     if (req.method === 'GET' && path.startsWith(`${PREFIX}/`)) {
-      const found = store.find(decodeURIComponent(path.slice(PREFIX.length + 1)));
+      let name: string;
+      // A malformed escape (`%E0%A4%A`) throws, and a throw here is the host.
+      try { name = decodeURIComponent(path.slice(PREFIX.length + 1)); } catch { name = ''; }
+      const found = store.find(name);
       if (!found) { res.writeHead(404); res.end('no such picture'); return true; }
       res.writeHead(200, {
         'Content-Type': found.type,
@@ -39,7 +42,7 @@ export function serveImages(store: ImageStore) {
         'Cache-Control': 'public, max-age=31536000, immutable',
         'X-Content-Type-Options': 'nosniff',
       });
-      createReadStream(found.file).pipe(res);
+      createReadStream(found.file).on('error', () => res.destroy()).pipe(res);
       return true;
     }
 
@@ -54,6 +57,9 @@ function receive(req: IncomingMessage, res: ServerResponse, store: ImageStore): 
   const chunks: Buffer[] = [];
   let size = 0;
   let refused = false;
+  // A client that hangs up mid-upload is an 'error' on the request, and an
+  // unheard one is thrown.
+  req.on('error', () => { refused = true; });
   req.on('data', (chunk: Buffer) => {
     if (refused) return;
     size += chunk.length;
@@ -68,7 +74,14 @@ function receive(req: IncomingMessage, res: ServerResponse, store: ImageStore): 
   });
   req.on('end', () => {
     if (refused) return;
-    const id = store.put(new Uint8Array(Buffer.concat(chunks)), req.headers['content-type'] ?? '');
+    let id;
+    try {
+      id = store.put(new Uint8Array(Buffer.concat(chunks)), req.headers['content-type'] ?? '');
+    } catch (error) {
+      res.writeHead(507);
+      res.end(`could not keep it: ${error instanceof Error ? error.message : String(error)}`);
+      return;
+    }
     if (!id) {
       res.writeHead(415);
       res.end('not a picture this takes');

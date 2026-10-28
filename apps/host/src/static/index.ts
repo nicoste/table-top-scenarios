@@ -1,7 +1,7 @@
 // Serves the two built browser apps. /gm and /table are SPA roots.
 
 import { createReadStream, existsSync, statSync } from 'node:fs';
-import { extname, join, normalize } from 'node:path';
+import { extname, join, normalize, sep } from 'node:path';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 const MIME: Record<string, string> = {
@@ -19,7 +19,9 @@ export interface StaticRoots { gm: string; table: string }
 export function serveStatic(roots: StaticRoots) {
   return (req: IncomingMessage, res: ServerResponse): void => {
     const url = new URL(req.url ?? '/', 'http://localhost');
-    const path = decodeURIComponent(url.pathname);
+    let path: string;
+    // A malformed escape (`%E0%A4%A`) throws, and a throw here is the host.
+    try { path = decodeURIComponent(url.pathname); } catch { res.writeHead(400); res.end('bad path'); return; }
 
     if (path === '/' ) {
       res.writeHead(302, { Location: '/gm/' });
@@ -35,7 +37,8 @@ export function serveStatic(roots: StaticRoots) {
     if (rel === '/' || rel === '') rel = '/index.html';
 
     const file = join(root, normalize(rel));
-    if (!file.startsWith(root)) { res.writeHead(403); res.end('no'); return; }
+    // With the separator: `dist-old` starts with `dist` too.
+    if (file !== root && !file.startsWith(root + sep)) { res.writeHead(403); res.end('no'); return; }
 
     // SPA fallback: an unknown path inside an app serves its index.
     const target = existsSync(file) && statSync(file).isFile() ? file : join(root, 'index.html');
@@ -46,6 +49,8 @@ export function serveStatic(roots: StaticRoots) {
     }
 
     res.writeHead(200, { 'Content-Type': MIME[extname(target)] ?? 'application/octet-stream' });
-    createReadStream(target).pipe(res);
+    // A file can go between the check and the read — a rebuild does exactly
+    // that — and an unheard stream error is thrown.
+    createReadStream(target).on('error', () => res.destroy()).pipe(res);
   };
 }

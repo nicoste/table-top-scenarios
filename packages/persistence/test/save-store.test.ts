@@ -124,6 +124,27 @@ describe('reading', () => {
     expect(fileSaveStore(root).load('missing')).toBeNull();
   });
 
+  it('moves an unreadable save aside, so the fresh one cannot write over it', () => {
+    // Null makes the host start a new save under the same name (D-147).
+    const store = fileSaveStore(root);
+    const { live } = seeded();
+    const path = join(root, `${live.id}.json`);
+    writeFileSync(path, '{ not json', 'utf8');
+    expect(store.load(live.id)).toBeNull();
+    store.save(live);
+    const aside = readdirSync(root).find((name) => name.startsWith(`${live.id}.json.unreadable-`));
+    expect(aside).toBeDefined();
+    expect(readFileSync(join(root, aside!), 'utf8')).toBe('{ not json');
+  });
+
+  it('moves aside a save of the wrong shape too', () => {
+    const store = fileSaveStore(root);
+    const { live } = seeded();
+    writeFileSync(join(root, `${live.id}.json`), JSON.stringify({ hello: 'world' }), 'utf8');
+    expect(store.load(live.id)).toBeNull();
+    expect(readdirSync(root).some((name) => name.startsWith(`${live.id}.json.unreadable-`))).toBe(true);
+  });
+
   it('refuses a save written by a newer schema (R-61)', () => {
     const store = fileSaveStore(root);
     const { live } = seeded();
