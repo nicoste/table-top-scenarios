@@ -94,6 +94,7 @@ checked it. Unchecked rules are decoration.
 **Amended by D-375**: the dependency-cruiser and ESLint halves exist and run by
 hand with `npm run verify`; the project-reference half went in D-059. CI and a
 pre-commit hook wait until the repo is pushed to a remote, and CI/CD comes then.
+**Amended by D-378**: in CI on every push; no pre-commit hook.
 
 ### D-013 — Registries are stable string ids, append-only · `agreed`
 `material:mossy-stone`, never `materials[7]`. Reordering is a migration.
@@ -9706,6 +9707,7 @@ D-015, D-017 and D-070 (in use), D-321, D-322 and D-328 (all built), D-287 (its
 other half was D-288) and D-033 (its clamp went to the cutting planes, D-180)
 are no longer pending. Old entries are not rewritten; each carries a line
 saying so where it matters.
+**Amended by D-378**: the repo was pushed, and the automatic checks are in.
 
 ### D-376 — The host stays up when something under it fails · `agreed`
 *"Step 1: do it full."* The review found the host could be taken down from
@@ -9773,3 +9775,43 @@ with a broken escape. Each one ended the process, and every screen with it.
 - **`prototype/` is deleted**, superseding D-028. It sat outside every check
   since D-028, and git still has it. The empty `biomes/` and `navigate/`
   folders went too.
+
+### D-378 — The repo goes public: checks on every push, Node 26, a README · `agreed`
+*"Do 1–4 now."* The repo has a remote, `github.com/nicoste/table-top-scenarios`,
+and it is public. That is the moment D-375 set for the automatic checks.
+
+- **The checks run on GitHub** for every push to `main` and every pull request:
+  `npm ci`, `npm run verify` and `npm run build`, the same commands as by hand,
+  on a clean Linux machine (`.github/workflows/checks.yml`). A red cross on a
+  commit is one of them failing. **No pre-commit hook**: `verify` takes about
+  8 seconds, and a hook would charge them to every commit, data commits
+  included, to catch what the push catches a minute later. **No CD**: there is
+  nothing to deploy to. The tool runs where the GM starts it.
+- **Node 26, pinned** in `.nvmrc`, which the checks read, and in `engines`.
+  Nothing recorded a version before, and the machine the tool was built on runs
+  Node 25, which had its last release in March 2026. 26 became the long-term
+  release on 28 October 2026 and is supported until April 2029.
+- **The dependency fixes that need no major version are in** (`npm audit fix`:
+  brace-expansion, source-map-js, fast-uri, vite 6.4.5), which takes the known
+  vulnerabilities from 10 to 7. The 7 left need major upgrades. Six come from
+  vitest 2, through the old vite, esbuild and tinypool it pulls in; one is
+  zod 3, the only one in code that runs. The host serves the home network and
+  nothing else, so none of them is urgent.
+- **Dependabot** opens one pull request a week with the minor and patch updates
+  (`.github/dependabot.yml`), and the checks run on it. Major versions are not
+  asked for, because each one is an upgrade to plan rather than a merge to
+  click; three.js counts as major on every release, since below 1.0 its minor
+  versions are the ones that change things. Outstanding, each its own change:
+  zod 3 → 4 (every schema in `protocol`), vitest 2 → 4 (clears the six),
+  vite 6 → 8 with its React plugin 4 → 6, TypeScript 5 → 7, ESLint 9 → 10,
+  dependency-cruiser 16 → 17, and three.js 0.169 → 0.186.
+- **A README at the root**: what the tool is, how to run it, where the world is
+  kept, how to check a change, and the docs in reading order. The package
+  READMEs (R-21) are unchanged.
+- **One author name, rewritten before the first push.** Every commit had the
+  personal email but another account's name; all of them now say `nicoste`,
+  so every commit id changed. Nothing in the docs quoted one.
+
+Open, and the GM's to decide: a license (with none, the code can be read but
+not reused, which leaves no room for the community mods D-375 hoped for),
+whether `data/` stays public, and the protection on `main`.

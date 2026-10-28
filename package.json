@@ -2,6 +2,9 @@
   "name": "table-top-scenarios",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=26"
+  },
   "type": "module",
   "description": "On-site 3D tabletop tool: GM console + table display over a LAN.",
   "workspaces": [

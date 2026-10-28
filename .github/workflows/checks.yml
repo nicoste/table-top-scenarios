@@ -1,0 +1,31 @@
+# The checks a commit has to pass, run by GitHub on every push to main and
+# every pull request (D-378). The same two commands as by hand: a red cross on
+# a commit means one of them failed, and the run's log says which.
+name: Checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# A newer push makes the run for the one before it moot.
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run verify
+      - run: npm run build
