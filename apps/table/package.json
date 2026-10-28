@@ -12,8 +12,8 @@
     "@tt/protocol": "*",
     "@tt/render": "*",
     "@tt/ui": "*",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
   },
   "scripts": {
     "build": "vite build",
