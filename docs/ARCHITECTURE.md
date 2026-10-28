@@ -94,8 +94,8 @@ packages/
   persistence/   campaign & save stores, serialisation, schema migration
   render/        three.js: turns domain data into meshes
   ui/            presentational primitives. knows no domain
-  client-core/   what both browser apps need: net, snapshot store, view stack,
-                 and the snapshot -> render bridge. Role-neutral by rule.
+  client-core/   what both browser apps need: net, the tools' local logic, and
+                 the handoff to the Stage. Role-neutral by rule.
 ```
 
 ### The dependency graph is the architecture
@@ -132,7 +132,9 @@ Consequences worth stating out loud, because they are the point:
 
 ### Enforcement — the teeth
 
-Rules that aren't checked are decoration. All three run in CI and on pre-commit:
+Rules that aren't checked are decoration. All three run by hand with
+`npm run verify` for now. CI and a pre-commit hook wait until the repository is
+pushed to a remote, and CI/CD comes then (D-375):
 
 1. **`dependency-cruiser`** — *the authority on the graph.* `npm run arch`. The
    rules are generated from the same graph object above, are repo-root aware, and
@@ -173,9 +175,11 @@ from `geometry`, both fail.
 This is the most important structural decision in the project.
 
 > **R-8.** A **campaign** holds authored content. A **save** holds play state and
-> references its campaign by id *and* schema version. They are never mixed in one
-> file. Saving a session must not fork the world; editing the world must not
-> corrupt old saves.
+> references its campaign by id. They are never mixed in one file. Saving a
+> session must not fork the world; editing the world must not corrupt old saves.
+>
+> ~~…by id *and* schema version.~~ Amended by D-377: the save wrote the
+> campaign's version and nothing ever read it.
 
 ```ts
 // ---- authored: changes when the GM builds ----
@@ -186,7 +190,8 @@ Campaign {
   world: World
   party: PartyMember[]                             // definitions, not placements
   places: Place[]                                      // flat, not per chunk (R-118)
-  points of interest: Map<EncounterId, EncounterMap>
+  // No maps here: each point of interest's one map is a file of its own,
+  // pois/<poiId>.json, read when the map is opened (R-60).
 }
 
 // A party member is a *template*. The GM edits them once per campaign and
@@ -199,8 +204,8 @@ PartyMember {
 }
 
 World {
-  chunkBounds: { x: number; z: number }            // default 20 x 20
-  cellScale: { metresPerCell: number }             // feeds travel
+  bounds: { x: number; z: number }                 // in chunks; default 30 x 30 (R-105)
+  metresPerCell: number                            // default 600; feeds travel (R-103)
   chunks: SparseMap<ChunkCoord, Chunk>             // sparse: absent = unauthored
 }
 
@@ -208,13 +213,14 @@ Chunk  { coord: ChunkCoord; columns: ColumnGrid /* 30x30 */ }
 Column {
   height: number                 // in levels; 0 = sea level
   ground: SwatchId               // the materials registry; carries the difficulty
+  cover?: CoverId                // what grows on it (D-280); absent = bare
   difficulty?: Difficulty        // per-cell override; absent = the ground's own
 }
 
 Place {                          // one cell of the world map
   id: PlaceId
   name: string
-  cell: CellXZ                   // exactly one cell (R-50). Footprint: see O-014.
+  cell: CellXZ                   // exactly one cell (R-50); no footprint (D-319)
   markerId: MarkerId             // cosmetic only (R-85)
   pois: Poi[]                    // ORDERED, GM sorts. What is *inside* the place.
   notes: PlaceNote[]             // ORDERED, GM sorts. See R-86.
@@ -243,8 +249,7 @@ EncounterMap {
 Save {
   id: SaveId
   campaignId: CampaignId
-  campaignSchemaVersion: number
-  label: string
+  schemaVersion: number                              // this save's own format
   savedAt: string
   placement: Placement                               // the world's pawns (D-155)
   inside:    { placeId; poiId } | null               // the map the party is in (R-158)
@@ -252,14 +257,21 @@ Save {
   tokens:    Map<PoiId, Map<MemberId, BlockCoord>>   // where they stand, per map (R-184)
   explored:  Map<PoiId, Set<cube>>                   // the space they have seen, per map (R-45)
   lighting:  Lighting                                // the hour (R-181)
+  travelling: { land; water; air }                   // what the party travels by (R-200)
+  silver:    Map<PoiId, SilverTokens>                // everyone who is not the party, per map (R-206)
+  order:     Map<PoiId, StageOrder>                  // the number the GM gave each token (R-208)
+  memberNotes: Map<MemberId, string>                 // the GM's note on a member, across maps (D-315)
+  opened:    Map<PoiId, Set<PropId>>                 // doors open, lights out (R-140, D-335)
+  carried:   Map<MemberId, { flame; reach }>         // the light a member carries (D-335)
+  areas:     Map<PoiId, Area[]>                      // what the GM has marked out (D-341)
   discovery: { chunks: Set<ChunkCoord>; places: Set<PlaceId> }
 }
 
 // A token, as built: a party member standing in one cube of a map (R-184).
 // Not a record of its own — the member is the campaign's (R-91) and the cube
-// is the save's. Silver tokens, everything that is not the party, are a later
-// round (D-255), and the sketch they were drawn in once — a side, a name, a
-// label switch, GM notes (O-015), a miniature — waits for it. What the party
+// is the save's. Silver tokens, everything that is not the party, are built
+// (R-206): a side, a name, a label switch, a GM note (O-015), a picture —
+// the Tokens Library holds the templates they are made from. What the party
 // has seen of each map sits beside `tokens` and `ranges`, as R-45's Explored
 // set (D-273).
 //
@@ -267,18 +279,21 @@ Save {
 // asked for one and moving a figure is off-tool (R-1).
 ```
 
-> **R-9.** The GM is always in either **Build mode** or **Play mode**.
+> ~~**R-9.** The GM is always in either **Build mode** or **Play mode**.
 > Build-mode edits write to the **campaign**. Play-mode edits write a sparse
 > **overlay** stored in the save. Loading a session is `campaign + overlay`.
 >
 > This is what makes the fake-wall case work: the GM removes a wall mid-session,
 > the party sees it gone, and running the same dungeon for another group starts
 > with the wall intact. An overlay entry referencing a cell the campaign no
-> longer has is ignored, not an error.
+> longer has is ignored, not an error.~~
+> Retired by D-375: there are no modes. Every edit writes the campaign and
+> reaches the table at once, so the GM builds and unbuilds live. A wall taken
+> away by mistake or for a scene is put back by hand. The overlay was never built.
 
 ### Ids are branded and stable
 
-> **R-10.** Every id is a branded string type (`type PlaceId = string & {__poi:true}`).
+> **R-10.** Every id is a branded string type (`type PlaceId = string & {__place:true}`).
 > Never a raw `string`, never a number, never an array index.
 
 > **R-11.** Registries are addressed by **stable string id** and are
@@ -322,6 +337,11 @@ Two cell sizes, both explicit, both stored on the campaign rather than hardcoded
 > of the 5e DMG's *province scale* of one mile per hex — the finest scale any
 > published map uses — and it is exactly **1000×** the encounter cell, so the
 > two scales relate by a round factor.~~ Superseded by D-373.
+>
+> **Amended by D-375.** The cell size is a per-campaign value that lives in
+> the campaign's files (`world.json`). Changing it in the app is out of plan:
+> there is no intent and no UI for it. Rule sets with other scales — D&D,
+> Pathfinder — may come later as mods made by other people, not from this project.
 
 > **R-104.** **One scale for x, y and z** (D-373). A level is **a quarter of a
 > cell** (`LEVEL_HEIGHT`): the world is drawn at it and the route climbs at it,
@@ -341,6 +361,10 @@ Two cell sizes, both explicit, both stored on the campaign rather than hardcoded
 > stay sane — not because any particular bound is a rule. Anything derived from it, such as where
 > a new campaign's first chunk goes, is **computed from the bounds** rather than
 > hardcoded.
+>
+> **Amended by D-375.** Like the cell size (R-103), the bounds are set in the
+> campaign's files, not in the app. Changing them there is out of plan: no
+> intent, no UI.
 
 > **R-25.** Encounter maps have **no hard maximum**. Storage is sparse, so cost
 > tracks filled voxels, not the bounding volume. The budget that actually matters
@@ -352,20 +376,23 @@ Two cell sizes, both explicit, both stored on the campaign rather than hardcoded
 > tall volume. A level is 5–10 cells tall; 200 cells is a 300 m tower. This keeps
 > fog cheap and the editor sane.
 
-> **R-27.** All body and eye heights are expressed in **metres**, and clearance is
+> ~~**R-27.** All body and eye heights are expressed in **metres**, and clearance is
 > derived as `ceil(height / cellSize)`. Never store heights in cells — that
-> silently couples the posture model to one cell size.
+> silently couples the posture model to one cell size.~~
+> Retired by D-035: there is no posture model, so there are no body or eye heights.
 
 ---
 
 ## 6. Addressing and navigation
 
-> **R-13.** Every view is identified by a `MapRef`. Navigation is a stack of them.
+> **R-13.** Every view is the world or one point of interest's map. As built
+> there is no `MapRef` type and no stack: the console holds `openMap`, which is
+> `null` for the world, or `{ placeId, poiId }` for a map (D-178, D-187), and
+> the party's own place is the save's `inside` (R-158).
 
 ```ts
-type MapRef =
-  | { kind: 'world' }
-  | { kind: 'point of interest'; poiId: PlaceId; encounterId: EncounterId }
+// openMap, in the console
+type OpenMap = { placeId: string; poiId: string } | null
 ```
 
 > **R-13a.** There are **two scales, not three.** The world is a single continuous
@@ -380,7 +407,7 @@ type MapRef =
 
 Back navigation, deep links and "where is the party" all fall out of this. The
 GM console and table display each hold their own stack — the GM may look at a
-chunk while the table shows an point of interest.
+chunk while the table shows a point of interest.
 
 > **R-14.** The GM may drive the table display's view, but the two stacks stay
 > independent. The GM previewing a map must never change what the table shows
@@ -399,10 +426,10 @@ stepped angle.** No first-person camera, no per-token view, ever.
 > nothing here and costs legibility.
 
 > **R-30.** **One camera rig serves both scales.** World and point of interest differ only
-> in what is loaded and in the zoom and pan clamps. Entering an encounter map is a
-> `MapRef` change (R-13); moving around the world is plain camera work.
+> in what is loaded and in the zoom and pan clamps. Entering an encounter map is an
+> `openMap` change (R-13); moving around the world is plain camera work.
 
-> **R-31.** Yaw is stepped (R-31a); pitch steps through a fixed set,
+> **R-31.** Yaw is stepped: four positions, 90° apart, all diagonal (D-092); pitch steps through a fixed set,
 > **30/35/40/45/55/65/75°** — finely spaced around 45, the classic isometric
 > angle where most work happens, then coarser as the view goes overhead, where a
 > survey matters more than nuance. It stops at 75 because at 90 the camera sits
@@ -420,11 +447,15 @@ stepped angle.** No first-person camera, no per-token view, ever.
 
 In a god view, geometry between the camera and the party must fade or the party
 is invisible indoors. That is a spatial question, so it lives with the spatial code.
+*Not built, and no longer planned (D-375): tokens and props show through what
+stands in front of them by dithering (D-368, R-216), and the walls do not fade.*
 
-> **R-33.** "Which voxels lie between the camera and these tokens?" is a pure
+> ~~**R-33.** "Which voxels lie between the camera and these tokens?" is a pure
 > function in `geometry` (segment versus voxel set, with a radius). `render`
 > consumes the answer and applies a fade material. `render` must not compute it,
-> and the camera must not know it happened.
+> and the camera must not know it happened.~~
+> Retired by D-375: the see-through dithering of tokens and props (D-368) is
+> enough, and the walls do not fade.
 
 ### Depth legibility
 
@@ -442,14 +473,18 @@ cube and a short far cube can land on the same pixels. These are not polish.
 > with nothing under it, left floating by a trapdoor (R-186). It drops to the
 > first block below, or to bedrock.
 
-> **R-35.** Encounter maps support a **view-height clamp**: render only up to
+> ~~**R-35.** Encounter maps support a **view-height clamp**: render only up to
 > level *N*. Without it a roofed or multi-level map cannot be seen into at all.
 > The clamp is a view setting, never game state, and never affects visibility
-> (R-15) — clamping the camera must not reveal anything.
+> (R-15) — clamping the camera must not reveal anything.~~ Superseded by D-180:
+> the cutting planes and the two-sided range (R-146).
 
-> **R-36.** Picking resolves to the **frontmost non-faded surface**. Faded
-> geometry (R-33) is not pickable, which is what makes clicking a token through a
-> wall work.
+> **R-36.** Picking resolves to the **frontmost non-faded surface**. What shows
+> through (the dithering of D-368) is drawn, not pickable, which is what makes
+> clicking a token through a wall work.
+>
+> ~~Faded geometry (R-33) is not pickable.~~ R-33 is retired by D-375; no
+> geometry fades.
 
 > **R-36a.** **Picking must never depend on a frame having been drawn.** Anything
 > that positions the camera for rendering also has to run before a raycast, from
@@ -481,8 +516,8 @@ cube and a short far cube can land on the same pixels. These are not polish.
 > - **Never picked** (R-36): what shows through is drawn, not hit.
 >
 > Nothing is faded and nothing is asked of `geometry`: this is the stage
-> drawing a thing twice, and R-33 — the walls themselves fading — is still
-> unbuilt.
+> drawing a thing twice. The walls themselves never fade: R-33 is retired
+> (D-375).
 
 ### Rendering strategy
 
@@ -550,8 +585,8 @@ cube and a short far cube can land on the same pixels. These are not polish.
 > and never surfaced in the UI.
 >
 > Originally worded as "a place's encounter maps" against a 200 m cell — both
-> stale: the cell became 1.5 km in D-098, and maps moved down to points of
-> interest in D-176/D-178.
+> stale: the cell became 1.5 km in D-098 and 600 m in D-373, and maps moved
+> down to points of interest in D-176/D-178.
 
 ---
 
@@ -657,6 +692,8 @@ cube and a short far cube can land on the same pixels. These are not polish.
 > Notes with `visibleToParty: false` are **stripped by `viewFor`** (R-19) and never
 > reach the table display. This is the same trust boundary as hidden tokens: a
 > secret the players must not read is not transmitted, not merely not rendered.
+> The rule is one function, `partyVisible` in `domain`, which `viewFor` applies
+> to notes and points of interest alike (D-377).
 
 > **R-86.** Interaction differs by app, which is the point of having two:
 >
@@ -701,7 +738,7 @@ cube and a short far cube can land on the same pixels. These are not polish.
 > place is moved off, they stay on that cell — the GM is fixing the map, not
 > moving them, and authored edits do not move play state (R-140). And a
 > revealed place moved into an Unknown chunk leaves the table, because a place
-> is shown only where the party knows the ground (D-132). That is discovery
+> is shown only where the party knows the ground (R-16, R-16a). That is discovery
 > working, not a bug.
 >
 > **Moving does not return to `select`.** Placing a new place does (R-87a) —
@@ -761,6 +798,7 @@ most time in, so it gets specified rather than improvised.
 > |---|---|---|
 > | **Select** | a place; otherwise the cell's **chunk** | pawns |
 > | **Paint** | the cell | places, pawns |
+> | **Cover** | the cell | places, pawns; covers are not pickable (R-193) |
 > | **Height** | the cell | places, pawns |
 > | **Places** | an **empty** cell | places, pawns; a taken cell is dropped |
 > | **Travel** | a pawn, then a cell while aiming | places |
@@ -777,7 +815,7 @@ most time in, so it gets specified rather than improvised.
 > has moved on from. Note the rule is about *ownership*, not the transition:
 > placing a place switches to Select and pre-selects the new one (D-127), and that
 > has to survive. A test ties `holdsSelection` to what `clickAction` can actually
-> select, so a sixth tool cannot update one without the other.
+> select, so a new tool cannot update one without the other.
 >
 > A Places click on a taken cell is **dropped, not dispatched**: one place per cell
 > (R-119) is a rule, not a mistake, and it does not deserve a red toast. The hover
@@ -917,7 +955,7 @@ category (R-1), and squarely in scope.
 >
 > **No caps.** Nothing is forbidden for being steep; the cost says no. Four
 > levels up onto a neighbour — a 45° face — is 33 times a flat cell on foot,
-> and the full thirty is past any number worth quoting, so a party may climb
+> and the full sixty is past any number worth quoting, so a party may climb
 > or descend anything they like if they genuinely mean to pay for it.
 >
 > **Down is cheaper than up, and it falls out rather than being a rule.**
@@ -945,15 +983,16 @@ category (R-1), and squarely in scope.
 > the angle in the fiction.
 
 > **R-53.** The route is **weighted shortest path** over chunk columns, 8-way with
-> `√2` diagonal cost. Generic weighted pathfinding lives in `geometry`; paces,
-> difficulty semantics and the time formula live in `domain`. Nothing fancy: a
+> `√2` diagonal cost. As built it all lives in `domain` (`route/`), not in
+> `geometry`, which holds sight only: paces, difficulty semantics, the search
+> and the time formula. Nothing fancy: a
 > default 30×30 chunk world of 30×30 cells each is 900² = **810k nodes**, which
 > Dijkstra handles in well under a second — and routes only cross `Known` chunks
 > (R-55), so the reachable graph is almost always a small fraction of that.
 
 > **R-54.** The calculator reports **total distance**, takes a **pace** from an
-> append-only registry (`pace:walk`, `pace:forced-march`, `pace:horse`,
-> `pace:ship`, …) per R-13, and reports **time**:
+> append-only registry (`travel:foot`, `travel:forced`, `travel:horse`,
+> `travel:ship`, …) per R-13, and reports **time**:
 >
 > ```
 > effectiveDistance = Σ (cellDistance × difficulty)
@@ -1204,7 +1243,8 @@ debug eye view (R-48) from looking absurd.
 >
 > **The eye view is rejected** (D-276): *"not now nor never."* **The ray
 > overlay is not built either** (D-279): it comes when testing turns up fog that
-> cannot be explained without seeing the rays.
+> cannot be explained without seeing the rays. **To define** (D-375): a wish
+> nobody is building.
 
 ### Retired
 
@@ -1231,8 +1271,8 @@ D-035. Numbers are not reused; decisions cite them.
 > change does not survive contact with a real map:
 >
 > - **Geometry** — voxels — is sent once when a map is opened, then only as
->   **deltas** for individual edits (R-9).
-> - **Play state** — tokens, fog, discovery, overlay — is small and is sent
+>   **deltas** for individual edits.
+> - **Play state** — tokens, fog, discovery — is small and is sent
 >   **whole** on every change.
 >
 > The reason is not bandwidth; on a LAN that is free. It is that resending
@@ -1268,8 +1308,9 @@ D-035. Numbers are not reused; decisions cite them.
 > roster starting with one member named "player" (R-91).
 
 > **R-93.** The GM console **always displays the address players should connect
-> to**, floating in a screen corner. The host knows its own LAN addresses; not
-> surfacing them would mean the GM reads them off a terminal.
+> to**, floating in a screen corner, with a button to copy it. The host knows its
+> own LAN addresses; not surfacing them would mean the GM reads them off a
+> terminal.
 
 ### The players' path
 
@@ -1277,9 +1318,14 @@ D-035. Numbers are not reused; decisions cite them.
 > player opens `http://<gm-ip>:8080/table` and is in; there is no address field,
 > because reaching the page already required knowing the address.
 >
-> The GM console shows that full URL (R-93) alongside a **QR code**, so a player
-> can scan it off the GM's screen. The table display has no campaign list — the GM
-> chooses the campaign and the table follows.
+> The GM console shows that full URL (R-93), to **copy and paste** to the
+> players. The table display has no campaign list — the GM chooses the campaign
+> and the table follows.
+>
+> ~~The GM console shows that full URL (R-93) alongside a **QR code**, so a player
+> can scan it off the GM's screen.~~ Superseded by D-375: no QR code. Sharing
+> the address by copy and paste is better, and the table runs on monitors, not
+> phones.
 
 ---
 
@@ -1322,7 +1368,7 @@ D-035. Numbers are not reused; decisions cite them.
 >
 > The packed body still lives in a JSON file beside its own origin, size and
 > plane names, so a map remains something you can open and read. Only the cubes
-> are numbers. Saves are small either way (tokens, flags, overlay) so they stay
+> are numbers. Saves are small either way (tokens, flags) so they stay
 > plain JSON.
 
 > **R-60.** A campaign is a **directory, not a file**:
@@ -1332,7 +1378,7 @@ D-035. Numbers are not reused; decisions cite them.
 >   campaign.json     manifest: name, party, places and their points of interest
 >   world.json        chunk grid, terrain
 >   pois/<id>.json    one map: origin, size, plane names, packed body (R-59)
-> saves/<id>.json     play state: tokens, discovery, fog, overlay
+> saves/<id>.json     play state: tokens, discovery, fog
 > ```
 >
 > This is what makes editing one dungeon level rewrite one file instead of the
@@ -1355,7 +1401,8 @@ D-035. Numbers are not reused; decisions cite them.
 
 > **R-61.** Every persisted file carries a `schemaVersion`. Migrations are
 > forward-only, live in `persistence`, and are tested against fixtures of older
-> versions. A save also records the campaign version it was made against (R-8).
+> versions. ~~A save also records the campaign version it was made against
+> (R-8).~~ Amended by D-377: written, never read, and gone.
 
 > **R-61a.** A stored grid records the **stride it was written with**, never
 > relying on the current `CHUNK_SIZE`. Decode re-lays it into whatever the
@@ -1417,18 +1464,19 @@ them; this section is the definition.
 > all — which is the whole reason the boundary is worth defending.
 
 > **R-98.** The host owns every side effect and supplies `sim` with what it needs
-> through four ports:
+> through ports:
 >
 > ```ts
 > interface CampaignStore { list(): CampaignSummary[]; load(id): Campaign; save(c): void }
 > interface SaveStore     { list(campaignId): SaveSummary[]; load(id): Save; save(s): void }
-> interface Clock         { now(): number }
-> interface Broadcast     { send(role: Role, message: OutboundMessage): void }
+> interface Clock         { nowIso(): string }
 > ```
 >
 > Ports are declared where they are *used* (in `apps/host`), not where they are
-> implemented. `persistence` implements two of them and knows nothing about the
-> other two.
+> implemented. `persistence` implements the two stores and knows nothing about
+> the clock. There is no `Broadcast` port: sending to a role is a closure inside
+> the transport (`apps/host/src/transport`), which is the one place that holds
+> the sockets.
 
 ### Flow
 
@@ -1500,28 +1548,41 @@ apps/gm/
   index.html
   vite.config.ts
   src/
-    main.ts             the composition root: the ONLY place things are wired
-    shell/              layout, top bar, panel docking
+    main.tsx            the composition root: the ONLY place things are wired
+    shell/              App, layout, top bar, panel docking
     features/
-      build-world/      height & colour brushes, palette, difficulty painting
-      build-point of interest/  voxel stamping, material palette
-      place/              place inspector, its point of interest-map list
-      travel/           route, pace picker, distance & time
-      tokens/           placement, movement, names, notes
-      session/          campaign picker, save/load, build vs play mode
-      debug/            ray overlay and eye view (R-48). GM-only by construction.
-    scene/              GM-only scene overlays: build cursor, debug ray lines
+      launcher/         the opening screen: campaign list, create (R-92)
+      connect/          the address players connect to, to copy (R-93)
+      build-world/      the world's tools: paint, cover, height (R-88, R-89, R-193)
+      swatches/         the material palette, one panel in two places (R-176)
+      place/            the Places tool, the place inspector, its POI list
+      party/            the roster and where the party stands (R-91)
+      visibility/       what the party knows: chunks and places (R-16)
+      travel/           what the party travels by, route, days (R-199, R-200)
+      map/              the dock while an encounter map is open (R-148)
+      levels/           the level ladder: cutting planes and the band (R-146)
+      props/            the Props catalogue (D-322, D-328)
+      prefabs/          the Prefabs library: capture and place (D-321)
+      library/          the Tokens Library and the Spawn tool (D-307)
+      on-stage/         everyone on stage in this map, numbered (R-208)
+      carried/          a light somebody carries (D-335)
+      note/             a GM-only note under a row (R-208, D-315)
+      picture-crop/     which part of a picture goes on a card (R-205)
+      light/            the hour and the lights (R-181)
+      measure/          the Measure tool: rulers and areas (D-341)
 
 apps/table/
   src/
-    main.ts
+    main.tsx
     shell/
     features/
-      navigate/         view stack, place selection
-      tokens/           moving party tokens
-      travel/           read-only route and estimate
-    scene/
+      place/            what the party knows about a place; read-only (D-174)
+      tools/            the table's Play and Measure tools in a map (D-344)
 ```
+
+The handoff from React to the Stage, and the cost overlay that measures it, are
+one copy in `client-core` (`scene/`: `useStage`, `useCost`), not one per app
+(D-377).
 
 > **R-63.** Features do not import each other. If two need the same thing, it
 > moves down into `client-core` or `ui`. This is the rule that stops the feature
@@ -1849,10 +1910,11 @@ apps/host/src/
 > freely while a **ghost** renders at the hovered cell, then confirm or cancel.
 >
 > The pending move is **client view state** (R-64) and does not reach the host
-> until it is confirmed. That is deliberate: it is the extension point. Pathfinding
-> preview draws into the aim step, and the travel menu — transport, pace, days,
-> confirm/cancel — replaces the confirm step, without either one restructuring the
-> flow or adding a protocol round-trip per pointer move.
+> until it is confirmed. That is deliberate: it was the extension point, and both
+> extensions are built (R-197, R-199). The pathfinding preview draws into the aim
+> step, and the travel menu — transport, pace, days, confirm/cancel — replaces
+> the confirm step, without either one restructuring the flow or adding a
+> protocol round-trip per pointer move.
 >
 > One sequence covers every move, including the party's first appearance on the
 > map. There is no separate placement gesture.
@@ -1870,11 +1932,11 @@ apps/host/src/
 > hand. A GM who wants a particular route expresses it as **shorter trips** to
 > waypoints they choose; anything longer is the pathfinder's job.
 >
-> When the pathfinder lands it must be **constrained to Known cells**, or it will
-> happily route the party through unexplored ground and quietly defeat R-131.
+> The pathfinder (R-197) is **constrained to Known cells**, or it would happily
+> route the party through unexplored ground and quietly defeat R-131.
 
-> **R-134.** Travel is a **tool on the GM console** (the fifth, alongside select,
-> paint, height, places). On the **table display** party pawns are directly
+> **R-134.** Travel is a **tool on the GM console** (the last of the six world
+> tools: select, paint, cover, height, places, travel). On the **table display** party pawns are directly
 > interactive with no tool to select, because there is nothing else there to click.
 > Same three-step sequence, different way in.
 >
@@ -1909,11 +1971,11 @@ apps/host/src/
 > R-131 is not an instance of this rule. The party cannot enter an Unknown chunk
 > because it has not been there — the GM cannot do it either.
 
-> **R-135.** `visionRange` is **not shown on the world map**. It is an point of interest
-> quantity — R-46a pins it to 12 cells at the encounter cell, which on a 600 m
-> world cell would read as 7 km — and showing it beside a world position invites
-> exactly the wrong inference. It stays in the model, unrendered, until points of interest
-> exist.
+> **R-135.** `visionRange` is **not shown on the world map**. It is a point of
+> interest quantity — R-46a pins it to 12 cells at the encounter cell, which on a
+> 600 m world cell would read as 7 km — and showing it beside a world position
+> invites exactly the wrong inference. It is shown in maps (the on-stage list
+> edits it, R-208) and never on the world.
 
 > **R-137.** A stored record **read** under an older schema is tolerated; a
 > stored record **written** always carries the current schema version.
@@ -2020,13 +2082,14 @@ apps/host/src/
 > rename a place or delete it, and the cheapest guarantee of that is a component
 > with nothing to send it through.
 
-> **R-143.** An **point of interest is a record, not an id**. `Place.points of interest` holds
+> **R-143.** A **point of interest is a record, not an id**. `Place.pois` holds
 > `{ id, name, visibleToParty }` in the GM's order, and each entry is stripped at
 > the boundary exactly as a note is (R-85) — an unrevealed point of interest's *name* is
 > a spoiler, so it never leaves the host.
 >
-> A record rather than a bare string because the point of interest **map** attaches here
-> later (R-49, O-009): a name in a list can grow a grid, an id in an array cannot.
+> A record rather than a bare string because the point of interest's **map**
+> attaches here (R-49, R-145): a name in a list can grow a grid, an id in an
+> array cannot. O-009, what a map is vertically, was closed by D-319.
 >
 > Notes and points of interest are the same shape on purpose. The one genuinely fiddly
 > part — reordering, with its index clamping and splice — is `moveWithin`, shared
@@ -2069,9 +2132,17 @@ apps/host/src/
 >   manifest parses cleanly into a campaign with no places at all: silent loss
 >   wearing the face of success.
 >
-> `load()` returns `null` rather than throwing for anything unreadable. It runs
-> inside an intent, and a store that throws takes the message handler with it;
-> null becomes a reason the GM can read (R-18).
+> `load()` returns `null` rather than throwing for anything unreadable — a file
+> that is not JSON included, and a map body among them, since a campaign missing
+> one map would open looking whole. It runs inside an intent; null becomes a
+> reason the GM can read (R-18). A save that cannot be read is **moved aside**
+> (`.unreadable-<time>`), not left to be overwritten by the fresh one that takes
+> its place (D-376).
+>
+> And whatever does throw — a newer version, a full disk — is caught by the
+> host, never thrown at it: a failed read refuses the intent, and a failed write
+> keeps the change on screen, tells the GM it is not on disk, and is caught up
+> by the next write (D-376).
 
 ---
 
@@ -2129,10 +2200,10 @@ apps/host/src/
 > where a block goes is a different question with a different answer.
 
 > **R-148.** **The toolset belongs to the surface, not to the app.** World tools
-> (paint terrain, height, places, travel) have no meaning inside a map, and map
-> tools have none outside it. Entering a map swaps the palette rather than growing
-> it — otherwise every new surface adds permanently to a list that is already five
-> long.
+> (select, paint, cover, height, places, travel) have no meaning inside a map, and
+> map tools have none outside it. Entering a map swaps the palette rather than
+> growing it — otherwise every new surface adds permanently to a list that is
+> already six long.
 
 > **R-149.** A new map starts as a **flat floor at Y0**, one material thick,
 > across its starting patch. Same reason a new chunk is created flat at height 0
@@ -2283,7 +2354,9 @@ apps/host/src/
 > - **A library shared by every campaign**, beside them in `data/prefabs/`, a
 >   file each, packed as a map is (D-217). Named and tagged, searched as the
 >   Tokens Library is. Not under undo; removing one moves its file aside
->   (D-108). Never sent to the table.
+>   (D-108). Never sent to the table. **No picture and no starter prefabs**
+>   (D-375): the GM learns what is in the library by naming and tagging, or by
+>   placing one to see it.
 > - **Placed against the face pointed at**, its footprint centred there, turned
 >   with **Z / X** and mirrored with **M**. **Its blocks win and its air leaves
 >   the map alone**; *clear box* empties the whole box first. What would fall
@@ -2349,7 +2422,7 @@ apps/host/src/
 > - **Backspace removes the prop selected** (D-330), or Delete where there is
 >   one; the Remove button does the same, and one undo brings it back.
 > - **The GM's, every part of it.** In play a door opens and shuts with a
->   **Move** click; never from the table (D-328). A door is not shut on
+>   **Play** click; never from the table (D-328). A door is not shut on
 >   somebody in the doorway.
 > - **No secrets** (D-328). The table is sent a prop once a cube of it, or one
 >   beside it, has been seen — cut with the band like the blocks — and which
@@ -2378,7 +2451,7 @@ apps/host/src/
 >   unless the GM sets its own (1 to 20), which is building, under undo.
 > - **A light is placed lit, and its other state is out**, as a door's is
 >   open: the save's `opened` is *which props are not as they were placed*.
->   A **Move** click puts one out or lights it, the GM's alone (D-328), over
+>   A **Play** click puts one out or lights it, the GM's alone (D-328), over
 >   anybody standing there.
 > - **Anybody on stage may carry one** — a party member or a silver token —
 >   given from the flame by their row in On stage, with a reach and a flame.
@@ -2449,7 +2522,7 @@ apps/host/src/
 >   of the levels that are.
 > - **The players draw areas too** (D-322, D-344): inside a map the table
 >   has the console's layout in small (D-346) — a **Tool** card on the left
->   with Move and Measure, and with Measure in hand a **Measure** card on the
+>   with Play and Measure, and with Measure in hand a **Measure** card on the
 >   right with the ruler and the four shapes, in the console's order. The table may
 >   do with **its own** areas what the GM does with any (D-347) — draw, move,
 >   rename, recolour, resize, have one of the party carry it, take it away —
@@ -2748,8 +2821,8 @@ apps/host/src/
 
 > **R-162.** **Two tools, two modifiers, and a brush.**
 >
-> **Amended by D-258:** a third tool, **Move**, stands the party somewhere
-> (R-188). It is not about matter, so nothing below changes — the two tools for
+> **Amended by D-258:** a third tool, **Play** (`move` in the code, D-354), stands
+> the party somewhere (R-188). It is not about matter, so nothing below changes — the two tools for
 > matter are still these two.
 >
 > A map's toolset is **Build** and **Paint** — add or remove matter, and change
@@ -2776,7 +2849,7 @@ apps/host/src/
 > centre cube is always covered" is arithmetic and an even brush is not in the
 > list to be chosen. The world's terrain brush counts *cells* and puts size 2
 > off-centre, so these are deliberately different things that share their keys
-> (`[` `]`, and 6 onward) and nothing else.
+> (`[` `]`, and 8 onward) and nothing else.
 >
 > It was a radius while every brush was a flat square, which lasted exactly as
 > long as that was true: a column is not a radius. A registry is the shape
@@ -3017,8 +3090,9 @@ apps/host/src/
 > **not** multiplied — a GM who writes a number on a cell has said what
 > crossing it costs, and a road through a wood is the case.
 >
-> **One cover per cell** to begin with. A density — light scrub through to
-> dense jungle — is a later question and a second field when it comes.
+> **One cover per cell, and no density.** A density — light scrub through to
+> dense jungle — was closed rather than deferred (D-286): a cover's cost is the
+> axis, and the look is free once the cost is paid.
 >
 > **Absent means bare**, and most cells are. The wire says nothing at all about
 > a chunk with nothing growing on it, which is also what every chunk written
@@ -3095,9 +3169,9 @@ apps/host/src/
 > seen off the shape of the line drawn across it.
 >
 > **The step cost is R-52a's, and nothing else is:**
-> `baseDistance × difficulty(target) + slopeFactor × |Δheight|`, with the
-> diagonal costing √2. The absolute height difference, so a descent is charged
-> like a climb.
+> `span × difficulty(target) × climbFactor(mode, grade)`, with the span 1
+> across a side and √2 across a corner. Multiplied, not added, and the grade
+> signed, so a descent is cheaper than the same climb.
 >
 > **Eight ways out of a cell, and a diagonal may cross a corner** (D-294).
 > Four-way movement would report a diagonal journey **41% long** — 0.77 days
@@ -3193,7 +3267,8 @@ apps/host/src/
 >
 > **The transport is not on the wire.** It chooses the route and reports the
 > days; the intent is the same `moveParty` it always was. Nothing yet records
-> *how* a journey was made, and a travel log is where that would belong.
+> *how* a journey was made, and a travel log is where that would belong. A
+> travel log is **to define** (D-375): a wish nobody is building.
 
 > **R-200.** **A party travels by whatever it has, and the cell decides
 > which.**
@@ -3264,8 +3339,8 @@ apps/host/src/
 > (`allKnownIn`). The same graph, reached without being told anything new.
 >
 > **The days go wherever that screen can say them.** The console has the
-> journey menu (R-199); the table has one line of prompt and will not grow a
-> panel (R-94), so the length goes into the sentence: *"Move the party here —
+> journey menu (R-199); the table has one line of prompt and no journey
+> panel (R-134), so the length goes into the sentence: *"Move the party here —
 > 2.4 days?"*. Both screens now say it from the aim step onward, because the
 > moment it is worth knowing is the moment the pointer is over the
 > destination.
@@ -3354,7 +3429,7 @@ apps/host/src/
 > every cut that did not opt out, and the common case stays one number.
 >
 > **`impassable` is a value, not a large number.** A route plans around it
-> rather than paying for it, which is what makes an island need a boat (R-83a),
+> rather than paying for it, which is what makes an island need a boat (R-52b),
 > and what stops a party wading the ocean slowly.
 >
 > This is the rule the old terrain palette was standing in for. It held a
@@ -3805,8 +3880,8 @@ apps/host/src/
 >
 > Not a record of its own. The member is the campaign's definition (R-91) and
 > where they stand is play state (R-8): the world's pawns one surface down
-> (D-155). Silver tokens — everything that is not the party — are a later
-> round, deliberately (D-255).
+> (D-155). Silver tokens — everything that is not the party — came in a
+> later round (D-255): see R-206.
 >
 > **The cube is empty and the token stands on the block beneath it.** That is
 > what makes the thing vision is waiting for well defined: R-43 measures eye
@@ -3903,8 +3978,8 @@ apps/host/src/
 > it is a strip, and the plate still says where they stand.
 >
 > **No effects.** Ordinary lit materials, like the cubes around it. The card is
-> the member's colour in the scene's light; the picture that will one day be
-> on it waits for its own round (D-257).
+> the member's colour in the scene's light, with the member's picture laid on
+> it where they have one (R-204, built after D-257).
 >
 > **No token casts a shadow** (D-254): it turns whenever the camera does, so its
 > shadow would turn with the view. Moving one owes the screen a frame and owes
@@ -3918,8 +3993,8 @@ apps/host/src/
 > fade needed.
 
 > **R-204.** **A card may carry a picture.** Optional for the party — a card in
-> the member's colour is a finished card — and the same for everyone else when
-> the Tokens Library arrives, whose cards are **grey** without one (D-307).
+> the member's colour is a finished card — and the same for everyone else, from
+> the Tokens Library (R-206), whose cards are **grey** without one (D-307).
 >
 > **A picture is named by its content**: the SHA-256 of its bytes and its kind
 > (`<64 hex>.webp`). Stored once however often it is chosen, never able to
@@ -3945,7 +4020,7 @@ apps/host/src/
 >
 > **The table only learns a picture's name from a view**, and a view only
 > carries the cards it is sent. For the party that is always; for everyone
-> else it will be only while the party can see them (D-307).
+> else it is only while the party can see them (D-307).
 >
 > **Drawn in the scene's light**, like the coloured card (R-187), on both
 > screens and on both kinds of map (R-201). It shows the colour until the
@@ -3996,7 +4071,7 @@ apps/host/src/
 > - **One to a cube, gold or silver**, on a floor like the party (R-184). A
 >   brush keeps out of their cubes too (R-186).
 > - **The GM's alone** (R-136): placed with Spawn (map key 4, which stays in
->   hand), moved with Move, renamed, hidden and removed from the *On stage*
+>   hand), moved with Play, renamed, hidden and removed from the *On stage*
 >   list. On the table they are drawn and never picked.
 >
 > **What the table is sent — the trust boundary.** A silver token reaches the
@@ -4015,7 +4090,7 @@ apps/host/src/
 > library: each tool names the parts it brings (`worldToolShows`,
 > `mapToolShows`), and a tool that names nothing shows nothing (D-311).
 >
-> **Listed, never excluded.** A condition written as *every tool but Move*
+> **Listed, never excluded.** A condition written as *every tool but Play*
 > hands the next tool added a panel nobody chose for it — which is how Spawn
 > came to show a Material picker. The table is a `Record` over every tool, so
 > adding one is a compile error until somebody says what it shows.
@@ -4035,7 +4110,7 @@ apps/host/src/
 > when the campaign next opens. The table is not sent them.
 >
 > **The list is where each kind is handled.** A party member's name picks
-> them up with Move (R-188), and their sight is set beside it (R-46) — the
+> them up with Play (R-188), and their sight is set beside it (R-46) — the
 > party card keeps only what is about the whole party. A silver token is
 > renamed, hidden and removed here (R-206), and **its card opens a note**:
 > free text only the GM sees, *"wounded, fleeing"*, shown as a dim line under
@@ -4105,11 +4180,11 @@ apps/host/src/
 > either: the move it confirms is the same move, to a cube somebody could stand
 > in, and what it passes through and whether it can be made are the GM's.
 
-> **R-188.** **Move: pick a token, aim at a floor, confirm** — the world's
+> **R-188.** **Play: pick a token, aim at a floor, confirm** — the world's
 > travel sequence one surface down (R-132), on both screens.
 >
 > On the console it is the map's third tool (D-258). **It arms itself** when
-> somebody is waiting to be placed: with Move in hand and the party in this
+> somebody is waiting to be placed: with Play in hand and the party in this
 > map, the first unplaced member in roster order is held ready, and after each
 > confirm the next (D-167). Only the console arms — the first placement is the
 > GM's. The table picks up the party's tokens directly, with no tool, as it does

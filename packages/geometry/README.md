@@ -1,6 +1,11 @@
 # @tt/geometry
 
-**Owns.** Pure spatial math: the voxel grid, ray traversal, visibility, cover, movement graphs, pathfinding. Built so far: sight lines through a grid of cubes, and a dense grid to walk them through (`sight/`).
+**Owns.** Pure spatial math on a grid of cubes. What it exports today is sight:
+`lineIsClear` walks a straight line between two points through a set of blocks
+and says whether anything stops it, and `cubeGrid`, `cubeIndex` and `cubeAt` give
+a dense grid of cubes to index into (`sight/`). That is all of it. Cover and
+posture were retired (D-035); movement and route-finding live in `domain`
+(`route/`, `walk/`), not here.
 
 **Must never know about.** Anything about three.js, the network, the file system, or the domain nouns. Numbers in, numbers out.
 

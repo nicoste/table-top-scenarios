@@ -336,7 +336,10 @@ geometry on it, which is the pass doing its job.
 
 **The world map, zoomed in: 18.8 ms on 97,890 triangles**, against the
 church's 17.7 ms on 234,509. Same cost, a third of the geometry. This pass is
-priced in pixels.
+priced in pixels. *The world-map figure was measured before D-373 and D-374
+redrew mountains at under half their old height and raised the cap to 60; it
+has not been measured again, so treat it as a comparison against the old
+heights.*
 
 **And everything that is not occlusion costs 0.8–2.2 ms**, at every zoom, with
 a transparent sea of 7,239 water cubes in it. Transparency is free (D-239);

@@ -4,7 +4,8 @@ Append-only. Entries are never edited; a wrong decision is **superseded** by a
 later one so the reasoning survives. Rules in `ARCHITECTURE.md` cite these.
 
 Status: `agreed` · `proposed` (made unilaterally, awaiting confirmation) ·
-`open` (blocking, undecided) · `superseded by D-nnn`
+`open` (blocking, undecided) · `to define` (a wish nobody is building; not
+designed or scheduled) · `superseded by D-nnn`
 
 ---
 
@@ -75,7 +76,7 @@ fog, notes. **Open sub-question:** does the GM edit terrain *during* a live
 session, or only in a separate build mode? If mid-session editing matters, this
 needs a real answer, because it is the one case where the two stores blur.
 
-### D-010 — Chunks are stored sparsely; bounds are per-campaign · `proposed`
+### D-010 — Chunks are stored sparsely; bounds are per-campaign · `agreed`
 An absent chunk *is* the unknown, which lines up exactly with D-005. 20×20 is
 the default bound, not a hard limit. **Why:** a real campaign authors 20–40
 chunks, not 400, and a hard-coded bound is a limit you regret for free.
@@ -85,22 +86,25 @@ chunks, not 400, and a hard-coded bound is a limit you regret for free.
 **Why npm workspaces:** zero extra tooling. pnpm is better at monorepos; it is
 not better enough to justify a second package manager here.
 
-### D-012 — Boundaries enforced four ways · `proposed`
+### D-012 — Boundaries enforced four ways · `agreed`
 `exports` maps, TS project references, `dependency-cruiser` encoding the
 dependency graph, and ESLint `no-restricted-imports`. All in CI and pre-commit.
 **Why:** the previous `ARCHITECTURE.md` was correct and ignored, because nothing
 checked it. Unchecked rules are decoration.
+**Amended by D-375**: the dependency-cruiser and ESLint halves exist and run by
+hand with `npm run verify`; the project-reference half went in D-059. CI and a
+pre-commit hook wait until the repo is pushed to a remote, and CI/CD comes then.
 
 ### D-013 — Registries are stable string ids, append-only · `agreed`
 `material:mossy-stone`, never `materials[7]`. Reordering is a migration.
 **Why:** palette-index drift silently re-textures every saved map. It is the most
 common corruption bug in voxel projects and it is free to prevent now.
 
-### D-014 — Branded id types · `proposed`
+### D-014 — Branded id types · `agreed`
 `type PlaceId = string & { __poi: true }`. **Why:** `PlaceId` and `EncounterId` are
 both strings, and passing one where the other belongs should not compile.
 
-### D-015 — Plain data + pure functions; no singletons · `proposed`
+### D-015 — Plain data + pure functions; no singletons · `agreed`
 Classes only where GPU resources or genuine lifecycle exist. Dependencies passed
 in, never located. **Why:** `POV.cs` became a 540-line god-object specifically
 because `Token` reached for it with `FindAnyObjectByType<POV>()`.
@@ -110,7 +114,7 @@ Inspectable, diffable, trivially backed up, and a campaign can be handed to
 someone as a file. SQLite if and when a save exceeds what JSON handles
 comfortably. **Cost:** no queries, whole-file writes.
 
-### D-017 — Runtime validation only at boundaries · `proposed`
+### D-017 — Runtime validation only at boundaries · `agreed`
 Zod at the WebSocket edge and at file reads; trusted types everywhere inside.
 **Why:** validating in the middle is how you get three sources of truth.
 
@@ -159,7 +163,7 @@ touched it.
 
 ## Round 2
 
-### D-020 — Build mode vs Play mode; play edits go to a save overlay · `agreed`
+### D-020 — Build mode vs Play mode; play edits go to a save overlay · `superseded by D-375`
 **Supersedes D-009.** Nicolás: *"maybe the GM removes a fake wall, idk, but I see
 that happening."* That breaks D-009, so it is replaced rather than patched.
 
@@ -169,6 +173,9 @@ group's save and is intact when the dungeon is run again. Encoded as R-9.
 
 Note: the second example — toggling a cave's visibility on the world map — is
 **discovery** (D-005/R-16), not editing, and needed no change.
+
+**Amended by D-375**: retired. There are no modes and no overlay; every edit writes
+the campaign and reaches the table at once. R-9 is struck.
 
 ### D-021 — World cell is 200 m · `agreed`
 Chunk = 20×20 cells = 4×4 km. Default world of 20×20 chunks = 80×80 km, roughly a
@@ -221,7 +228,7 @@ cross-package escape. dependency-cruiser is repo-root aware and caught both test
 violations. ESLint's role is narrowed to deep imports written as package
 specifiers. The four mechanisms remain, with honest scopes.
 
-### D-028 — Prototype moved to `prototype/`, not deleted · `agreed`
+### D-028 — Prototype moved to `prototype/`, not deleted · `superseded by D-377`
 Its root `package.json` collided with the monorepo root. Moved wholesale; nothing
 lost, one `mv` to undo. The Unity project is untouched and now out of scope, and
 its `ARCHITECTURE.md` is stale — the docs here were written fresh, citing it only
@@ -264,14 +271,17 @@ confuses someone mid-session. So the GM console keeps a ray overlay drawn in the
 isometric scene: every ray for a chosen observer/target pair, coloured by outcome,
 with the dominant blocker boxed. GM-only, off by default. Encoded as R-38.
 
-### D-032 — Occlusion fade is a `geometry` query, not a camera feature · `agreed`
+### D-032 — Occlusion fade is a `geometry` query, not a camera feature · `superseded by D-375`
 A god view must fade geometry between the camera and the party or the party is
 invisible indoors. "Which voxels lie on these segments" is spatial, so it is a
 pure function in `geometry`; `render` only applies the material. This is the
 direct fix for the Unity build, where ~150 lines of roof and wall dithering lived
 inside `POV.cs` and were the main reason it reached 540 lines. Encoded as R-33.
 
-### D-033 — Depth legibility measures are requirements, not polish · `partly agreed; clamp deferred to O-009`
+**Amended by D-375**: not built, and no longer planned. The see-through dithering
+of tokens and props (D-368) is enough. R-33 is struck.
+
+### D-033 — Depth legibility measures are requirements, not polish · `agreed in part; clamp superseded by D-180`
 Orthographic projection's real weakness is depth ambiguity. Three mitigations are
 specified up front: a **ground stalk** under every token (R-34), a **view-height
 clamp** per encounter map (R-35), and **picking that ignores faded geometry**
@@ -814,7 +824,7 @@ the books; they are simply not implemented until stage 3.
 
 ## Round 12 — the world layer
 
-### D-070 — Two scales, not three. A chunk is not a view. · `proposed`
+### D-070 — Two scales, not three. A chunk is not a view. · `agreed`
 Nicolás, thinking aloud: *"the world map should show the chunks as they are. The
 places are always visible too. What makes me think, whats the gain of the zoom
 in..."*
@@ -1048,6 +1058,8 @@ having no rule.
 Reaching the page already required knowing the address, so asking for it again was
 asking twice. The GM console shows the URL plus a QR code to scan off the screen
 (R-93, R-94).
+
+**Amended by D-375**: no QR code. The address is shared by copy and paste.
 
 ---
 
@@ -6646,7 +6658,7 @@ that is append-only except when the order looks untidy is not append-only
 (R-11). Grouping them is a sort in the panel if it ever matters, not a
 reorder here.
 
-### D-287 — A label is measured in pixels, and the halo behind it is the AO pass · `agreed, half fixed`
+### D-287 — A label is measured in pixels, and the halo behind it is the AO pass · `agreed`
 Two bugs the GM has been looking at for a while, in one caption. They turned
 out to be unrelated, and only one of them is fixed here.
 
@@ -8078,7 +8090,7 @@ loaded as usual.
 
 R-210 is new.
 
-### D-321 — What comes next: prefabs, items, lights, rulers and areas · `agreed in part; not built`
+### D-321 — What comes next: prefabs, items, lights, rulers and areas · `agreed`
 A design conversation, recorded before anything is built so the agreements
 survive until it is (R-0). Proposals the GM has not answered are marked as
 such.
@@ -8140,7 +8152,11 @@ draw them.
 **Order, proposed:** prefabs first (blocks only — they depend on nothing),
 then items (doors and bars first), then lights, then rulers and areas.
 
-### D-322 — Props: the GM's answers to D-321 · `agreed; not built`
+**Amended by D-375**: all built (prefabs D-323, props D-329, lights D-335,
+rulers and areas D-341 to D-348). A picture for each prefab and starter prefabs:
+no.
+
+### D-322 — Props: the GM's answers to D-321 · `agreed`
 The open points of D-321, answered. Where an answer differs from what D-321
 proposed, this supersedes it.
 
@@ -8176,6 +8192,9 @@ runs. They let sight through and block walking (confirmed).
 
 Still proposed, not answered: a picture for each prefab taken on saving,
 and a few starter prefabs.
+
+**Amended by D-375**: answered, no. The GM names and tags prefabs, or places one
+to see it.
 
 ### D-323 — Prefabs, built · `agreed`
 *"Go ahead with prefabs!"* — D-321 and D-322 as agreed, built, and one
@@ -8325,7 +8344,7 @@ Checked on a copy of the GM's data: the birch captured, the pointer moved to
 the panel and *Birch* typed into the name — the box stayed on the tree
 throughout.
 
-### D-328 — Props, round one: a tool of their own, doors opened with Move, no secrets · `agreed; building`
+### D-328 — Props, round one: a tool of their own, doors opened with Move, no secrets · `agreed`
 The GM's answers before building props (D-321, D-322):
 
 - **Their own tool, key 6.** The map's brush keys move along to 7, 8, 9, 0
@@ -9627,3 +9646,130 @@ at a time is sixty steps at 2.4 times a flat cell: about two days on foot.
 R-80 also said the cap was stored on the campaign so it could be raised. It
 never was: it is one constant for every campaign, and R-80 says so now.
 
+
+### D-375 — The open list: seven answers, and the wishes parked as `to define` · `agreed`
+The GM read the list of what was still open and answered each item.
+
+- **Build mode and Play mode: removed.** *"This idea should be removed, we found
+  a better approach. I like to build/unbuild and transmit to players
+  instantly."* Every edit writes the campaign and reaches the table at once.
+  The fake-wall case D-020 was written for is the GM putting the wall back, not
+  an overlay in the save, and the overlay was never built. **R-9 is retired and
+  D-020 is superseded.** The third map tool is called Play (D-354); that is a
+  tool, not a mode.
+- **QR code for players to join: removed.** *"It's better to share the ip
+  through copy/paste, and we don't plan to use mobile phones actually, we built
+  this thinking on monitors."* **R-94 is amended:** the console shows the
+  address to copy and paste; the table still connects to whatever served it.
+  Amends D-086.
+- **Walls fading between the camera and tokens: done.** *"The token & props
+  dithering is more than enough. We are done with this topic."* **R-33 is
+  retired**, and D-032 with it; R-36's "faded geometry" and R-216's "still
+  unbuilt" lose their promise. D-368's see-through tokens and props are the
+  answer.
+- **A picture for each prefab, and a few starter prefabs: no.** *"The GM can
+  just create an instance and learn what he has or be more descriptive with
+  the name and tags."* Answers the "still proposed" line of D-321 and D-322.
+- **Changing a campaign's cell size or world size in the app: out of plan.**
+  *"We will at some point 'mod' this tool to make it D&D compatible,
+  Pathfinder, but not us, maybe the community."* The cell size and the bounds
+  stay per-campaign values set in the campaign's files (R-103, R-105). There is
+  no intent and no UI for them. Another rule set's scales would come as a mod,
+  not from this project.
+- **Parked wishes: `to define`.** *"Will still be wishes, we can formalize them
+  to 'to define', but not interested on any yet."* A new status, in the legend
+  at the top: a wish nobody is building, not designed and not scheduled. These
+  are the ones:
+  - looking at the world from beneath, as inspection (D-203);
+  - glTF models in place of the marker primitives (D-122);
+  - hatching patterns on the ground swatches, for colour-blindness (D-093);
+  - sweeping `.trash-*` on start-up (D-108);
+  - coalescing rapid writes (D-217);
+  - the GM's view carrying every map, which is linear in the number of maps
+    (D-217);
+  - covers fading out when the camera pulls back (D-284);
+  - per-campaign `terrainOverrides` (D-107);
+  - the ray overlay, if testing turns up fog nobody can explain (D-279);
+  - a travel log, to record how a journey was made (D-298, D-305).
+
+  Not wishes, so not on this list: the **eye view** stays rejected (D-276), and
+  **cover density** stays closed (D-286). Tokens bigger than one cube, and
+  tokens on the world map (D-307), were not ruled on and stay as they are.
+- **Automatic checks: when the repo is pushed.** *"We should push this at some
+  point, and that will be the moment we can add this CI/CD."* CI and a
+  pre-commit hook wait until there is a remote; until then the checks run by
+  hand with `npm run verify`. The dependency-cruiser and ESLint halves of D-012
+  exist, so D-012 is `agreed`.
+
+The same pass settled statuses the record had left behind: D-010, D-012, D-014,
+D-015, D-017 and D-070 (in use), D-321, D-322 and D-328 (all built), D-287 (its
+other half was D-288) and D-033 (its clamp went to the cutting planes, D-180)
+are no longer pending. Old entries are not rewritten; each carries a line
+saying so where it matters.
+
+### D-376 — The host stays up when something under it fails · `agreed`
+*"Step 1: do it full."* The review found the host could be taken down from
+outside the rules: a write the disk refused, a frame no browser sends, a path
+with a broken escape. Each one ended the process, and every screen with it.
+
+- **A failed write keeps the change.** The session caught nothing, so a full
+  disk threw out of the message handler — after the state had already moved
+  on. Now the change stays: it is what every screen is about to show, and
+  campaigns, saves and the library are written whole or by difference from
+  their last write that *succeeded*, so the next write carries it to disk. The
+  GM hears "Not saved to disk: …", and the host's console says why.
+- **A failed read refuses the intent.** A campaign or save from a newer
+  version still throws by design (R-61); the host catches it and the GM reads
+  the reason. A campaign file that is not JSON — a map body included — reads
+  as unreadable, which is what R-144's null was always meant to cover.
+- **An unreadable save is moved aside.** It read as none, the host started a
+  fresh save under the same name, and the write of that fresh one destroyed
+  whatever the party had. It is now renamed `.unreadable-<time>` first, the
+  library's and the prefabs' habit already.
+- **The socket and the pages answer instead of throwing.** A socket error has
+  a listener (an unheard one is thrown). An intent that throws is a bug, and is
+  answered with a rejection while the host serves on. A malformed escape in a
+  path is a 400 or a 404, an upload cut short or refused by the disk is
+  answered, and a file that vanishes mid-read ends that response only.
+
+`ws` already caps a message at 100 MiB, so no cap was added.
+
+### D-377 — The leftovers cleared: one sight rule, no dead exports, one stage hook · `agreed`
+*"Step 4: we should take care of all of them too."*
+
+- **The party's sight is one rule.** R-85 was written twice: the tested copy in
+  `domain` (`partyVisibleNotes`, `partyVisiblePois`) and the live one inline in
+  `viewFor`. Now `partyVisible` — generic over anything with
+  `visibleToParty` — is the one rule, and `viewFor` calls it for notes and
+  points of interest alike.
+- **`setHeight` is gone.** Nothing has sent it since the Height tool lifts
+  (D-367): the intent, its case in `sim` and `setHeightArea` went, and the
+  tests that used it raise and lower instead.
+- **Exports that only tests used are gone**, with their tests where the test
+  was all they had: `placeGlobal`, `placeCellFromGlobal`, `setMapBlock`,
+  `clearMapBlock` (the tests use `setMapBlocks`), `isKnownMaterial`,
+  `requireMaterial`, `NO_PROPS`, `matchesCampaignVersion`, `isPartyPlaced`,
+  `canStride`, the client store's `ServerState`/`ViewState` and their
+  initials, `memoryLibraryStore`, `memoryPrefabStore`, `IntentKind`,
+  `MarkerWireSchema`, `encodePlacement`, `AmbienceWire` and `applyTarget`.
+  `lightIn` stays: it says it is for tests, and it is how they read the light
+  field.
+- **`@tt/geometry` is declared only where it is imported**: `domain`. The five
+  others declared it and never used it. The graph still allows the edges
+  (R-5); nothing takes them.
+- **Three saved fields that nothing read are no longer written.** A save's
+  `campaignSchemaVersion` (never compared, so R-8 and R-61 lose that line) and
+  its `label`; and `unknownChunks`, which `world.json` carried empty — only the
+  table's view has one. Older files still carry them, and reading drops them.
+- **One `useStage` and one `useCost`, in `client-core`.** Each app kept its own
+  copy, on the grounds that the screens differed too much to share one; side by
+  side, the copies differed by a debug line and one comment, and the table's
+  comment was the stale one (D-233 where D-234 had replaced it). They live in
+  `client-core/scene` now, which takes React for them (R-7). The GM's
+  `window.__stage` handle moved into the GM's own shell, since `client-core`
+  has no GM branch. The reading is typed by what the hook builds, because
+  `client-core` may not name `@tt/ui`'s `Reading`; the app that hands one to
+  the other is where the compiler checks them.
+- **`prototype/` is deleted**, superseding D-028. It sat outside every check
+  since D-028, and git still has it. The empty `biomes/` and `navigate/`
+  folders went too.

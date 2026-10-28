@@ -1,8 +1,8 @@
 # Playbook
 
 **Read this before writing code.** [ARCHITECTURE.md](ARCHITECTURE.md) is the law —
-95+ numbered rules — and it is long. This is the short operational companion: what
-the standard move is, in what order, and how you know you are done.
+over two hundred numbered rules — and it is long. This is the short operational
+companion: what the standard move is, in what order, and how you know you are done.
 
 If the two ever disagree, `ARCHITECTURE.md` wins and this file is a bug.
 
@@ -50,14 +50,14 @@ that require tests: they are the only ones where a mistake is silent.
 
 ---
 
-## The reference feature: paint terrain
+## The reference feature: paint the ground
 
-**Paint terrain is the designated worked example (R-101).** It is a real feature in
-v0.1, not sample code, so it cannot rot without a test going red.
+**Painting the ground is the designated worked example (R-101).** It is a real
+feature, not sample code, so it cannot rot without a test going red.
 
 Read it in this order:
 
-1. **`packages/domain/src/world/index.ts`** — `paintTerrain(chunk, x, z, terrainId)`.
+1. **`packages/domain/src/world/index.ts`** — `paintGround(chunk, x, z, ground)`.
    Note what it does *not* do: no mutation (returns a new `Chunk`), no I/O, no
    knowledge of who asked. It returns the *same* chunk when nothing would change,
    so callers can compare by identity.
@@ -65,29 +65,35 @@ Read it in this order:
    *"painting changes terrain and leaves height alone"*. It asserts a **rule**
    (R-88), not an implementation. That is the standard to match: a test whose name
    states the guarantee it defends.
+3. **`packages/protocol/src/intents/index.ts`** — the `paintGround` intent and its
+   Zod schema, validated at the edge.
+4. **`packages/sim/src/apply/index.ts`** — the `paintGround` case: the registry
+   check, then the pure operation. **`packages/sim/test/apply.test.ts`** holds the
+   two cases beside it, one that paints and one that is refused.
+5. **`apps/gm/src/features/build-world/index.tsx`** — the panel that picks the
+   ground. The click is turned into the intent in `apps/gm/src/shell/App.tsx`.
 
-The remaining rings land as v0.1 is built, and this section grows with them. Every
-path named in this file is checked by `test/docs.test.ts`, so it cannot drift into
-fiction.
+Every path named in this file is checked by `test/docs.test.ts`, so it cannot
+drift into fiction.
 
 ### The shape each ring takes
 
 ```ts
-// 1. domain — pure, testable, ignorant of everything else
-export function paintTerrain(chunk: Chunk, x: number, z: number, terrainId: TerrainId): Chunk
+// 1. domain — pure, testable, ignorant of everything else.
+//    `ground` is a swatch from the materials registry: 'material:grass',
+//    'material:soil/sand'. Cover is its own axis, 'cover:trees' (R-193).
+export function paintGround(chunk: Chunk, x: number, z: number, ground: SwatchId): Chunk
 
 // 2. protocol — the wire contract, validated at the edge
-export const PaintTerrain = z.object({
-  kind: z.literal('paintTerrain'),
-  chunk: ChunkCoordSchema, x: CellIndex, z: CellIndex, terrainId: TerrainIdSchema,
-});
+z.object({ kind: z.literal('paintGround'), cx, cz, x, z, ground: GroundSchema, size, stroke })
 
 // 3. sim — permission, then the pure op. no I/O.
-//    returns a rejection with a reason; never silently ignores (R-18)
-export function apply(state: State, actor: Role, intent: Intent): Applied
+//    returns a rejection with a reason; never silently ignores (R-18).
+//    `now` is the host's clock, an ISO string: sim has none of its own (R-97).
+export function apply(state: HostState, role: Role, intent: Intent, now: string): Applied
 
-// 6. apps/gm/src/features/build-world — gesture in, intent out
-onCellTap(cell) { dispatch({ kind: 'paintTerrain', ...cell, terrainId: selected }); }
+// 6. apps/gm — gesture in, intent out
+dispatch({ kind: 'paintGround', ...action.cell, ground, size: brush, stroke: newStroke() })
 ```
 
 ---
@@ -140,7 +146,7 @@ In a Workflow script that means `{ model: 'sonnet', effort: 'high' }` on every
 ## Naming
 
 - files `kebab-case.ts` · types `PascalCase` · functions `camelCase`
-- registry ids are namespaced strings: `terrain:swamp` (R-11), never indices
+- registry ids are namespaced strings: `material:soil/sand`, `cover:trees` (R-11), never indices
 - ids are branded: `PlaceId`, not `string` (R-10)
 - never call something `visible` — say `Revealed`, `visibleToParty`, or *drawn*
   (R-84); they are three different things
