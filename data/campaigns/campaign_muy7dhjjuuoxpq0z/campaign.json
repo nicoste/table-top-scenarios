@@ -5,45 +5,23 @@
  "party": [
   {
    "id": "member_muy7dhjjujn2zgaz",
-   "name": "Aldra",
-   "colour": "#57d9a3",
-   "visionRange": 12
-  },
-  {
-   "id": "member_muy7dhjjbv15b4an",
-   "name": "Brann",
-   "colour": "#4db8ff",
-   "visionRange": 12
-  },
-  {
-   "id": "member_muy7dhjjmsnwmi26",
-   "name": "Cass",
-   "colour": "#ffc857",
-   "visionRange": 12
-  },
-  {
-   "id": "member_muy7dhjjc5yfar3b",
-   "name": "Dov",
-   "colour": "#ff6b6b",
-   "visionRange": 12
-  },
-  {
-   "id": "member_muy7dhjjm9q36qjc",
-   "name": "Esk",
-   "colour": "#b58cff",
-   "visionRange": 12
+   "name": "Galion",
+   "colour": "#df7c20",
+   "visionRange": 22,
+   "image": "3dc8a7563b11f57fe97f7378eca1c0a6ae693228025a26f1c49a6d06441ea03c.webp"
   },
   {
    "id": "member_muy7dhjjesbnn0lg",
-   "name": "Fen",
-   "colour": "#ff9f43",
-   "visionRange": 12
+   "name": "Turdorn",
+   "colour": "#b3b5ff",
+   "visionRange": 22,
+   "image": "b27f646e429953f7fda703fcc7dae4bbc8f99d0fafa20676c3ec9ff1847c2bb4.webp"
   }
  ],
  "places": [
   {
    "id": "place_muy7dhjjmxxxdaqa",
-   "name": "Toll Crossing",
+   "name": "Thol Crossing",
    "cell": {
     "cx": 15,
     "cz": 15,
@@ -51,18 +29,201 @@
     "z": 15
    },
    "markerId": "marker:village",
+   "facing": 0,
    "pois": [
     {
-     "id": "poi_muy7dhjj2gkgmu73",
+     "id": "poi_mvd1islatda5wno7",
      "name": "Tollkeep",
      "visibleToParty": true,
      "map": null,
      "ambience": {
-      "colour": "#cfe4ff",
-      "level": 0.4
+      "colour": "#ffffff",
+      "level": 0.72
      }
     }
    ],
+   "notes": []
+  },
+  {
+   "id": "place_mv8tym4papgfjej6",
+   "name": "Mines of Dulubin",
+   "cell": {
+    "cx": 15,
+    "cz": 15,
+    "x": 6,
+    "z": 24
+   },
+   "markerId": "marker:cave",
+   "facing": 2,
+   "pois": [],
+   "notes": []
+  },
+  {
+   "id": "place_mva5tifnnj8g8ha0",
+   "name": "Daj'raiyin Temple",
+   "cell": {
+    "cx": 15,
+    "cz": 14,
+    "x": 3,
+    "z": 23
+   },
+   "markerId": "marker:temple",
+   "facing": 0,
+   "pois": [],
+   "notes": []
+  },
+  {
+   "id": "place_mvlaxbso5q4iz8h1",
+   "name": "Ub Danga Ruins",
+   "cell": {
+    "cx": 17,
+    "cz": 17,
+    "x": 5,
+    "z": 10
+   },
+   "markerId": "marker:ruin",
+   "facing": 1,
+   "pois": [],
+   "notes": []
+  },
+  {
+   "id": "place_mvlaxwv6w2kl1g8s",
+   "name": "Port Vissinos",
+   "cell": {
+    "cx": 17,
+    "cz": 17,
+    "x": 6,
+    "z": 1
+   },
+   "markerId": "marker:port",
+   "facing": 2,
+   "pois": [],
+   "notes": []
+  },
+  {
+   "id": "place_mvlcy7eac68zit1h",
+   "name": "The Great Forge of Lazerim",
+   "cell": {
+    "cx": 13,
+    "cz": 17,
+    "x": 26,
+    "z": 1
+   },
+   "markerId": "marker:mine",
+   "facing": 3,
+   "pois": [],
+   "notes": []
+  },
+  {
+   "id": "place_mvldpqio99fks0ih",
+   "name": "Lazerim Port",
+   "cell": {
+    "cx": 13,
+    "cz": 17,
+    "x": 27,
+    "z": 8
+   },
+   "markerId": "marker:port",
+   "facing": 2,
+   "pois": [],
+   "notes": []
+  },
+  {
+   "id": "place_mvldrkc1zoywnr92",
+   "name": "Lazerim Trading City",
+   "cell": {
+    "cx": 13,
+    "cz": 16,
+    "x": 27,
+    "z": 24
+   },
+   "markerId": "marker:castle",
+   "facing": 0,
+   "pois": [],
+   "notes": []
+  },
+  {
+   "id": "place_mvlepieoxwfwtc6g",
+   "name": "Dalabissir",
+   "cell": {
+    "cx": 17,
+    "cz": 13,
+    "x": 0,
+    "z": 19
+   },
+   "markerId": "marker:city",
+   "facing": 0,
+   "pois": [],
+   "notes": []
+  },
+  {
+   "id": "place_mvleqdn9w6pm3paj",
+   "name": "Awakening Sun",
+   "cell": {
+    "cx": 17,
+    "cz": 13,
+    "x": 2,
+    "z": 17
+   },
+   "markerId": "marker:ruin",
+   "facing": 0,
+   "pois": [],
+   "notes": []
+  },
+  {
+   "id": "place_mvlibts80xmgyq2f",
+   "name": "Outlaw Wizards Refuge",
+   "cell": {
+    "cx": 16,
+    "cz": 13,
+    "x": 11,
+    "z": 16
+   },
+   "markerId": "marker:cave",
+   "facing": 0,
+   "pois": [],
+   "notes": []
+  },
+  {
+   "id": "place_mvljz2j9fonxwbfi",
+   "name": "Gurth Fort",
+   "cell": {
+    "cx": 13,
+    "cz": 14,
+    "x": 23,
+    "z": 6
+   },
+   "markerId": "marker:fort",
+   "facing": 0,
+   "pois": [],
+   "notes": []
+  },
+  {
+   "id": "place_mvrgz0idvx3ljlb9",
+   "name": "Bridllage",
+   "cell": {
+    "cx": 15,
+    "cz": 15,
+    "x": 19,
+    "z": 19
+   },
+   "markerId": "marker:village",
+   "facing": 1,
+   "pois": [],
+   "notes": []
+  },
+  {
+   "id": "place_mvrh4kois2kincey",
+   "name": "Holly Crops",
+   "cell": {
+    "cx": 15,
+    "cz": 15,
+    "x": 21,
+    "z": 15
+   },
+   "markerId": "marker:town",
+   "facing": 3,
+   "pois": [],
    "notes": []
   }
  ]
