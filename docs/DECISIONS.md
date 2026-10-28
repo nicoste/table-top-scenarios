@@ -9815,3 +9815,33 @@ and it is public. That is the moment D-375 set for the automatic checks.
 Open, and the GM's to decide: a license (with none, the code can be read but
 not reused, which leaves no room for the community mods D-375 hoped for),
 whether `data/` stays public, and the protection on `main`.
+**Amended by D-379**: all three are decided.
+
+### D-379 — AGPL-3.0 for everything in the repo, and `main` kept from rewrites · `agreed`
+*"License: AGPL-3.0, full open, do you want to twist it? keep it open too."*
+
+- **The license is the GNU Affero General Public License, version 3**
+  (`LICENSE`, and `"license": "AGPL-3.0-only"` in `package.json`). Anyone may
+  use the tool, change it and share it. Whoever shares a changed version, or
+  runs one that other people's screens connect to, has to offer its source
+  under the same terms. That second case is the Affero clause, and the reason
+  for it over the plain GPL: this tool is a server the table connects to, so
+  under the GPL a changed version could be hosted for other groups without its
+  source ever leaving that host. The community mods D-375 hoped for (D&D,
+  Pathfinder) stay open the same way.
+- **Version 3 only**, not "or any later version": the terms are the ones that
+  were read and chosen, and a future version from the Free Software Foundation
+  would not apply by itself. The copyright holder can still relicense later;
+  once others contribute, that needs their agreement too.
+- **It covers the whole repo, `data/` included** (*"full open"*), so `data/`
+  stays public. A license only covers what is the holder's to give: a picture
+  that came from somewhere else keeps its own terms.
+- **`main` is protected by a GitHub ruleset that blocks force pushes and
+  deletion, and nothing more.** No required pull requests, approvals, status
+  checks or signed commits, and nobody on the bypass list. A project with one
+  author cannot meet the review rules without overriding them on every push,
+  and a bypass would let the overriding account force-push too.
+
+Not done: a link to the source from the screens. Section 13 asks it of anyone
+running a *changed* version for others, not of the copyright holder, but a link
+already in place is the easiest thing for a fork to keep.

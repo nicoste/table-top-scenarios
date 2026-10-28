@@ -80,3 +80,13 @@ packages/
 ```
 
 Each package's `README.md` says what it owns and what it must never know.
+
+## License
+
+Copyright © 2026 nicoste. Licensed under the
+[GNU Affero General Public License, version 3](LICENSE), and nothing later
+(D-379).
+
+In plain words: use it, change it, share it. If you share a changed version,
+or run one that other people connect to, offer them its source under the same
+license. That covers everything here, the campaign in `data/` included.
