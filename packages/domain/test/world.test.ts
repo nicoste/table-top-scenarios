@@ -55,8 +55,8 @@ describe('height is clamped and snapped (R-80, R-89)', () => {
     expect(clampHeight(-5)).toBe(0);
     expect(clampHeight(MAX_HEIGHT + 10)).toBe(MAX_HEIGHT);
   });
-  it('caps at 30 levels', () => {
-    expect(MAX_HEIGHT).toBe(30);
+  it('caps at 60 levels (D-374)', () => {
+    expect(MAX_HEIGHT).toBe(60);
   });
   it('lowering a column at sea level is a no-op, not a negative', () => {
     const chunk = raiseHeight(createChunk({ cx: 0, cz: 0 }), 1, 1, -3);

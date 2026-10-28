@@ -179,8 +179,10 @@ describe('the scales, derived so they cannot go stale', () => {
     expect(Math.round(worldKm / mode('foot').kmPerDay)).toBe(14);
   });
 
-  it('caps mountains at 4.5 km: thirty levels, seven and a half cells', () => {
-    expect(MAX_HEIGHT * LEVEL_HEIGHT * DEFAULT_METRES_PER_CELL).toBe(4500);
+  it('caps mountains at 9 km, so Everest fits: sixty levels, fifteen cells (D-374)', () => {
+    expect(MAX_HEIGHT * LEVEL_HEIGHT * DEFAULT_METRES_PER_CELL).toBe(9000);
+    expect(MAX_HEIGHT * LEVEL_HEIGHT).toBe(15);
+    expect(MAX_HEIGHT * LEVEL_HEIGHT * DEFAULT_METRES_PER_CELL).toBeGreaterThan(8849);
   });
 
   it('answers a gradient with Tobler, and the modes answer it differently (R-52a)', () => {

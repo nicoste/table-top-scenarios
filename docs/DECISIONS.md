@@ -9609,3 +9609,21 @@ Tried first on a copy of the GM's data at 600 m: Galion aimed at the brick
 peak climbed the stair, 0 → 1 → 2 → 3 → 4, about 3 hours — straight up the
 wall would take about three times that. Then, with the GM's go-ahead, their
 own campaign was moved to 600 m, after a snapshot in `data/backups`.
+
+### D-374 — Mountains up to 60 levels: 9 km · `agreed`
+*"Should we increase map max height now?"* With a level a quarter of a cell
+(D-373), the 30-level cap stands seven and a half cells tall — less than half
+what it was drawn before. And the GM had been pressing against it: of the
+2,828 land cells in their world, **29 stood at exactly 30**, more than at any
+height from 21 to 29. A pile at the top is what a ceiling looks like.
+
+The cap is **60** (R-80): 9 km at 150 m a level, fifteen cells tall. Everest is
+59, so the tallest mountain on Earth fits and anything taller is fantasy.
+Nothing painted moves — a 30 is still 4.5 km, raised by hand with the Height
+tool when the GM wants it higher — and the height cue stretches to the new top,
+so today's peaks draw a touch darker. Climbing from the sea to the cap a level
+at a time is sixty steps at 2.4 times a flat cell: about two days on foot.
+
+R-80 also said the cap was stored on the campaign so it could be raised. It
+never was: it is one constant for every campaign, and R-80 says so now.
+

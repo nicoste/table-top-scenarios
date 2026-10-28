@@ -308,7 +308,7 @@ Two cell sizes, both explicit, both stored on the campaign rather than hardcoded
 |---|---|---|---|
 | World cell | **600 m** | 30×30 per chunk | chunk = **18 km** ≈ half a day on foot |
 | World | — | 30×30 chunks (**default**, per campaign) | **540 km** ≈ 14 days on foot |
-| Height level | **150 m**, a quarter of a cell | 0–30 | cap = a **4.5 km** mountain, 7.5 cells tall |
+| Height level | **150 m**, a quarter of a cell | 0–60 | cap = a **9 km** mountain, 15 cells tall |
 | Encounter cell | **1.5 m** (5 ft) | sparse, unbounded | — |
 
 > **R-103.** World cell size is **600 m** (D-373), because a quarter of it is
@@ -592,9 +592,16 @@ cube and a short far cube can land on the same pixels. These are not polish.
 > chunk. The world therefore grows outward from where the GM started, and the
 > table display never sees a `+`.
 
-> **R-80.** Column height is capped at **30 levels** — a 4.5 km mountain at 150 m
-> per level (R-104), roughly Mont Blanc. Stored on the campaign so it can be raised,
-> but 20 is the default and the intended ceiling.
+> **R-80.** Column height is capped at **60 levels** (D-374) — a 9 km mountain at
+> 150 m per level (R-104), fifteen cells tall, so Everest fits at 59. One cap
+> for every campaign (`MAX_HEIGHT`), not stored on any of them. The height cue
+> that draws high ground lighter runs from sea level to the cap.
+>
+> ~~Column height is capped at **30 levels** — a 4.5 km mountain at 150 m per
+> level (R-104), roughly Mont Blanc. Stored on the campaign so it can be raised,
+> but 20 is the default and the intended ceiling.~~ Superseded by D-374: the
+> cap was never stored on the campaign, and at true scale 30 levels stands
+> only seven and a half cells tall.
 
 ### Interaction
 

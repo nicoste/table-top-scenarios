@@ -21,7 +21,7 @@ export const DEFAULT_WORLD_BOUNDS = { x: 30, z: 30 } as const;
  * which way it goes, because the slopes come from `LEVEL_HEIGHT` alone. 600
  * because a quarter of it is 150 m, the level every campaign was painted in
  * before x, y and z shared a scale — so no height already painted changes its
- * metres, and the 30-level cap is still a 4.5 km mountain.
+ * metres.
  */
 export const DEFAULT_METRES_PER_CELL = 600;
 
@@ -35,8 +35,12 @@ export const DEFAULT_METRES_PER_CELL = 600;
  */
 export const LEVEL_HEIGHT = 0.25;
 
-/** Highest a column may stand, in levels: 7.5 cells, 4.5 km at 600 m (R-80). */
-export const MAX_HEIGHT = 30;
+/**
+ * Highest a column may stand, in levels: 9 km at 600 m, fifteen cells tall
+ * (R-80, D-374). Everest is 59, so the tallest mountain on Earth fits and
+ * anything taller is the campaign's own.
+ */
+export const MAX_HEIGHT = 60;
 
 export interface Column {
   readonly height: number;
