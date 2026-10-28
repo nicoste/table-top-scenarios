@@ -89,7 +89,7 @@ export function BuildWorldPanel({
         </div>
         <p className="hint">
           {tool === 'select'
-            ? <>Click a place to inspect it. Nothing else is editable yet.</>
+            ? <>Click a place to edit it, or open ground to reveal its chunk.</>
             : tool === 'paint'
               ? <>Click, or drag to paint many cells.{selected ? <> Painting <b>{selected.name}</b>.</> : null}</>
               : tool === 'cover'
