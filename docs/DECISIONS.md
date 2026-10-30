@@ -9845,3 +9845,18 @@ whether `data/` stays public, and the protection on `main`.
 Not done: a link to the source from the screens. Section 13 asks it of anyone
 running a *changed* version for others, not of the copyright holder, but a link
 already in place is the easiest thing for a fork to keep.
+**Amended by D-380**: lifted once, for one push.
+
+### D-380 — `main` rewritten once more, to take a name out of the history · `agreed`
+*"Please force it this time, just this time, because it's a security and
+privacy move."*
+
+- **D-378 first went up naming the other account**, in the commit that made the
+  repo public. The file was corrected two days later, but the old wording stayed
+  in that commit for anyone reading the history.
+- **The commits from that one on were rebuilt** with the corrected line and
+  pushed over `main`. Authors, dates and contents are unchanged apart from that
+  line. The commit that only corrected it had nothing left in it, and is gone.
+  Their ids changed; nothing in the docs quoted one.
+- **The force-push block was lifted for that push and put back**, so D-379
+  holds: `main` is not rewritten, except by the GM's say-so, one push at a time.
