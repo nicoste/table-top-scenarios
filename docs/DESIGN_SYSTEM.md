@@ -179,6 +179,11 @@ Defined in `packages/ui/src/compass/index.tsx`. Uses `box-sizing: content-box` o
 - Active rows (`.palette button.on` and `.swatches li.on`) use the standard chiseled active surface (`--ui-slot-active-bg`, `2px solid var(--ui-slot-active-border)`, `--ui-slot-active-ink`, `--ui-slot-active-shadow`) rather than solid neon fills.
 - Material variation squares (`.swatches .cut`) are strict `18×18px` squares (`border-radius: var(--ui-radius)`). The active variation (`.swatches .cut.lit`) uses a squared chiseled border (`border-color: var(--ui-highlight); box-shadow: 0 0 0 1px #000, inset 0 0 0 1px #fff;`) with `outline: none` so it never bleeds outside the row.
 
+### 5.7 Brand Identity & Main Menu Diorama (`<BrandLogo>` & `useDiorama`, D-382)
+- **Brand Emblem & Lockup (`<BrandLogo>` in `packages/ui/src/brand-logo/index.tsx`):** Pairs a `48×48px` squared chiseled voxel SVG emblem (floating isometric island, winding `--ui-highlight` road, and watchtower keep with glowing beacon) with a two-tier `<h1>` wordmark (`TABLE TOP` in `18px` `--ui-ink` + `SCENARIOS` in `12px` `--ui-highlight`), optional role eyebrow (`GM Console` / `Table Display`), and tabular status badge (`Step N/10` / `Undo N/10`).
+- **Browser Tab Identity:** `apps/gm/index.html` and `apps/table/index.html` carry matching inline SVG voxel favicons and explicit titles (`Table Top Scenarios — GM Console` and `Table Top Scenarios — Table Display`).
+- **Living 10-Step Isometric Diorama (`useDiorama` in `packages/client-core/src/diorama/index.ts`):** While no campaign is open (`!campaign`), the background WebGL `Stage` frames a `16×16` floating isometric terrain on the right-centre of the viewport while the translucent `.launcher .card` anchors on the left (`justify-content: flex-start`), stepping `1 → 2 → … → 10` (`build`) and `10 → 9 → … → 1` (`undo`) in a continuous loop accompanied by a 10-pip progress strip (`.diorama-status`).
+
 ---
 
 ## 6. Panel Anatomy & Section Zoning

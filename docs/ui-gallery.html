@@ -717,6 +717,67 @@
   </header>
 
   <main class="gallery-grid">
+    <!-- 0. BRAND IDENTITY & MAIN MENU DIORAMA HEADER (<BrandLogo>) -->
+    <section class="card span-full">
+      <h2>
+        <span>0. Brand Identity &amp; Main Menu Diorama Header (&lt;BrandLogo&gt; · D-382)</span>
+        <span>packages/ui/src/brand-logo/index.tsx · packages/client-core/src/diorama/index.ts</span>
+      </h2>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; align-items: start;">
+        <div class="item-well" style="padding: 14px;">
+          <div style="display: flex; align-items: center; gap: 14px;">
+            <div style="width: 48px; height: 48px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--ui-slot-bg); border: 1px solid var(--ui-slot-border); border-radius: var(--ui-radius); box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.16), 0 4px 14px rgba(0, 0, 0, 0.45);">
+              <svg width="42" height="42" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+                <path d="M2 6V2H6M34 2H38V6M38 34V38H34M6 38H2V34" stroke="var(--ui-slot-border)" stroke-width="1.2"/>
+                <polygon points="4,22 20,30 20,36 6,28" fill="#1b202b" stroke="var(--ui-slot-border)" stroke-width="1.1"/>
+                <polygon points="36,22 20,30 20,36 34,28" fill="#12161e" stroke="var(--ui-slot-border)" stroke-width="1.1"/>
+                <polygon points="20,14 36,22 20,30 4,22" fill="#232936" stroke="var(--ui-ink)" stroke-width="1.2"/>
+                <polygon points="20,5 28,9 20,13 12,9" fill="var(--ui-ink)" stroke="#0d1016" stroke-width="1"/>
+                <polygon points="12,9 20,13 20,22 12,18" fill="var(--muted)" stroke="#0d1016" stroke-width="1"/>
+                <polygon points="28,9 20,13 20,22 28,18" fill="var(--ui-slot-border)" stroke="#0d1016" stroke-width="1"/>
+                <polygon points="16,15 19,16.5 19,21.5 16,20" fill="var(--ui-highlight)"/>
+                <rect x="18.5" y="7.5" width="3" height="3" transform="rotate(26 20 9)" fill="var(--ui-highlight)"/>
+                <polygon points="12,26 16,28 23,24.5 19,22.5" fill="rgba(245, 158, 11, 0.3)" stroke="var(--ui-highlight)" stroke-width="1.35"/>
+                <polygon points="16,20 19,21.5 23,24.5 19,22.5" fill="var(--ui-highlight)"/>
+              </svg>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0;">
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted);">
+                  <span style="width: 6px; height: 6px; border-radius: 1px; background: var(--ui-highlight);"></span>
+                  GM Console
+                </span>
+                <span style="font-size: 10px; font-weight: 600; color: var(--ui-highlight); background: rgba(245, 158, 11, 0.12); border: 1px solid var(--ui-highlight); border-radius: var(--ui-radius); padding: 1px 6px;">Step 6/10</span>
+              </div>
+              <div style="font: 800 18px/1.05 var(--ui-font); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ui-ink);">Table Top</div>
+              <div style="font: 700 12px/1.15 var(--ui-font); letter-spacing: 0.26em; text-transform: uppercase; color: var(--ui-highlight);">Scenarios</div>
+            </div>
+          </div>
+          <div style="margin-top: 8px; padding: 7px 9px; background: rgba(0,0,0,0.35); border: 1px solid var(--line); border-radius: var(--ui-radius); display: flex; flex-direction: column; gap: 5px;">
+            <div style="display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px;">
+              <span style="height: 4px; background: var(--ui-highlight); opacity: 0.72;"></span>
+              <span style="height: 4px; background: var(--ui-highlight); opacity: 0.72;"></span>
+              <span style="height: 4px; background: var(--ui-highlight); opacity: 0.72;"></span>
+              <span style="height: 4px; background: var(--ui-highlight); opacity: 0.72;"></span>
+              <span style="height: 4px; background: var(--ui-highlight); opacity: 0.72;"></span>
+              <span style="height: 4px; background: var(--ui-highlight); box-shadow: 0 0 6px var(--ui-highlight);"></span>
+              <span style="height: 4px; background: var(--line);"></span>
+              <span style="height: 4px; background: var(--line);"></span>
+              <span style="height: 4px; background: var(--line);"></span>
+              <span style="height: 4px; background: var(--line);"></span>
+            </div>
+            <span style="font: 600 11px/1.25 var(--ui-font); color: var(--muted);">Building: Keep walls &amp; battlements</span>
+          </div>
+        </div>
+        <div class="code-note" style="margin: 0;">
+          <strong>Brand Lockup &amp; 10-Step Diorama:</strong><br/>
+          • <code>&lt;BrandLogo subtitle="GM Console" statusLabel="Step 6/10" /&gt;</code> renders the isometric floating-terrain &amp; golden-road SVG emblem + two-tier wordmark.<br/>
+          • Driven by master CSS tokens (<code>--ui-highlight</code>, <code>--ui-ink</code>, <code>--ui-slot-border</code>) — switch presets in the header above to see the emblem re-colour live.<br/>
+          • While <code>!campaign</code>, <code>useDiorama(stage, !campaign)</code> drives the 3D WebGL <code>Stage</code> behind the left-anchored launcher card through steps <code>1 → 2 → … → 10</code> and undoes <code>10 → 9 → … → 1</code> in a loop.
+        </div>
+      </div>
+    </section>
+
     <!-- 1. CANONICAL GAMEICON REGISTRY -->
     <section class="card span-full">
       <h2>

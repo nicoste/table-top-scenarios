@@ -70,6 +70,11 @@ export type { Frames } from './metrics/index.js';
 
 export { cameraAction, wheelZoom, CAMERA_HINT, TABLE_CAMERA_HINT } from './camera/index.js';
 export type { CameraAction } from './camera/index.js';
+
+export {
+  DIORAMA_TOTAL_STEPS, DIORAMA_STEP_TITLES, dioramaAtStep, nextDioramaCursor, useDiorama,
+} from './diorama/index.js';
+export type { DioramaCursor, DioramaState } from './diorama/index.js';
 export type {
   ToolPart, ClickAction, TableAction, MapAction, MapHover, MapAim, MapReach, MapVerdict, FillReach,
   Pointed, Cell, Slot, Context,

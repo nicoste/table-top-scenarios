@@ -9897,3 +9897,25 @@ privacy move."*
   `.dial` range thumbs and `.ladder` grips use squared voxel blocks
   (`var(--ui-radius)`). The rules and live component catalogue live in
   `docs/DESIGN_SYSTEM.md` and `docs/ui-gallery.html`.
+
+### D-382 — Brand identity (`BrandLogo`, voxel favicon) and 10-step living isometric diorama on the main menu · `agreed`
+*"I want to add more identity to the tool. Like an icon, a logo, a title... You command. I would love to have the logo in the main menu, what do you think about it? We can also add a floating terrain on an isometric view and a road that highlights the title, some scheduled actions that edit the terrain behind, like step 1, then 2, 3, 4, ... 10, then start undoing down to step 1, and loop."*
+
+- **Canonical brand emblem and wordmark (`BrandLogo` in `@tt/ui`)**: a `48×48px`
+  squared-voxel isometric emblem (floating terrain island, winding golden road,
+  and watchtower keep with lit gate and beacon) paired with a two-tier `<h1>`
+  wordmark (`TABLE TOP` in `--ui-ink`, `SCENARIOS` in `--ui-highlight`), role
+  subtitle (`GM Console` / `Table Display`), and live step pill. Styled with
+  inline CSS custom properties (`R-111`) so global colour token changes re-theme
+  the emblem automatically. Both `apps/gm/index.html` and `apps/table/index.html`
+  carry matching inline SVG favicons and explicit `<title>` tags.
+- **10-step living isometric terrain diorama (`dioramaAtStep`, `useDiorama` in
+  `@tt/client-core`)**: while no campaign is open (`!campaign`), the already-mounted
+  WebGL `Stage` renders a `16×16` floating isometric terrain behind the
+  left-anchored `.launcher` card and steps through 10 scheduled construction
+  stages (`1 → 2 → … → 10`: floating island & stream, winding cobblestone road,
+  stone arch bridge, northern cliffside crag, watchtower foundation, keep walls
+  & battlements, wayside pines, outpost camp & oak gate, roadside beacons at
+  golden dusk, and the arriving party on the road), pauses briefly, undoes back
+  down `10 → 9 → … → 1`, and loops. When a campaign opens, `useDiorama` clears
+  the diorama surface and hands the stage cleanly to the campaign world.
