@@ -2634,6 +2634,11 @@ apps/host/src/
 > alone can rotate and tilt the camera on both surfaces. `TABLE_CAMERA_HINT` in
 > `client-core` names those mouse controls on the table, while `CAMERA_HINT` keeps
 > the keyboard legend on the console.
+>
+> **Amended by D-385.** The buttons carry turn and tilt icons, not those
+> characters, and a click on one leaves the focus where it was. Both hints are
+> written from the key table `cameraAction` reads; the table's names the keys
+> after the compass, since the table answers to them too.
 
 > **R-156.** **The camera behaves identically on both screens, and it moves
 > smoothly.**

@@ -6,7 +6,7 @@ import {
   MAX_HEIGHT, WHOLE_MAP, rangeIn, stepBrush, WORLD_BRUSHES, BRUSHES, DEFAULT_BRUSH, brushById,
   routeAcross, toGlobal, DEFAULT_TRAVEL_MODES, discoveryFromJSON, asFacing, turned,
   silverFromJSON, silverCubes, silverInBand, silverShown, NO_SILVER,
-  chunkAt, columnAt, DEFAULT_METRES_PER_CELL, LEVEL_HEIGHT,
+  chunkAt, columnAt,
   creatableSlots, sameWorldCell,
   DEFAULT_MATERIALS, DEFAULT_FLOOR, mapFromJSON, fillRegion, sliceOf, inRange, inMap, blockAt,
   bottomOfMap, cutOf, cutIdIn, familyOf, sunReaches, litBy, MAP_MAX_HEIGHT,
@@ -352,6 +352,13 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    * time because opening a map takes the party in when it can (D-200).
    */
   const inside = view?.save?.inside ?? null;
+  /** Where the table is, by name: the Party panel offers to open it (D-381). */
+  const insidePlace = inside
+    ? campaign?.places.find((place) => place.id === inside.placeId) ?? null
+    : null;
+  const insidePoi = inside && insidePlace
+    ? insidePlace.pois.find((poi) => poi.id === inside.poiId) ?? null
+    : null;
   const partyHere = !!inside && !!openMap
     && inside.placeId === openMap.placeId && inside.poiId === openMap.poiId;
   /** The Party's view, while there is a party in the open map to see it. */
@@ -2211,7 +2218,6 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
               ground={ground}
               cover={cover}
               brush={brush}
-              metresPerStep={(campaign?.world.metresPerCell ?? DEFAULT_METRES_PER_CELL) * LEVEL_HEIGHT}
               // Mid-sequence the readout says what the click will do, since that
               // is more useful than the ground under the pointer (R-132).
               hoverLabel={travelPrompt(travel, memberName, route) ?? hoverLabel}
@@ -2288,18 +2294,12 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
               placement={placement}
               canPlace={knownChunks.size > 0}
               notes={memberNotes}
-              insidePoi={(() => {
-                if (!inside) return null;
-                const p = campaign.places.find((pl) => pl.id === inside.placeId);
-                const poi = p?.pois.find((po) => po.id === inside.poiId);
-                if (!p || !poi) return null;
-                return {
-                  placeName: p.name,
-                  poiName: poi.name,
-                  onOpen: () => setOpenMap({ placeId: p.id, poiId: poi.id }),
-                  onLeave: () => dispatch({ kind: 'leaveMap' }),
-                };
-              })()}
+              insidePoi={insidePlace && insidePoi ? {
+                placeName: insidePlace.name,
+                poiName: insidePoi.name,
+                onOpen: () => setOpenMap({ placeId: insidePlace.id, poiId: insidePoi.id }),
+                onLeave: () => dispatch({ kind: 'leaveMap' }),
+              } : null}
               dispatch={dispatch}
             />
           </div>

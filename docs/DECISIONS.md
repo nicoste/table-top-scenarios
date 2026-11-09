@@ -9992,6 +9992,7 @@ Not done, and the GM's to look at next: `DESIGN_SYSTEM.md` and `ui-gallery.html`
 name tokens, values and icons that differ from the code, and a few small
 things remain, among them a menu caption that screen readers would announce
 forever, a key number that is hard to read on hover, and two strings with units.
+**Amended by D-385**: the caption and the units are done; the key number stays.
 
 ### D-384 — Every delete button asks, play included · `agreed`
 *"Removing a player from the party has no confirmation like all the other
@@ -10018,3 +10019,39 @@ whole row, name and picture with it, so the question offered *Remove* and
 
 What still takes one action is a key or a stroke: Backspace on a prop, and the
 erase brush, R-151's own exception.
+
+### D-385 — The review's smaller findings, settled · `agreed`
+*"1. a. Fix it. 1. b. That's ok. 1. c. Fix it. 2. Fix all."*
+
+The rest of the review of D-381 and D-382, on the code. Each one checked on a
+copy of the GM's data.
+
+- **No unit words on the screens** (D-316). The sight, area and light tooltips
+  say how far without "in cubes", "12 is 60 ft" is gone, and the world's
+  Height tooltip says what a drag does instead of how many metres a step is.
+  The key number on a tool button stays as it is: the GM's call.
+- **The menu's caption is not announced.** It changed every second, and a
+  screen reader would have read it every second.
+- **A click on the compass leaves the focus where it was**, so the next Space
+  or Enter reaches what the GM meant instead of turning the camera again. Tab
+  still reaches the buttons.
+- **A tool button's name is its word.** The key number beside it is given as
+  its shortcut, not read into the name: *Build*, not *1Build*.
+- **Both camera hints are written from the key table** that `cameraAction`
+  reads (R-156). The table's names Q/E and R/F after the compass, since the
+  table answers to them. One test holds both.
+- **A party member's row is the same elements at any party size.**
+  `ConfirmDelete` takes `disabled`, so going from one member to two no longer
+  rebuilds a row being typed in.
+- **The island is kept per step and phase**, the same object every time,
+  which is what the Stage's own check needs (R-19a); D-383 had kept it in the
+  hook instead, where no test could see it. Measured (MEASUREMENTS.md): a
+  camera turn on the menu rebuilt it 77 times in 4.6 seconds before, and 3
+  times now, once per step. It holds still, finished, for a system that asks
+  for less motion, and the menu card is nearly opaque instead of blurring an
+  island that changes every step.
+- **The logo takes every colour from the theme**: its glow and badge from the
+  highlight, its faces mixed from the main colour.
+- Smaller: the console finds where the table is the way it finds the open map,
+  without a function written inline, and the `h1` rule is `.launcher h1`
+  alone, since no other heading exists.

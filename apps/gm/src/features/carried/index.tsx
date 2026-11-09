@@ -58,7 +58,7 @@ export function CarriedLightLine({ light, name, onChange }: {
 }) {
   return (
     <div className="stage-light">
-      <Tooltip label={`How far ${name}'s light reaches, in cubes`} placement="left">
+      <Tooltip label={`How far ${name}'s light reaches`} placement="left">
         <span className="stage-sight">
           <span className="lbl">lights</span>
           <DraftInput

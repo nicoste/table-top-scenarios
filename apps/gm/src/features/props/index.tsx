@@ -174,7 +174,7 @@ export function PropsPanel({ hand, onHand, selected, onSelect, opened, placeId, 
             </>
           )}
           {selectedType.light && (
-            <Tooltip label="How far its light reaches, in cubes" placement="left">
+            <Tooltip label="How far its light reaches" placement="left">
               <span className="stage-sight prop-reach">
                 <span className="lbl">lights</span>
                 <DraftInput

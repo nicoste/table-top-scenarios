@@ -2,8 +2,21 @@
 // Scenarios (D-382). Built in the Squared Voxel HUD visual language using
 // master CSS tokens (`--ui-highlight`, `--ui-ink`, `--dim`, `--ui-slot-border`)
 // so global theme swaps re-colour the emblem and wordmark automatically (R-111).
+// Every colour below is one of them or mixed from them; the fallbacks are the
+// shells' own defaults.
 
 import type { CSSProperties } from 'react';
+
+const HIGHLIGHT = 'var(--ui-highlight, #f5a524)';
+const MAIN = 'var(--ui-main, #181c24)';
+const INK = 'var(--ui-ink, #e6e9ef)';
+/** The highlight at `percent` strength over whatever is behind it: glows and tints. */
+const glow = (percent: number) => `color-mix(in srgb, ${HIGHLIGHT} ${percent}%, transparent)`;
+/** The emblem's faces, from darkest to lightest, and the line round them. */
+const UNDERSIDE = `color-mix(in srgb, ${MAIN} 75%, black)`;
+const FACE = `color-mix(in srgb, ${MAIN} 96%, ${INK})`;
+const PLATEAU = `color-mix(in srgb, ${MAIN} 92%, ${INK})`;
+const OUTLINE = `color-mix(in srgb, ${MAIN} 55%, black)`;
 
 export interface BrandLogoProps {
   /** Role badge rendered above the wordmark (e.g. 'GM Console', 'Table Display'). */
@@ -32,7 +45,7 @@ const EMBLEM_FRAME: CSSProperties = {
   background: 'var(--ui-slot-bg, #0d1016)',
   border: '1px solid var(--ui-slot-border, #4a5262)',
   borderRadius: 'var(--ui-radius, 2px)',
-  boxShadow: 'inset 0 0 0 1px rgba(245, 158, 11, 0.16), 0 4px 14px rgba(0, 0, 0, 0.45)',
+  boxShadow: `inset 0 0 0 1px ${glow(16)}, 0 4px 14px rgba(0, 0, 0, 0.45)`,
 };
 
 const TEXT_COL: CSSProperties = {
@@ -65,8 +78,8 @@ const DOT: CSSProperties = {
   width: 6,
   height: 6,
   borderRadius: 1,
-  background: 'var(--ui-highlight, #f59e0b)',
-  boxShadow: '0 0 6px rgba(245, 158, 11, 0.65)',
+  background: HIGHLIGHT,
+  boxShadow: `0 0 6px ${glow(65)}`,
   flexShrink: 0,
 };
 
@@ -74,12 +87,12 @@ const STATUS_PILL: CSSProperties = {
   fontSize: 10,
   fontWeight: 600,
   letterSpacing: '0.04em',
-  color: 'var(--ui-highlight, #f59e0b)',
-  background: 'rgba(245, 158, 11, 0.1)',
-  border: '1px solid rgba(245, 158, 11, 0.35)',
+  color: HIGHLIGHT,
+  background: glow(10),
+  border: `1px solid ${glow(35)}`,
   borderRadius: 'var(--ui-radius, 2px)',
   padding: '1px 6px',
-   fontVariantNumeric: 'tabular-nums',
+  fontVariantNumeric: 'tabular-nums',
   whiteSpace: 'nowrap',
 };
 
@@ -99,7 +112,7 @@ const TITLE_PRIMARY: CSSProperties = {
   letterSpacing: '0.1em',
   lineHeight: 1.05,
   textTransform: 'uppercase',
-  color: 'var(--ui-ink, #e6e9ef)',
+  color: INK,
 };
 
 const TITLE_ACCENT: CSSProperties = {
@@ -109,7 +122,7 @@ const TITLE_ACCENT: CSSProperties = {
   letterSpacing: '0.26em',
   lineHeight: 1.15,
   textTransform: 'uppercase',
-  color: 'var(--ui-highlight, #f59e0b)',
+  color: HIGHLIGHT,
 };
 
 export function BrandLogo({
@@ -140,14 +153,14 @@ export function BrandLogo({
           {/* Floating Island Underside (Left & Right Rock Facets) */}
           <polygon
             points="4,22 20,30 20,36 6,28"
-            fill="#1b202b"
+            fill={FACE}
             stroke="var(--ui-slot-border, #4a5262)"
             strokeWidth="1.1"
             strokeLinejoin="bevel"
           />
           <polygon
             points="36,22 20,30 20,36 34,28"
-            fill="#12161e"
+            fill={UNDERSIDE}
             stroke="var(--ui-slot-border, #4a5262)"
             strokeWidth="1.1"
             strokeLinejoin="bevel"
@@ -156,7 +169,7 @@ export function BrandLogo({
           {/* Isometric Floating Terrain Plateau */}
           <polygon
             points="20,14 36,22 20,30 4,22"
-            fill="#232936"
+            fill={PLATEAU}
             stroke="var(--dim, #8a93a6)"
             strokeWidth="1.2"
             strokeLinejoin="bevel"
@@ -166,29 +179,29 @@ export function BrandLogo({
           {/* Tower Top Face */}
           <polygon
             points="20,5 28,9 20,13 12,9"
-            fill="var(--ui-ink, #e6e9ef)"
-            stroke="#0d1016"
+            fill={INK}
+            stroke={OUTLINE}
             strokeWidth="1"
           />
           {/* Tower Left Lit Wall */}
           <polygon
             points="12,9 20,13 20,22 12,18"
             fill="var(--dim, #8a93a6)"
-            stroke="#0d1016"
+            stroke={OUTLINE}
             strokeWidth="1"
           />
           {/* Tower Right Shadow Wall */}
           <polygon
             points="28,9 20,13 20,22 28,18"
             fill="var(--ui-slot-border, #4a5262)"
-            stroke="#0d1016"
+            stroke={OUTLINE}
             strokeWidth="1"
           />
 
           {/* Glowing Amber Gate & Beacon in the Watchtower */}
           <polygon
             points="16,15 19,16.5 19,21.5 16,20"
-            fill="var(--ui-highlight, #f59e0b)"
+            fill={HIGHLIGHT}
           />
           <rect
             x="18.5"
@@ -196,19 +209,19 @@ export function BrandLogo({
             width="3"
             height="3"
             transform="rotate(26 20 9)"
-            fill="var(--ui-highlight, #f59e0b)"
+            fill={HIGHLIGHT}
           />
 
           {/* The Winding Golden Isometric Road leading from the foreground edge to the gate */}
           <polygon
             points="12,26 16,28 23,24.5 19,22.5"
-            fill="rgba(245, 158, 11, 0.3)"
-            stroke="var(--ui-highlight, #f59e0b)"
+            fill={glow(30)}
+            stroke={HIGHLIGHT}
             strokeWidth="1.35"
           />
           <polygon
             points="16,20 19,21.5 23,24.5 19,22.5"
-            fill="var(--ui-highlight, #f59e0b)"
+            fill={HIGHLIGHT}
           />
         </svg>
       </div>

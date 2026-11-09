@@ -109,12 +109,14 @@ export function SlotButton({
       className={active ? 'on' : ''}
       style={style}
       aria-pressed={active}
+      // The key is said as a key, not as part of the name: "Build", not "1Build".
+      aria-keyshortcuts={hotkey}
       disabled={disabled}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onClick={onClick}
     >
-      {hotkey && <span style={active ? HOTKEY_ACTIVE_STYLE : HOTKEY_STYLE}>{hotkey}</span>}
+      {hotkey && <span aria-hidden="true" style={active ? HOTKEY_ACTIVE_STYLE : HOTKEY_STYLE}>{hotkey}</span>}
       <GameIcon name={icon} size={20} />
       <span style={LABEL_STYLE}>{label}</span>
     </button>

@@ -122,7 +122,7 @@ export function MeasurePanel({ hand, onHand, areas, people, placeId, poiId, disp
                     confirmLabel="Remove"
                     onConfirm={() => dispatch({ kind: 'removeArea', ...where, id: area.id })}
                   >
-                    <Tooltip label={`Its ${SIZE_WORD[area.shape]}, in cubes`} placement="left">
+                    <Tooltip label={`Its ${SIZE_WORD[area.shape]}`} placement="left">
                       <span className="stage-sight">
                         <DraftInput
                           className="sight"

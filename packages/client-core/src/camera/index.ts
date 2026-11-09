@@ -21,14 +21,24 @@ export type CameraAction =
  * world with a letter that is not on the key.
  */
 export function cameraAction(code: string): CameraAction | null {
-  switch (code) {
-    case 'KeyQ': return { kind: 'turn', steps: -1 };
-    case 'KeyE': return { kind: 'turn', steps: 1 };
-    case 'KeyR': return { kind: 'tilt', steps: 1 };
-    case 'KeyF': return { kind: 'tilt', steps: -1 };
-    default: return null;
-  }
+  return CAMERA_KEYS.find((key) => key.code === code)?.action ?? null;
 }
+
+/**
+ * The bindings themselves, with the letter printed on each key. `cameraAction`
+ * reads them and both hints are written from them, so a binding that moves
+ * takes its help with it.
+ */
+const CAMERA_KEYS: readonly { readonly code: string; readonly letter: string; readonly action: CameraAction }[] = [
+  { code: 'KeyQ', letter: 'Q', action: { kind: 'turn', steps: -1 } },
+  { code: 'KeyE', letter: 'E', action: { kind: 'turn', steps: 1 } },
+  { code: 'KeyR', letter: 'R', action: { kind: 'tilt', steps: 1 } },
+  { code: 'KeyF', letter: 'F', action: { kind: 'tilt', steps: -1 } },
+];
+
+/** `Q/E` for the turn, `R/F` for the tilt. */
+const keysFor = (kind: CameraAction['kind']) =>
+  CAMERA_KEYS.filter((key) => key.action.kind === kind).map((key) => key.letter).join('/');
 
 /** How far one wheel tick zooms, as a factor on the zoom. */
 const WHEEL_STEP = 1.12;
@@ -48,10 +58,12 @@ export function wheelZoom(deltaY: number): number {
 /**
  * The one line of help the console shows, matching `cameraAction`.
  */
-export const CAMERA_HINT = 'Q/E turn · R/F tilt · right-drag pan · wheel zoom';
+export const CAMERA_HINT = `${keysFor('turn')} turn · ${keysFor('tilt')} tilt · right-drag pan · wheel zoom`;
 
 /**
- * The table display's camera legend (D-381): the table has a mouse and no
- * keyboard, so turn and tilt live on the compass pod rather than on Q/E and R/F.
+ * The table display's camera legend (D-381). The table is usually run with a
+ * mouse alone, so the compass comes first, but it answers to the same keys and
+ * says so.
  */
-export const TABLE_CAMERA_HINT = 'Compass turn & tilt · right-drag pan · wheel zoom';
+export const TABLE_CAMERA_HINT =
+  `Compass, or ${keysFor('turn')} turn and ${keysFor('tilt')} tilt · right-drag pan · wheel zoom`;

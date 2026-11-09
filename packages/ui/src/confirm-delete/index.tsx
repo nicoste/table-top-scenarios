@@ -23,6 +23,12 @@ export interface ConfirmDeleteProps {
   confirmLabel?: string;
   /** Which side the tooltip prefers. */
   placement?: Placement;
+  /**
+   * Nothing to ask about yet: the trigger is shown, greyed. A prop rather than
+   * a second branch at the caller, so the row's other children are the same
+   * elements either way and keep whatever is being typed in them.
+   */
+  disabled?: boolean;
   onConfirm: () => void;
   /**
    * The row's other actions, to the left of the trigger.
@@ -36,7 +42,7 @@ export interface ConfirmDeleteProps {
 }
 
 export function ConfirmDelete({
-  label, triggerLabel = '×', confirmLabel = 'Delete', placement = 'left', onConfirm, children,
+  label, triggerLabel = '×', confirmLabel = 'Delete', placement = 'left', disabled = false, onConfirm, children,
 }: ConfirmDeleteProps) {
   const [armed, setArmed] = useState(false);
 
@@ -45,7 +51,7 @@ export function ConfirmDelete({
       <>
         {children}
         <Tooltip label={label} placement={placement}>
-          <button className="quiet danger-trigger" aria-label={label} onClick={() => setArmed(true)}>
+          <button className="quiet danger-trigger" aria-label={label} disabled={disabled} onClick={() => setArmed(true)}>
             {triggerLabel}
           </button>
         </Tooltip>

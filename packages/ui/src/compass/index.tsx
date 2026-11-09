@@ -139,6 +139,10 @@ function CamButton({
         style={hovered ? { ...CAM_BTN, ...CAM_BTN_HOVER } : CAM_BTN}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
+        // A click does not take the focus: kept, the next Space or Enter would
+        // turn the camera again instead of reaching what the GM meant it for.
+        // Tab still reaches it, for a keyboard alone.
+        onMouseDown={(e) => e.preventDefault()}
         onClick={onClick}
       >
         <GameIcon name={icon} size={16} />

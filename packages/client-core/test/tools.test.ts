@@ -5,7 +5,7 @@ import { describe, it, expect } from 'vitest';
 import type { Cell, Pointed } from '@tt/client-core';
 import {
   clickAction, holdsSelection, tableAction, mapAction, mapHover, mapDrags, mapAllowed,
-  cameraAction, wheelZoom, CAMERA_HINT, mapToolShows, worldToolShows } from '@tt/client-core';
+  cameraAction, wheelZoom, CAMERA_HINT, TABLE_CAMERA_HINT, mapToolShows, worldToolShows } from '@tt/client-core';
 import type { MapAction, MapAim, MapReach } from '@tt/client-core';
 import { brushById } from '@tt/domain';
 import type { Tool } from '@tt/client-core';
@@ -455,12 +455,15 @@ describe('the camera keys are the same on both screens (R-156)', () => {
     }
   });
 
-  it('describes the controls it actually implements', () => {
-    // The legend both screens print. If a binding moved and this did not, the
-    // help would be a lie on two screens at once.
-    for (const key of ['Q/E', 'R/F']) expect(CAMERA_HINT).toContain(key);
-    expect(CAMERA_HINT).toContain('pan');
-    expect(CAMERA_HINT).toContain('zoom');
+  it('describes the controls it actually implements, on both screens', () => {
+    // The legends the two screens print. If a binding moved and these did not,
+    // the help would be a lie on two screens at once.
+    for (const hint of [CAMERA_HINT, TABLE_CAMERA_HINT]) {
+      for (const key of ['Q/E', 'R/F']) expect(hint).toContain(key);
+      expect(hint).toContain('pan');
+      expect(hint).toContain('zoom');
+    }
+    expect(TABLE_CAMERA_HINT).toContain('Compass');
   });
 });
 

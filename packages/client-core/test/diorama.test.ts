@@ -1,12 +1,15 @@
 import { describe, it, expect } from 'vitest';
-import { blockKey, isKnownSwatch, propType } from '@tt/domain';
+import { blockKey, DAYLIGHT, isKnownSwatch, propType } from '@tt/domain';
 import {
   DIORAMA_TOTAL_STEPS,
   DIORAMA_STEP_TITLES,
+  clearDiorama,
   dioramaAtStep,
+  dioramaStart,
   nextDioramaCursor,
+  showDiorama,
 } from '@tt/client-core';
-import type { DioramaCursor } from '@tt/client-core';
+import type { DioramaCursor, DioramaStage } from '@tt/client-core';
 
 describe('dioramaAtStep', () => {
   it('defines a title for every step from 1 to 10', () => {
@@ -95,5 +98,47 @@ describe('nextDioramaCursor', () => {
       'undo:1',
       'build:2',
     ]);
+  });
+});
+
+describe('the diorama on the Stage', () => {
+  /** A Stage that only writes down what it was asked. */
+  function recording() {
+    const calls: string[] = [];
+    const stage: DioramaStage = {
+      setMap: (map) => { calls.push(map ? 'map' : 'no map'); },
+      setTokens: (tokens) => { calls.push(tokens ? 'tokens' : 'no tokens'); },
+      setLighting: (lighting) => { calls.push(lighting === DAYLIGHT ? 'daylight' : 'lighting'); },
+      setTarget: () => { calls.push('framed'); },
+    };
+    return { stage, calls };
+  }
+
+  it('hands the Stage the same scene for the same step, so a re-render rebuilds nothing', () => {
+    // The Stage keeps a body it is handed again (R-19a); a new object, even
+    // an equal one, is a full rebuild.
+    expect(dioramaAtStep(4)).toBe(dioramaAtStep(4));
+    expect(dioramaAtStep(4).map).toBe(dioramaAtStep(4).map);
+    expect(dioramaAtStep(4, 'undo')).toBe(dioramaAtStep(4, 'undo'));
+    expect(dioramaAtStep(5).map).not.toBe(dioramaAtStep(4).map);
+  });
+
+  it('frames the island only when asked', () => {
+    const { stage, calls } = recording();
+    showDiorama(stage, dioramaAtStep(1), true);
+    showDiorama(stage, dioramaAtStep(2), false);
+    expect(calls.filter((call) => call === 'framed')).toHaveLength(1);
+    expect(calls.filter((call) => call === 'map')).toHaveLength(2);
+  });
+
+  it('leaves the Stage empty and in daylight for the campaign that follows', () => {
+    const { stage, calls } = recording();
+    clearDiorama(stage);
+    expect(calls).toEqual(['no tokens', 'no map', 'daylight']);
+  });
+
+  it('holds the finished island still for anyone who asks for less motion', () => {
+    expect(dioramaStart(true)).toEqual({ step: DIORAMA_TOTAL_STEPS, phase: 'build', hold: 0 });
+    expect(dioramaStart(false)).toEqual({ step: 1, phase: 'build', hold: 0 });
   });
 });

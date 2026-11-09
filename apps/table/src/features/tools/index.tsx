@@ -175,7 +175,7 @@ export function TableTools({ measuring, leap, onLeap, hand, onMove, onMeasure, o
                         >
                           <DraftInput
                             className="size"
-                            title={`Its ${SIZE_WORD[area.shape]}, in cubes`}
+                            title={`Its ${SIZE_WORD[area.shape]}`}
                             aria-label={`${area.name}'s ${SIZE_WORD[area.shape]}`}
                             inputMode="numeric"
                             value={String(area.size)}

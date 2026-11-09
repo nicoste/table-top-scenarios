@@ -21,8 +21,6 @@ interface Props {
   /** What the cover brush is loaded with; null is the eraser (R-193). */
   cover: CoverId | null;
   brush: number;
-  /** How far one height step rises: a quarter of the campaign's cell (D-373). */
-  metresPerStep: number;
   hoverLabel: string | null;
   onTool: (tool: Tool) => void;
   onGround: (ground: SwatchId) => void;
@@ -36,7 +34,7 @@ const costOf = (difficulty: number | 'impassable') =>
 
 
 export function BuildWorldPanel({
-  tool, ground, cover, brush, metresPerStep, hoverLabel, onTool, onGround, onCover, onBrush,
+  tool, ground, cover, brush, hoverLabel, onTool, onGround, onCover, onBrush,
 }: Props) {
   return (
     <>
@@ -72,7 +70,7 @@ export function BuildWorldPanel({
             label="Height"
             hotkey="4"
             active={tool === 'height'}
-            tooltip={`Drag a cell up or down (${metresPerStep} m per step) — key 4`}
+            tooltip="Drag a cell up or down: the ground under the brush moves as one, keeping its shape — key 4"
             onClick={() => onTool('height')}
           />
           <SlotButton
