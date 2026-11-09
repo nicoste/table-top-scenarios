@@ -6,12 +6,12 @@
 
 import type { Intent, MapWire } from '@tt/protocol';
 import type { MapTool } from '@tt/client-core';
-import { CAMERA_HINT, mapToolShows } from '@tt/client-core';
+import { mapToolShows } from '@tt/client-core';
 import {
   MAP_MAX_HEIGHT, MAP_MIN_DEPTH, BRUSHES, isFullRange, sameRange, stepLabel,
 } from '@tt/domain';
 import type { LevelRange, Material, SwatchId } from '@tt/domain';
-import { ConfirmDelete, Tooltip } from '@tt/ui';
+import { ConfirmDelete, GameIcon, SlotButton, Tooltip } from '@tt/ui';
 import { LevelLadder } from '../levels/index.js';
 import { SwatchPalette } from '../swatches/index.js';
 
@@ -164,7 +164,8 @@ export function MapPanel({
                   aria-pressed={partyView}
                   onClick={() => onPartyView(!partyView)}
                 >
-                  {partyView ? '◐ Party\'s view' : '○ Party\'s view'}
+                  <GameIcon name={partyView ? 'eye-open' : 'eye-hidden'} size={15} />
+                  <span>Party&apos;s view</span>
                 </button>
               </Tooltip>
               <Tooltip label="Send the party back out to the world map" placement="bottom" stretch>
@@ -213,6 +214,7 @@ export function MapPanel({
           <div className="row forget">
             <ConfirmDelete
               label="Forget everything the party has seen here, and take them off the map — a fresh start"
+              triggerLabel="Forget"
               confirmLabel="Forget"
               placement="right"
               onConfirm={() => dispatch({ kind: 'forgetMap', placeId, poiId })}
@@ -227,84 +229,63 @@ export function MapPanel({
 
       <div className="card">
         <h2>Tool</h2>
-        {/*
-          Two tools for matter, because there are two ideas: add or remove it,
-          and change the colour of what is already there (R-162). Erase and
-          fill were tools of their own and are modes of these two now — you
-          alternate between build and erase constantly, and reaching for a
-          different button each time was the tax. The third is not about
-          matter at all: Play stands the party somewhere (D-258), and opens
-          doors and lights lights — the hands-on half of play (D-354).
-        */}
         <div className="btn-grid tools">
-          <Tooltip
-            label="Add blocks against the face you click, or hold ⇧ shift to erase — key 1"
-            placement="bottom"
-            stretch
-          >
-            <button className={tool === 'build' ? 'on' : ''} onClick={() => onTool('build')}>
-              {tool === 'build' && shifting ? '⌫ Erase' : '▣ Build'}
-            </button>
-          </Tooltip>
-          <Tooltip
-            label="Repaint blocks without moving them, or hold ⇧ shift to fill — key 2"
-            placement="bottom"
-            stretch
-          >
-            <button className={tool === 'paint' ? 'on' : ''} onClick={() => onTool('paint')}>
-              {tool === 'paint' && shifting ? '◍ Fill' : '✏ Paint'}
-            </button>
-          </Tooltip>
-          {/* The third tool (D-258): the party, picked and stood somewhere else. */}
-          <Tooltip
-            label="Move tokens, open doors, light lights — key 3"
-            placement="bottom"
-            stretch
-          >
-            <button className={tool === 'move' ? 'on' : ''} onClick={() => onTool('move')}>
-              ▶ Play
-            </button>
-          </Tooltip>
-          {/* The fourth (D-307): everyone else, from the Tokens Library. */}
-          <Tooltip
-            label="Place tokens from the Tokens Library — key 4"
-            placement="bottom"
-            stretch
-          >
-            <button className={tool === 'spawn' ? 'on' : ''} onClick={() => onTool('spawn')}>
-              ✚ Spawn
-            </button>
-          </Tooltip>
-          {/* The fifth (D-321): pieces of map, saved and stamped. */}
-          <Tooltip
-            label="Save a piece of this map, or place a saved one — key 5"
-            placement="bottom"
-            stretch
-          >
-            <button className={tool === 'prefabs' ? 'on' : ''} onClick={() => onTool('prefabs')}>
-              ⧉ Prefabs
-            </button>
-          </Tooltip>
-          {/* The sixth (D-328): doors, bars and furniture, one per click. */}
-          <Tooltip
-            label="Place doors, bars, furniture, lights and ways up and down, or change one — key 6"
-            placement="bottom"
-            stretch
-          >
-            <button className={tool === 'props' ? 'on' : ''} onClick={() => onTool('props')}>
-              ⚿ Props
-            </button>
-          </Tooltip>
-          {/* The seventh (D-341): the ruler, and areas. */}
-          <Tooltip
-            label="Measure how far, or draw an area — key 7"
-            placement="bottom"
-            stretch
-          >
-            <button className={tool === 'measure' ? 'on' : ''} onClick={() => onTool('measure')}>
-              ⟷ Measure
-            </button>
-          </Tooltip>
+          <SlotButton
+            icon="build"
+            label={tool === 'build' && shifting ? 'Erase' : 'Build'}
+            hotkey="1"
+            active={tool === 'build'}
+            tooltip="Add blocks against the face you click · hold ⇧ shift to erase · hold ⌥ alt to dig under — key 1"
+            onClick={() => onTool('build')}
+          />
+          <SlotButton
+            icon="paint"
+            label={tool === 'paint' && shifting ? 'Fill' : 'Paint'}
+            hotkey="2"
+            active={tool === 'paint'}
+            tooltip="Repaint blocks without moving them · hold ⇧ shift to flood-fill — key 2"
+            onClick={() => onTool('paint')}
+          />
+          <SlotButton
+            icon="play"
+            label="Play"
+            hotkey="3"
+            active={tool === 'move'}
+            tooltip="Move tokens, open doors, light lights — key 3"
+            onClick={() => onTool('move')}
+          />
+          <SlotButton
+            icon="spawn"
+            label="Spawn"
+            hotkey="4"
+            active={tool === 'spawn'}
+            tooltip="Place tokens from the Tokens Library — key 4"
+            onClick={() => onTool('spawn')}
+          />
+          <SlotButton
+            icon="prefab"
+            label="Prefabs"
+            hotkey="5"
+            active={tool === 'prefabs'}
+            tooltip="Save a piece of this map, or place a saved one (Z/X turn, M mirror) — key 5"
+            onClick={() => onTool('prefabs')}
+          />
+          <SlotButton
+            icon="props"
+            label="Props"
+            hotkey="6"
+            active={tool === 'props'}
+            tooltip="Place doors, bars, furniture, lights and climbs, or edit one (Z/X turn) — key 6"
+            onClick={() => onTool('props')}
+          />
+          <SlotButton
+            icon="measure"
+            label="Measure"
+            hotkey="7"
+            active={tool === 'measure'}
+            tooltip="Measure how far with the ruler, or draw an area — key 7"
+            onClick={() => onTool('measure')}
+          />
         </div>
 
         {/*
@@ -315,12 +296,20 @@ export function MapPanel({
           <>
             <p className="lbl" style={{ margin: '8px 0 4px' }}>Path</p>
             <div className="btn-grid tools">
-              <Tooltip label="Walk over the floors, round what is in the way" placement="bottom" stretch>
-                <button className={leap ? '' : 'on'} aria-pressed={!leap} onClick={() => onLeap(false)}>Ground path</button>
-              </Tooltip>
-              <Tooltip label="Leap straight there through the air — shift does the other one" placement="bottom" stretch>
-                <button className={leap ? 'on' : ''} aria-pressed={leap} onClick={() => onLeap(true)}>Jump path</button>
-              </Tooltip>
+              <SlotButton
+                icon="walk"
+                label="Ground"
+                active={!leap}
+                tooltip="Walk over the floors, round what is in the way"
+                onClick={() => onLeap(false)}
+              />
+              <SlotButton
+                icon="jump"
+                label="Jump"
+                active={leap}
+                tooltip="Leap straight there through the air — shift does the other one"
+                onClick={() => onLeap(true)}
+              />
             </div>
           </>
         )}
@@ -354,72 +343,7 @@ export function MapPanel({
           </>
         )}
 
-        <p className="hint">
-          {tool === 'build' && (
-            <>
-              Click a block&apos;s face; the new ones land against it in the shape of the
-              brush. Blocks already standing are skipped, never overwritten.
-              Hold <b>⇧ shift</b> to <b>erase</b> instead — the outline turns red.
-              Hold <b>⌥ alt</b> to build <b>under</b> the cube — the only way down, since a
-              camera above the horizon never sees an underside — and a column sinks a
-              shaft instead of raising a wall.
-            </>
-          )}
-          {/* Paint is the one mode that drags, because it does not move its own
-              target the way building and erasing do (R-153). */}
-          {tool === 'paint' && (
-            <>
-              Click a block to repaint it, or drag the brush across several. Nothing moves.
-              Hold <b>⇧ shift</b> to <b>fill</b>: everything joined to the block you click,
-              of the same cut of the same material, is repainted. The readout says how many.
-              A click on a prop paints that prop alone, whatever the brush.
-            </>
-          )}
-          {tool === 'move' && (
-            <>
-              Click a token to pick it up, then the top of a block to stand it there.
-              One to a cube, gold or silver, and always on something. Escape or
-              right-click puts it back down where it was. <b>Jump path</b> leaps
-              straight there instead of walking; <b>⇧ shift</b> does the other one.
-              Click a door to open or shut it, and a light to put it out or light it.
-            </>
-          )}
-          {tool === 'spawn' && (
-            <>
-              Choose a token from the <b>Tokens Library</b>, then click the top of a block
-              to place one there — and again, for as many as you need. Each gets its own
-              name, so the table can say which.
-            </>
-          )}
-          {tool === 'props' && (
-            <>
-              Pick a prop from the catalogue and click where it stands — <b>Z / X</b>{' '}
-              turn it first; a torch, holds and vines hang on the wall you point at,
-              and stairs, ladders and ropes face it — a rope hangs from a ledge too. One per click, and
-              each is one undo. With nothing in hand, click a prop to turn, refinish,
-              open or remove it, or to set how far a light reaches — <b>Backspace</b>{' '}
-              removes the one selected; drag the one selected to move it. With{' '}
-              <b>Play</b>, a click opens and shuts a door, and lights or puts out a light.
-            </>
-          )}
-          {tool === 'measure' && (
-            <>
-              With the <b>Ruler</b>, drag from one cube to another to see how far. With a
-              shape, drag to draw an area — the players see it unless you hide it. Drag an
-              area by the mark where it starts to move it. Escape lets go of the ruler.
-            </>
-          )}
-          {tool === 'prefabs' && (
-            <>
-              <b>Place</b>: choose a prefab and click a face to stand it there — <b>Z / X</b>{' '}
-              turn it, <b>M</b> mirrors it, and each placement is one undo. <b>Capture</b>:
-              three clicks — a corner, the opposite corner of the area, then the top —
-              then name the box and save it for every campaign.
-            </>
-          )}
-        </p>
         <p className="readout">{hoverLabel ?? '—'}</p>
-        <p className="hint">1–7 tool · 8–0, −, = or [ ] brush · {CAMERA_HINT}</p>
       </div>
 
       {/* Build's and Paint's, and nobody else's (R-207). */}
@@ -495,32 +419,26 @@ export function MapPanel({
         </div>
       </div>
 
-      <div className="card">
-        <h2>Map</h2>
-        <p className="hint" style={{ margin: '0 0 8px' }}>
-          {blocks} block{blocks === 1 ? '' : 's'}, up to {MAP_MAX_HEIGHT} high
-          {dug < 0 ? `, ${-dug} deep` : ''}.
-        </p>
-        <p className="lbl" style={{ margin: '0 0 6px' }}>Expand the map to:</p>
-        {/*
-          A rose, and the four buttons sit at its *corners* because that is
-          where the map actually grows on screen (D-198). The camera is
-          diagonal to the grid by design (R-31), so the grid's axes run
-          corner-to-corner in the view — a button labelled "East" on the right
-          hand side was pointing at the wrong place. The footprint sits in the
-          middle, so the size is read where the growing happens.
-        */}
-        <div className="rose">
-          {EXPANSIONS.map(({ towards, short, long }) => (
-            <Tooltip key={towards} label={`Add a patch of floor to the ${long}`} placement="left" stretch>
-              <button onClick={() => dispatch({ kind: 'growMap', placeId, poiId, towards })}>
-                {short}
-              </button>
-            </Tooltip>
-          ))}
-          <span className="mid">{map.size.x}×{map.size.z}</span>
+      {tool === 'build' && (
+        <div className="card">
+          <h2>Map</h2>
+          <p className="hint" style={{ margin: '0 0 8px' }}>
+            {blocks} block{blocks === 1 ? '' : 's'}, up to {MAP_MAX_HEIGHT} high
+            {dug < 0 ? `, ${-dug} deep` : ''}.
+          </p>
+          <p className="lbl" style={{ margin: '0 0 6px' }}>Expand the map to:</p>
+          <div className="rose">
+            {EXPANSIONS.map(({ towards, short, long }) => (
+              <Tooltip key={towards} label={`Add a patch of floor to the ${long}`} placement="left" stretch>
+                <button onClick={() => dispatch({ kind: 'growMap', placeId, poiId, towards })}>
+                  {short}
+                </button>
+              </Tooltip>
+            ))}
+            <span className="mid">{map.size.x}×{map.size.z}</span>
+          </div>
         </div>
-      </div>
+      )}
     </>
   );
 }

@@ -66,7 +66,7 @@ export function GmNote({ note, name, onCommit }: {
       onClick={() => setOpen(true)}
       title={note ? 'Edit the note — only you see it' : 'Only you see it'}
     >
-      {note || 'Add a note…'}
+      {note || 'Add a note'}
     </button>
   );
 }

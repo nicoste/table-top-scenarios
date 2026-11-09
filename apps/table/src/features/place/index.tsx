@@ -43,7 +43,7 @@ export function PlaceCard({ place, markerName, onClose }: Props) {
             boundary and were never sent (R-85, D-175). */}
         {place.pois.length > 0 && (
           <>
-            <h2 style={{ marginTop: 12 }}>Points of interest</h2>
+            <h2>Points of interest</h2>
             <ul className="notes-read">
               {place.pois.map((poi) => (
                 <li key={poi.id}>{poi.name}</li>

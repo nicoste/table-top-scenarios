@@ -269,7 +269,7 @@ export function LevelLadder({ map, range, table, onRange, placeId, poiId, dispat
 
       <div className="row">
         <input
-          placeholder="level name"
+          placeholder="Level name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') add(); }}

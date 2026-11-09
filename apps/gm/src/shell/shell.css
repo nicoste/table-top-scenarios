@@ -1,19 +1,76 @@
 :root {
-  --bg: #0f1216; --panel: #171b22; --edge: #262c36; --ink: #e6e9ef;
-  --dim: #8d97a6; --accent: #6ea8fe; --ok: #57d9a3;
+  /* Master design tokens (R-217, D-381): switch --ui-main or --ui-highlight
+     and every surface, border, slot bevel and active state adjusts globally. */
+  --ui-main: #181c24;
+  --ui-highlight: #f5a524;
+  --ui-ink: #e6e9ef;
+  --ui-danger: #e5534b;
+  --ui-ok: #57d9a3;
+  --ui-radius: 2px;
+  --ui-control-h: 28px;
+  --ui-control-sm: 22px;
+  --ui-slot-h: 54px;
+  --ui-font: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, monospace;
+  --ui-body-font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  /* Standardized typography scale (R-217) */
+  --ui-text-h1: 18px;
+  --ui-text-h2: 11px;
+  --ui-text-label: 10.5px;
+  --ui-text-body: 12.5px;
+  --ui-text-readout: 12px;
+  --ui-text-hint: 11.5px;
+  --ui-text-meta: 11px;
+
+  /* Derived surface & state tokens */
+  --bg: color-mix(in srgb, var(--ui-main) 65%, #000000);
+  --panel: color-mix(in srgb, var(--ui-main) 92%, #000000);
+  --edge: color-mix(in srgb, var(--ui-main) 70%, var(--ui-ink));
+  --ink: var(--ui-ink);
+  --dim: color-mix(in srgb, var(--ui-ink) 58%, var(--ui-main));
+  --accent: var(--ui-highlight);
+  --ok: var(--ui-ok);
   /* The table's band beside the GM's on the level ladder (D-369). */
   --table: #e8b25a;
+
+  --ui-panel-bg: color-mix(in srgb, var(--ui-main) 94%, transparent);
+  --ui-panel-border: var(--edge);
+  --ui-panel-shadow:
+    inset 2px 2px 0 rgba(255, 255, 255, 0.07),
+    inset -2px -2px 0 rgba(0, 0, 0, 0.7),
+    0 6px 0 rgba(0, 0, 0, 0.45);
+
+  --ui-slot-bg: color-mix(in srgb, var(--ui-main) 88%, var(--ui-ink));
+  --ui-slot-hover-bg: color-mix(in srgb, var(--ui-main) 78%, var(--ui-ink));
+  --ui-slot-border: color-mix(in srgb, var(--ui-main) 62%, var(--ui-ink));
+  --ui-slot-hover-border: color-mix(in srgb, var(--ui-main) 40%, var(--ui-ink));
+  --ui-slot-shadow:
+    inset 2px 2px 0 rgba(255, 255, 255, 0.11),
+    inset -2px -2px 0 rgba(0, 0, 0, 0.75);
+
+  --ui-slot-active-bg: color-mix(in srgb, var(--ui-highlight) 22%, var(--ui-main));
+  --ui-slot-active-border: var(--ui-highlight);
+  --ui-slot-active-ink: color-mix(in srgb, var(--ui-highlight) 65%, #ffffff);
+  --ui-slot-active-shadow:
+    inset 2px 2px 0 color-mix(in srgb, var(--ui-highlight) 35%, transparent),
+    inset -2px -2px 0 rgba(0, 0, 0, 0.85),
+    0 0 0 1px var(--ui-highlight);
 }
 * { box-sizing: border-box; }
 html, body, #root { margin: 0; height: 100%; }
 body {
   background: var(--bg); color: var(--ink); overflow: hidden;
-  font: 13px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font: var(--ui-text-body)/1.45 var(--ui-body-font);
 }
 /* Textareas too: left out, one fell back to the browser's monospace (D-312). */
 button, input, select, textarea {
-  font: inherit; color: var(--ink); background: #212733;
-  border: 1px solid var(--edge); border-radius: 6px; padding: 5px 9px;
+  font: inherit; color: var(--ink); background: var(--ui-slot-bg);
+  border: 2px solid var(--ui-slot-border); border-radius: var(--ui-radius);
+  min-height: var(--ui-control-h); padding: 3px 9px;
+  box-shadow: var(--ui-slot-shadow);
+}
+input:not([type="range"]):not([type="checkbox"]), select {
+  height: var(--ui-control-h); padding: 0 8px;
 }
 /*
  * One quiet focus for every text field: the border turns to the accent and
@@ -22,11 +79,20 @@ button, input, select, textarea {
  * large box like a note (D-313).
  */
 input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); }
-input.invalid, input.invalid:focus { border-color: #ff6b6b; }
-button { cursor: pointer; }
-button:hover:not(:disabled) { background: #2a323f; }
+input.invalid, input.invalid:focus { border-color: var(--ui-danger); }
+button {
+  cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+}
+button:hover:not(:disabled) { background: var(--ui-slot-hover-bg); border-color: var(--ui-slot-hover-border); }
 button:disabled { opacity: .45; cursor: default; }
-button.on { background: var(--accent); color: #0f1216; border-color: transparent; font-weight: 600; }
+button.on {
+  background: var(--ui-slot-active-bg);
+  color: var(--ui-slot-active-ink);
+  border-color: var(--ui-slot-active-border);
+  box-shadow: var(--ui-slot-active-shadow);
+  font-weight: 600;
+}
 input { width: 100%; }
 
 .stage { position: fixed; inset: 0; }
@@ -36,26 +102,53 @@ input { width: 100%; }
   height: 100%; display: grid; place-items: center; padding: 24px;
 }
 .launcher .card {
-  width: min(460px, 100%); background: var(--panel); border: 1px solid var(--edge);
-  border-radius: 12px; padding: 22px;
+  width: min(460px, 100%); background: var(--panel); border: 2px solid var(--edge);
+  border-radius: var(--ui-radius); box-shadow: var(--ui-panel-shadow); padding: 22px;
 }
-.launcher h1 { margin: 0 0 4px; font-size: 20px; }
+.launcher h1, h1 {
+  margin: 0 0 6px;
+  font: 700 var(--ui-text-h1)/1.25 var(--ui-font);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
 .launcher p { margin: 0 0 18px; color: var(--dim); }
 .launcher .row { display: flex; gap: 8px; margin-top: 14px; }
 .launcher ul { list-style: none; margin: 0 0 6px; padding: 0; }
 .launcher li { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-top: 1px solid var(--edge); }
 .launcher li .nm { flex: 1; }
-.launcher li .nm.danger { color: #ffc9c9; }
-button.danger { background: #4a2020; border-color: #ff6b6b55; color: #ffc9c9; }
-button.danger:hover { background: #5d2828; }
-button.quiet { background: transparent; border-color: transparent; color: var(--dim); padding: 4px 7px; }
-button.quiet:hover { background: #3a2222; color: #ffc9c9; border-color: transparent; }
-.dock .row { display: flex; gap: 6px; }
+.launcher li .nm.danger { color: color-mix(in srgb, var(--ui-danger) 75%, #ffffff); }
+button.danger {
+  background: color-mix(in srgb, var(--ui-danger) 24%, var(--ui-main));
+  border-color: color-mix(in srgb, var(--ui-danger) 65%, var(--ui-main));
+  color: color-mix(in srgb, var(--ui-danger) 75%, #ffffff);
+}
+button.danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ui-danger) 36%, var(--ui-main));
+  border-color: var(--ui-danger);
+}
+button.quiet {
+  background: transparent; border-color: transparent; box-shadow: none;
+  color: var(--dim); min-height: var(--ui-control-sm); padding: 2px 7px;
+}
+button.quiet:hover:not(:disabled) {
+  background: var(--ui-slot-hover-bg);
+  color: var(--ink);
+  border-color: transparent;
+}
+button.quiet.danger-trigger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ui-danger) 24%, var(--ui-main));
+  color: color-mix(in srgb, var(--ui-danger) 75%, #ffffff);
+  border-color: transparent;
+}
+.dock .row { display: flex; align-items: center; gap: 6px; }
+.dock .row > .lbl { flex: none; margin: 0; }
+.dock .row > select { flex: 1 1 auto; min-width: 0; }
 
 .dock {
   position: fixed; top: 12px; left: 12px; z-index: 5;
   display: flex; flex-direction: column; gap: 8px; width: 228px;
-  overflow-y: auto; scrollbar-width: thin;
+  overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none;
   /*
     Height hugs the cards, bounded by a max — NOT `bottom: 12px`.
     A full-height dock covers the canvas with an empty strip below its cards,
@@ -66,6 +159,7 @@ button.quiet:hover { background: #3a2222; color: #ffc9c9; border-color: transpar
   */
   max-height: calc(100vh - 24px);
 }
+.dock::-webkit-scrollbar { display: none; }
 .dock-right { left: auto; right: 12px; max-height: calc(100vh - 84px); }
 /*
  * Inside a map the right dock holds the On stage list (R-208), whose silver
@@ -75,12 +169,17 @@ button.quiet:hover { background: #3a2222; color: #ffc9c9; border-color: transpar
 .dock-right.dock-wide { width: 264px; }
 .dock > * { flex: none; }
 .card {
-  background: #171b22ee; border: 1px solid var(--edge); border-radius: 10px;
-  padding: 10px; backdrop-filter: blur(8px);
+  background: var(--ui-panel-bg); border: 2px solid var(--ui-panel-border); border-radius: var(--ui-radius);
+  box-shadow: var(--ui-panel-shadow); padding: 10px; backdrop-filter: blur(8px);
 }
 .card h2 {
-  margin: 0 0 8px; font-size: 10.5px; letter-spacing: .09em;
-  text-transform: uppercase; color: var(--dim); font-weight: 600;
+  margin: 0 0 8px; padding-bottom: 5px;
+  border-bottom: 1px solid color-mix(in srgb, var(--edge) 65%, transparent);
+  font: 700 var(--ui-text-h2)/1.2 var(--ui-font); letter-spacing: .08em;
+  text-transform: uppercase; color: var(--dim);
+}
+.card * + h2 {
+  margin-top: 12px;
 }
 /*
   A 2x2 grid, not a wrapping flex row.
@@ -101,7 +200,7 @@ button.quiet:hover { background: #3a2222; color: #ffc9c9; border-color: transpar
   is still one column wide.
 */
 .btn-grid { display: grid; gap: 5px; }
-.btn-grid > * { min-width: 0; }
+.btn-grid > *, .btn-grid > * > span:first-child { min-width: 0; width: 100%; display: flex !important; }
 .btn-grid .wide, .btn-grid > *:has(.wide) { grid-column: 1 / -1; }
 .btn-grid button {
   width: 100%; white-space: nowrap;
@@ -160,23 +259,35 @@ button.quiet:hover { background: #3a2222; color: #ffc9c9; border-color: transpar
 .journey .btn-grid { margin-top: 9px; }
 .brush button { padding: 6px 2px; font-size: 12px; }
 
-.reveal { display: flex; gap: 5px; }
-.reveal button { flex: 1; padding: 6px 4px; }
+.reveal {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: 5px;
+}
+.reveal > *, .reveal > * > span:first-child { min-width: 0; width: 100%; display: flex !important; }
+.reveal button { width: 100%; padding: 4px; }
 .warn {
-  margin: 8px 0 0; padding: 6px 8px; border-radius: 6px; font-size: 11.5px;
-  background: #3a2f18; border: 1px solid #ffc85744; color: #ffe0a3;
+  margin: 8px 0 0; padding: 7px 9px; border-radius: var(--ui-radius); font-size: var(--ui-text-hint);
+  background: color-mix(in srgb, var(--ui-highlight) 16%, var(--ui-main));
+  border: 1px solid color-mix(in srgb, var(--ui-highlight) 48%, var(--ui-main));
+  color: color-mix(in srgb, var(--ui-highlight) 70%, #ffffff);
 }
 
-.notes { list-style: none; margin: 6px 0 8px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-.notes li { display: grid; grid-template-columns: auto 1fr; gap: 4px 6px; align-items: start; }
-.notes textarea {
-  font: inherit; color: var(--ink); background: #212733; border: 1px solid var(--edge);
-  border-radius: 6px; padding: 4px 7px; resize: vertical; width: 100%;
+.notes { list-style: none; margin: 6px 0 8px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.notes li {
+  display: grid; grid-template-columns: auto 1fr; gap: 4px 6px; align-items: start;
+  padding: 6px; border-radius: var(--ui-radius);
+  background: color-mix(in srgb, var(--ui-main) 72%, #000000);
+  border: 1px solid color-mix(in srgb, var(--edge) 70%, transparent);
 }
-.notes .eye { font-size: 13px; padding: 3px 5px; line-height: 1; opacity: .55; }
-.notes .eye.shown { opacity: 1; }
+.notes textarea {
+  font: inherit; color: var(--ink); background: var(--ui-slot-bg); border: 2px solid var(--ui-slot-border);
+  border-radius: var(--ui-radius); padding: 4px 7px; resize: vertical; width: 100%;
+}
+.notes .eye { width: var(--ui-control-h); height: var(--ui-control-h); padding: 0; display: inline-grid; place-items: center; color: var(--ink); }
+.notes .eye.off { color: var(--dim); opacity: .55; }
 .notes .note-actions { grid-column: 2; display: flex; gap: 3px; justify-content: flex-end; }
-.notes .note-actions button { padding: 1px 6px; font-size: 11px; }
+.notes .note-actions button { min-height: var(--ui-control-sm); padding: 1px 6px; font-size: 11px; }
 /* The expand rose (R-150, D-198): the four intercardinals at the corners of a
    2x2, which is where the map grows on screen, and the footprint between them
    so the size is read where the growing happens.
@@ -241,7 +352,7 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
    a handle resting on a bound used to render as a bar and disappear. */
 .ladder .mark {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  width: 8px; height: 8px; border-radius: 50%; background: #39404d;
+  width: 8px; height: 8px; border-radius: var(--ui-radius); background: var(--ui-slot-border);
 }
 .ladder .mark.in { background: var(--accent); }
 .ladder li.cap .mark { width: 13px; height: 4px; border-radius: 1px; background: var(--ink); }
@@ -249,16 +360,16 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
 /* A stop the band is not on: a quiet click target over the marker. */
 .ladder .pick {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  width: 20px; height: 20px; padding: 0; border-radius: 50%;
-  background: transparent; border: none;
+  width: 20px; height: 20px; min-height: 0; padding: 0; border-radius: var(--ui-radius);
+  background: transparent; border: none; box-shadow: none;
 }
 .ladder .pick:hover { background: #ffffff14; }
 
 /* An end of the band. Big, ringed, and obviously grabbable. */
 .ladder .grip {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  width: 15px; height: 15px; padding: 0; border-radius: 50%;
-  background: var(--accent); border: 2px solid #171b22;
+  width: 15px; height: 15px; min-height: 0; padding: 0; border-radius: var(--ui-radius);
+  background: var(--accent); border: 2px solid var(--panel);
   box-shadow: 0 0 0 1px var(--accent);
   cursor: grab; touch-action: none;
 }
@@ -272,14 +383,14 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
 }
 /* A name reads as text until it is touched: the list is levels, not a form. */
 .ladder input.plain {
-  font-size: 12px; padding: 2px 5px; width: 100%; min-width: 0;
-  background: transparent; border-color: transparent; color: var(--ink);
+  font-size: 12px; height: var(--ui-control-sm); min-height: var(--ui-control-sm); padding: 2px 5px; width: 100%; min-width: 0;
+  background: transparent; border-color: transparent; box-shadow: none; color: var(--ink);
 }
 .ladder input.plain:hover { border-color: var(--edge); }
-.ladder input.plain:focus { background: #212733; border-color: var(--accent); }
-.ladder input.tiny { width: 3.2em; font-size: 11.5px; padding: 2px 4px; }
+.ladder input.plain:focus { background: var(--ui-slot-bg); border-color: var(--accent); }
+.ladder input.tiny { width: 3.2em; height: var(--ui-control-sm); min-height: var(--ui-control-sm); font-size: 11.5px; padding: 2px 4px; }
 .ladder button.quiet,
-.ladder button.danger { padding: 1px 6px; font-size: 11px; }
+.ladder button.danger { min-height: var(--ui-control-sm); padding: 1px 6px; font-size: 11px; }
 
 .palette { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
 /*
@@ -290,13 +401,19 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
 */
 .palette button {
   width: 100%; display: flex; align-items: center; gap: 8px;
-  padding: 4px 7px; text-align: left; background: transparent; border-color: transparent;
+  padding: 3px 7px; text-align: left; background: transparent; border: 2px solid transparent; box-shadow: none;
 }
-.palette button:hover { background: #212733; }
-.palette button.on { background: var(--accent); color: #0f1216; font-weight: 600; }
+.palette button:hover { background: var(--ui-slot-hover-bg); border-color: var(--ui-slot-border); }
+.palette button.on {
+  background: var(--ui-slot-active-bg);
+  border-color: var(--ui-slot-active-border);
+  color: var(--ui-slot-active-ink);
+  box-shadow: var(--ui-slot-active-shadow);
+  font-weight: 600;
+}
 .palette .chip {
-  width: 14px; height: 14px; border-radius: 4px; flex: none;
-  border: 1px solid #0006; box-shadow: inset 0 0 0 1px #ffffff22;
+  width: 16px; height: 16px; border-radius: var(--ui-radius); flex: none;
+  border: 2px solid #0008; box-shadow: inset 0 0 0 1px #ffffff26;
 }
 /*
   The name truncates and the badge beside it does not. Squeezed — four cuts and
@@ -307,10 +424,11 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
 .palette .nm { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .palette .diff {
   flex: none; margin-left: 6px;
-  font-variant-numeric: tabular-nums; font-size: 11px; opacity: .7;
+  font: 500 var(--ui-text-meta)/1.2 var(--ui-font);
+  font-variant-numeric: tabular-nums; opacity: .75;
   white-space: nowrap;
 }
-.palette button.on .diff, .palette li.on .diff { opacity: .85; }
+.palette button.on .diff, .palette li.on .diff { opacity: .95; color: var(--ui-slot-active-ink); }
 
 /*
   A material's row: its name, and every cut it comes in (R-176).
@@ -320,28 +438,40 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
   background that stopped short of them read as two controls that happened to
   be adjacent.
 */
-.swatches li { display: flex; align-items: stretch; gap: 3px; border-radius: 6px; }
-.swatches li:hover { background: #212733; }
-.swatches li.on { background: var(--accent); }
-.swatches li.on:hover { background: var(--accent); }
-.swatches li.on .pick { color: #0f1216; font-weight: 600; }
-.swatches .pick { flex: 1; min-width: 0; }
-.swatches .pick:hover { background: transparent; }
-.swatches .cuts { display: flex; gap: 3px; padding: 3px 4px 3px 0; flex: none; }
-.swatches .cut {
-  width: 17px; padding: 0; border-radius: 4px;
-  border: 1px solid #0006; box-shadow: inset 0 0 0 1px #ffffff22;
+.swatches li {
+  display: flex; align-items: center; gap: 4px; min-height: var(--ui-control-h);
+  border: 2px solid transparent; border-radius: var(--ui-radius);
 }
-.swatches .cut:hover { background: transparent; }
+.swatches li:hover { background: var(--ui-slot-hover-bg); border-color: var(--ui-slot-border); }
+.swatches li.on {
+  background: var(--ui-slot-active-bg);
+  border-color: var(--ui-slot-active-border);
+  box-shadow: var(--ui-slot-active-shadow);
+}
+.swatches li.on:hover {
+  background: var(--ui-slot-active-bg);
+  border-color: var(--ui-slot-active-border);
+}
+.swatches li.on .pick { color: var(--ui-slot-active-ink); font-weight: 600; }
+.swatches .pick { flex: 1; min-width: 0; border: 0; min-height: calc(var(--ui-control-h) - 4px); }
+.swatches .pick:hover { background: transparent; border-color: transparent; }
+.swatches .cuts { display: flex; align-items: center; gap: 4px; padding: 0 4px 0 0; flex: none; }
+.swatches .cut {
+  width: 18px; height: 18px; min-height: 18px; padding: 0; border-radius: var(--ui-radius);
+  border: 2px solid #0009; box-shadow: inset 0 0 0 1px #ffffff26;
+}
+.swatches .cut:hover { background: transparent; border-color: var(--ink); }
 /*
-  `outline` rather than another box-shadow: it draws outside the border
-  without moving anything, and it reads on a dark row and on the accent alike.
-  The previous ring was stacked box-shadows that collided with the browser's
-  own focus ring and looked like a mistake.
+  Squared chiseled selection frame on the chosen cut: stays strictly inside the
+  row with zero browser-rounded outline bleed.
 */
-.swatches .cut.lit { outline: 2px solid #fff; outline-offset: 1px; }
-.palette button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.swatches .cut.lit:focus-visible { outline-color: #fff; }
+.swatches .cut.lit {
+  outline: none;
+  border-color: var(--ui-highlight);
+  box-shadow: 0 0 0 1px #000, inset 0 0 0 1px #fff;
+}
+.palette button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.swatches .cut.lit:focus-visible { outline: none; border-color: #fff; }
 /*
   Which cut is in hand, named. The family is in the row above and the cut is
   the word a GM actually says — "limestone", "oak", "shore" — so it cannot be
@@ -349,56 +479,90 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
 */
 .chosen {
   display: flex; align-items: center; gap: 7px;
-  margin: 8px 0 0; font-size: 12.5px; font-weight: 600; color: var(--ink);
+  margin: 8px 0 0; font-size: var(--ui-text-body); font-weight: 600; color: var(--ink);
 }
-.chosen .diff { font-weight: 400; }
+.chosen .diff { font: 500 var(--ui-text-meta)/1.2 var(--ui-font); color: var(--dim); }
 .chosen .chip {
-  width: 14px; height: 14px; border-radius: 4px; flex: none;
-  border: 1px solid #0006; box-shadow: inset 0 0 0 1px #ffffff22;
+  width: 16px; height: 16px; border-radius: var(--ui-radius); flex: none;
+  border: 2px solid #0008; box-shadow: inset 0 0 0 1px #ffffff26;
 }
 
-.hint { color: var(--dim); font-size: 11.5px; margin: 8px 0 0; }
-/* The name of the control below it. `.lbl` had no base rule at all — only two
-   scoped overrides — so "Expand the map to:" and "marker" rendered at the
-   browser's default 16px and read as body text in someone else's font. */
-.lbl { color: var(--dim); font-size: 11px; letter-spacing: .02em; }
+.hint {
+  color: var(--dim); font: 400 var(--ui-text-hint)/1.45 var(--ui-body-font); margin: 8px 0 0;
+}
+.hint b, .hint strong { color: var(--ink); font-weight: 600; }
+/* Standardized control / field label (R-217). */
+.lbl {
+  color: var(--dim);
+  font: 700 var(--ui-text-label)/1.2 var(--ui-font);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  margin: 8px 0 4px;
+}
+.card h2 + .lbl { margin-top: 0; }
+.row > .lbl, .stage-sight > .lbl { margin: 0; }
 
 .row.forget { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin-top: 8px; }
 .row.forget .grow { flex: 1 1 auto; margin: 0; }
 
-.member { border-top: 1px solid var(--edge); padding: 8px 0; }
+.member-list { display: flex; flex-direction: column; gap: 6px; }
+.member {
+  padding: 6px; border-radius: var(--ui-radius);
+  background: color-mix(in srgb, var(--ui-main) 72%, #000000);
+  border: 1px solid color-mix(in srgb, var(--edge) 70%, transparent);
+}
 .member .top { display: flex; align-items: center; gap: 6px; }
-.member .grid { display: grid; grid-template-columns: auto 1fr; gap: 4px 6px; margin-top: 6px; align-items: center; }
-.member label { color: var(--dim); font-size: 11.5px; }
-.member input[type=color] { padding: 0; height: 24px; }
-/* The note under a member on the world: flush with the rows above it. */
-.member .stage-note, .member .stage-note-line { margin: 6px 0 0; }
+.member .top > input { flex: 1 1 auto; min-width: 0; }
+.member .top button.quiet {
+  width: var(--ui-control-h); height: var(--ui-control-h); padding: 0; flex: none;
+}
+.member input[type=color] {
+  width: var(--ui-control-h); height: var(--ui-control-h); padding: 2px; flex: none;
+}
+/* The note under a member on the world: flush with the row above it. */
+.member .stage-note, .member .stage-note-line { margin: 5px 0 0; }
 
-/* A card's picture (R-204): a little 5:7 card, the shape it will be shown in. */
+/* A card's picture (R-204): a little 5:7 card, the shape it will be shown in,
+   with its clear badge anchored on the top-right corner of the card itself. */
 .card-look { display: flex; align-items: center; gap: 6px; }
 .card-look input[type=color] { flex: 1 1 auto; min-width: 0; }
-.picture-input { display: flex; align-items: center; gap: 2px; flex: none; }
+.picture-input { position: relative; display: inline-flex; align-items: center; flex: none; }
 .picture-card {
-  position: relative; width: 20px; height: 28px; padding: 0; flex: none;
-  border: 1px solid var(--edge); border-radius: 3px; overflow: hidden;
+  position: relative; width: 20px; height: var(--ui-control-h); min-height: var(--ui-control-h); padding: 0; flex: none;
+  border: 2px solid var(--ui-slot-border); border-radius: var(--ui-radius); overflow: hidden;
 }
 .picture-card img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .picture-card .picture-busy {
   position: absolute; inset: 0; display: grid; place-items: center;
   background: #000a; color: #fff; font-size: 14px;
 }
-.picture-clear { font-size: 13px; line-height: 1; color: var(--dim); padding: 2px 3px; }
+.picture-clear {
+  position: absolute; top: -4px; right: -4px; z-index: 2;
+  width: 14px; height: 14px; min-height: 14px; padding: 0;
+  font-size: 10px; line-height: 1; color: var(--ink);
+  background: var(--panel); border: 1px solid var(--ui-slot-border);
+  border-radius: var(--ui-radius); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+  opacity: 0; pointer-events: none; transition: opacity .12s;
+}
+.picture-input:hover .picture-clear,
+.picture-input:focus-within .picture-clear {
+  opacity: 1; pointer-events: auto;
+}
+.picture-clear:hover:not(:disabled) {
+  background: var(--ui-danger); border-color: var(--ui-danger); color: #fff;
+}
 
 .connect {
   position: fixed; right: 12px; bottom: 12px; z-index: 5; text-align: right;
-  background: #171b22ee; border: 1px solid var(--edge); border-radius: 10px; padding: 9px 11px;
+  background: var(--ui-panel-bg); border: 2px solid var(--ui-panel-border);
+  border-radius: var(--ui-radius); box-shadow: var(--ui-panel-shadow); padding: 9px 11px;
 }
 .connect button.url {
   display: block; width: 100%; text-align: right;
   background: transparent; border-color: transparent; padding: 2px 0;
   cursor: copy;
 }
-.connect button.url:hover { background: transparent; }
+.connect button.url:hover { background: transparent; border-color: transparent; }
 .connect button.url:hover code { color: #8ef0c4; text-decoration: underline; }
 .connect code { color: var(--ok); font-size: 12px; }
 .connect .lbl {
@@ -409,22 +573,28 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
 
 .toast {
   position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 9;
-  background: #2a1f1f; border: 1px solid #ff6b6b55; color: #ffc9c9;
-  padding: 7px 13px; border-radius: 999px;
+  background: color-mix(in srgb, var(--ui-danger) 25%, var(--panel));
+  border: 2px solid var(--ui-danger); color: var(--ink);
+  padding: 7px 13px; border-radius: var(--ui-radius);
+  box-shadow: var(--ui-panel-shadow);
 }
 .badge {
-  position: fixed; top: 12px; right: 12px; z-index: 5; color: var(--dim);
-  background: #171b22ee; border: 1px solid var(--edge); border-radius: 999px; padding: 4px 11px;
+  position: fixed; top: 12px; right: 12px; z-index: 5; color: var(--ink);
+  font: 700 11.5px/1.2 var(--ui-font);
+  background: var(--ui-panel-bg); border: 2px solid var(--ui-panel-border);
+  border-radius: var(--ui-radius); box-shadow: var(--ui-panel-shadow); padding: 6px 11px;
 }
 /* Bottom-left: clear of the party dock (top-right) and the address (bottom-right). */
 .hints {
   position: fixed; bottom: 12px; left: 12px; z-index: 5; color: var(--dim);
-  background: #171b22ee; border: 1px solid var(--edge); border-radius: 999px;
-  padding: 4px 11px; font-size: 11.5px;
+  background: var(--ui-panel-bg); border: 2px solid var(--ui-panel-border);
+  border-radius: var(--ui-radius); box-shadow: var(--ui-panel-shadow);
+  padding: 5px 11px; font-size: 11.5px;
 }
 .readout {
   margin: 6px 0 0; padding-top: 6px; border-top: 1px solid var(--edge);
-  color: var(--ink); font-size: 11.5px; font-variant-numeric: tabular-nums;
+  color: var(--ink); font: 600 var(--ui-text-readout)/1.4 var(--ui-font);
+  font-variant-numeric: tabular-nums;
   min-height: 1.5em;
 }
 
@@ -433,7 +603,8 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
 .metrics {
   position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
   z-index: 60; min-width: 230px;
-  background: #0b0e13ee; border: 1px solid var(--edge); border-radius: 10px;
+  background: var(--ui-panel-bg); border: 2px solid var(--ui-panel-border); border-radius: var(--ui-radius);
+  box-shadow: var(--ui-panel-shadow);
   padding: 9px 11px; backdrop-filter: blur(8px);
   font-variant-numeric: tabular-nums;
 }
@@ -454,7 +625,7 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
    a border and padding, and borrowing the name gave every flagged figure a
    box that shoved the column it sat in (D-231). Colour alone says as much and
    moves nothing. */
-.metrics dd.hot { color: #ffb86b; }
+.metrics dd.hot { color: var(--ui-highlight); }
 .metrics .hint { margin: 7px 0 0; font-size: 10.5px; color: var(--dim); }
 
 /*
@@ -464,15 +635,28 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
   blue thumb, which reads as a mistake.
 */
 .dial {
-  width: 100%; height: 18px; margin: 0 0 2px; padding: 0;
-  background: transparent; border: 0; appearance: none; cursor: pointer;
+  width: 100%; height: var(--ui-control-h); min-height: var(--ui-control-h); margin: 0 0 2px; padding: 0;
+  background: transparent; border: 0; box-shadow: none; appearance: none; cursor: pointer;
 }
 .dial::-webkit-slider-runnable-track {
-  height: 4px; border-radius: 2px; background: #2b323d;
+  height: 6px; border-radius: var(--ui-radius);
+  background: var(--ui-slot-bg); border: 1px solid var(--ui-slot-border);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.65);
 }
 .dial::-webkit-slider-thumb {
-  appearance: none; width: 13px; height: 13px; margin-top: -4.5px;
-  border-radius: 50%; background: var(--accent); border: 0;
+  appearance: none; width: 10px; height: 18px; margin-top: -7px;
+  border-radius: var(--ui-radius); background: var(--accent);
+  border: 2px solid var(--panel); box-shadow: 0 0 0 1px var(--ui-slot-border);
+}
+.dial::-moz-range-track {
+  height: 6px; border-radius: var(--ui-radius);
+  background: var(--ui-slot-bg); border: 1px solid var(--ui-slot-border);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.65);
+}
+.dial::-moz-range-thumb {
+  width: 10px; height: 18px;
+  border-radius: var(--ui-radius); background: var(--accent);
+  border: 2px solid var(--panel); box-shadow: 0 0 0 1px var(--ui-slot-border);
 }
 .dial:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 /* The hour, in the words a GM would use, beside the number they nudge. */
@@ -484,7 +668,7 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
   eats the row and the slider beside it collapses to its thumb. Fixed width,
   and the dial takes what is left.
 */
-.lamp input[type="color"] { flex: none; width: 34px; height: 22px; padding: 0; }
+.lamp input[type="color"] { flex: none; width: 34px; height: var(--ui-control-h); padding: 2px; }
 .lamp .dial { flex: 1; min-width: 0; }
 .lamp .dial { margin: 0; }
 
@@ -494,11 +678,14 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
   block, and borrowing it would have styled nothing at all.
 */
 .notice {
-  margin: 0 0 10px; padding: 7px 9px; border-radius: 6px;
-  background: #3a2e1b; border: 1px solid #5c4824; color: #ffd9a0;
-  font-size: 11.5px; line-height: 1.45;
+  margin: 0 0 10px; padding: 8px; border-radius: var(--ui-radius);
+  background: color-mix(in srgb, var(--ui-highlight) 14%, var(--ui-main));
+  border: 1px solid color-mix(in srgb, var(--ui-highlight) 45%, var(--ui-main));
+  color: color-mix(in srgb, var(--ui-highlight) 70%, #ffffff);
+  font-size: var(--ui-text-hint); line-height: 1.45;
 }
-.notice b { color: #ffe9c7; }
+.notice b { color: var(--ink); font-weight: 600; }
+.notice .notice-text { margin: 0 0 6px; color: var(--ink); }
 /* A dial or a swatch that is off should look it, and not take a click. */
 .dial:disabled { opacity: .35; cursor: not-allowed; }
 .lamp input[type="color"]:disabled { opacity: .35; cursor: not-allowed; }
@@ -511,8 +698,8 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
 }
 .crop-dialog {
   max-width: calc(100vw - 32px); max-height: calc(100vh - 32px); overflow: auto;
-  background: var(--panel); border: 1px solid var(--edge); border-radius: 12px;
-  padding: 14px 16px; box-shadow: 0 18px 60px #000a;
+  background: var(--panel); border: 2px solid var(--edge); border-radius: var(--ui-radius);
+  padding: 14px 16px; box-shadow: var(--ui-panel-shadow);
 }
 .crop-dialog h2 { margin: 0 0 4px; }
 .crop-dialog .hint { margin: 0 0 12px; }
@@ -520,7 +707,7 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
 .crop-stage {
   position: relative; overflow: hidden; flex: none;
   min-width: 120px; min-height: 120px;
-  background: #0b0d11; border-radius: 6px;
+  background: #0b0d11; border-radius: var(--ui-radius);
   /* The browser must not scroll or zoom under a drag. */
   touch-action: none; user-select: none;
 }
@@ -533,7 +720,7 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
 }
 .crop-handle {
   position: absolute; width: 12px; height: 12px;
-  background: #fff; border: 1px solid #0008; border-radius: 2px;
+  background: #fff; border: 1px solid #0008; border-radius: var(--ui-radius);
 }
 .crop-handle[data-corner=nw] { left: -6px; top: -6px; cursor: nwse-resize; }
 .crop-handle[data-corner=ne] { right: -6px; top: -6px; cursor: nesw-resize; }
@@ -543,7 +730,7 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
 .crop-preview {
   width: 110px; aspect-ratio: 5 / 7;
   background-color: #ece6d8; background-repeat: no-repeat;
-  border: 1px solid var(--edge); border-radius: 4px;
+  border: 2px solid var(--edge); border-radius: var(--ui-radius);
 }
 .crop-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
 
@@ -551,7 +738,14 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
 .library input { width: 100%; margin: 2px 0 8px; }
 .library .lbl { display: block; }
 .library-search { margin-bottom: 8px; }
-.library-list, .stage-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; max-height: 320px; overflow-y: auto; }
+.library-list, .stage-list {
+  list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px;
+  max-height: 320px; overflow-y: auto;
+  scrollbar-width: none; -ms-overflow-style: none;
+}
+.library-list::-webkit-scrollbar,
+.stage-list::-webkit-scrollbar,
+.area-list::-webkit-scrollbar { display: none; }
 /*
  * The row is the box, not the buttons in it: the entry and its pencil sit on
  * one border, so the chosen row is outlined whole. It was an outline on the
@@ -560,18 +754,23 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
  */
 .library-list li {
   display: flex; align-items: center; gap: 2px;
-  border: 1px solid var(--edge); border-radius: 6px; background: var(--panel);
+  border: 2px solid var(--ui-slot-border); border-radius: var(--ui-radius); background: var(--ui-slot-bg);
 }
-.library-list li:hover { background: #2a323f; }
-.library-list li.on { border-color: var(--accent); background: #6ea8fe26; }
-.library-list li.on:hover { background: #6ea8fe33; }
-.library-list li button { background: transparent; border-color: transparent; }
-.library-list li button:hover:not(:disabled) { background: transparent; }
+.library-list li:hover { background: var(--ui-slot-hover-bg); }
+.library-list li.on {
+  border-color: var(--ui-slot-active-border);
+  background: var(--ui-slot-active-bg);
+}
+.library-list li.on:hover {
+  background: color-mix(in srgb, var(--ui-highlight) 30%, var(--ui-main));
+}
+.library-list li button { background: transparent; border-color: transparent; box-shadow: none; }
+.library-list li button:hover:not(:disabled) { background: transparent; border-color: transparent; }
 /* The pencil edits; it must not take the red that a quiet button means for delete. */
 .library-list li button.quiet:hover { background: #ffffff14; color: var(--ink); }
 .library-entry { display: flex; align-items: center; gap: 8px; flex: 1 1 auto; min-width: 0; text-align: left; padding: 4px; }
 .library-card {
-  width: 20px; height: 28px; flex: none; border-radius: 3px; border: 1px solid var(--edge);
+  width: 20px; height: 28px; flex: none; border-radius: var(--ui-radius); border: 1px solid var(--edge);
   background-size: cover; background-position: center;
 }
 .library-words { display: flex; flex-direction: column; min-width: 0; }
@@ -585,8 +784,13 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
  * and what that kind of token can be asked to do. A silver token's note sits
  * under its row.
  */
-.stage-list { max-height: 420px; --row: 28px; }
-.stage-list li { display: flex; flex-direction: column; gap: 2px; }
+.stage-list { max-height: 420px; --row: var(--ui-control-h); gap: 6px; }
+.stage-list li {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 6px; border-radius: var(--ui-radius);
+  background: color-mix(in srgb, var(--ui-main) 72%, #000000);
+  border: 1px solid color-mix(in srgb, var(--edge) 70%, transparent);
+}
 /*
  * **One height for everything in a row** (D-314): the card's own, 28 px.
  * Each control used to keep its own padding — a full-size name field, a
@@ -596,10 +800,14 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
  */
 .stage-row { display: flex; align-items: center; gap: 6px; min-height: var(--row); }
 .stage-row > input, .stage-row > .stage-name { flex: 1 1 auto; min-width: 0; }
-.stage-row input, .stage-row .stage-name, .stage-row .stage-actions button {
+.stage-row input, .stage-row .stage-name,
+.stage-controls input, .stage-controls .stage-actions button {
   height: var(--row); padding-top: 0; padding-bottom: 0;
 }
 .stage-row input { padding-left: 8px; padding-right: 8px; }
+.stage-controls {
+  display: flex; align-items: center; justify-content: space-between; gap: 6px; min-height: var(--row);
+}
 .stage-list input.stage-order {
   width: 34px; flex: none; padding: 0 4px; text-align: center; font-weight: 600;
 }
@@ -610,14 +818,14 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
  */
 .stage-name {
   display: flex; align-items: center; gap: 6px; text-align: left; padding: 0 8px;
-  background: transparent; border: 1px solid transparent;
+  background: transparent; border: 1px solid transparent; box-shadow: none;
 }
 .stage-name .nm { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.stage-sight { display: flex; align-items: center; gap: 3px; flex: none; }
-.stage-sight .lbl { font-size: 11px; color: var(--dim); }
+.stage-sight { display: flex; align-items: center; gap: 4px; flex: none; }
+.stage-sight .lbl { font-size: 11px; color: var(--dim); margin: 0; }
 .stage-sight input.sight { width: 34px; padding: 0 4px; text-align: right; font-size: 11.5px; }
 /* The eye and the ×, one group with no gap between them, each a 28 px square. */
-.stage-actions { display: flex; align-items: center; gap: 0; flex: none; }
+.stage-actions { display: flex; align-items: center; gap: 2px; flex: none; }
 .stage-actions button { min-width: var(--row); padding: 0 6px; display: inline-grid; place-items: center; }
 .stage-list .eye { width: var(--row); padding: 0; }
 .stage-list .eye.off { color: var(--dim); }
@@ -626,23 +834,33 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
   width: var(--row); height: var(--row); padding: 0; flex: none; display: inline-grid; place-items: center;
 }
 .stage-list .flame.off { color: var(--dim); }
-.stage-light { display: flex; align-items: center; gap: 8px; padding-left: 42px; margin: 0 0 2px; }
-.stage-light .prop-finishes .chip-button { width: 26px; height: 22px; }
-.stage-light .prop-finishes .chip { width: 14px; height: 11px; }
+.stage-light { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 2px; }
+.stage-light .prop-finishes .chip-button {
+  width: var(--ui-control-sm); height: var(--ui-control-sm); min-height: var(--ui-control-sm);
+}
+.stage-light .prop-finishes .chip { width: 12px; height: 12px; }
 /*
  * A row's note, small, across the whole width, or an offer to write one
  * (D-313) — a silver token's or a member's (D-315) — and **the same box
  * either way** (D-314): no background for one and not the other. Only the
  * words differ.
  */
-.stage-note { width: 100%; margin: 0 0 4px; font-size: 12px; resize: vertical; }
+.stage-note { width: 100%; margin: 0; font-size: 12px; resize: vertical; }
 .stage-note-line {
-  width: 100%; margin: 0 0 4px; padding: 2px 8px; text-align: left; font-size: 11.5px; line-height: 1.4;
-  color: var(--ink); background: transparent; border: 1px solid transparent; border-radius: 6px;
+  width: 100%; min-height: var(--ui-control-sm); margin: 0; padding: 2px 7px; text-align: left;
+  font-size: var(--ui-text-hint); line-height: 1.4;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--ui-main) 52%, #000000);
+  border: 1px solid color-mix(in srgb, var(--edge) 65%, transparent);
+  box-shadow: none; border-radius: var(--ui-radius);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;
 }
-.stage-note-line.empty { color: var(--dim); font-style: italic; }
-.stage-note-line:hover:not(:disabled) { background: #ffffff0d; border-color: var(--edge); }
+.stage-note-line.empty {
+  color: var(--dim);
+}
+.stage-note-line:hover:not(:disabled) {
+  background: var(--ui-slot-hover-bg); border-color: var(--edge);
+}
 /*
  * The picture as the way to the sheet (D-313): a chain link over it on hover,
  * and only when there is a sheet — a plain picture promises nothing.
@@ -650,18 +868,23 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
 .sheet-link { position: relative; display: block; cursor: pointer; }
 .sheet-link .link-badge {
   position: absolute; inset: 0; display: grid; place-items: center;
-  background: #0b0d11b0; color: #fff; border-radius: 3px; opacity: 0; transition: opacity .12s;
+  background: #0b0d11b0; color: #fff; border-radius: var(--ui-radius); opacity: 0; transition: opacity .12s;
 }
 .sheet-link:hover .link-badge, .sheet-link:focus-visible .link-badge { opacity: 1; }
 .library-url-warn { margin: -4px 0 8px; font-size: 11px; }
 /* Props (D-328): a finish is its colour, so a finish is a chip. */
 .prop-finishes { display: flex; gap: 4px; flex-wrap: wrap; }
 .prop-finishes .chip-button {
-  width: 30px; height: 26px; padding: 0; display: inline-grid; place-items: center;
-  border-radius: 6px; border: 1px solid var(--edge); background: transparent;
+  width: var(--ui-control-h); height: var(--ui-control-h); min-height: var(--ui-control-h);
+  padding: 0; display: inline-grid; place-items: center;
+  border-radius: var(--ui-radius); border: 2px solid var(--ui-slot-border); background: var(--ui-slot-bg);
 }
-.prop-finishes .chip-button.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
-.prop-finishes .chip { width: 18px; height: 14px; border-radius: 3px; display: block; }
+.prop-finishes .chip-button.on {
+  border-color: var(--ui-slot-active-border);
+  box-shadow: var(--ui-slot-active-shadow);
+  background: var(--ui-slot-active-bg);
+}
+.prop-finishes .chip { width: 14px; height: 14px; border-radius: var(--ui-radius); display: block; }
 .prop-selected { border-bottom: 1px solid var(--edge); padding-bottom: 8px; margin-bottom: 4px; }
 .prop-selected .readout { margin: 0 0 6px; }
 .prop-selected .prop-finishes { margin-top: 6px; }
@@ -672,20 +895,29 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
  */
 .area-list {
   list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px;
-  max-height: 260px; overflow-y: auto; --row: 28px;
+  max-height: 260px; overflow-y: auto; --row: var(--ui-control-h);
+  scrollbar-width: none; -ms-overflow-style: none;
 }
-.area-list li { display: flex; flex-direction: column; gap: 2px; }
+.area-list li {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 6px; border-radius: var(--ui-radius);
+  background: color-mix(in srgb, var(--ui-main) 72%, #000000);
+  border: 1px solid color-mix(in srgb, var(--edge) 70%, transparent);
+}
 .area-row { display: flex; align-items: center; gap: 6px; min-height: var(--row); }
 .area-row > input { flex: 1 1 auto; min-width: 0; height: var(--row); padding: 0 8px; }
 .area-row .chip-button {
-  width: 28px; height: 24px; padding: 0; flex: none; display: inline-grid; place-items: center;
-  border-radius: 6px; border: 1px solid var(--edge); background: transparent;
+  width: var(--row); height: var(--row); min-height: var(--row);
+  padding: 0; flex: none; display: inline-grid; place-items: center;
+  border-radius: var(--ui-radius); border: 2px solid var(--ui-slot-border); background: var(--ui-slot-bg);
 }
-.area-row .chip { width: 16px; height: 12px; border-radius: 3px; display: block; }
-.area-row button.quiet { width: var(--row); height: var(--row); padding: 0; flex: none; display: inline-grid; place-items: center; }
-.area-row .eye.off { color: var(--dim); }
-.area-follow { display: flex; align-items: center; gap: 6px; padding-left: 34px; }
-.area-follow .lbl { font-size: 11px; color: var(--dim); }
+.area-row .chip { width: 14px; height: 14px; border-radius: var(--ui-radius); display: block; }
+.area-row button.quiet, .area-follow button.quiet {
+  width: var(--row); height: var(--row); padding: 0; flex: none; display: inline-grid; place-items: center;
+}
+.area-row .eye.off, .area-follow .eye.off { color: var(--dim); }
+.area-follow { display: flex; align-items: center; gap: 6px; min-height: var(--row); }
+.area-follow .lbl { font-size: 11px; color: var(--dim); margin: 0; }
 .area-follow select { flex: 1 1 auto; min-width: 0; font-size: 12px; }
 .area-list li.hidden .area-row > input { opacity: 0.55; }
 /* Said beside the list, where the GM is looking, not only in the readout (D-324). */

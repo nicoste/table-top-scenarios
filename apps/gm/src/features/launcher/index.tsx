@@ -50,7 +50,7 @@ export function Launcher({ campaigns, dispatch }: Props) {
                         lands (D-173). */}
                     <button onClick={() => dispatch({ kind: 'openCampaign', id: c.id })}>Open</button>
                     <Tooltip label={`Delete “${c.name}”`} placement="top">
-                      <button className="quiet" onClick={() => setConfirming(c.id)}>Delete</button>
+                      <button className="quiet danger-trigger" onClick={() => setConfirming(c.id)}>Delete</button>
                     </Tooltip>
                   </>
                 )}

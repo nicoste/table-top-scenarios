@@ -20,7 +20,7 @@ import type { MeasureHand, Stride, Travel } from '@tt/client-core';
 import {
   idle, pick, aim, ghostCell, canConfirm, movingFrom, aimedAt, travelIntent, travelPrompt,
   tableAction,
-  cameraAction, wheelZoom, CAMERA_HINT,
+  cameraAction, wheelZoom, TABLE_CAMERA_HINT,
   still, grab, tokenAim, onRung, aimStride, strideGhost, strideIntent, standVerdict, tableCeiling, walkShown,
   tokenAction, stridePrompt, jumps,
   MEASURE_START, measureCleared, measurePress, measureDrag, measureRelease, rulerShown, areasShown, handleAt,
@@ -655,8 +655,13 @@ export function App({ view, status, rejection, dispatch }: Props) {
       )}
 
       {/* The table can be read from any side of a physical table, so the
-          compass matters more here than on the console (R-155). */}
-      <Compass bearing={bearing} hidden={!!waiting} />
+          compass matters more here than on the console (R-155, D-381). */}
+      <Compass
+        bearing={bearing}
+        hidden={!!waiting}
+        onTurn={(steps) => stage?.rotate(steps)}
+        onTilt={(steps) => stage?.tilt(steps)}
+      />
 
       {!waiting && <div className="badge">{campaign?.name}</div>}
       {/*
@@ -664,7 +669,7 @@ export function App({ view, status, rejection, dispatch }: Props) {
         gesture will do matters more than being reminded how to turn — and the
         table stays minimal either way (R-94).
       */}
-      {!waiting && <div className="hints">{prompt ?? CAMERA_HINT}</div>}
+      {!waiting && <div className="hints">{prompt ?? TABLE_CAMERA_HINT}</div>}
       {rejection && <div className="toast">{rejection}</div>}
     </>
   );

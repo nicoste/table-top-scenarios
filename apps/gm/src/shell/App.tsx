@@ -59,7 +59,7 @@ import { OnStagePanel } from '../features/on-stage/index.js';
 import { ChunkInspector } from '../features/visibility/index.js';
 import { MapPanel } from '../features/map/index.js';
 import { ConnectBadge } from '../features/connect/index.js';
-import { Compass, Metrics, Tooltip } from '@tt/ui';
+import { Compass, GameIcon, Metrics, Tooltip } from '@tt/ui';
 
 /** Mac shows ⌘, everything else Ctrl. Cosmetic: the binding accepts both (R-140). */
 const MOD = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
@@ -1958,10 +1958,12 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       {cost.on && cost.reading && <Metrics reading={cost.reading} hint={COST_HINT} />}
 
       {/* Both surfaces, and hidden only when a screen-filling card owns the
-          view — there is no north to point at on the launcher (R-155). */}
+          view — there is no north to point at on the launcher (R-155, D-381). */}
       <Compass
         bearing={bearing}
         hidden={status !== 'open' || seat !== 'gm' || !campaign}
+        onTurn={(steps) => stage?.rotate(steps)}
+        onTilt={(steps) => stage?.tilt(steps)}
       />
 
       {status !== 'open' && (
@@ -2168,12 +2170,14 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
                     nothing left to take back (R-140). */}
                 <Tooltip label={`Undo — ${MOD}Z`} placement="bottom" stretch>
                   <button disabled={!view?.canUndo} onClick={() => dispatch({ kind: 'undo' })}>
-                    ↶ Undo
+                    <GameIcon name="turn-ccw" size={14} />
+                    <span>Undo</span>
                   </button>
                 </Tooltip>
                 <Tooltip label={`Redo — ${MOD}\u21e7Z`} placement="bottom" stretch>
                   <button disabled={!view?.canRedo} onClick={() => dispatch({ kind: 'redo' })}>
-                    ↷ Redo
+                    <GameIcon name="turn-cw" size={14} />
+                    <span>Redo</span>
                   </button>
                 </Tooltip>
               </div>
@@ -2260,6 +2264,18 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
               placement={placement}
               canPlace={knownChunks.size > 0}
               notes={memberNotes}
+              insidePoi={(() => {
+                if (!inside) return null;
+                const p = campaign.places.find((pl) => pl.id === inside.placeId);
+                const poi = p?.pois.find((po) => po.id === inside.poiId);
+                if (!p || !poi) return null;
+                return {
+                  placeName: p.name,
+                  poiName: poi.name,
+                  onOpen: () => setOpenMap({ placeId: p.id, poiId: poi.id }),
+                  onLeave: () => dispatch({ kind: 'leaveMap' }),
+                };
+              })()}
               dispatch={dispatch}
             />
           </div>
