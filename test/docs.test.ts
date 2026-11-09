@@ -111,3 +111,15 @@ describe('DESIGN_SYSTEM.md and ui-gallery.html stay honest', () => {
     expect(names.filter((n) => !gallery.includes(n))).toEqual([]);
   });
 });
+
+describe('each page says which browsers it needs', () => {
+  it('names the floor the screens check for (D-386)', async () => {
+    const { BROWSER_FLOOR } = await import('@tt/client-core');
+    for (const page of ['apps/gm/index.html', 'apps/table/index.html']) {
+      const html = read(page);
+      expect(html, page).toContain('class="too-old"');
+      expect(html, page).toContain(BROWSER_FLOOR);
+    }
+  });
+});
+

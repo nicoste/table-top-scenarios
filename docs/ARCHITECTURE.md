@@ -96,6 +96,7 @@ packages/
   ui/            presentational primitives. knows no domain
   client-core/   what both browser apps need: net, the tools' local logic, and
                  the handoff to the Stage. Role-neutral by rule.
+  theme/         CSS only: the tokens and the rules both screens share (D-386)
 ```
 
 ### The dependency graph is the architecture
@@ -112,6 +113,7 @@ geometry <-- render <-- client-core <-- gm, table
 domain   <-- render
 protocol <-- client-core
 ui       <-- gm, table
+theme    <-- gm, table          (CSS @import; no script imports it)
 ```
 
 > **R-5.** These edges are exhaustive. Any import not implied by the graph is a
@@ -1721,6 +1723,11 @@ apps/host/src/
 > `@tt/ui` exposes only `.` (R-6), so shipping CSS would mean widening its
 > `exports` map and having every app remember to import it. Primitives here are
 > small enough that inline styles cost less than that coupling.
+>
+> **Amended by D-386.** The theme it reads comes through `THEME`, one entry
+> per custom property with one fallback each, the value `@tt/theme` gives it.
+> The stylesheets the screens share live in `@tt/theme`, which `@tt/ui` does
+> not import: a component still styles itself.
 
 > **R-117.** A floating panel over the canvas is **sized to its content**, with a
 > `max-height`, never stretched to the viewport with `bottom`.

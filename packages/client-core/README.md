@@ -2,8 +2,8 @@
 
 **Owns.** Everything both browser apps need and neither should own: the WebSocket
 client and reconnection, keeping what did not change in a view that arrives, what
-a tool in hand does before anything is sent, and the handoff to the Stage that
-`@tt/render` draws on.
+a tool in hand does before anything is sent, the handoff to the Stage that
+`@tt/render` draws on, and whether a browser can draw the screens at all (D-386).
 
 **Must never know about.** Anything role-specific. There is no GM branch in here.
 GM-only panels and secrets live in `apps/gm`, which is what keeps the table

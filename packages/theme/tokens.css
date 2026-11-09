@@ -1,0 +1,65 @@
+/*
+ * The design tokens both screens draw with, and the design gallery shows
+ * (R-217). Change a colour here and both screens follow; the shells add only
+ * the few tokens that are theirs alone.
+ */
+:root {
+  /* Master tokens (R-217, D-381): switch --ui-main or --ui-highlight and every
+     surface, border, slot bevel and active state adjusts with it. */
+  --ui-main: #181c24;
+  --ui-highlight: #f5a524;
+  --ui-ink: #e6e9ef;
+  --ui-danger: #e5534b;
+  --ui-ok: #57d9a3;
+  /* The tertiary: a second highlight, for a highlighted thing that sits beside
+     another and must not be taken for it (D-383). Mixed from the highlight,
+     so it moves with it. */
+  --ui-tertiary: color-mix(in srgb, var(--ui-highlight) 40%, var(--ui-ink));
+  --ui-radius: 2px;
+  --ui-control-h: 28px;
+  --ui-control-sm: 22px;
+  --ui-slot-h: 54px;
+  --ui-font: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, monospace;
+  --ui-body-font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  /* Standardized typography scale (R-217) */
+  --ui-text-h1: 18px;
+  --ui-text-h2: 11px;
+  --ui-text-label: 10.5px;
+  --ui-text-body: 12.5px;
+  --ui-text-readout: 12px;
+  --ui-text-hint: 11.5px;
+  --ui-text-meta: 11px;
+
+  /* Derived surface & state tokens */
+  --bg: color-mix(in srgb, var(--ui-main) 65%, #000000);
+  --panel: color-mix(in srgb, var(--ui-main) 92%, #000000);
+  --edge: color-mix(in srgb, var(--ui-main) 70%, var(--ui-ink));
+  --ink: var(--ui-ink);
+  --dim: color-mix(in srgb, var(--ui-ink) 58%, var(--ui-main));
+  --accent: var(--ui-highlight);
+  --ok: var(--ui-ok);
+
+  --ui-panel-bg: color-mix(in srgb, var(--ui-main) 94%, transparent);
+  --ui-panel-border: var(--edge);
+  --ui-panel-shadow:
+    inset 2px 2px 0 rgba(255, 255, 255, 0.07),
+    inset -2px -2px 0 rgba(0, 0, 0, 0.7),
+    0 6px 0 rgba(0, 0, 0, 0.45);
+
+  --ui-slot-bg: color-mix(in srgb, var(--ui-main) 88%, var(--ui-ink));
+  --ui-slot-hover-bg: color-mix(in srgb, var(--ui-main) 78%, var(--ui-ink));
+  --ui-slot-border: color-mix(in srgb, var(--ui-main) 62%, var(--ui-ink));
+  --ui-slot-hover-border: color-mix(in srgb, var(--ui-main) 40%, var(--ui-ink));
+  --ui-slot-shadow:
+    inset 2px 2px 0 rgba(255, 255, 255, 0.11),
+    inset -2px -2px 0 rgba(0, 0, 0, 0.75);
+
+  --ui-slot-active-bg: color-mix(in srgb, var(--ui-highlight) 22%, var(--ui-main));
+  --ui-slot-active-border: var(--ui-highlight);
+  --ui-slot-active-ink: color-mix(in srgb, var(--ui-highlight) 65%, #ffffff);
+  --ui-slot-active-shadow:
+    inset 2px 2px 0 color-mix(in srgb, var(--ui-highlight) 35%, transparent),
+    inset -2px -2px 0 rgba(0, 0, 0, 0.85),
+    0 0 0 1px var(--ui-highlight);
+}

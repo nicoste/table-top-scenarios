@@ -2,7 +2,7 @@
 
 import { createRoot } from 'react-dom/client';
 import { StrictMode, useEffect, useMemo, useRef, useState } from 'react';
-import { connect, recordTraffic } from '@tt/client-core';
+import { browserIsEnough, connect, recordTraffic } from '@tt/client-core';
 import type { Connection } from '@tt/client-core';
 import type { Intent, TableView, View } from '@tt/protocol';
 import { App } from './shell/App.js';
@@ -40,6 +40,10 @@ function Root() {
   return <App view={tableView} status={status} rejection={rejection} dispatch={dispatch} />;
 }
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode><Root /></StrictMode>,
-);
+// Where the browser cannot draw the screen, the page's own sentence stays and
+// says why, instead of half a screen that looks like a bug (D-386).
+if (browserIsEnough((condition) => CSS.supports(condition))) {
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode><Root /></StrictMode>,
+  );
+}

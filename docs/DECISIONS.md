@@ -10055,3 +10055,43 @@ copy of the GM's data.
 - Smaller: the console finds where the table is the way it finds the open map,
   without a function written inline, and the `h1` rule is `.launcher h1`
   alone, since no other heading exists.
+
+### D-386 — One theme for both screens, and a browser floor said out loud · `agreed`
+*"3. Fix all."*
+
+The rest of the review, on how the styles are built.
+
+- **`@tt/theme`, a package of two stylesheets.** `tokens.css` holds every
+  colour, size and font as a custom property, and `base.css` the rules both
+  screens had word for word — 84 of the table's 120, plus the two that differed
+  only by a textarea. Each shell imports both first and keeps what is its own,
+  so a colour changes in one file instead of two, and the design gallery can
+  link the real files instead of a copy. A package rather than CSS in `@tt/ui`,
+  which styles itself inline (R-111), or in `client-core`, which is code: it is
+  CSS only, imported with `@import`, and depends on nothing.
+- **Nothing moved but the rules.** Every element's computed style was read on
+  twelve screens before and after, the console's world, its map under each
+  tool, its menu and the table's three, and the two readings match. The one
+  difference on the way — dropdowns gained 3px of padding when a rule moved
+  ahead of another — was why the controls rule went into `base.css` too.
+- **The colours that are the theme's follow it.** The ladder's rail, the
+  address's hover, and the dark behind a dialog, a cropping frame and a link
+  are mixed from the main colour or the ok colour now. Black and white for
+  shading stay as they are, since they shade any theme the same; the paper of
+  a printed card stays its own colour, being a picture of the card.
+- **`@tt/ui` reads the theme through one table, `THEME`**, one entry per custom
+  property with one fallback each, the value the theme gives it. There had been
+  five greys for the same border. A test works out each colour from tokens.css
+  and holds the fallback to it. The tool button's height reads `--ui-slot-h`,
+  which had been defined and never used.
+- **Two unused rules are gone, and four the table never used** are the
+  console's alone now.
+- **Focus on a swatch is a ring outside it**, selection a frame inside, so the
+  chosen one with the keyboard on it shows both.
+- **A browser floor: Chrome or Edge 111, Safari 16.2, Firefox 121**, from 2023.
+  The colours are mixed with color-mix() and some rows are laid out with
+  :has(), and a browser without them draws half a screen that looks like a bug;
+  fallbacks for every mixed colour would not help, since a value with var() in
+  it cannot fall back. So each page carries a sentence saying the browser is
+  too old, the stylesheet hides it where both work, and a screen starts only
+  where they do. A test keeps the sentence and the check naming the same floor.

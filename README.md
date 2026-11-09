@@ -13,6 +13,8 @@ Nothing leaves your network, and there are no accounts.
 ## Running it
 
 You need [Node.js](https://nodejs.org) 26. The version is pinned in `.nvmrc`.
+The screens need a browser from 2023 or later: Chrome or Edge 111, Safari 16.2
+or Firefox 121. An older one says so instead of drawing half a screen (D-386).
 
 ```bash
 npm install
@@ -78,7 +80,8 @@ packages/
   persistence/   campaign and save files: reading, writing, migrating
   render/        three.js: the world and maps drawn
   client-core/   what both screens share: the connection, the stage
-  ui/            panels, lists, sliders: no game words at all
+  ui/            panels, lists, sliders, icons: how things look, no rules
+  theme/         the colours, sizes and shared rules both screens draw with
 ```
 
 Each package's `README.md` says what it owns and what it must never know.

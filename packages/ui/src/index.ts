@@ -30,4 +30,4 @@ export type { SlotButtonProps } from './slot-button/index.js';
 
 export { BrandLogo } from './brand-logo/index.js';
 export type { BrandLogoProps } from './brand-logo/index.js';
-
+export { THEME } from './theme/index.js';

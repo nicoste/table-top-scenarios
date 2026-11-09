@@ -80,3 +80,4 @@ export type {
   ToolPart, ClickAction, TableAction, MapAction, MapHover, MapAim, MapReach, MapVerdict, FillReach,
   Pointed, Cell, Slot, Context,
 } from './tools/index.js';
+export { BROWSER_FLOOR, browserIsEnough } from './browser/index.js';
