@@ -43,7 +43,7 @@ import {
   measurePrompt, faceCentre, floorCentre, ownBand,
 } from '@tt/client-core';
 import type { MapAction, MapReach, MapTool } from '@tt/client-core';
-import { useStage, useCost, COST_HINT } from '@tt/client-core';
+import { useStage, useCost, useDiorama, COST_HINT } from '@tt/client-core';
 import { Launcher } from '../features/launcher/index.js';
 import { LightPanel } from '../features/light/index.js';
 import { BuildWorldPanel } from '../features/build-world/index.js';
@@ -303,6 +303,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   };
 
   const campaign = view?.campaign ?? null;
+  const diorama = useDiorama(stage, !campaign);
 
   /**
    * Resolved from the current wire every render, never cached — the same reason
@@ -382,8 +383,9 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   /** Whether the sun is in what the GM is looking at: their band reaches it (R-183). */
   const sunlit = !openRange || sunReaches(openRange, MAP_MAX_HEIGHT);
   useEffect(() => {
+    if (!campaign) return;
     stage?.setLighting(litBy(lighting, ambience, sunlit));
-  }, [stage, lighting, ambience, sunlit]);
+  }, [stage, lighting, ambience, sunlit, Boolean(campaign)]);
 
   /**
    * Where the party stands in the open map (R-184) — present only when they
@@ -659,7 +661,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   // The open map is its own surface (R-148). Passing null returns to the world,
   // whose meshes were hidden rather than destroyed.
   useEffect(() => {
-    if (!stage) return;
+    if (!stage || !campaign) return;
     const body = shownBody;
     // Keyed by which point of interest, not by the body: this effect reruns for
     // every block placed, because the wire hands back a new object each time
@@ -670,7 +672,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       DEFAULT_MATERIALS,
       openMap ? `${openMap.placeId}/${openMap.poiId}` : null,
     );
-  }, [shownBody, openMap, stage]);
+  }, [shownBody, openMap, stage, Boolean(campaign)]);
 
   // A point of interest whose map the GM deleted, or which they removed
   // outright, must not leave the console stranded on a surface that is gone.
@@ -684,14 +686,14 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    * hanging over nothing.
    */
   useEffect(() => {
-    if (!stage) return;
+    if (!stage || !campaign) return;
     const shown = openRange ? tokensInBand(present, openRange) : present;
     const standing: Standing[] = [...shown].map(([memberId, at]) => ({
       memberId, at, colour: memberColour(memberId), picture: memberPicture(memberId),
       light: carried.get(memberId) ?? null,
     }));
     stage.setTokens(standing);
-  }, [stage, present, openRange?.lower, openRange?.upper, roster, carried]);
+  }, [stage, present, openRange?.lower, openRange?.upper, roster, carried, Boolean(campaign)]);
 
   /**
    * Everyone in the open map who is not the party (R-206), hidden ones too —
@@ -1206,7 +1208,11 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
   };
 
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!stage || !campaign) return;
+    if (!stage) return;
+    if (!campaign) {
+      panning.current = { x: e.clientX, y: e.clientY };
+      return;
+    }
     if (e.button === 2 || e.button === 1) {
       // Right-click cancels a move in progress instead of starting a pan: it is
       // the universal "never mind" and the hand is already on the mouse (D-165).
@@ -1468,6 +1474,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       panning.current = { x: e.clientX, y: e.clientY };
       return;
     }
+    if (!campaign) return;
 
     if (openMap && mapTool === 'move') {
       lastPointer.current = { x: e.clientX, y: e.clientY };
@@ -1784,6 +1791,14 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
 
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (!stage) return;
+      if (!campaign) {
+        const camera = cameraAction(e.code);
+        if (camera) {
+          if (camera.kind === 'turn') stage.rotate(camera.steps);
+          else stage.tilt(camera.steps);
+        }
+        return;
+      }
 
       const digit = /^(?:Digit|Numpad)([0-9])$/.exec(e.code)?.[1];
       if (openMap) {
@@ -1989,7 +2004,16 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
       )}
 
       {status === 'open' && seat === 'gm' && !campaign && (
-        <Launcher campaigns={view?.campaigns ?? []} dispatch={dispatch} />
+        <Launcher
+          campaigns={view?.campaigns ?? []}
+          dispatch={dispatch}
+          diorama={{
+            step: diorama.step,
+            total: diorama.total,
+            phase: diorama.phase,
+            title: diorama.title,
+          }}
+        />
       )}
 
       {status === 'open' && seat === 'gm' && campaign && openMapWire && openPlace && openPoi && (

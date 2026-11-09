@@ -28,10 +28,10 @@ import {
 } from '@tt/client-core';
 import { defaultTarget, worldCentre } from '@tt/render';
 import type { Picked, RulerPoint, Standing, StageFog } from '@tt/render';
-import { useStage, useCost, COST_HINT } from '@tt/client-core';
+import { useStage, useCost, useDiorama, COST_HINT } from '@tt/client-core';
 import { PlaceCard } from '../features/place/index.js';
 import { TableTools } from '../features/tools/index.js';
-import { Compass, Metrics } from '@tt/ui';
+import { BrandLogo, Compass, Metrics } from '@tt/ui';
 
 interface Props {
   view: TableView | null;
@@ -92,6 +92,7 @@ export function App({ view, status, rejection, dispatch }: Props) {
   }, []);
   const [selectedPlace, setSelectedPlace] = useState<string | null>(null);
   const campaign = view?.campaign ?? null;
+  const diorama = useDiorama(stage, !campaign);
 
   /**
    * Resolved against the **current** wire every render, never cached.
@@ -277,13 +278,13 @@ export function App({ view, status, rejection, dispatch }: Props) {
    * body and dims the rest (D-182).
    */
   useEffect(() => {
-    if (!stage) return;
+    if (!stage || !campaign) return;
     stage.setMap(
       body,
       DEFAULT_MATERIALS,
       insideWire ? `${insideWire.place.id}/${insideWire.poi.id}` : null,
     );
-  }, [stage, insideWire?.place.id, insideWire?.poi.id, body]);
+  }, [stage, insideWire?.place.id, insideWire?.poi.id, body, Boolean(campaign)]);
 
   // The fog, as an attribute on the body this screen already holds: a step
   // that shows nothing new costs a colour write, not a rebuild (R-69).
@@ -295,14 +296,14 @@ export function App({ view, status, rejection, dispatch }: Props) {
   const carriedWire = view?.carried ?? null;
   const carried = useMemo(() => carriedFromJSON(carriedWire), [carriedWire]);
   useEffect(() => {
-    if (!stage) return;
+    if (!stage || !campaign) return;
     const tokens: Standing[] = [...standing].map(([memberId, at]) => ({
       memberId, at, colour: colourOf(memberId),
       picture: campaign?.party.find((m) => m.id === memberId)?.image ?? null,
       light: carried.get(memberId) ?? null,
     }));
     stage.setTokens(tokens);
-  }, [stage, standing, campaign?.party, carried]);
+  }, [stage, standing, campaign?.party, carried, Boolean(campaign)]);
 
   /**
    * Everyone not of the party whom the party can see right now (R-206). The
@@ -624,7 +625,16 @@ export function App({ view, status, rejection, dispatch }: Props) {
 
       {waiting && (
         <div className="launcher">
-          <div className="card"><h1>{waiting.title}</h1><p>{waiting.body}</p></div>
+          <div className="card">
+            <div className="launcher-brand">
+              <BrandLogo
+                subtitle="Table Display"
+                statusLabel={`${diorama.phase === 'build' ? 'Step' : 'Undo'} ${diorama.step}/${diorama.total}`}
+              />
+            </div>
+            <h2>{waiting.title}</h2>
+            <p className="launcher-lead">{waiting.body}</p>
+          </div>
         </div>
       )}
 

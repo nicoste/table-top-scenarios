@@ -2,14 +2,22 @@
 
 import { useState } from 'react';
 import type { CampaignSummary, Intent } from '@tt/protocol';
-import { Tooltip } from '@tt/ui';
+import { BrandLogo, Tooltip } from '@tt/ui';
+
+export interface LauncherDioramaInfo {
+  readonly step: number;
+  readonly total: number;
+  readonly phase: 'build' | 'undo';
+  readonly title: string;
+}
 
 interface Props {
   campaigns: readonly CampaignSummary[];
   dispatch: (intent: Intent) => void;
+  diorama?: LauncherDioramaInfo;
 }
 
-export function Launcher({ campaigns, dispatch }: Props) {
+export function Launcher({ campaigns, dispatch, diorama }: Props) {
   const [name, setName] = useState('');
   const [confirming, setConfirming] = useState<string | null>(null);
 
@@ -20,11 +28,39 @@ export function Launcher({ campaigns, dispatch }: Props) {
     setName('');
   };
 
+  const statusBadge = diorama
+    ? `${diorama.phase === 'build' ? 'Step' : 'Undo'} ${diorama.step}/${diorama.total}`
+    : undefined;
+
   return (
     <div className="launcher">
       <div className="card">
-        <h1>Table Top Scenarios</h1>
-        <p>{campaigns.length === 0 ? 'No campaigns yet.' : 'Pick a campaign, or start another.'}</p>
+        <div className="launcher-brand">
+          <BrandLogo subtitle="GM Console" statusLabel={statusBadge} />
+          {diorama && (
+            <div className="diorama-status" aria-live="polite">
+              <div className="diorama-pips" aria-hidden="true">
+                {Array.from({ length: diorama.total }, (_, i) => {
+                  const index = i + 1;
+                  const lit = index <= diorama.step;
+                  const current = index === diorama.step;
+                  return (
+                    <span
+                      key={index}
+                      className={`diorama-pip${lit ? ' lit' : ''}${current ? ' current' : ''}`}
+                    />
+                  );
+                })}
+              </div>
+              <span className="diorama-caption">
+                {diorama.phase === 'build' ? 'Building' : 'Undoing'}: {diorama.title}
+              </span>
+            </div>
+          )}
+        </div>
+        <p className="launcher-lead">
+          {campaigns.length === 0 ? 'No campaigns yet.' : 'Pick a campaign, or start another.'}
+        </p>
 
         {campaigns.length > 0 && (
           <ul>
