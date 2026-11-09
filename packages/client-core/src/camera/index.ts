@@ -46,7 +46,12 @@ export function wheelZoom(deltaY: number): number {
 }
 
 /**
- * The one line of help both screens show, so they cannot describe different
- * controls from the ones `cameraAction` implements.
+ * The one line of help the console shows, matching `cameraAction`.
  */
 export const CAMERA_HINT = 'Q/E turn · R/F tilt · right-drag pan · wheel zoom';
+
+/**
+ * The table display's camera legend (D-381): the table has a mouse and no
+ * keyboard, so turn and tilt live on the compass pod rather than on Q/E and R/F.
+ */
+export const TABLE_CAMERA_HINT = 'Compass turn & tilt · right-drag pan · wheel zoom';

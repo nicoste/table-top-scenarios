@@ -15,15 +15,17 @@ import { Tooltip } from '../tooltip/index.js';
 import type { Placement } from '../tooltip/index.js';
 
 export interface ConfirmDeleteProps {
-  /** What the `×` destroys, e.g. `Delete "The tavern"`. Tooltip and aria name. */
+  /** What the trigger destroys, e.g. `Delete "The tavern"`. Tooltip and aria name. */
   label: string;
+  /** The glyph or word on the initial trigger button (defaults to `'×'`). */
+  triggerLabel?: string;
   /** The word on the armed button. Short: it shares a narrow row with "Keep". */
   confirmLabel?: string;
   /** Which side the tooltip prefers. */
   placement?: Placement;
   onConfirm: () => void;
   /**
-   * The row's other actions, to the left of the `×`.
+   * The row's other actions, to the left of the trigger.
    *
    * They are handed over rather than placed beside this component so the
    * question can take the whole row. Asking in place keeps the answer on one
@@ -34,7 +36,7 @@ export interface ConfirmDeleteProps {
 }
 
 export function ConfirmDelete({
-  label, confirmLabel = 'Delete', placement = 'left', onConfirm, children,
+  label, triggerLabel = '×', confirmLabel = 'Delete', placement = 'left', onConfirm, children,
 }: ConfirmDeleteProps) {
   const [armed, setArmed] = useState(false);
 
@@ -43,7 +45,9 @@ export function ConfirmDelete({
       <>
         {children}
         <Tooltip label={label} placement={placement}>
-          <button className="quiet" aria-label={label} onClick={() => setArmed(true)}>×</button>
+          <button className="quiet danger-trigger" aria-label={label} onClick={() => setArmed(true)}>
+            {triggerLabel}
+          </button>
         </Tooltip>
       </>
     );

@@ -21,3 +21,9 @@ export type { CompassProps } from './compass/index.js';
 
 export { PictureInput } from './picture-input/index.js';
 export type { PictureInputProps } from './picture-input/index.js';
+
+export { GameIcon } from './game-icon/index.js';
+export type { GameIconName, GameIconProps } from './game-icon/index.js';
+
+export { SlotButton } from './slot-button/index.js';
+export type { SlotButtonProps } from './slot-button/index.js';

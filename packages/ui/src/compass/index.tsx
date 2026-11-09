@@ -1,15 +1,19 @@
-// Which way is north (R-155).
+// Which way is north (R-155), and mouse camera controls for turn and tilt (D-381).
 //
 // Presentational and domain-free, like everything here: it is handed a bearing
-// in degrees and draws a dial. It does not know about cameras, maps or surfaces,
-// which is why the same one serves the world and a point of interest's map on
-// both screens.
+// in degrees and draws a dial, and when `onTurn` or `onTilt` are provided it
+// flanks the dial with clickable turn (`↺`/`↻`) and tilt (`▼`/`▲`) buttons so a
+// mouse alone can orbit and tilt the camera on both surfaces.
 //
-// Styled inline so `@tt/ui` needs no CSS pipeline (R-111), and positioned by
-// this component rather than each caller: bottom centre is the same answer in
-// all four views, and four copies of the same `position: fixed` would drift.
+// Styled inline so `@tt/ui` needs no CSS pipeline (R-111), referencing global
+// `--ui-*` CSS custom properties with safe fallbacks so changing `--ui-main` or
+// `--ui-highlight` re-themes the compass automatically.
 
+import { useState } from 'react';
 import type { CSSProperties } from 'react';
+import { GameIcon } from '../game-icon/index.js';
+import type { GameIconName } from '../game-icon/index.js';
+import { Tooltip } from '../tooltip/index.js';
 
 export interface CompassProps {
   /**
@@ -22,87 +26,224 @@ export interface CompassProps {
   bearing: number;
   /** Hidden while a launcher or a modal owns the screen. */
   hidden?: boolean;
+  /** Step the camera's yaw (-1 counter-clockwise, +1 clockwise). */
+  onTurn?: (steps: number) => void;
+  /** Step the camera's pitch (-1 lower, +1 steeper top-down). */
+  onTilt?: (steps: number) => void;
 }
 
 const SIZE = 64;
 const C = SIZE / 2;
 
-const SHELL: CSSProperties = {
+const POD_SHELL: CSSProperties = {
   position: 'fixed',
-  // Clear of the bottom hint bar, which both apps pin at `bottom: 12` and which
-  // is wide enough on a narrow window to reach the middle. Still reads as
-  // bottom centre; overlapping the keys legend does not.
   bottom: 48,
   left: '50%',
-  // Centring and nothing else — the dial rotates inside the SVG, so this
-  // transform never carries the bearing.
+  transform: 'translateX(-50%)',
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 6,
+  padding: 5,
+  borderRadius: 'var(--ui-radius, 2px)',
+  background: 'var(--ui-panel-bg, #151a22e6)',
+  border: '2px solid var(--ui-panel-border, #3a404f)',
+  boxShadow: 'var(--ui-panel-shadow, inset 2px 2px 0 rgba(255,255,255,0.07), inset -2px -2px 0 rgba(0,0,0,0.7), 0 6px 0 rgba(0,0,0,0.45))',
+  zIndex: 4,
+  userSelect: 'none',
+};
+
+const DIAL_SHELL: CSSProperties = {
+  width: SIZE,
+  height: SIZE,
+  boxSizing: 'content-box',
+  display: 'grid',
+  placeItems: 'center',
+  borderRadius: 'var(--ui-radius, 2px)',
+  background: 'var(--bg, #0f1216)',
+  border: '2px solid var(--ui-slot-border, #464e62)',
+  boxShadow: 'inset 2px 2px 0 rgba(0,0,0,0.65), inset -2px -2px 0 rgba(255,255,255,0.05)',
+  pointerEvents: 'none',
+  flexShrink: 0,
+};
+
+const PASSIVE_SHELL: CSSProperties = {
+  position: 'fixed',
+  bottom: 48,
+  left: '50%',
   transform: 'translateX(-50%)',
   width: SIZE,
   height: SIZE,
+  boxSizing: 'content-box',
+  display: 'grid',
+  placeItems: 'center',
   borderRadius: '50%',
-  background: '#151a22d9',
-  border: '1px solid #333b48',
+  background: 'var(--ui-panel-bg, #151a22d9)',
+  border: '1px solid var(--ui-panel-border, #333b48)',
   boxShadow: '0 2px 10px #0006',
-  // It reports, it does not accept: a click here must reach the canvas behind.
   pointerEvents: 'none',
   zIndex: 4,
   userSelect: 'none',
 };
 
-/** The four cardinals, at their bearing and their place on the ring. */
+const COL_STACK: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 6,
+};
+
+const CAM_BTN: CSSProperties = {
+  width: 31,
+  height: 31,
+  padding: 0,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderRadius: 'var(--ui-radius, 2px)',
+  background: 'var(--ui-slot-bg, #202530)',
+  border: '2px solid var(--ui-slot-border, #464e62)',
+  boxShadow: 'var(--ui-slot-shadow, inset 2px 2px 0 rgba(255,255,255,0.11), inset -2px -2px 0 rgba(0,0,0,0.75))',
+  color: 'var(--ui-ink, #e6e9ef)',
+  cursor: 'pointer',
+};
+
+const CAM_BTN_HOVER: CSSProperties = {
+  background: 'var(--ui-slot-hover-bg, #282f3d)',
+  borderColor: 'var(--ui-highlight, #f5a524)',
+  color: 'var(--ui-slot-active-ink, #ffd479)',
+};
+
+/** The four cardinals, symmetrically placed 8.5px inside the 64×64 frame. */
+const EDGE_INSET = 8.5;
 const RING = [
-  { letter: 'N', x: C, y: 11 },
-  { letter: 'E', x: SIZE - 9, y: C + 3.5 },
-  { letter: 'S', x: C, y: SIZE - 6 },
-  { letter: 'W', x: 9, y: C + 3.5 },
+  { letter: 'N', x: C, y: EDGE_INSET },
+  { letter: 'E', x: SIZE - EDGE_INSET, y: C },
+  { letter: 'S', x: C, y: SIZE - EDGE_INSET },
+  { letter: 'W', x: EDGE_INSET, y: C },
 ];
 
-export function Compass({ bearing, hidden = false }: CompassProps) {
-  if (hidden) return null;
+function CamButton({
+  icon,
+  label,
+  onClick,
+}: {
+  readonly icon: GameIconName;
+  readonly label: string;
+  readonly onClick: () => void;
+}) {
+  const [hovered, setHovered] = useState(false);
   return (
-    <div style={SHELL} aria-hidden>
-      <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
-        <title>Compass</title>
-        {/*
-          One rotating group holding needle and letters together. Turning the
-          needle while the letters stay upright would be two instruments
-          disagreeing about the same fact.
-        */}
-        <g transform={`rotate(${bearing} ${C} ${C})`}>
-          {/*
-            Ticks on the intercardinals. They are where the grid's axes run, so
-            they are the only directions a map can actually be extended toward
-            (D-198) — worth marking, not worth four more letters at this size.
-          */}
-          {[45, 135, 225, 315].map((deg) => (
-            <line
-              key={deg}
-              x1={C} y1={6} x2={C} y2={10}
-              stroke="#4a5364"
-              strokeWidth={1.5}
-              transform={`rotate(${deg} ${C} ${C})`}
-            />
-          ))}
-          {/* North: warm and solid. South: the same shape, dark, so the two
-              halves read as one needle rather than two arrows. */}
-          <path d={`M${C} 19 L${C + 4.5} ${C + 1} L${C} ${C - 1} L${C - 4.5} ${C + 1} Z`} fill="#ff8f6b" />
-          <path d={`M${C} ${SIZE - 19} L${C + 4.5} ${C - 1} L${C} ${C + 1} L${C - 4.5} ${C - 1} Z`} fill="#3a4251" />
-          {RING.map(({ letter, x, y }) => (
-            <text
-              key={letter}
-              x={x}
-              y={y}
-              textAnchor="middle"
-              fontSize={letter === 'N' ? 9.5 : 8}
-              fontWeight={letter === 'N' ? 700 : 400}
-              fill={letter === 'N' ? '#ff8f6b' : '#8b93a1'}
-              fontFamily="ui-sans-serif, system-ui, sans-serif"
-            >
-              {letter}
-            </text>
-          ))}
-        </g>
-      </svg>
+    <Tooltip label={label} placement="top">
+      <button
+        type="button"
+        aria-label={label}
+        style={hovered ? { ...CAM_BTN, ...CAM_BTN_HOVER } : CAM_BTN}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        onClick={onClick}
+      >
+        <GameIcon name={icon} size={16} />
+      </button>
+    </Tooltip>
+  );
+}
+
+function DialSvg({ bearing }: { readonly bearing: number }) {
+  return (
+    <svg
+      width={SIZE}
+      height={SIZE}
+      viewBox={`0 0 ${SIZE} ${SIZE}`}
+      style={{ display: 'block' }}
+    >
+      <title>Compass</title>
+      <g transform={`rotate(${bearing} ${C} ${C})`}>
+        {[45, 135, 225, 315].map((deg) => (
+          <line
+            key={deg}
+            x1={C} y1={6} x2={C} y2={10}
+            stroke="var(--ui-slot-border, #4a5364)"
+            strokeWidth={1.5}
+            transform={`rotate(${deg} ${C} ${C})`}
+          />
+        ))}
+        <path
+          d={`M${C} 19 L${C + 4.5} ${C + 1} L${C} ${C - 1} L${C - 4.5} ${C + 1} Z`}
+          fill="var(--ui-highlight, #f5a524)"
+        />
+        <path
+          d={`M${C} ${SIZE - 19} L${C + 4.5} ${C - 1} L${C} ${C + 1} L${C - 4.5} ${C - 1} Z`}
+          fill="var(--ui-slot-border, #3a4251)"
+        />
+        {RING.map(({ letter, x, y }) => (
+          <text
+            key={letter}
+            x={x}
+            y={y}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fontSize={letter === 'N' ? 9.5 : 8}
+            fontWeight={letter === 'N' ? 700 : 400}
+            fill={letter === 'N' ? 'var(--ui-highlight, #f5a524)' : 'var(--dim, #8b93a1)'}
+            fontFamily="var(--ui-font, ui-monospace, Menlo, monospace)"
+          >
+            {letter}
+          </text>
+        ))}
+      </g>
+    </svg>
+  );
+}
+
+export function Compass({ bearing, hidden = false, onTurn, onTilt }: CompassProps) {
+  if (hidden) return null;
+
+  if (!onTurn && !onTilt) {
+    return (
+      <div style={PASSIVE_SHELL} aria-hidden>
+        <DialSvg bearing={bearing} />
+      </div>
+    );
+  }
+
+  return (
+    <div style={POD_SHELL} role="group" aria-label="Camera controls">
+      <div style={COL_STACK}>
+        {onTurn && (
+          <CamButton
+            icon="turn-ccw"
+            label="Turn camera 90° left"
+            onClick={() => onTurn(-1)}
+          />
+        )}
+        {onTilt && (
+          <CamButton
+            icon="tilt-down"
+            label="Tilt camera lower"
+            onClick={() => onTilt(-1)}
+          />
+        )}
+      </div>
+
+      <div style={DIAL_SHELL} aria-hidden>
+        <DialSvg bearing={bearing} />
+      </div>
+
+      <div style={COL_STACK}>
+        {onTurn && (
+          <CamButton
+            icon="turn-cw"
+            label="Turn camera 90° right"
+            onClick={() => onTurn(1)}
+          />
+        )}
+        {onTilt && (
+          <CamButton
+            icon="tilt-up"
+            label="Tilt camera top-down"
+            onClick={() => onTilt(1)}
+          />
+        )}
+      </div>
     </div>
   );
 }
