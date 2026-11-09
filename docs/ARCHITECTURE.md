@@ -1766,31 +1766,29 @@ apps/host/src/
 > to a hidden textarea and `execCommand`, and if that fails too, say so and let
 > the GM copy by hand.
 
-> **R-217.** **Game HUD slots, canonical monochrome icons, standardized geometry,
-> and global master colour tokens** (D-381; [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md)
-> and [`ui-gallery.html`](ui-gallery.html)).
+> **R-217.** **Colours, sizes and fonts come from `@tt/theme`'s tokens**
+> (D-381, D-386; [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md)). A colour typed into a
+> shell or a component is a bug, unless it is black or white shading, or a
+> picture of a real thing — a printed card's paper. `@tt/ui` reads the tokens
+> through `THEME`, and the design gallery (`/gm/gallery.html`) through the same
+> stylesheets the screens load.
 >
-> - **`GameIcon` in `@tt/ui`** is the single registry of monochrome squared-stroke
->   `24×24` SVG glyphs (`stroke="currentColor"`, no multi-colour fills or emojis).
->   One concept uses one canonical glyph across both screens: `walk` serves both
->   map ground paths and world foot travel; `measure` serves both the Measure tool
->   and the Ruler mode inside it.
-> - **`SlotButton` in `@tt/ui`** renders a squared, chiseled voxel action slot
->   pairing a `GameIcon` with a 1-word label (plus an optional hotkey badge on the
->   console) and a bottom `Tooltip` when an explanation is needed, across both the
->   table's tool/measure palettes and the console's world (`1–6`), map (`1–7`),
->   path and measure palettes.
-> - **Standardized geometry & control heights (`--ui-radius: 2px`,
->   `--ui-control-h: 28px`, `--ui-control-sm: 22px`, `--ui-slot-h: 54px`)**:
->   every button, text/number/colour input, select, `.chip-button`, `.dial` slider
->   dragger, and `.ladder` elevation grip uses squared voxel corners
->   (`var(--ui-radius)`) and snaps to the shared control height scale so horizontal
->   rows align flush.
-> - **Master colour tokens (`--ui-main`, `--ui-highlight`, `--ui-ink`)**: every
->   surface, border, slot bevel, hover state and active highlight in `shell.css`
->   and `@tt/ui`'s inline styles references CSS custom properties derived via
->   `color-mix(in srgb, ...)` with inline fallbacks (keeping R-111 intact), so
->   changing `--ui-main` or `--ui-highlight` re-themes the entire UI globally.
+> **R-217a.** **One concept, one icon, in `GameIcon`.** Monochrome, in the
+> current colour, drawn from `GLYPHS`. A second drawing of a concept the
+> registry has — in a panel, a shell or the gallery — is a bug: `walk` is the
+> walked path and the march on foot, `measure` the tool and its ruler, `light`
+> any light.
+>
+> **R-217b.** **A tool or a mode is a `SlotButton`**: its icon and one word, the
+> key on the console, and a tooltip when the word needs more — not a paragraph
+> in the panel.
+>
+> **R-217c.** **Controls keep the size scale**: `--ui-control-h` for a row's
+> controls, `--ui-control-sm` for its quiet actions, `--ui-slot-h` for a slot,
+> and `--ui-radius` for every corner. A round corner is a bug.
+>
+> *R-217 was one rule in four parts that described what D-381 built; D-387 split
+> it into rules a change can break.*
 
 ---
 

@@ -9903,6 +9903,8 @@ privacy move."*
   `docs/DESIGN_SYSTEM.md` and `docs/ui-gallery.html`.
 **Amended by D-383**: what some tools' paragraphs said had not reached their
 tooltips, and is there now; the changes this entry did not list are listed.
+**Amended by D-387**: R-217 is four rules, the gallery a page of the console,
+and the compass's buttons carry icons, not those characters.
 
 ### D-382 — Brand identity (`BrandLogo`, voxel favicon) and 10-step living isometric diorama on the main menu · `agreed`
 *"I want to add more identity to the tool. Like an icon, a logo, a title... You command. I would love to have the logo in the main menu, what do you think about it? We can also add a floating terrain on an isometric view and a road that highlights the title, some scheduled actions that edit the terrain behind, like step 1, then 2, 3, 4, ... 10, then start undoing down to step 1, and loop."*
@@ -10095,3 +10097,31 @@ The rest of the review, on how the styles are built.
   it cannot fall back. So each page carries a sentence saying the browser is
   too old, the stylesheet hides it where both work, and a screen starts only
   where they do. A test keeps the sentence and the check naming the same floor.
+
+### D-387 — The design docs say what was built · `agreed`
+*"4. Fix all."*
+
+The last of the review: the docs D-381 added described a design that differed
+from the code in its colours, its token names and its icons.
+
+- **The gallery is a page of the console**, `/gm/gallery.html`, drawn by the
+  real components with the screens' own stylesheet. The static page it
+  replaces was a second implementation by hand — its own tokens, with other
+  values and other names, its own copy of every component, and its own icons,
+  a stick figure where the registry has a path on the ground. Nothing on the
+  new page is a copy, so it cannot drift; it is served with the console, so it
+  needs the host running, which is the cost.
+- **Icons are data.** `GLYPHS` holds every glyph as shapes and attributes, and
+  `GameIcon` draws from it, so the gallery shows the registry by drawing it.
+  The flame beside a row on stage was a drawing of its own; it is the
+  registry's `light` now, which no screen had used, and `filled` fills it in
+  the light's colour while it is lit.
+- **R-217 is four rules**: colours, sizes and fonts from the tokens; one icon
+  per concept in the registry; a tool or a mode is a slot; and the size scale.
+  It was one rule describing what was built, and nothing could break it.
+- **`DESIGN_SYSTEM.md` names what exists and does not copy values**: where
+  each part lives, the master colours, which tokens are mixed from them, the
+  sizes and type, the icons, the components and the patterns. About a third
+  of its old length. A test holds it to the code: every token it names is in
+  tokens.css, every class it names is styled, its icon table is exactly the
+  registry, and the gallery draws from both.

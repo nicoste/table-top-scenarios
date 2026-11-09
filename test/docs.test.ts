@@ -86,9 +86,11 @@ describe('the rule set stays coherent', () => {
   });
 });
 
-describe('DESIGN_SYSTEM.md and ui-gallery.html stay honest', () => {
+describe('DESIGN_SYSTEM.md stays honest', () => {
   const designSystem = read('docs/DESIGN_SYSTEM.md');
-  const gallery = read('docs/ui-gallery.html');
+  const tokens = read('packages/theme/tokens.css');
+  const stylesheets = ['packages/theme/base.css', 'apps/gm/src/shell/shell.css', 'apps/table/src/shell/shell.css']
+    .map(read).join('\n');
 
   it('cites rules and decisions that exist', () => {
     const architecture = read('docs/ARCHITECTURE.md');
@@ -103,12 +105,34 @@ describe('DESIGN_SYSTEM.md and ui-gallery.html stay honest', () => {
     expect(citedCalls.filter((d) => !recorded.has(d))).toEqual([]);
   });
 
-  it('documents every canonical GameIconName in both DESIGN_SYSTEM.md and ui-gallery.html', () => {
-    const iconSrc = read('packages/ui/src/game-icon/index.tsx');
-    const names = [...iconSrc.matchAll(/^\s*\|\s*'([a-z-]+)'/gm)].map((m) => m[1]!);
-    expect(names.length).toBeGreaterThan(0);
-    expect(names.filter((n) => !designSystem.includes(`\`${n}\``))).toEqual([]);
-    expect(names.filter((n) => !gallery.includes(n))).toEqual([]);
+  it('names only tokens the theme defines', () => {
+    // The page it replaced listed tokens nobody had defined (D-387).
+    const named = new Set([...designSystem.matchAll(/`(--[a-z0-9-]+)`/g)].map((m) => m[1]!));
+    expect(named.size).toBeGreaterThan(10);
+    expect([...named].filter((name) => !new RegExp(`${name}\\s*:`).test(tokens))).toEqual([]);
+  });
+
+  it('names only classes a stylesheet styles', () => {
+    // Selectors in backticks — `.card`, `.stage-list li`, `button.quiet` — not file names.
+    const selectors = [...designSystem.matchAll(/`([a-z]*\.[a-z][\w.-]*(?: [a-z][\w.-]*)*)`/g)]
+      .map((m) => m[1]!)
+      .filter((sel) => !/\.(ts|tsx|css|html|md)$/.test(sel));
+    const classes = new Set(selectors.flatMap((sel) => [...sel.matchAll(/\.([a-z][\w-]*)/g)].map((m) => m[1]!)));
+    expect(classes.size).toBeGreaterThan(10);
+    expect([...classes].filter((cls) => !new RegExp(`\\.${cls}(?![\\w-])`).test(stylesheets))).toEqual([]);
+  });
+
+  it('lists exactly the icons the registry draws', async () => {
+    const { GLYPHS } = await import('@tt/ui');
+    const section = designSystem.slice(designSystem.indexOf('## Icons'), designSystem.indexOf('## Components'));
+    const listed = [...section.matchAll(/^\| `([a-z-]+)` \|/gm)].map((m) => m[1]!);
+    expect(listed.sort()).toEqual(Object.keys(GLYPHS).sort());
+  });
+
+  it('points at a gallery drawn from the registry and the screens\' own stylesheet', () => {
+    expect(read('apps/gm/src/gallery/main.tsx')).toContain('GLYPHS');
+    expect(read('apps/gm/gallery.html')).toContain('./src/shell/shell.css');
+    expect(existsSync(join(ROOT, 'docs/ui-gallery.html'))).toBe(false);
   });
 });
 

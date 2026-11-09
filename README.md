@@ -62,8 +62,9 @@ The docs, in reading order:
    code and this disagree, the code is the bug.
 4. [DECISIONS](docs/DECISIONS.md): every choice, numbered `D-n`, with its reasons.
 5. [MEASUREMENTS](docs/MEASUREMENTS.md): what things cost, measured.
-6. [DESIGN_SYSTEM](docs/DESIGN_SYSTEM.md) & [`ui-gallery.html`](docs/ui-gallery.html):
-   the UI tokens, geometry grid, canonical icons, and live component catalogue.
+6. [DESIGN_SYSTEM](docs/DESIGN_SYSTEM.md): how the screens look — the tokens,
+   the icons, the components — and the gallery that shows them, at
+   `/gm/gallery.html` while the host runs.
 
 ## Layout
 
