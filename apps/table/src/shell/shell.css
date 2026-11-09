@@ -6,6 +6,10 @@
   --ui-ink: #e6e9ef;
   --ui-danger: #e5534b;
   --ui-ok: #57d9a3;
+  /* The tertiary: a second highlight, for a highlighted thing that sits beside
+     another and must not be taken for it (D-383). Mixed from the highlight,
+     so it moves with it. */
+  --ui-tertiary: color-mix(in srgb, var(--ui-highlight) 40%, var(--ui-ink));
   --ui-radius: 2px;
   --ui-control-h: 28px;
   --ui-control-sm: 22px;

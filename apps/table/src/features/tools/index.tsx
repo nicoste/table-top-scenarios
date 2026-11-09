@@ -12,7 +12,7 @@ import type { AreaPatch, Areas } from '@tt/domain';
 import { AREA_COLOURS, AREA_SHAPES, MAX_AREA_SIZE, MIN_AREA_SIZE, areaColour } from '@tt/domain';
 import type { MeasureHand, MeasureMode } from '@tt/client-core';
 import { chooseAreaColour, chooseMeasure } from '@tt/client-core';
-import { DraftInput, SlotButton, Tooltip } from '@tt/ui';
+import { ConfirmDelete, DraftInput, SlotButton, Tooltip } from '@tt/ui';
 import type { GameIconName } from '@tt/ui';
 
 interface Props {
@@ -166,34 +166,32 @@ export function TableTools({ measuring, leap, onLeap, hand, onMove, onMeasure, o
                         />
                       </div>
                       <div className="area-follow">
-                        <DraftInput
-                          className="size"
-                          title={`Its ${SIZE_WORD[area.shape]}, in cubes`}
-                          aria-label={`${area.name}'s ${SIZE_WORD[area.shape]}`}
-                          inputMode="numeric"
-                          value={String(area.size)}
-                          valid={isSize}
-                          onCommit={(draft) => onEdit(area.id, { size: Number(draft.trim()) })}
-                        />
-                        <span className="lbl">follows</span>
-                        <select
-                          value={area.follows ?? ''}
-                          aria-label={`Whom ${area.name} follows`}
-                          onChange={(e) => onEdit(area.id, { follows: e.target.value || null })}
+                        {/* Asking takes this whole line, under the name it asks about (R-151). */}
+                        <ConfirmDelete
+                          label={`Take ${area.name} away`}
+                          confirmLabel="Remove"
+                          placement="bottom"
+                          onConfirm={() => onRemove(area.id)}
                         >
-                          <option value="">nobody</option>
-                          {party.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}
-                        </select>
-                        <Tooltip label="Take it away" placement="bottom">
-                          <button
-                            type="button"
-                            className="quiet danger-trigger"
-                            aria-label={`Take ${area.name} away`}
-                            onClick={() => onRemove(area.id)}
+                          <DraftInput
+                            className="size"
+                            title={`Its ${SIZE_WORD[area.shape]}, in cubes`}
+                            aria-label={`${area.name}'s ${SIZE_WORD[area.shape]}`}
+                            inputMode="numeric"
+                            value={String(area.size)}
+                            valid={isSize}
+                            onCommit={(draft) => onEdit(area.id, { size: Number(draft.trim()) })}
+                          />
+                          <span className="lbl">follows</span>
+                          <select
+                            value={area.follows ?? ''}
+                            aria-label={`Whom ${area.name} follows`}
+                            onChange={(e) => onEdit(area.id, { follows: e.target.value || null })}
                           >
-                            ×
-                          </button>
-                        </Tooltip>
+                            <option value="">nobody</option>
+                            {party.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}
+                          </select>
+                        </ConfirmDelete>
                       </div>
                     </li>
                   ))}

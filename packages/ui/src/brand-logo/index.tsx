@@ -1,6 +1,6 @@
 // BrandLogo: canonical product emblem and typography lockup for Table Top
 // Scenarios (D-382). Built in the Squared Voxel HUD visual language using
-// master CSS tokens (`--ui-highlight`, `--ui-ink`, `--ui-main`, `--ui-slot-border`)
+// master CSS tokens (`--ui-highlight`, `--ui-ink`, `--dim`, `--ui-slot-border`)
 // so global theme swaps re-colour the emblem and wordmark automatically (R-111).
 
 import type { CSSProperties } from 'react';
@@ -58,7 +58,7 @@ const SUBTITLE: CSSProperties = {
   fontWeight: 700,
   letterSpacing: '0.14em',
   textTransform: 'uppercase',
-  color: 'var(--ui-main, #8a93a6)',
+  color: 'var(--dim, #8a93a6)',
 };
 
 const DOT: CSSProperties = {
@@ -157,7 +157,7 @@ export function BrandLogo({
           <polygon
             points="20,14 36,22 20,30 4,22"
             fill="#232936"
-            stroke="var(--ui-main, #8a93a6)"
+            stroke="var(--dim, #8a93a6)"
             strokeWidth="1.2"
             strokeLinejoin="bevel"
           />
@@ -173,7 +173,7 @@ export function BrandLogo({
           {/* Tower Left Lit Wall */}
           <polygon
             points="12,9 20,13 20,22 12,18"
-            fill="var(--ui-main, #8a93a6)"
+            fill="var(--dim, #8a93a6)"
             stroke="#0d1016"
             strokeWidth="1"
           />

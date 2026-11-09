@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isKnownSwatch, propType } from '@tt/domain';
+import { blockKey, isKnownSwatch, propType } from '@tt/domain';
 import {
   DIORAMA_TOTAL_STEPS,
   DIORAMA_STEP_TITLES,
@@ -40,6 +40,20 @@ describe('dioramaAtStep', () => {
     }
     for (let i = 1; i < scores.length; i++) {
       expect(scores[i]!).toBeGreaterThan(scores[i - 1]!);
+    }
+  });
+
+  it('stands every token and prop on a block, and none inside one, at every step', () => {
+    for (let step = 1; step <= DIORAMA_TOTAL_STEPS; step++) {
+      const { map, tokens } = dioramaAtStep(step);
+      const placed = [
+        ...tokens.map((token) => ({ what: token.memberId, at: token.at })),
+        ...map.props.map((prop) => ({ what: prop.id, at: prop.at })),
+      ];
+      for (const { what, at } of placed) {
+        expect(map.blocks.has(blockKey(at)), `${what} is inside a block at step ${step}`).toBe(false);
+        expect(map.blocks.has(blockKey({ ...at, y: at.y - 1 })), `${what} stands on nothing at step ${step}`).toBe(true);
+      }
     }
   });
 });

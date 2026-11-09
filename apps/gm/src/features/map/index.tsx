@@ -6,7 +6,7 @@
 
 import type { Intent, MapWire } from '@tt/protocol';
 import type { MapTool } from '@tt/client-core';
-import { mapToolShows } from '@tt/client-core';
+import { CAMERA_HINT, mapToolShows } from '@tt/client-core';
 import {
   MAP_MAX_HEIGHT, MAP_MIN_DEPTH, BRUSHES, isFullRange, sameRange, stepLabel,
 } from '@tt/domain';
@@ -211,7 +211,7 @@ export function MapPanel({
           delete does (R-151).
         */}
         {(seen > 0 || party.some((member) => member.standing)) && (
-          <div className="row forget">
+          <div className="row asks">
             <ConfirmDelete
               label="Forget everything the party has seen here, and take them off the map — a fresh start"
               triggerLabel="Forget"
@@ -235,7 +235,7 @@ export function MapPanel({
             label={tool === 'build' && shifting ? 'Erase' : 'Build'}
             hotkey="1"
             active={tool === 'build'}
-            tooltip="Add blocks against the face you click · hold ⇧ shift to erase · hold ⌥ alt to dig under — key 1"
+            tooltip="Add blocks against the face you click, skipping any already there · hold ⇧ shift to erase · hold ⌥ alt to dig under — key 1"
             onClick={() => onTool('build')}
           />
           <SlotButton
@@ -243,7 +243,7 @@ export function MapPanel({
             label={tool === 'paint' && shifting ? 'Fill' : 'Paint'}
             hotkey="2"
             active={tool === 'paint'}
-            tooltip="Repaint blocks without moving them · hold ⇧ shift to flood-fill — key 2"
+            tooltip="Click or drag to repaint blocks without moving them; a click on a prop paints that prop alone · hold ⇧ shift to flood-fill — key 2"
             onClick={() => onTool('paint')}
           />
           <SlotButton
@@ -251,7 +251,7 @@ export function MapPanel({
             label="Play"
             hotkey="3"
             active={tool === 'move'}
-            tooltip="Move tokens, open doors, light lights — key 3"
+            tooltip="Pick up a token and stand it on a block; Escape or right-click puts it back · click a door or a light to work it — key 3"
             onClick={() => onTool('move')}
           />
           <SlotButton
@@ -275,7 +275,7 @@ export function MapPanel({
             label="Props"
             hotkey="6"
             active={tool === 'props'}
-            tooltip="Place doors, bars, furniture, lights and climbs, or edit one (Z/X turn) — key 6"
+            tooltip="Place doors, bars, furniture, lights and climbs (Z/X turn) · click one to edit it, drag it to move it, Backspace removes it — key 6"
             onClick={() => onTool('props')}
           />
           <SlotButton
@@ -283,7 +283,7 @@ export function MapPanel({
             label="Measure"
             hotkey="7"
             active={tool === 'measure'}
-            tooltip="Measure how far with the ruler, or draw an area — key 7"
+            tooltip="Measure how far with the ruler, or draw an area the players see unless you hide it — key 7"
             onClick={() => onTool('measure')}
           />
         </div>
@@ -344,6 +344,9 @@ export function MapPanel({
         )}
 
         <p className="readout">{hoverLabel ?? '—'}</p>
+        {/* The keys nothing else on a map names: the world says them in its
+            bottom bar, but here the dock runs down over where that bar sits. */}
+        <p className="hint">1–7 tool · 8–0, −, = or [ ] brush · {CAMERA_HINT}</p>
       </div>
 
       {/* Build's and Paint's, and nobody else's (R-207). */}
@@ -402,7 +405,7 @@ export function MapPanel({
             ? partyHere
               ? 'The table is shown this band too.'
               : 'The table is shown this band when the party comes in.'
-            : `The table is shown ${bandWords(tableRange, map.planes)}: the amber line.`}
+            : `The table is shown ${bandWords(tableRange, map.planes)}: the pale gold line.`}
         </p>
         <div className="btn-grid campaign-actions">
           <Tooltip

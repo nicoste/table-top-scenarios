@@ -2214,7 +2214,7 @@ apps/host/src/
 > moves only when the GM sends theirs — or when the host settles it because the
 > levels under it changed. The ladder moves **the GM's own**: view state
 > (R-64), one map at a time, starting at the table's whenever a map is opened.
-> The table's band is drawn beside it as a thin amber line, and *Apply to
+> The table's band is drawn beside it as a thin pale-gold line (D-383), and *Apply to
 > table* sends the GM's (D-370). So the GM can work on the floor above the party
 > without the players' view moving.
 
@@ -2278,6 +2278,13 @@ apps/host/src/
 > site remembering: a rule that depends on being retyped lasts until the next list
 > grows a `×`. The confirmation is view state and asks the host nothing until it
 > is confirmed (R-64).
+>
+> **Amended by D-384.** Every delete *button* asks, play included: a party
+> member, an area on either screen, a prop, a card's picture. A question that
+> hides the name it is about says the name itself (*Remove Aldra*). A picture
+> asks inside `PictureInput`, with *Keep* where its badge was. What stays one
+> action is a key or a stroke: Backspace on a selected prop (D-330), and the
+> erase brush above.
 
 ---
 

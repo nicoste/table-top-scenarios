@@ -6,6 +6,10 @@
   --ui-ink: #e6e9ef;
   --ui-danger: #e5534b;
   --ui-ok: #57d9a3;
+  /* The tertiary: a second highlight, for a highlighted thing that sits beside
+     another and must not be taken for it (D-383). Mixed from the highlight,
+     so it moves with it. */
+  --ui-tertiary: color-mix(in srgb, var(--ui-highlight) 40%, var(--ui-ink));
   --ui-radius: 2px;
   --ui-control-h: 28px;
   --ui-control-sm: 22px;
@@ -30,8 +34,9 @@
   --dim: color-mix(in srgb, var(--ui-ink) 58%, var(--ui-main));
   --accent: var(--ui-highlight);
   --ok: var(--ui-ok);
-  /* The table's band beside the GM's on the level ladder (D-369). */
-  --table: #e8b25a;
+  /* The table's band beside the GM's on the level ladder (D-369): the
+     tertiary, since the GM's own band is the highlight (D-383). */
+  --table: var(--ui-tertiary);
 
   --ui-panel-bg: color-mix(in srgb, var(--ui-main) 94%, transparent);
   --ui-panel-border: var(--edge);
@@ -386,7 +391,7 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
 .ladder li:first-child .rail i:first-of-type,
 .ladder li:last-child .rail i:last-of-type { background: transparent; }
 
-/* The table's band (D-369): a thin amber line at the rail's left, clear of the
+/* The table's band (D-369): a thin pale-gold line at the rail's left, clear of the
    handles, with a tick at each end. Where the two bands agree it runs beside
    the GM's; where they part, the GM can see which floor the players are on. */
 .ladder .rail .table {
@@ -554,8 +559,10 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
 .card h2 + .lbl { margin-top: 0; }
 .row > .lbl, .stage-sight > .lbl { margin: 0; }
 
-.row.forget { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin-top: 8px; }
-.row.forget .grow { flex: 1 1 auto; margin: 0; }
+/* A footer row that ends in a question (R-151): its words on the left, the
+   trigger on the right, and both answers in the trigger's place once asked. */
+.row.asks { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin-top: 8px; }
+.row.asks .grow { flex: 1 1 auto; margin: 0; }
 
 .member-list { display: flex; flex-direction: column; gap: 6px; }
 .member {
@@ -567,6 +574,12 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
 .member .top > input { flex: 1 1 auto; min-width: 0; }
 .member .top button.quiet {
   width: var(--ui-control-h); height: var(--ui-control-h); padding: 0; flex: none;
+}
+/* Asking, the row is "Remove Aldra" and "Keep": the name takes what is left,
+   and a long one is cut short rather than pushing "Keep" out of the row. */
+.member .top button.danger {
+  display: block; flex: 1 1 auto; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .member input[type=color] {
   width: var(--ui-control-h); height: var(--ui-control-h); padding: 2px; flex: none;
@@ -602,6 +615,21 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
 }
 .picture-clear:hover:not(:disabled) {
   background: var(--ui-danger); border-color: var(--ui-danger); color: #fff;
+}
+/* The badge asks before the picture goes (R-151). It opens over the row, not
+   in it, so nothing beside the card moves, and "Keep" opens where the badge
+   was: the second click of a double-click keeps the picture. */
+.picture-ask {
+  position: absolute; top: -6px; left: calc(100% - 9px); z-index: 3;
+  display: flex; gap: 3px; padding: 2px; white-space: nowrap;
+  background: var(--panel); border: 1px solid var(--ui-slot-border);
+  border-radius: var(--ui-radius); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
+}
+/* As specific as a row's own square buttons (`.member .top button.quiet`), and
+   later, so these keep their words. */
+.picture-input .picture-ask button.quiet,
+.picture-input .picture-ask button.danger {
+  width: auto; height: var(--ui-control-sm); min-height: var(--ui-control-sm); padding: 0 7px; font-size: 11px;
 }
 
 .connect {

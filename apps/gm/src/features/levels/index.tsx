@@ -29,7 +29,7 @@
 //
 // **The band is the GM's own** (D-369). Dragging moves the levels the console
 // looks at, and the table follows only when the GM sends it; the table's band
-// is the thin amber line beside the rail, so the two can always be compared.
+// is the thin pale-gold line beside the rail, so the two can always be compared.
 
 import { useRef, useState } from 'react';
 import type { Intent, MapWire } from '@tt/protocol';

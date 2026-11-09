@@ -17,7 +17,7 @@ import type { Opened, Prop, PropFlame, PropType, SwatchId } from '@tt/domain';
 import { PROP_TYPES, flameOf, paintOf, propType, reachOf, statesOf, swatchColour, swatchName, turned } from '@tt/domain';
 import type { PropHand } from '@tt/client-core';
 import { takeProp, turnHand } from '@tt/client-core';
-import { DraftInput, GameIcon, Tooltip } from '@tt/ui';
+import { ConfirmDelete, DraftInput, GameIcon, Tooltip } from '@tt/ui';
 import { isReach } from '../carried/index.js';
 import { GmNote } from '../note/index.js';
 
@@ -155,14 +155,6 @@ export function PropsPanel({ hand, onHand, selected, onSelect, opened, placeId, 
                 </button>
               </Tooltip>
             )}
-            <Tooltip label="Take it away — Backspace. One undo brings it back." placement="bottom" stretch>
-              <button
-                className="wide quiet danger-trigger"
-                onClick={() => { dispatch({ kind: 'removeProp', ...where, id: selected.id }); onSelect(null); }}
-              >
-                Remove
-              </button>
-            </Tooltip>
           </div>
           <p className="lbl" style={{ margin: '8px 0 4px' }}>Paint</p>
           <Paints
@@ -200,6 +192,22 @@ export function PropsPanel({ hand, onHand, selected, onSelect, opened, placeId, 
             {rulesOf(selectedType)}. Any material: pick it in <b>Paint</b> and click the prop.
             Backspace removes it; Escape lets go of it.
           </p>
+          {/*
+            The button asks, as every delete button does (R-151). Backspace
+            does not: a key pressed on purpose is the answer already, and one
+            undo brings the prop back (D-330).
+          */}
+          <div className="row asks">
+            <ConfirmDelete
+              label={`Take the ${selectedType.name.toLowerCase()} away`}
+              triggerLabel="Remove"
+              confirmLabel="Remove"
+              placement="bottom"
+              onConfirm={() => { dispatch({ kind: 'removeProp', ...where, id: selected.id }); onSelect(null); }}
+            >
+              <span className="hint grow">One undo brings it back.</span>
+            </ConfirmDelete>
+          </div>
         </div>
       )}
 

@@ -56,7 +56,7 @@ export function BuildWorldPanel({
             label="Travel"
             hotkey="2"
             active={tool === 'travel'}
-            tooltip="Click a pawn, aim, then click to confirm — key 2"
+            tooltip="Click a pawn, aim, then click to confirm; Escape or right-click cancels — key 2"
             onClick={() => onTool('travel')}
           />
           <SlotButton
@@ -64,7 +64,7 @@ export function BuildWorldPanel({
             label="Places"
             hotkey="3"
             active={tool === 'places'}
-            tooltip="Click an empty cell to place a marker, or a place to move it (Z/X turn) — key 3"
+            tooltip="Click an empty cell to place a marker, or a place to move it (Z/X turn); right-click puts it back — key 3"
             onClick={() => onTool('places')}
           />
           <SlotButton

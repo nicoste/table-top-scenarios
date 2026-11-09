@@ -90,7 +90,7 @@ export function OnStagePanel({ party, silver, order, library, placeId, poiId, di
   const number = (row: Row, name: string) => (
     <Tooltip label="Order — highest first, blank for none. Yours to set: nothing rolls." placement="left">
       <span className="stage-sight">
-        <span className="lbl">ord</span>
+        <span className="lbl">order</span>
         <DraftInput
           className="stage-order"
           aria-label={`${name}'s number`}

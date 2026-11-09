@@ -8,7 +8,7 @@
 // gate (Step 8), lit road beacons at golden dusk (Step 9), and the arriving
 // party on the road (Step 10) — then undoes step-by-step back to Step 1 and loops.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   blockKey, DAYLIGHT, DEFAULT_MATERIALS, OPEN_SKY, TORCH,
 } from '@tt/domain';
@@ -153,9 +153,10 @@ const ROAD_CELLS: readonly (readonly [number, number])[] = [
   // Bridge approach & span (z = 8..9, x = 8..10)
   [10, 9], [9, 9], [8, 9],
   [9, 8], [8, 8], [7, 8],
-  // Upper road curving toward the Watchtower gate (x = 4..7, z = 6..7)
-  [8, 7], [7, 7], [6, 7],
-  [7, 6], [6, 6], [5, 6],
+  // Upper road curving to the foot of the Watchtower stairs (x = 5..8, z = 6..7).
+  // It stops there: one cell further is the plinth, which would bury it.
+  [8, 7], [7, 7], [6, 7], [5, 7],
+  [7, 6],
 ];
 
 /**
@@ -251,6 +252,13 @@ export function dioramaAtStep(
 
   // ── STEP 5: Watchtower Foundation & Approach Stairs ──
   if (step >= 5) {
+    // The foundation is cut into the crag: Step 4's rock is cleared from the
+    // footprint above the plinth, or the keep would be solid inside.
+    for (let x = 3; x <= 6; x++) {
+      for (let z = 3; z <= 6; z++) {
+        for (let y = 2; y <= 3; y++) blocks.delete(blockKey({ x, y, z }));
+      }
+    }
     // Dressed stone plinth & oak inner floor at y = 1 (x: 3..6, z: 3..6)
     fillBox(blocks, 3, 1, 3, 6, 1, 6, SWATCH.stone);
     fillBox(blocks, 4, 1, 4, 5, 1, 5, SWATCH.oak);
@@ -352,7 +360,8 @@ export function dioramaAtStep(
         memberId: 'diorama-vanguard',
         colour: '#f59e0b',
         picture: null,
-        at: { x: 6, y: 1, z: 6 },
+        // On the road beside the stairs, torch up at the gate.
+        at: { x: 6, y: 1, z: 7 },
         light: TORCH,
       },
       {
@@ -429,19 +438,28 @@ export function useDiorama(stage: Stage | null, active: boolean): DioramaState {
       return;
     }
     const timer = setInterval(() => {
+      // Nobody is watching a hidden tab, so the island waits for them.
+      if (document.hidden) return;
       setCursor((now) => nextDioramaCursor(now));
     }, STEP_INTERVAL_MS);
     return () => clearInterval(timer);
   }, [active]);
 
-  const state = dioramaAtStep(cursor.step, cursor.phase);
+  // One scene per step, not per render: the Stage rebuilds its whole body for
+  // every new map object, and the screen re-renders for far more than a step —
+  // every frame of a camera turn, for one (R-19a).
+  const state = useMemo(
+    () => dioramaAtStep(cursor.step, cursor.phase),
+    [cursor.step, cursor.phase],
+  );
+  const framed = useRef(false);
 
-  // Frame the isometric floating island once when entering the Main Menu, and
-  // clean up the diorama map & tokens when transitioning into a campaign.
+  // Clean up the diorama map & tokens when transitioning into a campaign.
   useEffect(() => {
     if (!stage || !active) return;
     stage.setLampShadows('soft');
     return () => {
+      framed.current = false;
       stage.setTokens(null);
       stage.setMap(null, DEFAULT_MATERIALS, null);
       stage.setLighting(DAYLIGHT);
@@ -450,11 +468,13 @@ export function useDiorama(stage: Stage | null, active: boolean): DioramaState {
 
   useEffect(() => {
     if (!stage || !active) return;
-    const firstFrame = cursor.step === 1 && cursor.phase === 'build' && cursor.hold === 0;
     stage.setMap(state.map, DEFAULT_MATERIALS, '__diorama__');
     stage.setTokens(state.tokens);
     stage.setLighting(state.lighting);
-    if (firstFrame) {
+    // Frame the island once per visit to the menu, on whichever step the
+    // Stage turns up for, and leave the camera to the GM after that.
+    if (!framed.current) {
+      framed.current = true;
       // Offset the camera focus slightly toward screen-left (-X, +Z) so the
       // floating island sits comfortably in the right-centre of the viewport
       // alongside the Main Menu card.
@@ -465,7 +485,7 @@ export function useDiorama(stage: Stage | null, active: boolean): DioramaState {
         zoom: 22,
       });
     }
-  }, [stage, active, state, cursor.step, cursor.phase, cursor.hold]);
+  }, [stage, active, state]);
 
   return state;
 }

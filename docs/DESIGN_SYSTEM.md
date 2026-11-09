@@ -28,6 +28,7 @@ Every surface, border, slot bevel, hover state, and active highlight in `apps/gm
 | `--ui-ink` | `#e6e8ec` | Primary text and monochrome SVG icon stroke (`currentColor`) |
 | `--ui-danger` | `#e06c75` | Destructive actions, errors, blocked lines, enemy accents |
 | `--ui-ok` | `#6bc46d` | Connected status, clear sight lines, valid confirmations |
+| `--ui-tertiary` | `--ui-highlight` 40% + `--ui-ink` (pale gold) | A second highlight, for a highlighted thing that sits beside another and must not be taken for it: the table's band beside the GM's on the level ladder (D-383). Derived, so it follows `--ui-highlight` |
 
 ### Derived Surface & Border Tokens
 
@@ -38,6 +39,7 @@ Every surface, border, slot bevel, hover state, and active highlight in `apps/gm
   --ui-ink: #e6e8ec;
   --ui-danger: #e06c75;
   --ui-ok: #6bc46d;
+  --ui-tertiary: color-mix(in srgb, var(--ui-highlight) 40%, var(--ui-ink));
 
   --ui-radius: 2px;
   --ui-control-h: 28px;
@@ -209,7 +211,7 @@ To prevent ambiguity when multiple actions appear in the same panel:
 | **Framed Button** | `<button>`, `<button class="on">`, `<button class="danger">` | `28px` height (`--ui-control-h`), `2px` chiseled border, `--ui-slot-bg` surface | Standalone or primary/secondary panel actions (`Open map`, `Bring out`, `Together`, `+ Member`, `+ New token`, `Save`, `Done`). |
 | **Quiet Row Action (Neutral)** | `<button class="quiet">` | `28×28px` (or `22px` in compact rows), transparent at rest; reveals neutral `--ui-slot-hover-bg` on hover | Non-destructive row actions inside an item well (`Keep`, `✎` edit entry, `↑`/`↓` reorder, `eye-open`/`eye-hidden`, `flame`, `Open map`). |
 | **Quiet Destructive Trigger** | `<button class="quiet danger-trigger">` | Transparent at rest; reveals crimson `--ui-danger` tint on hover | Destructive row or section triggers (`×` remove member/token/area/note, `Delete`, `Forget`, `Remove`). |
-| **Corner Media Clear** | `<button class="plain picture-clear">` | `14×14px` squared badge anchored at `top: -4px; right: -4px` on `.picture-card`, hidden at rest (`opacity: 0`) and revealed on `.picture-input:hover` | Clearing an attached image on a `<PictureInput>` thumbnail. Hidden at rest so it never covers the character portrait, and revealed on hover right on the thumbnail's corner. |
+| **Corner Media Clear** | `<button class="plain picture-clear">` | `14×14px` squared badge anchored at `top: -4px; right: -4px` on `.picture-card`, hidden at rest (`opacity: 0`) and revealed on `.picture-input:hover` | Clearing an attached image on a `<PictureInput>` thumbnail. Hidden at rest so it never covers the character portrait, and revealed on hover right on the thumbnail's corner. Asks first: a click opens `Keep` / `Remove` beside the card, `Keep` where the badge was (D-384). |
 
 ---
 
@@ -225,8 +227,8 @@ Whenever the same functional concept appears in multiple panels, it must use the
    - **Inline Quick-Add Row (`<div class="row"><input placeholder="..." /><button>Add|Create</button></div>`):** Used when creating an item only requires typing a name (and optional coordinate): `PlaceInspector` (`Add a note`, `Add a point of interest`), `LevelLadder` (`Level name` + `y`), and `Launcher` (`Campaign name`). All placeholders use Sentence case.
 3. **Destructive & Reset Actions (`<ConfirmDelete>`, `R-151`):**
    - Every affordance that destroys authored content or wipes play memory asks first using `<ConfirmDelete>` (`packages/ui/src/confirm-delete/index.tsx`).
-   - **Row-Item Deletion:** Uses default `triggerLabel="×"` (`PartyPanel` members, `OnStagePanel` silver tokens, `PlaceInspector` notes & POIs, `LevelLadder` planes), arming `[Delete/Remove] [Keep]` in place.
-   - **Named Section / Footer Deletion or Reset:** Uses explicit `triggerLabel` (`triggerLabel="Delete"` in `PlaceInspector` footer, `triggerLabel="Forget"` in `MapPanel` fog-memory reset) so `×` is never misused next to a prose sentence.
+   - **Row-Item Deletion:** Uses default `triggerLabel="×"` (`PartyPanel` members, `OnStagePanel` silver tokens, `PlaceInspector` notes & POIs, `LevelLadder` planes, `MeasurePanel` and `TableTools` areas), arming `[Delete/Remove] [Keep]` in place. When the question hides the name it is about, the answer says it: `[Remove Aldra] [Keep]` for a party member (D-384).
+   - **Named Section / Footer Deletion or Reset:** Uses explicit `triggerLabel` (`triggerLabel="Delete"` in `PlaceInspector` footer, `triggerLabel="Forget"` in `MapPanel` fog-memory reset, `triggerLabel="Remove"` in the `PropsPanel` footer, each in a `.row.asks`) so `×` is never misused next to a prose sentence.
 4. **Visibility & Sight Toggles (`.reveal` & `.quiet.eye`):**
    - Every visibility or sight-preview toggle uses `<GameIcon name={on ? 'eye-open' : 'eye-hidden'} />` — never raw Unicode symbols (`◐`/`○`).
    - Card-wide toggles (`PlaceInspector` Revealed/Hidden, `ChunkInspector` Known/Unknown, `MapPanel` Party's view) use framed full-width buttons; row-level toggles (`PlaceInspector` notes/POIs, `OnStagePanel` tokens, `MeasurePanel` areas) use `button.quiet.eye` with `.off` (`color: var(--dim)`).
@@ -234,4 +236,4 @@ Whenever the same functional concept appears in multiple panels, it must use the
    - Every quarter-turn or undo/redo button across `<Compass>`, `PrefabsPanel`, `PropsPanel`, and the Campaign header (`Undo`/`Redo`) uses `<GameIcon name="turn-ccw" />` and `<GameIcon name="turn-cw" />`.
 6. **1-Line Text Field Width ("Full or Near-Full Row for Editable Names"):**
    - A 1-line text input or clickable name button (`<DraftInput>`, `.stage-name`, `.stage-note-line`) must never share a row with multiple secondary numeric inputs or action buttons that squeeze the name into an unreadable stub (`"Gobli"`, `"Tu..."`).
-   - In multi-control entity cards (`OnStagePanel` `.stage-list li`, `MeasurePanel` / `TableTools` `.area-list li`, `PlaceInspector` `.notes li`), **Row 1 (Identity Row)** holds only the `20px` portrait card or `28px` colour chip + the **1-line Name field (`flex: 1`, ~85–90% of the row width)** so distinguishing suffixes (`Goblin Archer 1` vs `Goblin Archer 2`) remain completely readable. Secondary metrics (`ord`, `sees`, `size`, `follows`) and row actions (`flame`, `eye`, `×`) sit on **Row 2 (`.stage-controls` / `.area-follow`)**.
+   - In multi-control entity cards (`OnStagePanel` `.stage-list li`, `MeasurePanel` / `TableTools` `.area-list li`, `PlaceInspector` `.notes li`), **Row 1 (Identity Row)** holds only the `20px` portrait card or `28px` colour chip + the **1-line Name field (`flex: 1`, ~85–90% of the row width)** so distinguishing suffixes (`Goblin Archer 1` vs `Goblin Archer 2`) remain completely readable. Secondary metrics (`order`, `sees`, `size`, `follows`) and row actions (`flame`, `eye`, `×`) sit on **Row 2 (`.stage-controls` / `.area-follow`)**.

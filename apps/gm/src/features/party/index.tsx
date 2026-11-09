@@ -121,9 +121,14 @@ export function PartyPanel({ campaign, placement, canPlace, notes, insidePoi = n
                 swatch, name field, and row remove action.
               */}
               {campaign.party.length > 1 ? (
+                /*
+                  Asking hides the whole row, name included, since a name
+                  field beside "Remove" and "Keep" would be a stub. So the
+                  button says whom it removes.
+                */
                 <ConfirmDelete
                   label={`Remove ${m.name}`}
-                  confirmLabel="Remove"
+                  confirmLabel={`Remove ${m.name}`}
                   onConfirm={() => dispatch({ kind: 'removeMember', id: m.id })}
                 >
                   <PictureInput
