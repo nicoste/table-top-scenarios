@@ -11,7 +11,7 @@ import type { MemberNotes } from '@tt/domain';
 import type { CampaignWire } from '@tt/protocol';
 import { imageUrl } from '@tt/protocol';
 import { uploadPicture } from '@tt/client-core';
-import { ColourInput, DraftInput, PictureInput, Tooltip } from '@tt/ui';
+import { ColourInput, ConfirmDelete, DraftInput, PictureInput, Tooltip } from '@tt/ui';
 import { PictureCrop } from '../picture-crop/index.js';
 import { GmNote } from '../note/index.js';
 
@@ -22,10 +22,17 @@ interface Props {
   canPlace: boolean;
   /** The GM's notes on the members, the same ones On stage shows (D-315). */
   notes: MemberNotes;
+  /** When the table is inside a point of interest while the console is on the world (D-381). */
+  insidePoi?: {
+    readonly placeName: string;
+    readonly poiName: string;
+    onOpen: () => void;
+    onLeave: () => void;
+  } | null;
   dispatch: (intent: Intent) => void;
 }
 
-export function PartyPanel({ campaign, placement, canPlace, notes, dispatch }: Props) {
+export function PartyPanel({ campaign, placement, canPlace, notes, insidePoi = null, dispatch }: Props) {
   /** Whose picture is being stored, if anyone's. */
   const [busy, setBusy] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
@@ -57,20 +64,36 @@ export function PartyPanel({ campaign, placement, canPlace, notes, dispatch }: P
     <div className="card">
       <h2>Party</h2>
 
+      {insidePoi && (
+        <div className="notice">
+          <p className="notice-text">
+            Table is inside <b>{insidePoi.poiName}</b> ({insidePoi.placeName}).
+          </p>
+          <div className="btn-grid campaign-actions">
+            <Tooltip label="Open the map the table is currently viewing" placement="bottom" stretch>
+              <button className="on" onClick={insidePoi.onOpen}>Open map</button>
+            </Tooltip>
+            <Tooltip label="Send the party back out to the world map" placement="bottom" stretch>
+              <button onClick={insidePoi.onLeave}>Bring out</button>
+            </Tooltip>
+          </div>
+        </div>
+      )}
+
       {!canPlace ? (
         <p className="warn">
           Reveal a chunk before placing the party — they cannot stand anywhere they
           have not been.
         </p>
       ) : !placed && (
-        <p className="hint">
+        <p className="hint" style={{ marginBottom: 8 }}>
           Not on the map yet. Pick <b>Travel</b> (key 2) and click a revealed cell —
           the sequence is already waiting for a destination.
         </p>
       )}
 
       <div className="reveal" style={{ marginBottom: 8 }}>
-        <Tooltip label="One pawn for the whole party" placement="left">
+        <Tooltip label="One pawn for the whole party" placement="left" stretch>
           <button
             className={together ? 'on' : ''}
             onClick={() => dispatch({ kind: 'setPartyTogether', together: true })}
@@ -78,7 +101,7 @@ export function PartyPanel({ campaign, placement, canPlace, notes, dispatch }: P
             Together
           </button>
         </Tooltip>
-        <Tooltip label="A pawn each, to move separately" placement="left">
+        <Tooltip label="A pawn each, to move separately" placement="left" stretch>
           <button
             className={!together ? 'on' : ''}
             onClick={() => dispatch({ kind: 'setPartyTogether', together: false })}
@@ -88,56 +111,81 @@ export function PartyPanel({ campaign, placement, canPlace, notes, dispatch }: P
         </Tooltip>
       </div>
 
-      {campaign.party.map((m) => (
-        <div className="member" key={m.id}>
-          <div className="top">
-            {/* No colour dot: the row below shows the colour and the card both. */}
-            <DraftInput
-              value={m.name}
-              valid={(name) => name.trim().length > 0}
-              onCommit={(name) => dispatch({ kind: 'editMember', id: m.id, name })}
-            />
-            <button
-              title="Remove"
-              disabled={campaign.party.length <= 1}
-              onClick={() => dispatch({ kind: 'removeMember', id: m.id })}
-            >
-              ×
-            </button>
-          </div>
-          <div className="grid">
-            {/*
-              One row for how their card looks: its colour, and the picture
-              that covers it when there is one (R-204). Two rows pushed the
-              roster under the address box at six members.
-            */}
-            <label htmlFor={`c-${m.id}`}>Base color &amp; card</label>
-            <div className="card-look">
-              {/* One edit per choice, not one per frame of the drag (R-163). */}
-              <ColourInput
-                id={`c-${m.id}`}
-                value={m.colour}
-                onCommit={(colour) => dispatch({ kind: 'editMember', id: m.id, colour })}
-              />
-              {/* Optional: without one the card is their colour. */}
-              <PictureInput
-                src={m.image ? imageUrl(m.image) : null}
-                fallback={m.colour}
-                busy={busy === m.id}
-                label={`Picture for ${m.name}`}
-                onPick={(file) => { setProblem(null); setFraming({ memberId: m.id, name: m.name, file }); }}
-                onClear={() => dispatch({ kind: 'editMember', id: m.id, image: null })}
-              />
+      <div className="member-list">
+        {campaign.party.map((m) => (
+          <div className="member" key={m.id}>
+            <div className="top">
+              {/*
+                One row for who they are and how their card looks (R-204):
+                portrait card (with its own corner clear badge), base colour
+                swatch, name field, and row remove action.
+              */}
+              {campaign.party.length > 1 ? (
+                <ConfirmDelete
+                  label={`Remove ${m.name}`}
+                  confirmLabel="Remove"
+                  onConfirm={() => dispatch({ kind: 'removeMember', id: m.id })}
+                >
+                  <PictureInput
+                    src={m.image ? imageUrl(m.image) : null}
+                    fallback={m.colour}
+                    busy={busy === m.id}
+                    label={`Picture for ${m.name}`}
+                    onPick={(file) => { setProblem(null); setFraming({ memberId: m.id, name: m.name, file }); }}
+                    onClear={() => dispatch({ kind: 'editMember', id: m.id, image: null })}
+                  />
+                  <Tooltip label={`Base colour for ${m.name}`} placement="bottom">
+                    <ColourInput
+                      id={`c-${m.id}`}
+                      aria-label={`Base colour for ${m.name}`}
+                      value={m.colour}
+                      onCommit={(colour) => dispatch({ kind: 'editMember', id: m.id, colour })}
+                    />
+                  </Tooltip>
+                  <DraftInput
+                    value={m.name}
+                    valid={(name) => name.trim().length > 0}
+                    onCommit={(name) => dispatch({ kind: 'editMember', id: m.id, name })}
+                  />
+                </ConfirmDelete>
+              ) : (
+                <>
+                  <PictureInput
+                    src={m.image ? imageUrl(m.image) : null}
+                    fallback={m.colour}
+                    busy={busy === m.id}
+                    label={`Picture for ${m.name}`}
+                    onPick={(file) => { setProblem(null); setFraming({ memberId: m.id, name: m.name, file }); }}
+                    onClear={() => dispatch({ kind: 'editMember', id: m.id, image: null })}
+                  />
+                  <Tooltip label={`Base colour for ${m.name}`} placement="bottom">
+                    <ColourInput
+                      id={`c-${m.id}`}
+                      aria-label={`Base colour for ${m.name}`}
+                      value={m.colour}
+                      onCommit={(colour) => dispatch({ kind: 'editMember', id: m.id, colour })}
+                    />
+                  </Tooltip>
+                  <DraftInput
+                    value={m.name}
+                    valid={(name) => name.trim().length > 0}
+                    onCommit={(name) => dispatch({ kind: 'editMember', id: m.id, name })}
+                  />
+                  <button className="quiet" aria-label={`Remove ${m.name}`} disabled>
+                    ×
+                  </button>
+                </>
+              )}
             </div>
+            {/* Across maps, so here on the world as well as On stage in a map. */}
+            <GmNote
+              note={notes.get(m.id) ?? ''}
+              name={m.name}
+              onCommit={(note) => dispatch({ kind: 'noteMember', id: m.id, note })}
+            />
           </div>
-          {/* Across maps, so here on the world as well as On stage in a map. */}
-          <GmNote
-            note={notes.get(m.id) ?? ''}
-            name={m.name}
-            onCommit={(note) => dispatch({ kind: 'noteMember', id: m.id, note })}
-          />
-        </div>
-      ))}
+        ))}
+      </div>
       {problem && <p className="warn">{problem}</p>}
       {framing && (
         <PictureCrop
@@ -147,8 +195,8 @@ export function PartyPanel({ campaign, placement, canPlace, notes, dispatch }: P
           onUse={(picture) => { void store(framing.memberId, picture); }}
         />
       )}
-      <div className="row" style={{ marginTop: 10 }}>
-        <button onClick={() => dispatch({ kind: 'addMember' })}>+ member</button>
+      <div className="btn-grid" style={{ marginTop: 8 }}>
+        <button className="wide" onClick={() => dispatch({ kind: 'addMember' })}>+ Member</button>
       </div>
     </div>
   );

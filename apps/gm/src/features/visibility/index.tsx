@@ -5,7 +5,7 @@
 // Known and Revealed toggles are their own undo (D-147).
 
 import type { Intent } from '@tt/protocol';
-import { Tooltip } from '@tt/ui';
+import { GameIcon, Tooltip } from '@tt/ui';
 
 interface ChunkProps {
   coord: { cx: number; cz: number };
@@ -24,13 +24,15 @@ export function ChunkInspector({ coord, known, poiCount, revealedPoiCount, dispa
         <Tooltip
           label={known ? 'Players can see this chunk' : 'Hidden from the players'}
           placement="left"
+          stretch
         >
           <button
             className={known ? 'on' : ''}
             aria-pressed={known}
             onClick={() => dispatch({ kind: 'setChunkKnown', cx: coord.cx, cz: coord.cz, known: !known })}
           >
-            {known ? '👁 Known' : '🔒 Unknown'}
+            <GameIcon name={known ? 'eye-open' : 'eye-hidden'} size={15} />
+            {known ? 'Known' : 'Unknown'}
           </button>
         </Tooltip>
       </div>

@@ -6,7 +6,7 @@ import { useState } from 'react';
 // which the panels had quietly not been doing (D-222).
 import { DEFAULT_MARKERS } from '@tt/domain';
 import type { Intent, PlaceWire } from '@tt/protocol';
-import { ConfirmDelete, DraftInput, Tooltip } from '@tt/ui';
+import { ConfirmDelete, DraftInput, GameIcon, Tooltip } from '@tt/ui';
 
 interface ToolProps {
   markerId: string;
@@ -55,7 +55,6 @@ export function PlaceInspector({
 }: InspectorProps) {
   const [draft, setDraft] = useState('');
   const [poiDraft, setPoiDraft] = useState('');
-  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const addNote = () => {
     const text = draft.trim();
@@ -99,13 +98,15 @@ export function PlaceInspector({
         <Tooltip
           label={revealed ? 'The party knows this place' : 'Hidden from the party'}
           placement="left"
+          stretch
         >
           <button
             className={revealed ? 'on' : ''}
             aria-pressed={revealed}
             onClick={() => dispatch({ kind: 'setPlaceRevealed', placeId: place.id, revealed: !revealed })}
           >
-            {revealed ? '👁 Revealed' : '🔒 Hidden'}
+            <GameIcon name={revealed ? 'eye-open' : 'eye-hidden'} size={15} />
+            {revealed ? 'Revealed' : 'Hidden'}
           </button>
         </Tooltip>
       </div>
@@ -118,7 +119,7 @@ export function PlaceInspector({
         </p>
       )}
 
-      <h2 style={{ marginTop: 12 }}>Notes</h2>
+      <h2>Notes</h2>
       {place.notes.length === 0 && <p className="hint">Nothing recorded yet.</p>}
       <ul className="notes">
         {place.notes.map((note, i) => (
@@ -132,14 +133,14 @@ export function PlaceInspector({
               placement="right"
             >
               <button
-                className={`quiet eye${note.visibleToParty ? ' shown' : ''}`}
+                className={note.visibleToParty ? 'quiet eye' : 'quiet eye off'}
                 aria-pressed={note.visibleToParty}
                 onClick={() => dispatch({
                   kind: 'setNoteVisible', placeId: place.id, noteId: note.id,
                   visibleToParty: !note.visibleToParty,
                 })}
               >
-                {note.visibleToParty ? '👁' : '🔒'}
+                <GameIcon name={note.visibleToParty ? 'eye-open' : 'eye-hidden'} size={15} />
               </button>
             </Tooltip>
 
@@ -196,7 +197,7 @@ export function PlaceInspector({
         whether it reaches the table (R-85). Each one owns a map from the moment
         it is named (D-187) — ▣ opens it.
       */}
-      <h2 style={{ marginTop: 12 }}>Points of interest</h2>
+      <h2>Points of interest</h2>
       {place.pois.length === 0 && (
         <p className="hint">None yet — a church, a market, an arena.</p>
       )}
@@ -208,14 +209,14 @@ export function PlaceInspector({
               placement="right"
             >
               <button
-                className={`quiet eye${poi.visibleToParty ? ' shown' : ''}`}
+                className={poi.visibleToParty ? 'quiet eye' : 'quiet eye off'}
                 aria-pressed={poi.visibleToParty}
                 onClick={() => dispatch({
                   kind: 'setPoiVisible', placeId: place.id, poiId: poi.id,
                   visibleToParty: !poi.visibleToParty,
                 })}
               >
-                {poi.visibleToParty ? '👁' : '🔒'}
+                <GameIcon name={poi.visibleToParty ? 'eye-open' : 'eye-hidden'} size={15} />
               </button>
             </Tooltip>
 
@@ -238,7 +239,7 @@ export function PlaceInspector({
                 {/* Always there. A point of interest is created with its map, so
                     there is no second step and nothing to ask about (D-187). */}
                 <Tooltip label={`Open the map of ${poi.name}`} placement="left">
-                  <button className="quiet" onClick={() => onOpenMap(poi.id)}>▣ Open Map</button>
+                  <button className="quiet" onClick={() => onOpenMap(poi.id)}>Open map</button>
                 </Tooltip>
                 <button
                   className="quiet"
@@ -269,17 +270,15 @@ export function PlaceInspector({
       </div>
 
       <div className="row" style={{ marginTop: 10 }}>
-        <button onClick={onClose}>Done</button>
-        {confirmDelete ? (
-          <>
-            <button className="danger" onClick={() => { dispatch({ kind: 'removePlace', id: place.id }); onClose(); }}>
-              Delete place
-            </button>
-            <button onClick={() => setConfirmDelete(false)}>Keep</button>
-          </>
-        ) : (
-          <button className="quiet" onClick={() => setConfirmDelete(true)}>Delete</button>
-        )}
+        <ConfirmDelete
+          label={`Delete "${place.name}"`}
+          triggerLabel="Delete"
+          confirmLabel="Delete place"
+          placement="top"
+          onConfirm={() => { dispatch({ kind: 'removePlace', id: place.id }); onClose(); }}
+        >
+          <button onClick={onClose}>Done</button>
+        </ConfirmDelete>
       </div>
     </div>
   );

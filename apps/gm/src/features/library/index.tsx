@@ -168,7 +168,7 @@ export function LibraryPanel({ library, chosen, onChoose, dispatch }: Props) {
             </button>
             <button onClick={() => setDraft(null)}>Cancel</button>
             {draft.id && (
-              <button className="wide quiet" onClick={() => setDeleting(true)}>Delete from the library…</button>
+              <button className="wide quiet danger-trigger" onClick={() => setDeleting(true)}>Delete from the library…</button>
             )}
           </div>
         )}
@@ -234,8 +234,8 @@ export function LibraryPanel({ library, chosen, onChoose, dispatch }: Props) {
           ))}
         </ul>
       )}
-      <div className="row" style={{ marginTop: 8 }}>
-        <button onClick={() => open(null)}>+ New token</button>
+      <div className="btn-grid" style={{ marginTop: 8 }}>
+        <button className="wide" onClick={() => open(null)}>+ New token</button>
       </div>
     </div>
   );

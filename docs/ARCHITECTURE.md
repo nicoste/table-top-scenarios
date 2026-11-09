@@ -1759,6 +1759,32 @@ apps/host/src/
 > to a hidden textarea and `execCommand`, and if that fails too, say so and let
 > the GM copy by hand.
 
+> **R-217.** **Game HUD slots, canonical monochrome icons, standardized geometry,
+> and global master colour tokens** (D-381; [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md)
+> and [`ui-gallery.html`](ui-gallery.html)).
+>
+> - **`GameIcon` in `@tt/ui`** is the single registry of monochrome squared-stroke
+>   `24×24` SVG glyphs (`stroke="currentColor"`, no multi-colour fills or emojis).
+>   One concept uses one canonical glyph across both screens: `walk` serves both
+>   map ground paths and world foot travel; `measure` serves both the Measure tool
+>   and the Ruler mode inside it.
+> - **`SlotButton` in `@tt/ui`** renders a squared, chiseled voxel action slot
+>   pairing a `GameIcon` with a 1-word label (plus an optional hotkey badge on the
+>   console) and a bottom `Tooltip` when an explanation is needed, across both the
+>   table's tool/measure palettes and the console's world (`1–6`), map (`1–7`),
+>   path and measure palettes.
+> - **Standardized geometry & control heights (`--ui-radius: 2px`,
+>   `--ui-control-h: 28px`, `--ui-control-sm: 22px`, `--ui-slot-h: 54px`)**:
+>   every button, text/number/colour input, select, `.chip-button`, `.dial` slider
+>   dragger, and `.ladder` elevation grip uses squared voxel corners
+>   (`var(--ui-radius)`) and snaps to the shared control height scale so horizontal
+>   rows align flush.
+> - **Master colour tokens (`--ui-main`, `--ui-highlight`, `--ui-ink`)**: every
+>   surface, border, slot bevel, hover state and active highlight in `shell.css`
+>   and `@tt/ui`'s inline styles references CSS custom properties derived via
+>   `color-mix(in srgb, ...)` with inline fallbacks (keeping R-111 intact), so
+>   changing `--ui-main` or `--ui-highlight` re-themes the entire UI globally.
+
 ---
 
 ## Discovery and saves
@@ -2594,6 +2620,13 @@ apps/host/src/
 > Camera freedom on the table **cannot leak**: `viewFor` stripped every secret
 > before the table received anything (R-85). If an angle could reveal something,
 > the boundary would be what is wrong, not the camera.
+>
+> **Amended by D-381.** Because the table display is operated with a mouse and no
+> keyboard, `Compass` accepts optional `onTurn` and `onTilt` callbacks and flanks
+> the dial with clickable turn (`↺`/`↻`) and tilt (`▼`/`▲`) buttons so a mouse
+> alone can rotate and tilt the camera on both surfaces. `TABLE_CAMERA_HINT` in
+> `client-core` names those mouse controls on the table, while `CAMERA_HINT` keeps
+> the keyboard legend on the console.
 
 > **R-156.** **The camera behaves identically on both screens, and it moves
 > smoothly.**

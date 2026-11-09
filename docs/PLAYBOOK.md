@@ -111,6 +111,9 @@ dispatch({ kind: 'paintGround', ...action.cell, ground, size: brush, stroke: new
 - [ ] a row in [MEASUREMENTS.md](MEASUREMENTS.md) if the change moved a number
       worth comparing against later — **with the machine and the scene it was
       measured on**, because a figure without its conditions is noise
+- [ ] [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) and [`ui-gallery.html`](ui-gallery.html)
+      kept in sync if a UI primitive, icon in `packages/ui/src/game-icon/index.tsx`,
+      or control token changed (R-217)
 
 ---
 

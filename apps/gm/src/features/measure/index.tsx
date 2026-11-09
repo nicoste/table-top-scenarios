@@ -10,7 +10,8 @@ import type { Areas } from '@tt/domain';
 import { AREA_COLOURS, AREA_SHAPES, MAX_AREA_SIZE, MIN_AREA_SIZE, areaColour } from '@tt/domain';
 import type { MeasureHand, MeasureMode } from '@tt/client-core';
 import { chooseAreaColour, chooseMeasure } from '@tt/client-core';
-import { DraftInput, Tooltip } from '@tt/ui';
+import { DraftInput, GameIcon, SlotButton, Tooltip } from '@tt/ui';
+import type { GameIconName } from '@tt/ui';
 
 interface Props {
   hand: MeasureHand;
@@ -45,19 +46,13 @@ const isSize = (draft: string) => {
   return value >= MIN_AREA_SIZE && value <= MAX_AREA_SIZE;
 };
 
-/** The eye a password field uses (D-311): open while the players see it, struck through while hidden. */
-function Eye({ hidden }: { readonly hidden: boolean }) {
-  return (
-    <svg
-      width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
-    >
-      <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" />
-      <circle cx="12" cy="12" r="3" />
-      {hidden && <line x1="3" y1="3" x2="21" y2="21" />}
-    </svg>
-  );
-}
+const MODE_ICONS: Record<MeasureMode, GameIconName> = {
+  ruler: 'measure',
+  sphere: 'sphere',
+  cone: 'cone',
+  line: 'line',
+  cube: 'cube',
+};
 
 export function MeasurePanel({ hand, onHand, areas, people, placeId, poiId, dispatch }: Props) {
   const where = { placeId, poiId };
@@ -68,15 +63,14 @@ export function MeasurePanel({ hand, onHand, areas, people, placeId, poiId, disp
       <h2>Measure</h2>
       <div className="btn-grid tools">
         {MODES.map((mode) => (
-          <Tooltip key={mode.id} label={mode.about} placement="bottom" stretch>
-            <button
-              className={hand.mode === mode.id ? 'on' : ''}
-              aria-pressed={hand.mode === mode.id}
-              onClick={() => onHand(chooseMeasure(hand, mode.id))}
-            >
-              {mode.name}
-            </button>
-          </Tooltip>
+          <SlotButton
+            key={mode.id}
+            icon={MODE_ICONS[mode.id]}
+            label={mode.name}
+            active={hand.mode === mode.id}
+            tooltip={mode.about}
+            onClick={() => onHand(chooseMeasure(hand, mode.id))}
+          />
         ))}
       </div>
 
@@ -96,12 +90,6 @@ export function MeasurePanel({ hand, onHand, areas, people, placeId, poiId, disp
           ))}
         </div>
       )}
-
-      <p className="hint">
-        {hand.mode === 'ruler'
-          ? 'Drag from one cube to another: how far, straight across. It stays until the next drag, and only you see it.'
-          : 'Drag to draw it; the players see it too. Drag an area by the mark where it starts to move it.'}
-      </p>
 
       {areas.length > 0 && (
         <>
@@ -125,6 +113,8 @@ export function MeasurePanel({ hand, onHand, areas, people, placeId, poiId, disp
                     valid={(name) => name.trim().length > 0}
                     onCommit={(name) => dispatch({ kind: 'editArea', ...where, id: area.id, name })}
                   />
+                </div>
+                <div className="area-follow">
                   <Tooltip label={`Its ${SIZE_WORD[area.shape]}, in cubes`} placement="left">
                     <span className="stage-sight">
                       <DraftInput
@@ -137,6 +127,15 @@ export function MeasurePanel({ hand, onHand, areas, people, placeId, poiId, disp
                       />
                     </span>
                   </Tooltip>
+                  <span className="lbl">follows</span>
+                  <select
+                    value={area.follows ?? ''}
+                    aria-label={`Whom ${area.name} follows`}
+                    onChange={(e) => dispatch({ kind: 'editArea', ...where, id: area.id, follows: e.target.value || null })}
+                  >
+                    <option value="">nobody</option>
+                    {people.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}
+                  </select>
                   <Tooltip
                     label={area.hidden ? 'Hidden from the players — click to show it' : 'The players see it — click to hide it'}
                     placement="left"
@@ -147,12 +146,12 @@ export function MeasurePanel({ hand, onHand, areas, people, placeId, poiId, disp
                       aria-label={area.hidden ? `Show ${area.name}` : `Hide ${area.name}`}
                       onClick={() => dispatch({ kind: 'editArea', ...where, id: area.id, hidden: !area.hidden })}
                     >
-                      <Eye hidden={area.hidden} />
+                      <GameIcon name={area.hidden ? 'eye-hidden' : 'eye-open'} size={16} />
                     </button>
                   </Tooltip>
                   <Tooltip label={`Take ${area.name} away`} placement="left">
                     <button
-                      className="quiet"
+                      className="quiet danger-trigger"
                       aria-label={`Take ${area.name} away`}
                       onClick={() => dispatch({ kind: 'removeArea', ...where, id: area.id })}
                     >
@@ -160,17 +159,6 @@ export function MeasurePanel({ hand, onHand, areas, people, placeId, poiId, disp
                     </button>
                   </Tooltip>
                 </div>
-                <label className="area-follow">
-                  <span className="lbl">follows</span>
-                  <select
-                    value={area.follows ?? ''}
-                    aria-label={`Whom ${area.name} follows`}
-                    onChange={(e) => dispatch({ kind: 'editArea', ...where, id: area.id, follows: e.target.value || null })}
-                  >
-                    <option value="">nobody</option>
-                    {people.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}
-                  </select>
-                </label>
               </li>
             ))}
           </ul>

@@ -6,12 +6,12 @@
 // which the panels had quietly not been doing (D-222).
 import {
   DEFAULT_MATERIALS, DEFAULT_COVERS, WORLD_BRUSHES,
-  cutOf, difficultyOf, familyOf, cutIdIn, coverById,
+  cutOf, difficultyOf,
 } from '@tt/domain';
 import type { CoverId, SwatchId } from '@tt/domain';
 import type { Tool } from '@tt/client-core';
 import { worldToolShows } from '@tt/client-core';
-import { Tooltip } from '@tt/ui';
+import { SlotButton, Tooltip } from '@tt/ui';
 import { SwatchPalette } from '../swatches/index.js';
 
 interface Props {
@@ -38,72 +38,64 @@ const costOf = (difficulty: number | 'impassable') =>
 export function BuildWorldPanel({
   tool, ground, cover, brush, metresPerStep, hoverLabel, onTool, onGround, onCover, onBrush,
 }: Props) {
-  const family = familyOf(ground);
-  const selected = family ? cutOf(family, cutIdIn(ground)) : null;
-  const standing = cover ? coverById(DEFAULT_COVERS, cover) : null;
-
   return (
     <>
       <div className="card">
         <h2>Tool</h2>
-        {/*
-          Paired by what they are for, down the two columns: the two that
-          change nothing, then the two that shape the land, then the two that
-          dress it (D-285). The icons are the map's own — the same action is
-          the same picture on both surfaces, so a GM who learns ✏ for
-          repainting a wall has learned it for repainting a coast.
-        */}
         <div className="btn-grid tools">
-          <Tooltip label="Select — key 1" placement="bottom" stretch>
-            <button className={tool === 'select' ? 'on' : ''} onClick={() => onTool('select')}>
-              ⌖ Select
-            </button>
-          </Tooltip>
-          <Tooltip label="Move the party — key 2" placement="bottom" stretch>
-            <button className={tool === 'travel' ? 'on' : ''} onClick={() => onTool('travel')}>
-              ♟ Travel
-            </button>
-          </Tooltip>
-          <Tooltip label="Place markers on the world map — key 3" placement="bottom" stretch>
-            <button className={tool === 'places' ? 'on' : ''} onClick={() => onTool('places')}>
-              ⚑ Places
-            </button>
-          </Tooltip>
-          <Tooltip label="Raise and lower — key 4" placement="bottom" stretch>
-            <button className={tool === 'height' ? 'on' : ''} onClick={() => onTool('height')}>
-              ⛰ Height
-            </button>
-          </Tooltip>
-          <Tooltip label="Paint what a cell is made of — key 5" placement="bottom" stretch>
-            <button className={tool === 'paint' ? 'on' : ''} onClick={() => onTool('paint')}>
-              ✏ Ground
-            </button>
-          </Tooltip>
-          {/* The second axis, beside the first and not inside it: a cell holds
-              both, and either may be painted without disturbing the other. */}
-          <Tooltip label="Plant what stands on it — key 6" placement="bottom" stretch>
-            <button className={tool === 'cover' ? 'on' : ''} onClick={() => onTool('cover')}>
-              ⇞ Cover
-            </button>
-          </Tooltip>
+          <SlotButton
+            icon="select"
+            label="Select"
+            hotkey="1"
+            active={tool === 'select'}
+            tooltip="Click a place to edit it, or open ground to reveal its chunk — key 1"
+            onClick={() => onTool('select')}
+          />
+          <SlotButton
+            icon="walk"
+            label="Travel"
+            hotkey="2"
+            active={tool === 'travel'}
+            tooltip="Click a pawn, aim, then click to confirm — key 2"
+            onClick={() => onTool('travel')}
+          />
+          <SlotButton
+            icon="places"
+            label="Places"
+            hotkey="3"
+            active={tool === 'places'}
+            tooltip="Click an empty cell to place a marker, or a place to move it (Z/X turn) — key 3"
+            onClick={() => onTool('places')}
+          />
+          <SlotButton
+            icon="height"
+            label="Height"
+            hotkey="4"
+            active={tool === 'height'}
+            tooltip={`Drag a cell up or down (${metresPerStep} m per step) — key 4`}
+            onClick={() => onTool('height')}
+          />
+          <SlotButton
+            icon="ground"
+            label="Ground"
+            hotkey="5"
+            active={tool === 'paint'}
+            tooltip="Click or drag to paint what a cell is made of — key 5"
+            onClick={() => onTool('paint')}
+          />
+          <SlotButton
+            icon="cover"
+            label="Cover"
+            hotkey="6"
+            active={tool === 'cover'}
+            tooltip="Click or drag to plant what stands on the ground — key 6"
+            onClick={() => onTool('cover')}
+          />
         </div>
-        <p className="hint">
-          {tool === 'select'
-            ? <>Click a place to edit it, or open ground to reveal its chunk.</>
-            : tool === 'paint'
-              ? <>Click, or drag to paint many cells.{selected ? <> Painting <b>{selected.name}</b>.</> : null}</>
-              : tool === 'cover'
-                ? <>Click, or drag. {standing ? <>Planting <b>{standing.name}</b>.</> : <>Clearing what is there.</>} The ground underneath is untouched.</>
-                : tool === 'height'
-                  ? <>Drag a cell up or down: the ground under the brush moves as one, keeping its shape. Each step is {metresPerStep}&nbsp;m.</>
-                  : tool === 'travel'
-                    ? <>Click a pawn, aim, then click to confirm. Escape or right-click cancels.</>
-                    : <>Click an empty cell to place one, or a place to pick it up and move it. <b>Z / X</b> turn it; right-click puts it back.</>}
-        </p>
 
         {worldToolShows(tool, 'brush') && (
         <div className="brush-group">
-          <span className="brush-lbl">Brush</span>
+          <span className="lbl">Brush</span>
           <div className="btn-grid brush">
             {WORLD_BRUSHES.map((n, i) => (
               <Tooltip key={n} label={`${n === 1 ? 'One cell' : `Round, ${n} across`} — key ${['7', '8', '9', '0', '−', '='][i]}`} placement="bottom" stretch>

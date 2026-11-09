@@ -9860,3 +9860,40 @@ privacy move."*
   Their ids changed; nothing in the docs quoted one.
 - **The force-push block was lifted for that push and put back**, so D-379
   holds: `main` is not rewritten, except by the GM's say-so, one push at a time.
+
+### D-381 — Squared voxel HUD primitives, canonical monochrome icons, interactive compass, and global colour tokens · `agreed`
+*"1. Yes, I like it, just be careful at icon re-use, you used one for walk at the first block, and another walk in the second, I like the first one, no multi-color, less realism. The same happened with jump, then ruler and measure might share the same one. 2. Icon + Label. Bottom tooltip if an explanation is still needed (as it's right now). 3. Sure, as soon as we define the things from above. … Remember to build things in a way we can alter their colors globabally during the design process. Like switching main color, highlight color and everythings adjusts."*
+
+- **One canonical monochrome icon registry (`GameIcon` in `@tt/ui`)**: every
+  game concept has a single squared-stroke `24×24` SVG glyph (`stroke="currentColor"`,
+  no multi-colour fills, no emojis) shared across both screens. One concept uses
+  one glyph everywhere: `walk` serves both Map **Ground** path and World **Foot**
+  travel; `measure` serves both the **Measure** tool and the **Ruler** mode inside
+  it.
+- **Squared chiseled slot buttons (`SlotButton` in `@tt/ui`)**: action controls
+  on both the table display and the GM console (world tools `1–6`, map tools
+  `1–7`, ground/jump path modes, and ruler/area measure modes) render as squared
+  voxel slots showing **Icon + 1-word label** (plus a top-left hotkey badge on
+  the console) and a bottom `Tooltip` when an explanation is needed, replacing
+  permanent multi-line `.hint` paragraphs inside tool cards. On a map, the
+  footprint expansion card (`Map`) appears only under `Build`, and on the world
+  the `Party` panel surfaces when the table is inside a point of interest with a
+  one-click `Open map` button alongside `Bring out`.
+- **Mouse camera controls on the compass (`Compass` in `@tt/ui`)**: the table
+  display has a mouse and no keyboard, so `Q/E` (turn) and `R/F` (tilt) were
+  unreachable there. `Compass` accepts optional `onTurn` and `onTilt` callbacks
+  and flanks the dial with clickable turn (`↺`/`↻`) and tilt (`▼`/`▲`) buttons
+  so a mouse alone can orbit and tilt the camera on both surfaces. The table's
+  bottom legend (`TABLE_CAMERA_HINT`) describes mouse-only controls rather than
+  keyboard keys.
+- **Global master colour tokens (`--ui-main`, `--ui-highlight`, `--ui-ink`) and
+  standardized control geometry (`--ui-radius: 2px`, `--ui-control-h: 28px`,
+  `--ui-control-sm: 22px`)**: every surface, border, slot bevel, hover state and
+  active highlight in `shell.css` and `@tt/ui`'s inline styles derives from
+  master CSS custom properties via `color-mix(in srgb, ...)`, so changing
+  `--ui-main` or `--ui-highlight` re-themes the entire UI without touching
+  component code. Standard buttons, text/number/colour inputs, selects, and
+  `.chip-button` swatches share a unified `28px` height (`--ui-control-h`), and
+  `.dial` range thumbs and `.ladder` grips use squared voxel blocks
+  (`var(--ui-radius)`). The rules and live component catalogue live in
+  `docs/DESIGN_SYSTEM.md` and `docs/ui-gallery.html`.

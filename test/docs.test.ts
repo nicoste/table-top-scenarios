@@ -85,3 +85,29 @@ describe('the rule set stays coherent', () => {
     expect(/unity|POV\.cs|FindAnyObjectByType/i.test(architecture)).toBe(false);
   });
 });
+
+describe('DESIGN_SYSTEM.md and ui-gallery.html stay honest', () => {
+  const designSystem = read('docs/DESIGN_SYSTEM.md');
+  const gallery = read('docs/ui-gallery.html');
+
+  it('cites rules and decisions that exist', () => {
+    const architecture = read('docs/ARCHITECTURE.md');
+    const decisions = read('docs/DECISIONS.md');
+    const rules = new Set(
+      [...architecture.matchAll(/\*\*(R-\d+[a-z]?)\.\*\*/g)].map((m) => m[1]!),
+    );
+    const recorded = new Set([...decisions.matchAll(/^### (D-\d+)/gm)].map((m) => m[1]!));
+    const citedRules = [...designSystem.matchAll(/\b(R-\d+[a-z]?)\b/g)].map((m) => m[1]!);
+    const citedCalls = [...designSystem.matchAll(/\b(D-\d+)\b/g)].map((m) => m[1]!);
+    expect(citedRules.filter((r) => !rules.has(r))).toEqual([]);
+    expect(citedCalls.filter((d) => !recorded.has(d))).toEqual([]);
+  });
+
+  it('documents every canonical GameIconName in both DESIGN_SYSTEM.md and ui-gallery.html', () => {
+    const iconSrc = read('packages/ui/src/game-icon/index.tsx');
+    const names = [...iconSrc.matchAll(/^\s*\|\s*'([a-z-]+)'/gm)].map((m) => m[1]!);
+    expect(names.length).toBeGreaterThan(0);
+    expect(names.filter((n) => !designSystem.includes(`\`${n}\``))).toEqual([]);
+    expect(names.filter((n) => !gallery.includes(n))).toEqual([]);
+  });
+});

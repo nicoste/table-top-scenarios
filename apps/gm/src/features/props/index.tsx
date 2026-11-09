@@ -17,7 +17,7 @@ import type { Opened, Prop, PropFlame, PropType, SwatchId } from '@tt/domain';
 import { PROP_TYPES, flameOf, paintOf, propType, reachOf, statesOf, swatchColour, swatchName, turned } from '@tt/domain';
 import type { PropHand } from '@tt/client-core';
 import { takeProp, turnHand } from '@tt/client-core';
-import { DraftInput, Tooltip } from '@tt/ui';
+import { DraftInput, GameIcon, Tooltip } from '@tt/ui';
 import { isReach } from '../carried/index.js';
 import { GmNote } from '../note/index.js';
 
@@ -136,12 +136,14 @@ export function PropsPanel({ hand, onHand, selected, onSelect, opened, placeId, 
               <>
                 <Tooltip label="A quarter turn anticlockwise" placement="bottom" stretch>
                   <button onClick={() => dispatch({ kind: 'editProp', ...where, id: selected.id, facing: turned(selected.facing, -1) })}>
-                    ↺ Turn
+                    <GameIcon name="turn-ccw" size={14} />
+                    <span>Turn</span>
                   </button>
                 </Tooltip>
                 <Tooltip label="A quarter turn clockwise" placement="bottom" stretch>
                   <button onClick={() => dispatch({ kind: 'editProp', ...where, id: selected.id, facing: turned(selected.facing, 1) })}>
-                    ↻ Turn
+                    <GameIcon name="turn-cw" size={14} />
+                    <span>Turn</span>
                   </button>
                 </Tooltip>
               </>
@@ -155,7 +157,7 @@ export function PropsPanel({ hand, onHand, selected, onSelect, opened, placeId, 
             )}
             <Tooltip label="Take it away — Backspace. One undo brings it back." placement="bottom" stretch>
               <button
-                className="wide quiet"
+                className="wide quiet danger-trigger"
                 onClick={() => { dispatch({ kind: 'removeProp', ...where, id: selected.id }); onSelect(null); }}
               >
                 Remove
@@ -244,10 +246,16 @@ export function PropsPanel({ hand, onHand, selected, onSelect, opened, placeId, 
           {!inHand.hangs && (
             <div className="btn-grid tools" style={{ marginTop: 6 }}>
               <Tooltip label="A quarter turn anticlockwise — Z" placement="bottom" stretch>
-                <button onClick={() => onHand(turnHand(hand, -1))}>↺ Turn</button>
+                <button onClick={() => onHand(turnHand(hand, -1))}>
+                  <GameIcon name="turn-ccw" size={14} />
+                  <span>Turn</span>
+                </button>
               </Tooltip>
               <Tooltip label="A quarter turn clockwise — X" placement="bottom" stretch>
-                <button onClick={() => onHand(turnHand(hand, 1))}>↻ Turn</button>
+                <button onClick={() => onHand(turnHand(hand, 1))}>
+                  <GameIcon name="turn-cw" size={14} />
+                  <span>Turn</span>
+                </button>
               </Tooltip>
             </div>
           )}

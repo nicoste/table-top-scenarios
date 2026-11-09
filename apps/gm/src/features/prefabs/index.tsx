@@ -12,7 +12,7 @@ import type { Prefab } from '@tt/domain';
 import { searchLibrary, tagsFromText } from '@tt/domain';
 import type { Capture, PrefabPlacing } from '@tt/client-core';
 import { NO_CAPTURE, captureBox, describeBox, mirrorPlacing, saveIntent, turnPlacing } from '@tt/client-core';
-import { Tooltip } from '@tt/ui';
+import { GameIcon, Tooltip } from '@tt/ui';
 
 export type PrefabMode = 'place' | 'capture';
 
@@ -113,7 +113,7 @@ export function PrefabsPanel({
           <div className="btn-grid tools">
             <button className="on" onClick={saveEdit}>Save</button>
             <button onClick={() => setEditing(null)}>Cancel</button>
-            <button className="wide quiet" onClick={() => setDeleting(true)}>Delete from the library…</button>
+            <button className="wide quiet danger-trigger" onClick={() => setDeleting(true)}>Delete from the library…</button>
           </div>
         )}
       </div>
@@ -127,6 +127,7 @@ export function PrefabsPanel({
         <Tooltip
           label={prefabs.length === 0 ? 'Nothing saved yet — capture one first' : 'Pick a saved prefab and click where it goes'}
           placement="left"
+          stretch
         >
           <button
             className={mode === 'place' ? 'on' : ''}
@@ -136,7 +137,7 @@ export function PrefabsPanel({
             Place
           </button>
         </Tooltip>
-        <Tooltip label="Save a piece of this map: click two corner blocks" placement="left">
+        <Tooltip label="Save a piece of this map: click two corner blocks" placement="left" stretch>
           <button className={mode === 'capture' ? 'on' : ''} onClick={() => onMode('capture')}>Capture</button>
         </Tooltip>
       </div>
@@ -241,19 +242,26 @@ export function PrefabsPanel({
             <>
               <div className="btn-grid tools" style={{ marginTop: 8 }}>
                 <Tooltip label="A quarter turn anticlockwise — Z" placement="bottom" stretch>
-                  <button onClick={() => onPlacing(turnPlacing(placing, -1))}>↺ Turn</button>
+                  <button onClick={() => onPlacing(turnPlacing(placing, -1))}>
+                    <GameIcon name="turn-ccw" size={14} />
+                    <span>Turn</span>
+                  </button>
                 </Tooltip>
                 <Tooltip label="A quarter turn clockwise — X" placement="bottom" stretch>
-                  <button onClick={() => onPlacing(turnPlacing(placing, 1))}>↻ Turn</button>
+                  <button onClick={() => onPlacing(turnPlacing(placing, 1))}>
+                    <GameIcon name="turn-cw" size={14} />
+                    <span>Turn</span>
+                  </button>
                 </Tooltip>
                 <Tooltip label="Flip it left to right — M" placement="bottom" stretch>
                   <button className={placing.mirrored ? 'on' : ''} onClick={() => onPlacing(mirrorPlacing(placing))}>
-                    ⇋ Mirror
+                    Mirror
                   </button>
                 </Tooltip>
                 <Tooltip label="Empty its whole box first — for a room sunk into rock" placement="bottom" stretch>
                   <button className={placing.clear ? 'on' : ''} onClick={() => onPlacing({ ...placing, clear: !placing.clear })}>
-                    ▢ Clear box
+                    <GameIcon name="cube" size={14} />
+                    <span>Clear box</span>
                   </button>
                 </Tooltip>
               </div>

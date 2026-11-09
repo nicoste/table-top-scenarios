@@ -15,7 +15,7 @@ import type { Intent, SilverTokenWire, TokenTemplateWire } from '@tt/protocol';
 import { imageUrl } from '@tt/protocol';
 import type { CarriedLight } from '@tt/domain';
 import { carriedLightFromJSON, inOrder, orderFromJSON, MAX_ORDER, MIN_ORDER } from '@tt/domain';
-import { ConfirmDelete, DraftInput, Tooltip } from '@tt/ui';
+import { ConfirmDelete, DraftInput, GameIcon, Tooltip } from '@tt/ui';
 import { GmNote } from '../note/index.js';
 import { CarriedLightLine, FlameButton } from '../carried/index.js';
 
@@ -52,29 +52,12 @@ type Row =
   | { readonly id: string; readonly kind: 'party'; readonly member: PartyOnStage }
   | { readonly id: string; readonly kind: 'silver'; readonly token: SilverTokenWire };
 
-/**
- * The eye a password field uses to show and hide what is typed (D-311): open
- * while the players may see the token, struck through while it is hidden.
- */
-function Eye({ hidden }: { readonly hidden: boolean }) {
-  return (
-    <svg
-      width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
-    >
-      <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" />
-      <circle cx="12" cy="12" r="3" />
-      {hidden && <line x1="3" y1="3" x2="21" y2="21" />}
-    </svg>
-  );
-}
-
 /** A chain link: the token's sheet, shown over its picture on hover (D-313). */
 function LinkIcon() {
   return (
     <svg
       width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+      strokeWidth="2.4" strokeLinecap="square" strokeLinejoin="miter" aria-hidden="true"
     >
       <path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.5 1.5" />
       <path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.5-1.5" />
@@ -106,17 +89,20 @@ export function OnStagePanel({ party, silver, order, library, placeId, poiId, di
 
   const number = (row: Row, name: string) => (
     <Tooltip label="Order — highest first, blank for none. Yours to set: nothing rolls." placement="left">
-      <DraftInput
-        className="stage-order"
-        aria-label={`${name}'s number`}
-        inputMode="numeric"
-        placeholder="–"
-        value={numbers.has(row.id) ? String(numbers.get(row.id)) : ''}
-        valid={isOrder}
-        onCommit={(draft) => dispatch({
-          kind: 'setOrder', ...where, id: row.id, order: draft.trim() === '' ? null : Number(draft.trim()),
-        })}
-      />
+      <span className="stage-sight">
+        <span className="lbl">ord</span>
+        <DraftInput
+          className="stage-order"
+          aria-label={`${name}'s number`}
+          inputMode="numeric"
+          placeholder="–"
+          value={numbers.has(row.id) ? String(numbers.get(row.id)) : ''}
+          valid={isOrder}
+          onCommit={(draft) => dispatch({
+            kind: 'setOrder', ...where, id: row.id, order: draft.trim() === '' ? null : Number(draft.trim()),
+          })}
+        />
+      </span>
     </Tooltip>
   );
 
@@ -136,7 +122,6 @@ export function OnStagePanel({ party, silver, order, library, placeId, poiId, di
               return (
                 <li key={row.id} className="gold">
                   <div className="stage-row">
-                    {number(row, member.name)}
                     <span
                       className="library-card"
                       style={member.picture
@@ -146,31 +131,35 @@ export function OnStagePanel({ party, silver, order, library, placeId, poiId, di
                     {/* A click picks them up with Play — the way in for one
                         behind a wall, or not placed yet (R-188). */}
                     <button className="plain stage-name" onClick={() => onPickMember(member.id)}>
-                      {/* The name and nothing beside it (D-318, D-332): a hint here
-                          squeezed the name to an ellipsis, and the party card
-                          already says who is outside the band or still to place. */}
+                      {/* The name gets the full row beside the portrait so it never
+                          clips to an initial (D-318, D-332). */}
                       <span className="nm">{member.name}</span>
                     </button>
-                    <Tooltip label={`How far ${member.name} sees, in cubes — 12 is 60 ft`} placement="left">
-                      <span className="stage-sight">
-                        <span className="lbl">sees</span>
-                        <DraftInput
-                          className="sight"
-                          aria-label={`${member.name}'s sight, in cubes`}
-                          inputMode="numeric"
-                          value={String(member.sight)}
-                          valid={isSight}
-                          onCommit={(draft) => dispatch({
-                            kind: 'editMember', id: member.id, visionRange: Number(draft.trim()),
-                          })}
-                        />
-                      </span>
-                    </Tooltip>
-                    <FlameButton
-                      light={member.light}
-                      name={member.name}
-                      onChange={(light) => dispatch({ kind: 'carryLight', id: member.id, light })}
-                    />
+                  </div>
+                  <div className="stage-controls">
+                    {number(row, member.name)}
+                    <span className="stage-actions">
+                      <Tooltip label={`How far ${member.name} sees, in cubes — 12 is 60 ft`} placement="left">
+                        <span className="stage-sight">
+                          <span className="lbl">sees</span>
+                          <DraftInput
+                            className="sight"
+                            aria-label={`${member.name}'s sight, in cubes`}
+                            inputMode="numeric"
+                            value={String(member.sight)}
+                            valid={isSight}
+                            onCommit={(draft) => dispatch({
+                              kind: 'editMember', id: member.id, visionRange: Number(draft.trim()),
+                            })}
+                          />
+                        </span>
+                      </Tooltip>
+                      <FlameButton
+                        light={member.light}
+                        name={member.name}
+                        onChange={(light) => dispatch({ kind: 'carryLight', id: member.id, light })}
+                      />
+                    </span>
                   </div>
                   {member.light && (
                     <CarriedLightLine
@@ -200,7 +189,6 @@ export function OnStagePanel({ party, silver, order, library, placeId, poiId, di
             return (
               <li key={row.id} className={hidden ? 'hidden' : ''}>
                 <div className="stage-row">
-                  {number(row, token.name)}
                   {/*
                     The picture opens the sheet, when the entry has one (D-313):
                     a link icon over it on hover says so. Without a sheet it is
@@ -226,14 +214,16 @@ export function OnStagePanel({ party, silver, order, library, placeId, poiId, di
                     valid={(name) => name.trim().length > 0}
                     onCommit={(name) => dispatch({ kind: 'renameSilver', ...where, id: token.id, name })}
                   />
-                  <FlameButton light={light} name={token.name} onChange={carry} />
-                  {/* The eye and the × touch: they are one group of actions. */}
+                </div>
+                <div className="stage-controls">
+                  {number(row, token.name)}
                   <span className="stage-actions">
                     <ConfirmDelete
                       label={`Take ${token.name} off the map`}
                       confirmLabel="Remove"
                       onConfirm={() => dispatch({ kind: 'removeSilver', ...where, id: token.id })}
                     >
+                      <FlameButton light={light} name={token.name} onChange={carry} />
                       {/* Only ever hides more (R-206). */}
                       <Tooltip
                         label={hidden
@@ -247,7 +237,7 @@ export function OnStagePanel({ party, silver, order, library, placeId, poiId, di
                           aria-label={hidden ? `Show ${token.name}` : `Hide ${token.name}`}
                           onClick={() => dispatch({ kind: 'hideSilver', ...where, id: token.id, hidden: !hidden })}
                         >
-                          <Eye hidden={hidden} />
+                          <GameIcon name={hidden ? 'eye-hidden' : 'eye-open'} size={16} />
                         </button>
                       </Tooltip>
                     </ConfirmDelete>

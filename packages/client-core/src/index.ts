@@ -68,7 +68,7 @@ export type { MeasureHand, MeasureMode } from './measure/index.js';
 export { FRAME_WINDOW, keepRecent, summarise, rate } from './metrics/index.js';
 export type { Frames } from './metrics/index.js';
 
-export { cameraAction, wheelZoom, CAMERA_HINT } from './camera/index.js';
+export { cameraAction, wheelZoom, CAMERA_HINT, TABLE_CAMERA_HINT } from './camera/index.js';
 export type { CameraAction } from './camera/index.js';
 export type {
   ToolPart, ClickAction, TableAction, MapAction, MapHover, MapAim, MapReach, MapVerdict, FillReach,

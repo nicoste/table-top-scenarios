@@ -1,0 +1,1038 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Table Top Scenarios — UI Design System & Component Gallery</title>
+  <style>
+    /* =========================================================================
+     * 1. MASTER TOKENS & DERIVED PALETTE (R-217, D-381)
+     *    Changing --ui-main or --ui-highlight re-themes the entire UI globally.
+     * ========================================================================= */
+    :root {
+      --ui-main: #171b22;
+      --ui-highlight: #f2b84b;
+      --ui-ink: #e6e8ec;
+      --ui-danger: #e06c75;
+      --ui-ok: #6bc46d;
+
+      --ui-radius: 2px;
+      --ui-control-h: 28px;
+      --ui-control-sm: 22px;
+      --ui-slot-h: 54px;
+      --ui-font: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+      --ui-panel-bg: color-mix(in srgb, var(--ui-main) 92%, black);
+      --ui-panel-border: color-mix(in srgb, var(--ui-main) 58%, var(--ui-ink));
+      --ui-panel-bevel:
+        inset 0 2px 0 color-mix(in srgb, var(--ui-ink) 8%, transparent),
+        inset 0 -2px 0 rgba(0, 0, 0, 0.55),
+        0 6px 18px rgba(0, 0, 0, 0.55);
+
+      --ui-slot-bg: color-mix(in srgb, var(--ui-main) 78%, black);
+      --ui-slot-hover: color-mix(in srgb, var(--ui-main) 80%, var(--ui-ink));
+      --ui-slot-border: color-mix(in srgb, var(--ui-main) 66%, var(--ui-ink));
+      --ui-slot-bevel:
+        inset 0 2px 0 color-mix(in srgb, var(--ui-ink) 10%, transparent),
+        inset 0 -2px 0 rgba(0, 0, 0, 0.5);
+
+      --ui-active-bg: color-mix(in srgb, var(--ui-highlight) 22%, var(--ui-main));
+      --ui-active-border: var(--ui-highlight);
+      --ui-active-bevel:
+        inset 0 2px 0 color-mix(in srgb, var(--ui-highlight) 45%, white),
+        inset 0 -2px 0 color-mix(in srgb, var(--ui-highlight) 45%, black);
+
+      --ui-muted: color-mix(in srgb, var(--ui-ink) 58%, var(--ui-main));
+
+      --bg: var(--ui-panel-bg);
+      --line: var(--ui-panel-border);
+      --ink: var(--ui-ink);
+      --muted: var(--ui-muted);
+      --accent: var(--ui-highlight);
+      --ok: var(--ui-ok);
+      --danger: var(--ui-danger);
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: color-mix(in srgb, var(--ui-main) 65%, black);
+      background-image:
+        linear-gradient(to right, rgba(255,255,255,0.025) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,255,255,0.025) 1px, transparent 1px);
+      background-size: 24px 24px;
+      color: var(--ink);
+      font: 13px/1.4 var(--ui-font);
+    }
+
+    /* Gallery layout */
+    .gallery-header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 20px;
+      background: var(--bg);
+      border-bottom: 2px solid var(--line);
+      box-shadow: var(--ui-panel-bevel);
+    }
+    .gallery-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      font-size: 14px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .token-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+    .token-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .token-item code {
+      color: var(--ink);
+      font-weight: 700;
+    }
+    .gallery-grid {
+      max-width: 1360px;
+      margin: 0 auto;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 16px;
+      align-items: start;
+    }
+    .span-full {
+      grid-column: 1 / -1;
+    }
+
+    /* =========================================================================
+     * 2. CANONICAL SHELL.CSS RULES (SHARED ACROSS GM & TABLE)
+     * ========================================================================= */
+    .card {
+      background: var(--bg);
+      border: 2px solid var(--line);
+      border-radius: var(--ui-radius);
+      padding: 12px 14px;
+      box-shadow: var(--ui-panel-bevel);
+    }
+    .card h2 {
+      margin: 0 0 8px;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .row + .row { margin-top: 8px; }
+    .slot-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .slot-row + .slot-row,
+    .slot-row + .row,
+    .row + .slot-row { margin-top: 8px; }
+
+    /* Standard 28px controls (--ui-control-h) */
+    button, input, select {
+      font: inherit;
+      color: var(--ink);
+      background: var(--ui-slot-bg);
+      border: 2px solid var(--ui-slot-border);
+      border-radius: var(--ui-radius);
+      height: var(--ui-control-h);
+      padding: 0 9px;
+      box-shadow: var(--ui-slot-bevel);
+      transition: background 80ms ease, border-color 80ms ease;
+    }
+    button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    button:hover:not(:disabled) {
+      background: var(--ui-slot-hover);
+      border-color: color-mix(in srgb, var(--ui-slot-border) 65%, var(--ui-ink));
+    }
+    button.active {
+      border-color: var(--ui-active-border);
+      background: var(--ui-active-bg);
+      color: var(--ui-highlight);
+      box-shadow: var(--ui-active-bevel);
+    }
+    button.danger {
+      border-color: color-mix(in srgb, var(--danger) 55%, var(--ui-main));
+      color: var(--danger);
+    }
+    button.danger:hover:not(:disabled) {
+      border-color: var(--danger);
+      background: color-mix(in srgb, var(--danger) 18%, var(--ui-main));
+    }
+    button:disabled { opacity: 0.4; cursor: default; }
+
+    /* Compact 22px sub-controls (--ui-control-sm) */
+    button.plain {
+      height: var(--ui-control-sm);
+      border: 1px solid transparent;
+      background: transparent;
+      box-shadow: none;
+      color: var(--muted);
+      padding: 0 6px;
+      font-size: 11px;
+    }
+    button.plain:hover:not(:disabled) {
+      color: var(--ink);
+      background: var(--ui-slot-bg);
+      border-color: var(--ui-slot-border);
+    }
+
+    input[type="number"] { width: 68px; font-variant-numeric: tabular-nums; }
+    input[type="text"] { min-width: 0; }
+    input[type="color"] {
+      width: var(--ui-control-h);
+      height: var(--ui-control-h);
+      padding: 2px;
+      cursor: pointer;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--ui-highlight);
+    }
+
+    /* Chip / Swatch buttons (28x28px standard) */
+    .chip-button {
+      width: var(--ui-control-h);
+      height: var(--ui-control-h);
+      padding: 0;
+      border-radius: var(--ui-radius);
+    }
+    .chip {
+      width: 14px;
+      height: 14px;
+      border-radius: var(--ui-radius);
+      border: 1px solid rgba(0, 0, 0, 0.45);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+      flex-shrink: 0;
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: var(--ui-control-sm);
+      padding: 0 8px;
+      border-radius: var(--ui-radius);
+      background: var(--ui-slot-bg);
+      border: 1px solid var(--ui-slot-border);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: var(--ui-radius);
+      background: var(--ok);
+    }
+
+    /* Squared Voxel Slider (.dial) */
+    .dial {
+      -webkit-appearance: none;
+      appearance: none;
+      height: var(--ui-control-h);
+      background: transparent;
+      border: 0;
+      padding: 0;
+      margin: 0;
+      box-shadow: none;
+      cursor: pointer;
+      flex: 1;
+    }
+    .dial::-webkit-slider-runnable-track {
+      height: 6px;
+      border-radius: var(--ui-radius);
+      background: var(--ui-slot-bg);
+      border: 1px solid var(--ui-slot-border);
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.65);
+    }
+    .dial::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 10px;
+      height: 18px;
+      margin-top: -7px;
+      border-radius: var(--ui-radius);
+      background: var(--ui-highlight);
+      border: 2px solid var(--bg);
+      box-shadow: 0 0 0 1px var(--ui-slot-border);
+    }
+    .dial::-moz-range-track {
+      height: 6px;
+      border-radius: var(--ui-radius);
+      background: var(--ui-slot-bg);
+      border: 1px solid var(--ui-slot-border);
+    }
+    .dial::-moz-range-thumb {
+      width: 10px;
+      height: 18px;
+      border-radius: var(--ui-radius);
+      background: var(--ui-highlight);
+      border: 2px solid var(--bg);
+      box-shadow: 0 0 0 1px var(--ui-slot-border);
+    }
+
+    /* Squared Voxel Level Ladder (.ladder) */
+    .ladder-demo {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+    .ladder {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 6px;
+      width: 48px;
+      background: var(--bg);
+      border: 2px solid var(--line);
+      border-radius: var(--ui-radius);
+      box-shadow: var(--ui-panel-bevel);
+      user-select: none;
+    }
+    .ladder .head {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+    .ladder .rail {
+      position: relative;
+      width: 24px;
+      height: 120px;
+    }
+    .ladder .track {
+      position: absolute;
+      left: 50%;
+      top: 4px;
+      bottom: 4px;
+      width: 4px;
+      transform: translateX(-50%);
+      background: var(--ui-slot-bg);
+      border: 1px solid var(--ui-slot-border);
+      border-radius: var(--ui-radius);
+    }
+    .ladder .mark {
+      position: absolute;
+      left: 50%;
+      width: 8px;
+      height: 4px;
+      transform: translate(-50%, 50%);
+      border-radius: var(--ui-radius);
+      background: var(--ui-slot-border);
+    }
+    .ladder .grip {
+      position: absolute;
+      left: 50%;
+      width: 16px;
+      height: 12px;
+      transform: translate(-50%, 50%);
+      border-radius: var(--ui-radius);
+      background: var(--ui-highlight);
+      border: 2px solid var(--bg);
+      box-shadow: 0 0 0 1px var(--ui-slot-border);
+      cursor: grab;
+    }
+    .ladder .readout {
+      font-size: 11px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      color: var(--ink);
+    }
+
+    /* Stage & Area Lists */
+    .stage-list, .area-list, .library-list, .swatches {
+      list-style: none;
+      margin: 8px 0 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .stage-row, .area-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .stage-row input[type="text"],
+    .area-row .area-pick {
+      flex: 1;
+      min-width: 0;
+      height: var(--ui-control-h);
+    }
+    .area-row .area-pick {
+      justify-content: flex-start;
+      text-align: left;
+    }
+
+    .library-list li {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      border-radius: var(--ui-radius);
+      border: 1px solid var(--ui-slot-border);
+      background: var(--ui-slot-bg);
+      cursor: pointer;
+    }
+    .library-list li.active {
+      background: var(--ui-active-bg);
+      border-color: var(--ui-active-border);
+      color: var(--ui-highlight);
+    }
+    .library-list .meta {
+      margin-left: auto;
+      font-size: 11px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Picture Input (.picture-input) */
+    .picture-input {
+      position: relative;
+      display: inline-flex;
+      flex-shrink: 0;
+    }
+    .picture-card {
+      width: 20px;
+      height: var(--ui-control-h);
+      min-height: var(--ui-control-h);
+      padding: 0;
+      border-radius: var(--ui-radius);
+      border: 2px solid var(--ui-slot-border);
+      overflow: hidden;
+      display: grid;
+      place-items: center;
+    }
+    .picture-clear {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      z-index: 2;
+      width: 14px;
+      height: 14px;
+      min-height: 14px;
+      padding: 0;
+      border-radius: var(--ui-radius);
+      background: var(--bg);
+      border: 1px solid var(--ui-slot-border);
+      font-size: 10px;
+      line-height: 1;
+      color: var(--ink);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.12s;
+    }
+    .picture-input:hover .picture-clear,
+    .picture-input:focus-within .picture-clear {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .picture-clear:hover {
+      background: var(--danger);
+      border-color: var(--danger);
+      color: #fff;
+    }
+
+    /* Recessed Item Well (.member / .stage-list li) & Note Strip (.stage-note-line) */
+    .item-well {
+      padding: 6px;
+      border-radius: var(--ui-radius);
+      background: color-mix(in srgb, var(--ui-main) 72%, #000);
+      border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .stage-note-line {
+      width: 100%;
+      min-height: var(--ui-control-sm);
+      padding: 2px 7px;
+      text-align: left;
+      font-size: 11.5px;
+      color: var(--ink);
+      background: color-mix(in srgb, var(--ui-main) 52%, #000);
+      border: 1px solid color-mix(in srgb, var(--line) 65%, transparent);
+      border-radius: var(--ui-radius);
+      box-shadow: none;
+      justify-content: flex-start;
+      font-weight: 400;
+    }
+    .stage-note-line.empty {
+      color: var(--muted);
+    }
+
+    /* Notices & Warnings */
+    .warn, .notice {
+      margin-top: 8px;
+      padding: 6px 8px;
+      border-radius: var(--ui-radius);
+      font-size: 12px;
+    }
+    .warn {
+      background: color-mix(in srgb, var(--danger) 16%, var(--ui-main));
+      border: 1px solid color-mix(in srgb, var(--danger) 55%, var(--ui-main));
+      color: color-mix(in srgb, var(--danger) 75%, white);
+    }
+    .notice {
+      background: color-mix(in srgb, var(--ui-highlight) 14%, var(--ui-main));
+      border: 1px solid color-mix(in srgb, var(--ui-highlight) 45%, var(--ui-main));
+      color: var(--ink);
+    }
+
+    /* Icon catalogue grid */
+    .icon-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+      gap: 6px;
+    }
+    .icon-cell {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      background: var(--ui-slot-bg);
+      border: 1px solid var(--ui-slot-border);
+      border-radius: var(--ui-radius);
+    }
+    .icon-cell code {
+      font-size: 11px;
+      color: var(--ink);
+    }
+
+    /* Alignment guide overlay for 28px control row */
+    .guide-wrap {
+      position: relative;
+      padding: 4px 0;
+    }
+    .guide-wrap.show-guides::before,
+    .guide-wrap.show-guides::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: var(--ui-danger);
+      opacity: 0.75;
+      pointer-events: none;
+      z-index: 5;
+    }
+    .guide-wrap.show-guides::before { top: 4px; }
+    .guide-wrap.show-guides::after { bottom: 4px; }
+
+    /* SlotButton inline-style equivalent for static preview */
+    .slot-btn {
+      position: relative;
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      min-width: 56px;
+      height: var(--ui-slot-h);
+      padding: 6px 8px 5px;
+      border-radius: var(--ui-radius);
+      border: 2px solid var(--ui-slot-border);
+      background: var(--ui-slot-bg);
+      color: var(--ui-ink);
+      box-shadow: var(--ui-slot-bevel);
+      font-size: 10px;
+      font-weight: 700;
+    }
+    .slot-btn.active {
+      border-color: var(--ui-active-border);
+      background: var(--ui-active-bg);
+      color: var(--ui-highlight);
+      box-shadow: var(--ui-active-bevel);
+    }
+    .slot-hk {
+      position: absolute;
+      top: 2px;
+      left: 4px;
+      font-size: 9px;
+      font-weight: 700;
+      line-height: 1;
+      color: var(--ui-muted);
+    }
+    .slot-btn.active .slot-hk {
+      color: var(--ui-highlight);
+    }
+    .code-note {
+      margin-top: 8px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .code-note code {
+      color: var(--ink);
+      background: var(--ui-slot-bg);
+      padding: 1px 5px;
+      border: 1px solid var(--ui-slot-border);
+      border-radius: var(--ui-radius);
+    }
+
+    /* Typography Hierarchy rules */
+    .typo-h1 {
+      margin: 0 0 6px;
+      font: 700 18px/1.25 var(--ui-font);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--ink);
+    }
+    .lbl {
+      color: var(--muted);
+      font: 700 10.5px/1.2 var(--ui-font);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin: 8px 0 4px;
+    }
+    .lbl .hour {
+      float: right;
+      font-weight: 600;
+      color: var(--ink);
+      text-transform: none;
+      letter-spacing: 0;
+      font-variant-numeric: tabular-nums;
+    }
+    .readout-line {
+      margin: 6px 0 0;
+      padding-top: 6px;
+      border-top: 1px solid var(--line);
+      color: var(--ink);
+      font: 600 12px/1.4 var(--ui-font);
+      font-variant-numeric: tabular-nums;
+    }
+    .hint {
+      color: var(--muted);
+      font: 400 11.5px/1.45 ui-sans-serif, system-ui, sans-serif;
+      margin: 8px 0 0;
+    }
+    .hint b { color: var(--ink); font-weight: 600; }
+
+    /* Material Swatches (.swatches & .cut.lit) */
+    .swatches li {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      min-height: var(--ui-control-h);
+      padding: 0 4px 0 8px;
+      border: 2px solid transparent;
+      border-radius: var(--ui-radius);
+    }
+    .swatches li:hover {
+      background: var(--ui-slot-hover);
+      border-color: var(--ui-slot-border);
+    }
+    .swatches li.on {
+      background: var(--ui-active-bg);
+      border-color: var(--ui-active-border);
+      box-shadow: var(--ui-active-bevel);
+      color: var(--ui-highlight);
+      font-weight: 600;
+    }
+    .swatches .nm { flex: 1; }
+    .swatches .cuts {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .swatches .cut {
+      width: 18px;
+      height: 18px;
+      min-height: 18px;
+      padding: 0;
+      border-radius: var(--ui-radius);
+      border: 2px solid rgba(0,0,0,0.6);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.16);
+    }
+    .swatches .cut.lit {
+      outline: none;
+      border-color: var(--ui-highlight);
+      box-shadow: 0 0 0 1px #000, inset 0 0 0 1px #fff;
+    }
+  </style>
+</head>
+<body>
+  <header class="gallery-header">
+    <div class="gallery-title">
+      <span>Table Top Scenarios · UI Component Gallery</span>
+      <span class="badge"><span class="dot"></span>R-217 / D-381</span>
+    </div>
+    <div class="token-bar">
+      <label class="token-item">
+        <code>--ui-main</code>
+        <input type="color" id="tok-main" value="#171b22" />
+      </label>
+      <label class="token-item">
+        <code>--ui-highlight</code>
+        <input type="color" id="tok-hl" value="#f2b84b" />
+      </label>
+      <label class="token-item">
+        <code>--ui-ink</code>
+        <input type="color" id="tok-ink" value="#e6e8ec" />
+      </label>
+      <button type="button" id="preset-default" class="active">Slate &amp; Gold</button>
+      <button type="button" id="preset-emerald">Obsidian &amp; Emerald</button>
+      <button type="button" id="preset-rune">Deep Rune &amp; Cyan</button>
+    </div>
+  </header>
+
+  <main class="gallery-grid">
+    <!-- 1. CANONICAL GAMEICON REGISTRY -->
+    <section class="card span-full">
+      <h2>
+        <span>1. Canonical Monochrome Icon Registry (&lt;GameIcon&gt; · 24×24 SVG)</span>
+        <span>packages/ui/src/game-icon/index.tsx</span>
+      </h2>
+      <div class="icon-grid" id="icon-grid"></div>
+      <div class="code-note">
+        Usage: <code>&lt;GameIcon name="walk" size={20} /&gt;</code> — 100% monochrome <code>stroke="currentColor"</code>, squared caps. Shared semantics: <code>walk</code> = Ground path &amp; Foot travel; <code>measure</code> = Measure tool &amp; Ruler mode.
+      </div>
+    </section>
+
+    <!-- 2. ACTION SLOTS (<SlotButton>) -->
+    <section class="card">
+      <h2>
+        <span>2. Action Slots (&lt;SlotButton&gt; · 54px)</span>
+        <span>packages/ui/src/slot-button/index.tsx</span>
+      </h2>
+      <div class="slot-row" id="gm-slots"></div>
+      <div class="slot-row" id="measure-slots"></div>
+      <div class="code-note">
+        Usage: <code>&lt;SlotButton icon="build" label="Build" hotkey="1" active={...} tip="..." onClick={...} /&gt;</code>
+      </div>
+    </section>
+
+    <!-- 3. STANDARDIZED CONTROL HEIGHT GRID (28px & 22px) -->
+    <section class="card">
+      <h2>
+        <span>3. Standardized Control Height Grid (--ui-control-h: 28px)</span>
+        <button type="button" class="plain" id="toggle-guides">Toggle 28px red guide lines</button>
+      </h2>
+      <div class="guide-wrap show-guides" id="guide-box">
+        <div class="row">
+          <button type="button">Button</button>
+          <button type="button" class="active">Active</button>
+          <button type="button" class="danger">Danger</button>
+          <input type="text" value="Aldra" style="width: 84px" aria-label="Name" />
+          <input type="number" value="12" aria-label="Count" />
+          <select aria-label="Biome">
+            <option>Grass</option>
+            <option>Stone</option>
+          </select>
+          <input type="color" value="#e06c75" aria-label="Colour" />
+          <button type="button" class="chip-button" title="Swatch button">
+            <span class="chip" style="background: #5c8a47"></span>
+          </button>
+        </div>
+      </div>
+      <div class="row" style="margin-top: 10px">
+        <span style="font-size: 11px; color: var(--muted)">Compact tier (<code>--ui-control-sm: 22px</code>):</span>
+        <button type="button" class="plain">Plain action</button>
+        <span class="badge"><span class="dot"></span>Connected</span>
+      </div>
+      <div class="code-note">
+        Every control in a horizontal <code>.row</code> shares <code>height: var(--ui-control-h)</code> (<code>28px</code>) and <code>border-radius: var(--ui-radius)</code> (<code>2px</code>).
+      </div>
+    </section>
+
+    <!-- 4. SQUARED VOXEL SLIDERS & LEVEL LADDER -->
+    <section class="card">
+      <h2>
+        <span>4. Squared Voxel Sliders (.dial) &amp; Level Ladder (.ladder)</span>
+        <span>shell.css</span>
+      </h2>
+      <div class="ladder-demo">
+        <div class="ladder" aria-label="Level ladder">
+          <span class="head">Level</span>
+          <div class="rail">
+            <div class="track"></div>
+            <div class="mark" style="bottom: 15%"></div>
+            <div class="mark" style="bottom: 40%"></div>
+            <div class="mark" style="bottom: 65%"></div>
+            <div class="mark" style="bottom: 90%"></div>
+            <div class="grip" style="bottom: 65%" title="Drag to scrub level"></div>
+          </div>
+          <span class="readout">+2</span>
+        </div>
+        <div style="flex: 1">
+          <div class="row">
+            <span style="width: 58px; font-size: 11px; color: var(--muted)">Hour</span>
+            <input type="range" class="dial" min="0" max="23" value="14" />
+            <span style="width: 42px; text-align: right; font-variant-numeric: tabular-nums">14:00</span>
+          </div>
+          <div class="row">
+            <span style="width: 58px; font-size: 11px; color: var(--muted)">Reach</span>
+            <input type="range" class="dial" min="1" max="12" value="6" />
+            <span style="width: 42px; text-align: right; font-variant-numeric: tabular-nums">30 ft</span>
+          </div>
+          <div class="row">
+            <span style="width: 58px; font-size: 11px; color: var(--muted)">Brush</span>
+            <input type="range" class="dial" min="1" max="5" value="2" />
+            <span style="width: 42px; text-align: right; font-variant-numeric: tabular-nums">2×2</span>
+          </div>
+          <div class="code-note">
+            <code>.dial</code> uses a <code>10×18px</code> squared chiseled voxel thumb over a recessed <code>6px</code> track. <code>.ladder .grip</code> &amp; <code>.mark</code> use squared voxel blocks.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. PANEL ANATOMY: CALLOUTS, RECESSED ITEM WELLS & BUTTON TIERS -->
+    <section class="card">
+      <h2>
+        <span>5. Panel Anatomy: Callouts, Item Wells &amp; × Hierarchy</span>
+        <span>Zone 1–4</span>
+      </h2>
+      <div class="notice" style="margin-top: 0; margin-bottom: 8px">
+        <div style="margin-bottom: 6px">Table is inside <strong>Tollkeep</strong> (Thol Crossing).</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px">
+          <button type="button" class="active">Open map</button>
+          <button type="button">Bring out</button>
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 8px">
+        <button type="button" class="active">Together</button>
+        <button type="button">Separated</button>
+      </div>
+      <div class="item-well">
+        <div class="row">
+          <span class="picture-input">
+            <button type="button" class="picture-card" style="background: #d97724" title="Picture for Galion"></button>
+            <button type="button" class="plain picture-clear" title="Clear picture (14×14 corner badge)">×</button>
+          </span>
+          <input type="color" value="#d97724" aria-label="Token colour" />
+          <input type="text" value="Galion" style="flex: 1" aria-label="Token name" />
+          <button type="button" class="plain" style="width: 28px; height: 28px" title="Remove member (quiet row action)">×</button>
+        </div>
+        <button type="button" class="stage-note-line">Carries the brass lantern key</button>
+      </div>
+      <div class="item-well" style="margin-top: 6px">
+        <div class="row">
+          <span class="picture-input">
+            <button type="button" class="picture-card" style="background: #9fa8da" title="Picture for Turdorn"></button>
+          </span>
+          <input type="color" value="#9fa8da" aria-label="Token colour" />
+          <input type="text" value="Turdorn" style="flex: 1" aria-label="Token name" />
+          <button type="button" class="plain" style="width: 28px; height: 28px" title="Remove member (quiet row action)">×</button>
+        </div>
+        <button type="button" class="stage-note-line empty">Add a note</button>
+      </div>
+      <div style="margin-top: 8px">
+        <button type="button" style="width: 100%">+ Member</button>
+      </div>
+      <div class="code-note">
+        <b>Unified Patterns:</b> Written and empty notes share the exact same solid recessed box (<code>D-314</code>); list creation buttons span 100% width (<code>+ Member</code>, <code>+ New token</code>); and row removal asks first via <code>&lt;ConfirmDelete&gt;</code> (<code>R-151</code>).
+      </div>
+    </section>
+
+    <!-- 6. MATERIAL SWATCHES (.swatches & .cut.lit) -->
+    <section class="card">
+      <h2>
+        <span>6. Material Palette &amp; Variation Cuts (.swatches)</span>
+        <span>18×18px squared cuts</span>
+      </h2>
+      <ul class="swatches">
+        <li>
+          <span class="nm">Grass</span>
+          <span class="cuts">
+            <button type="button" class="cut" style="background: #6c874a" title="Meadow"></button>
+            <button type="button" class="cut" style="background: #536b3a" title="Turf"></button>
+            <button type="button" class="cut" style="background: #9c8a54" title="Dry grass"></button>
+          </span>
+        </li>
+        <li class="on">
+          <span class="nm">Vegetation</span>
+          <span class="cuts">
+            <button type="button" class="cut lit" style="background: #486e3a" title="Leaf"></button>
+            <button type="button" class="cut" style="background: #5e8c49" title="Canopy"></button>
+            <button type="button" class="cut" style="background: #35542b" title="Pine"></button>
+          </span>
+        </li>
+        <li>
+          <span class="nm">Liquids</span>
+          <span class="cuts">
+            <button type="button" class="cut" style="background: #4b7fb3" title="Water"></button>
+            <button type="button" class="cut" style="background: #468275" title="Murk"></button>
+            <button type="button" class="cut" style="background: #7daec7" title="Ice"></button>
+          </span>
+        </li>
+      </ul>
+      <div class="code-note">
+        Active family row (<code>.swatches li.on</code>) uses chiseled active surface tokens; active cut (<code>.swatches .cut.lit</code>) uses a strict <code>18×18px</code> squared frame with no rounded outline bleed.
+      </div>
+    </section>
+
+    <!-- 7. TYPOGRAPHY & TEXT HIERARCHY -->
+    <section class="card">
+      <h2>
+        <span>7. Standardized Typography Scale</span>
+        <span>R-217</span>
+      </h2>
+      <div class="typo-h1">H1 · Launcher Title (18px)</div>
+      <p class="lbl">
+        .lbl · Control Label (10.5px)
+        <span class="hour">.hour · 14:00</span>
+      </p>
+      <div style="font: 400 12.5px/1.45 ui-sans-serif, system-ui, sans-serif; color: var(--ink)">
+        Body / <code>.nm</code> (12.5px) — Default text in buttons, inputs, and list rows.
+      </div>
+      <div class="readout-line">.readout (12px tabular) · 14 × 14 · 196 blocks · 30 ft</div>
+      <p class="hint">
+        <code>.hint</code> (11.5px) — Secondary explanation with <b>key terms</b> highlighted in primary ink.
+      </p>
+    </section>
+  </main>
+
+  <script>
+    const ICONS = {
+      play: '<path d="M5 4L14 9L10 11L15 16L13 18L8 13L5 17V4Z" stroke-width="2"/><path d="M16 5H20V9" stroke-width="2"/>',
+      walk: '<rect x="10" y="3" width="4" height="4" stroke-width="2"/><path d="M12 7V14L8 20M12 14L16 20M8 10H16" stroke-width="2"/>',
+      jump: '<path d="M4 17C6 9 14 9 18 15" stroke-width="2"/><path d="M15 15H19V11" stroke-width="2"/><path d="M3 20H21" stroke-width="2"/>',
+      measure: '<rect x="3" y="8" width="18" height="8" stroke-width="2"/><path d="M7 8V12M11 8V11M15 8V12M19 8V11" stroke-width="2"/>',
+      sphere: '<path d="M9 3H15L21 9V15L15 21H9L3 15V9L9 3Z" stroke-width="2"/><rect x="11" y="11" width="2" height="2" stroke-width="2"/>',
+      cone: '<path d="M4 19L12 4L20 19H4Z" stroke-width="2"/><path d="M8 14H16" stroke-width="1.75"/>',
+      line: '<path d="M5 19L19 5" stroke-width="2"/><rect x="3" y="17" width="4" height="4" stroke-width="2"/><rect x="17" y="3" width="4" height="4" stroke-width="2"/>',
+      cube: '<rect x="4" y="4" width="16" height="16" stroke-width="2"/><rect x="9" y="9" width="6" height="6" stroke-width="1.75"/>',
+      build: '<rect x="3" y="13" width="8" height="7" stroke-width="2"/><rect x="13" y="13" width="8" height="7" stroke-width="2"/><rect x="8" y="5" width="8" height="8" stroke-width="2"/>',
+      paint: '<rect x="5" y="4" width="14" height="6" stroke-width="2"/><path d="M19 7H21V11H12V14" stroke-width="2"/><rect x="10" y="14" width="4" height="6" stroke-width="2"/>',
+      spawn: '<path d="M12 3L19 10L12 21L5 10L12 3Z" stroke-width="2"/><rect x="10" y="8" width="4" height="4" stroke-width="2"/>',
+      prefab: '<path d="M4 10L12 4L20 10" stroke-width="2"/><path d="M6 10V20H18V10" stroke-width="2"/><rect x="10" y="14" width="4" height="6" stroke-width="2"/>',
+      props: '<path d="M6 20V5H18V20" stroke-width="2"/><path d="M4 20H20" stroke-width="2"/><rect x="14" y="12" width="2" height="2" stroke-width="2"/>',
+      select: '<path d="M4 8V4H8M16 4H20V8M20 16V20H16M8 20H4V16" stroke-width="2"/><rect x="10" y="10" width="4" height="4" stroke-width="2"/>',
+      places: '<path d="M6 21V4M6 5H18L15 9L18 13H6" stroke-width="2"/>',
+      height: '<path d="M4 19V15H9V11H14V7H20V19H4Z" stroke-width="2"/>',
+      ground: '<rect x="4" y="4" width="7" height="7" stroke-width="2"/><rect x="13" y="4" width="7" height="7" stroke-width="2"/><rect x="4" y="13" width="7" height="7" stroke-width="2"/><rect x="13" y="13" width="7" height="7" stroke-width="2"/>',
+      cover: '<path d="M12 3L19 11H15L20 17H4L9 11H5L12 3Z" stroke-width="2"/><path d="M12 17V21" stroke-width="2"/>',
+      boat: '<path d="M12 4V14M12 5L18 11H12" stroke-width="2"/><path d="M4 15H20L17 20H7L4 15Z" stroke-width="2"/>',
+      air: '<path d="M12 3L20 14L12 11L4 14L12 3Z" stroke-width="2"/><path d="M12 11V20M9 20H15" stroke-width="2"/>',
+      'turn-ccw': '<path d="M4 9V4H9" stroke-width="2"/><path d="M5 5L9 9H17V18H7" stroke-width="2"/>',
+      'turn-cw': '<path d="M20 9V4H15" stroke-width="2"/><path d="M19 5L15 9H7V18H17" stroke-width="2"/>',
+      'tilt-down': '<path d="M6 9L12 15L18 9" stroke-width="2"/><path d="M5 19H19" stroke-width="2"/>',
+      'tilt-up': '<path d="M6 15L12 9L18 15" stroke-width="2"/><path d="M5 5H19" stroke-width="2"/>',
+      'eye-open': '<path d="M2 12L7 6H17L22 12L17 18H7L2 12Z" stroke-width="2"/><rect x="10" y="10" width="4" height="4" stroke-width="2"/>',
+      'eye-hidden': '<path d="M2 12L7 6H17L22 12L17 18H7L2 12Z" stroke-width="2"/><path d="M4 4L20 20" stroke-width="2"/>',
+      light: '<rect x="9" y="4" width="6" height="8" stroke-width="2"/><path d="M10 16H14M12 12V16M4 9H6M18 9H20M6 4L7 5M18 4L17 5" stroke-width="2"/>',
+    };
+
+    function svgIcon(name, size = 20) {
+      return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">${ICONS[name]}</svg>`;
+    }
+
+    const iconGrid = document.getElementById('icon-grid');
+    Object.keys(ICONS).forEach((name) => {
+      const cell = document.createElement('div');
+      cell.className = 'icon-cell';
+      cell.innerHTML = `${svgIcon(name, 20)}<code>${name}</code>`;
+      iconGrid.appendChild(cell);
+    });
+
+    const gmSlots = [
+      { icon: 'build', label: 'Build', hk: '1', active: true },
+      { icon: 'paint', label: 'Paint', hk: '2' },
+      { icon: 'spawn', label: 'Spawn', hk: '3' },
+      { icon: 'prefab', label: 'Prefab', hk: '4' },
+      { icon: 'props', label: 'Props', hk: '5' },
+      { icon: 'walk', label: 'Path', hk: '6' },
+      { icon: 'measure', label: 'Measure', hk: '7' },
+    ];
+    const gmContainer = document.getElementById('gm-slots');
+    gmSlots.forEach((s) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'slot-btn' + (s.active ? ' active' : '');
+      btn.innerHTML = `<span class="slot-hk">${s.hk}</span>${svgIcon(s.icon, 20)}<span>${s.label}</span>`;
+      btn.onclick = () => {
+        gmContainer.querySelectorAll('.slot-btn').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+      };
+      gmContainer.appendChild(btn);
+    });
+
+    const measureSlots = [
+      { icon: 'measure', label: 'Ruler', active: true },
+      { icon: 'sphere', label: 'Sphere' },
+      { icon: 'cone', label: 'Cone' },
+      { icon: 'line', label: 'Line' },
+      { icon: 'cube', label: 'Cube' },
+    ];
+    const mContainer = document.getElementById('measure-slots');
+    measureSlots.forEach((s) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'slot-btn' + (s.active ? ' active' : '');
+      btn.innerHTML = `${svgIcon(s.icon, 20)}<span>${s.label}</span>`;
+      btn.onclick = () => {
+        mContainer.querySelectorAll('.slot-btn').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+      };
+      mContainer.appendChild(btn);
+    });
+
+    // Theme controls
+    const root = document.documentElement;
+    const tokMain = document.getElementById('tok-main');
+    const tokHl = document.getElementById('tok-hl');
+    const tokInk = document.getElementById('tok-ink');
+
+    function applyColors(main, hl, ink) {
+      tokMain.value = main;
+      tokHl.value = hl;
+      tokInk.value = ink;
+      root.style.setProperty('--ui-main', main);
+      root.style.setProperty('--ui-highlight', hl);
+      root.style.setProperty('--ui-ink', ink);
+    }
+    tokMain.oninput = (e) => root.style.setProperty('--ui-main', e.target.value);
+    tokHl.oninput = (e) => root.style.setProperty('--ui-highlight', e.target.value);
+    tokInk.oninput = (e) => root.style.setProperty('--ui-ink', e.target.value);
+
+    document.getElementById('preset-default').onclick = () => applyColors('#171b22', '#f2b84b', '#e6e8ec');
+    document.getElementById('preset-emerald').onclick = () => applyColors('#121a16', '#56d364', '#e6f2ea');
+    document.getElementById('preset-rune').onclick = () => applyColors('#141824', '#58a6ff', '#e8eef8');
+
+    document.getElementById('toggle-guides').onclick = () => {
+      document.getElementById('guide-box').classList.toggle('show-guides');
+    };
+  </script>
+</body>
+</html>
