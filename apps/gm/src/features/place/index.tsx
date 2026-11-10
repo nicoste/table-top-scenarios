@@ -6,7 +6,7 @@ import { useState } from 'react';
 // which the panels had quietly not been doing (D-222).
 import { DEFAULT_MARKERS } from '@tt/domain';
 import type { Intent, PlaceWire } from '@tt/protocol';
-import { ConfirmDelete, DraftInput, GameIcon, Tooltip } from '@tt/ui';
+import { ConfirmDelete, DraftInput, GameIcon, IconButton, Tooltip } from '@tt/ui';
 
 interface ToolProps {
   markerId: string;
@@ -163,18 +163,18 @@ export function PlaceInspector({
                 label="Delete this note"
                 onConfirm={() => dispatch({ kind: 'removeNote', placeId: place.id, noteId: note.id })}
               >
-                <button
-                  className="quiet"
+                <IconButton
+                  icon="move-up"
+                  label="Move up"
                   disabled={i === 0}
-                  title="Move up"
                   onClick={() => dispatch({ kind: 'moveNote', placeId: place.id, noteId: note.id, delta: -1 })}
-                >↑</button>
-                <button
-                  className="quiet"
+                />
+                <IconButton
+                  icon="move-down"
+                  label="Move down"
                   disabled={i === place.notes.length - 1}
-                  title="Move down"
                   onClick={() => dispatch({ kind: 'moveNote', placeId: place.id, noteId: note.id, delta: 1 })}
-                >↓</button>
+                />
               </ConfirmDelete>
             </div>
           </li>
@@ -195,7 +195,7 @@ export function PlaceInspector({
         Pois. The same shape as notes on purpose (D-175): ordered, each one
         individually visible, and the eye is again the only thing that decides
         whether it reaches the table (R-85). Each one owns a map from the moment
-        it is named (D-187) — ▣ opens it.
+        it is named (D-187), and its Open map opens it.
       */}
       <h2>Points of interest</h2>
       {place.pois.length === 0 && (
@@ -241,18 +241,18 @@ export function PlaceInspector({
                 <Tooltip label={`Open the map of ${poi.name}`} placement="left">
                   <button className="quiet" onClick={() => onOpenMap(poi.id)}>Open map</button>
                 </Tooltip>
-                <button
-                  className="quiet"
+                <IconButton
+                  icon="move-up"
+                  label="Move up"
                   disabled={i === 0}
-                  title="Move up"
                   onClick={() => dispatch({ kind: 'movePoi', placeId: place.id, poiId: poi.id, delta: -1 })}
-                >↑</button>
-                <button
-                  className="quiet"
+                />
+                <IconButton
+                  icon="move-down"
+                  label="Move down"
                   disabled={i === place.pois.length - 1}
-                  title="Move down"
                   onClick={() => dispatch({ kind: 'movePoi', placeId: place.id, poiId: poi.id, delta: 1 })}
-                >↓</button>
+                />
               </ConfirmDelete>
             </div>
           </li>

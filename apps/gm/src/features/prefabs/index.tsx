@@ -12,7 +12,7 @@ import type { Prefab } from '@tt/domain';
 import { searchLibrary, tagsFromText } from '@tt/domain';
 import type { Capture, PrefabPlacing } from '@tt/client-core';
 import { NO_CAPTURE, captureBox, describeBox, mirrorPlacing, saveIntent, turnPlacing } from '@tt/client-core';
-import { GameIcon, Tooltip } from '@tt/ui';
+import { GameIcon, IconButton, Tooltip } from '@tt/ui';
 
 export type PrefabMode = 'place' | 'capture';
 
@@ -223,14 +223,12 @@ export function PrefabsPanel({
                       </span>
                     </span>
                   </button>
-                  <button
-                    className="quiet"
-                    title={`Edit ${prefab.name}`}
-                    aria-label={`Edit ${prefab.name}`}
+                  <IconButton
+                    icon="edit"
+                    label={`Edit ${prefab.name}`}
+                    placement="left"
                     onClick={() => { setDeleting(false); setEditing({ id: prefab.id, name: prefab.name, tags: prefab.tags.join(' ') }); }}
-                  >
-                    ✎
-                  </button>
+                  />
                 </li>
               ))}
             </ul>

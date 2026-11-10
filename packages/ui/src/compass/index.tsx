@@ -2,8 +2,9 @@
 //
 // Presentational and domain-free, like everything here: it is handed a bearing
 // in degrees and draws a dial, and when `onTurn` or `onTilt` are provided it
-// flanks the dial with clickable turn (`↺`/`↻`) and tilt (`▼`/`▲`) buttons so a
-// mouse alone can orbit and tilt the camera on both surfaces.
+// flanks the dial with turn and tilt buttons — `turn-ccw`, `turn-cw`,
+// `tilt-down`, `tilt-up` — so a mouse alone can orbit and tilt the camera on
+// both surfaces.
 //
 // Styled inline so `@tt/ui` needs no CSS pipeline (R-111), referencing global
 // `--ui-*` CSS custom properties with safe fallbacks so changing `--ui-main` or

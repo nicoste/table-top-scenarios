@@ -2,7 +2,7 @@
 
 How the two screens look, and where each part of that lives. The rules are
 R-217 to R-217c in [ARCHITECTURE.md](ARCHITECTURE.md); the reasons are D-381,
-D-383, D-386, D-387 and D-388.
+D-383, D-386, D-387, D-388, D-389 and D-390.
 
 **To see it, start the host and open `/gm/gallery.html`.** Every part below is
 drawn there by the real components with the real stylesheets, and three
@@ -132,9 +132,15 @@ colour, square ends. One concept has one icon on both screens (R-217a), and
 | `eye-open` | shown to the players |
 | `eye-hidden` | hidden from them |
 | `light` | a light, carried or placed: the flame by a row on stage, filled while lit |
+| `move-up` | a row up the list: a note, a point of interest |
+| `move-down` | a row down the list |
+| `edit` | open a card or a prefab to change it |
+| `back` | out to where you came from: the main menu, the world |
 
-The arrows that reorder a list (↑ ↓) and the edit mark (✎) are still
-characters.
+**No icon is a character** (D-390). The arrows, the pencil and the ticks that
+stood in for these are gone, and a test reads both screens' source so they do
+not come back. `×` stays: it is a delete's trigger, typography rather than an
+icon, as the `✕` of ground that cannot be crossed is.
 
 ---
 
@@ -154,6 +160,9 @@ characters.
 - **`Tooltip`**: always, never a native `title`. It opens on hover and on focus.
 - **`BrandLogo`**: the emblem and the name; `statusLabel` only on the console's
   menu.
+- **`IconButton`** (D-390): a row's action drawn as an icon — move up, move
+  down, edit. Its name is its tooltip and its accessible name, so an icon is
+  never left to say what it does by itself.
 - **`WithKeys`**: a line of words with keys in it — a `HelpLine` from
   `client-core`, such as the camera's legend — with each key a `<kbd>`.
 
@@ -173,7 +182,8 @@ repeating thing in its own well (`.member`, `.stage-list li`, `.area-list li`,
 | `button` | an action that stands alone: *Open map*, *+ Member* |
 | `.on` | the chosen one of several |
 | `.danger` | the second click of a delete |
-| `.quiet` | an action inside a row: reorder, the eye, edit |
+| `.quiet` | an action inside a row: the eye, *Open map* |
+| `.quiet.icon` | an `IconButton`: reorder, edit |
 | `.quiet.danger-trigger` | a row's `×` |
 | `.plain` | text with no frame |
 

@@ -39,7 +39,11 @@ export type GameIconName =
   | 'tilt-up'
   | 'eye-open'
   | 'eye-hidden'
-  | 'light';
+  | 'light'
+  | 'move-up'
+  | 'move-down'
+  | 'edit'
+  | 'back';
 
 /** One shape of a glyph: its SVG element, and that element's attributes as SVG spells them. */
 export interface GlyphShape {
@@ -145,6 +149,23 @@ export const GLYPHS: Readonly<Record<GameIconName, readonly GlyphShape[]>> = {
   ],
   light: [
     { el: 'path', attrs: { d: 'M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z' } },
+  ],
+  // Arrows with a shaft, so they are not taken for the tilt's chevrons (D-390).
+  'move-up': [
+    { el: 'path', attrs: { d: 'M12 20V5' } },
+    { el: 'path', attrs: { d: 'M6 11l6-6 6 6' } },
+  ],
+  'move-down': [
+    { el: 'path', attrs: { d: 'M12 4v15' } },
+    { el: 'path', attrs: { d: 'M6 13l6 6 6-6' } },
+  ],
+  edit: [
+    { el: 'path', attrs: { d: 'M4 20v-4L15 5l4 4L8 20H4z' } },
+    { el: 'path', attrs: { d: 'M12 8l4 4' } },
+  ],
+  back: [
+    { el: 'path', attrs: { d: 'M20 12H5' } },
+    { el: 'path', attrs: { d: 'M11 6l-6 6 6 6' } },
   ],
 };
 

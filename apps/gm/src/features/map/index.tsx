@@ -130,7 +130,10 @@ export function MapPanel({
         <p className="hint" style={{ margin: '0 0 8px' }}>in {placeName}</p>
         <div className="btn-grid campaign-actions">
           <Tooltip label="Back to the world map" placement="bottom" stretch>
-            <button className="wide" onClick={onLeave}>← Back to the world</button>
+            <button className="wide" onClick={onLeave}>
+              <GameIcon name="back" size={14} />
+              <span>Back to the world</span>
+            </button>
           </Tooltip>
         </div>
       </div>

@@ -50,7 +50,7 @@ export function ConnectBadge({ urls }: Props) {
   // copy that looks like it did nothing. So the heading reports it instead, and
   // the tooltip is only there to make the button discoverable.
   const heading = state === 'copied'
-    ? 'copied ✓'
+    ? 'copied'
     : state === 'selected'
       ? 'select and press ⌘C'
       : 'players join at';

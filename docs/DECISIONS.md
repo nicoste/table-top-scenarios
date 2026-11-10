@@ -10172,3 +10172,26 @@ others, though, and a GM who meant a field and missed it lost the prop.
 - `propKey` in `client-core` is what each key does, and `removeQuestion` the
   words; `ConfirmDelete` takes `armed` and `onArmed` so a key can open the
   question its button does. The erase brush is now R-151's one exception.
+
+### D-390 — No icon is a character · `agreed`
+*"the reorder arrows (↑ ↓) and edit mark (✎), which are still characters: fix
+them too, standarize them too."*
+
+D-387 left them as characters and said so. Each was drawn in the font of
+wherever it sat, at that font's size, and each named itself in a native
+`title`, the one thing the design system says a tooltip never is.
+
+- **Four icons in the registry**: `move-up` and `move-down`, arrows with a
+  shaft so they are not taken for the tilt's chevrons; `edit`, a pencil; and
+  `back`, for the two buttons that went *← Back*.
+- **`IconButton`** in `@tt/ui` is a row's action drawn as an icon: the icon,
+  in a square of the quiet size, with its name as its tooltip and its
+  accessible name. The notes' and points of interest's arrows use it, and the
+  edit on a token card and on a prefab.
+- **The other stand-ins went with them.** *Travel* and *Cancel* lose their
+  tick and cross and are words, as every other pair of answers is; the
+  address's *copied* loses its tick, since the green already says it.
+- **A test reads both screens' source and `@tt/ui`** for the arrows, pencils
+  and ticks that stood in for icons, outside comments. `×` is not among them:
+  it is a delete's trigger, typography rather than an icon, and so is the `✕`
+  that marks ground no party can cross.

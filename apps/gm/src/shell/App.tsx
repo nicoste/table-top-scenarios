@@ -2210,7 +2210,8 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
               <div className="btn-grid campaign-actions">
                 <Tooltip label="Close this campaign and pick another" placement="bottom" stretch>
                   <button className="wide" onClick={() => dispatch({ kind: 'closeCampaign' })}>
-                    ← Back to main menu
+                    <GameIcon name="back" size={14} />
+                    <span>Back to main menu</span>
                   </button>
                 </Tooltip>
                 <Tooltip label="Save a copy as a new campaign" placement="bottom" stretch>

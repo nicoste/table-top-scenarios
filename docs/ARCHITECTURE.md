@@ -1782,6 +1782,10 @@ apps/host/src/
 > walked path and the march on foot, `measure` the tool and its ruler, `light`
 > any light.
 >
+> **Amended by D-390.** No icon is a character: reordering, editing and going
+> back are `move-up`, `move-down`, `edit` and `back`, and a row's action drawn
+> as an icon is an `IconButton`, whose name is its tooltip.
+>
 > **R-217b.** **A tool or a mode is a `SlotButton`**: its icon and one word, the
 > key on the console, and a tooltip when the word needs more — not a paragraph
 > in the panel.
@@ -2643,8 +2647,8 @@ apps/host/src/
 >
 > **Amended by D-381.** Because the table display is operated with a mouse and no
 > keyboard, `Compass` accepts optional `onTurn` and `onTilt` callbacks and flanks
-> the dial with clickable turn (`↺`/`↻`) and tilt (`▼`/`▲`) buttons so a mouse
-> alone can rotate and tilt the camera on both surfaces. `TABLE_CAMERA_HINT` in
+> the dial with turn and tilt buttons (`turn-ccw`, `turn-cw`, `tilt-down`,
+> `tilt-up`) so a mouse alone can rotate and tilt the camera on both surfaces. `TABLE_CAMERA_HINT` in
 > `client-core` names those mouse controls on the table, while `CAMERA_HINT` keeps
 > the keyboard legend on the console.
 >

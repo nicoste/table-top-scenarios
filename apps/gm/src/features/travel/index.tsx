@@ -129,12 +129,10 @@ export function TravelPanel({ modes, travelling, journey, onTravelling }: Travel
           )}
           <div className="btn-grid tools">
             <Tooltip label="Send them" placement="bottom" stretch>
-              <button className="on" onClick={journey.onConfirm}>
-                ✓ Travel
-              </button>
+              <button className="on" onClick={journey.onConfirm}>Travel</button>
             </Tooltip>
             <Tooltip label="Never mind — Escape" placement="bottom" stretch>
-              <button onClick={journey.onCancel}>✕ Cancel</button>
+              <button onClick={journey.onCancel}>Cancel</button>
             </Tooltip>
           </div>
         </div>
