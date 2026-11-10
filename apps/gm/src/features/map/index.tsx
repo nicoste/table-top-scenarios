@@ -11,7 +11,7 @@ import {
   MAP_MAX_HEIGHT, MAP_MIN_DEPTH, BRUSHES, isFullRange, sameRange, stepLabel,
 } from '@tt/domain';
 import type { LevelRange, Material, SwatchId } from '@tt/domain';
-import { ConfirmDelete, GameIcon, SlotButton, Tooltip } from '@tt/ui';
+import { ConfirmDelete, GameIcon, SlotButton, Tooltip, WithKeys } from '@tt/ui';
 import { LevelLadder } from '../levels/index.js';
 import { SwatchPalette } from '../swatches/index.js';
 
@@ -130,7 +130,10 @@ export function MapPanel({
         <p className="hint" style={{ margin: '0 0 8px' }}>in {placeName}</p>
         <div className="btn-grid campaign-actions">
           <Tooltip label="Back to the world map" placement="bottom" stretch>
-            <button className="wide" onClick={onLeave}>← Back to the world</button>
+            <button className="wide" onClick={onLeave}>
+              <GameIcon name="back" size={14} />
+              <span>Back to the world</span>
+            </button>
           </Tooltip>
         </div>
       </div>
@@ -146,10 +149,10 @@ export function MapPanel({
                 now — one list for everyone in the map, in the GM's order (R-208). */}
             <p className="hint" style={{ margin: '0 0 8px' }}>
               {waiting > 0
-                ? <>{waiting} to place — pick <b>Play</b> (key 3) and point at a floor; the next one is already in hand.</>
+                ? <>{waiting} to place — pick <b>Play</b> (<kbd>3</kbd>) and point at a floor; the next one is already in hand.</>
                 : party.some((member) => !member.onTable)
                   ? 'Somebody is outside the levels the table is shown, so the table does not show them.'
-                  : 'Everybody is placed. Pick Play (key 3) to move them.'}
+                  : <>Everybody is placed. Pick <b>Play</b> (<kbd>3</kbd>) to move them.</>}
             </p>
             <div className="btn-grid campaign-actions">
               <Tooltip
@@ -275,7 +278,7 @@ export function MapPanel({
             label="Props"
             hotkey="6"
             active={tool === 'props'}
-            tooltip="Place doors, bars, furniture, lights and climbs (Z/X turn) · click one to edit it, drag it to move it, Backspace removes it — key 6"
+            tooltip="Place doors, bars, furniture, lights and climbs (Z/X turn) · click one to edit it, drag it to move it, Backspace asks to remove it — key 6"
             onClick={() => onTool('props')}
           />
           <SlotButton
@@ -346,7 +349,10 @@ export function MapPanel({
         <p className="readout">{hoverLabel ?? '—'}</p>
         {/* The keys nothing else on a map names: the world says them in its
             bottom bar, but here the dock runs down over where that bar sits. */}
-        <p className="hint">1–7 tool · 8–0, −, = or [ ] brush · {CAMERA_HINT}</p>
+        <p className="hint">
+          <kbd>1</kbd>–<kbd>7</kbd> tool · <kbd>8</kbd>–<kbd>0</kbd>, <kbd>−</kbd>, <kbd>=</kbd> or <kbd>[</kbd> <kbd>]</kbd> brush
+          {' · '}<WithKeys line={CAMERA_HINT} />
+        </p>
       </div>
 
       {/* Build's and Paint's, and nobody else's (R-207). */}

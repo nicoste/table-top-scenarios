@@ -240,6 +240,14 @@ button.quiet.danger-trigger:hover:not(:disabled) {
 
 .notes .note-actions button { min-height: var(--ui-control-sm); padding: 1px 6px; font-size: 11px; }
 
+/* A row's action drawn as an icon (IconButton, D-390): a square of the quiet
+   size with the icon in its middle. After the row rules above, which it
+   matches in weight, so it keeps its square in a note's row too. */
+button.quiet.icon {
+  width: var(--ui-control-sm); height: var(--ui-control-sm); min-height: var(--ui-control-sm);
+  padding: 0; display: inline-grid; place-items: center; flex: none;
+}
+
 .palette { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
 
 /*
@@ -273,6 +281,15 @@ button.quiet.danger-trigger:hover:not(:disabled) {
 }
 
 .hint b, .hint strong { color: var(--ink); font-weight: 600; }
+
+/* A key named in words (D-388): drawn as a tool slot's number is, bold, in
+   the console's monospace and the key colour, so "Escape" reads as the key and
+   not as a word of the sentence. */
+kbd {
+  font: 700 var(--ui-text-meta) var(--ui-font);
+  color: var(--ui-key);
+  white-space: nowrap;
+}
 
 /* Standardized control / field label (R-217). */
 .lbl {

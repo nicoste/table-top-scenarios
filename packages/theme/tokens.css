@@ -37,6 +37,10 @@
   --edge: color-mix(in srgb, var(--ui-main) 70%, var(--ui-ink));
   --ink: var(--ui-ink);
   --dim: color-mix(in srgb, var(--ui-ink) 58%, var(--ui-main));
+  /* A key named on screen: a tool slot's number, and a <kbd> in a panel's
+     words (D-388). Lighter than --dim, which read 4:1 on a slot and 2.9:1 on
+     one under the pointer; this reads 6.8:1 and 4.9:1. */
+  --ui-key: color-mix(in srgb, var(--ui-ink) 80%, var(--ui-main));
   --accent: var(--ui-highlight);
   --ok: var(--ui-ok);
 

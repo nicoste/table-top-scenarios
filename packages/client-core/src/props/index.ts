@@ -14,6 +14,7 @@ import {
   whyNotMove, whyNotPut,
 } from '@tt/domain';
 import type { FacePick, PropGhostDrawn } from '@tt/render';
+import type { HelpLine } from '../help/index.js';
 
 /** The prop in hand: which catalogue entry, turned how, painted with what, and a light's flame. */
 export interface PropHand {
@@ -270,6 +271,33 @@ export function propPrompt(type: PropType | null, at: BlockCoord | null, why: st
   if (!at) return type.hangs ? `Hanging ${one} — point at a wall.` : `Placing ${one} — point at where it should stand.`;
   if (why) return `${type.name}: ${why}.`;
   return type.hangs ? `Click to hang ${one} here.` : `Click to place ${one} here. Z / X turn it.`;
+}
+
+/** What a key does to the prop selected (D-389). */
+export type PropKeyAnswer = 'ask' | 'remove' | 'keep';
+
+/**
+ * Backspace — or Delete, where there is one — asks before the prop selected
+ * goes, as its Remove button does; asked, a second Backspace or Enter removes
+ * it, and Escape keeps it (D-330, D-389). A key held down asks once and never
+ * answers its own question: its repeats are not a second press.
+ */
+export function propKey(code: string, asking: boolean, repeat = false): PropKeyAnswer | null {
+  const remove = code === 'Backspace' || code === 'Delete';
+  if (!asking) return remove ? 'ask' : null;
+  if (repeat) return null;
+  if (remove || code === 'Enter' || code === 'NumpadEnter') return 'remove';
+  if (code === 'Escape') return 'keep';
+  return null;
+}
+
+/** The question a key asks, with its answers as keys (D-388, D-389). */
+export function removeQuestion(type: PropType | null): HelpLine {
+  const it = type?.plural ? 'them' : 'it';
+  return [
+    `Remove the ${type ? type.name.toLowerCase() : 'prop'}? `,
+    { key: 'Backspace' }, ' or ', { key: 'Enter' }, ` removes ${it}, `, { key: 'Escape' }, ` keeps ${it}.`,
+  ];
 }
 
 /**

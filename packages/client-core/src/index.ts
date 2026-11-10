@@ -55,9 +55,9 @@ export type { PrefabPlacing, PrefabPreview, Capture } from './prefabs/index.js';
 export {
   EMPTY_HAND, takeProp, turnHand, propAim, propWall, propWords, propPreview, placePropIntent, propPrompt,
   toggleIntent, toggleLabel, paintPropIntent, paintPropPrompt, propMovePreview, propMoveIntent, propMovePrompt, turnDrag,
-  propHoverLabel, placedTurn,
+  propHoverLabel, placedTurn, propKey, removeQuestion,
 } from './props/index.js';
-export type { PropHand, PropPreview, PropDrag, PropMovePreview } from './props/index.js';
+export type { PropHand, PropPreview, PropDrag, PropMovePreview, PropKeyAnswer } from './props/index.js';
 
 export {
   MEASURE_START, chooseMeasure, chooseAreaColour, measureCleared, measurePress, measureDrag, measureRelease,
@@ -69,6 +69,8 @@ export { FRAME_WINDOW, keepRecent, summarise, rate } from './metrics/index.js';
 export type { Frames } from './metrics/index.js';
 
 export { cameraAction, wheelZoom, CAMERA_HINT, TABLE_CAMERA_HINT } from './camera/index.js';
+export { said } from './help/index.js';
+export type { HelpLine } from './help/index.js';
 export type { CameraAction } from './camera/index.js';
 
 export {

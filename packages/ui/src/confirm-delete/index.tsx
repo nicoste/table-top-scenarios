@@ -29,6 +29,13 @@ export interface ConfirmDeleteProps {
    * elements either way and keep whatever is being typed in them.
    */
   disabled?: boolean;
+  /**
+   * Whether it is asking, when the caller keeps that: a key can ask the same
+   * question, and answer it (D-389). Left out, the component keeps it itself.
+   */
+  armed?: boolean;
+  /** Told when the question opens or closes, by a click here. */
+  onArmed?: (armed: boolean) => void;
   onConfirm: () => void;
   /**
    * The row's other actions, to the left of the trigger.
@@ -42,9 +49,15 @@ export interface ConfirmDeleteProps {
 }
 
 export function ConfirmDelete({
-  label, triggerLabel = '×', confirmLabel = 'Delete', placement = 'left', disabled = false, onConfirm, children,
+  label, triggerLabel = '×', confirmLabel = 'Delete', placement = 'left', disabled = false,
+  armed: held, onArmed, onConfirm, children,
 }: ConfirmDeleteProps) {
-  const [armed, setArmed] = useState(false);
+  const [own, setOwn] = useState(false);
+  const armed = held ?? own;
+  const setArmed = (next: boolean) => {
+    if (held === undefined) setOwn(next);
+    onArmed?.(next);
+  };
 
   if (!armed) {
     return (

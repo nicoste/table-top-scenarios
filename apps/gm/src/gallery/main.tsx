@@ -11,7 +11,7 @@ import { StrictMode, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { browserIsEnough } from '@tt/client-core';
 import {
-  BrandLogo, ColourInput, Compass, ConfirmDelete, DraftInput, GameIcon, GLYPHS, PictureInput, SlotButton,
+  BrandLogo, ColourInput, Compass, ConfirmDelete, DraftInput, GameIcon, GLYPHS, IconButton, PictureInput, SlotButton,
   THEME, Tooltip,
 } from '@tt/ui';
 import type { GameIconName } from '@tt/ui';
@@ -121,6 +121,13 @@ function Gallery() {
             <button className="quiet danger-trigger">×</button>
             <button disabled>Disabled</button>
           </div>
+          <p className="hint">A row&apos;s actions drawn as icons, each with its name (D-390):</p>
+          <div style={ROW}>
+            <span style={{ flex: 1 }}>The old bridge</span>
+            <IconButton icon="move-up" label="Move up" disabled onClick={() => undefined} />
+            <IconButton icon="move-down" label="Move down" onClick={() => undefined} />
+            <IconButton icon="edit" label="Edit The old bridge" onClick={() => undefined} />
+          </div>
           <p className="hint">A delete always asks first (R-151):</p>
           <div style={ROW}>
             <span style={{ flex: 1 }}>Sphere 1</span>
@@ -147,6 +154,9 @@ function Gallery() {
           </div>
           <p className="readout">7.4 · sees 12</p>
           <p className="hint">A hint: secondary words, with <b>key terms</b> in ink.</p>
+          <p className="hint">
+            A key named in words is a <kbd>kbd</kbd>, drawn as a slot&apos;s number is: <kbd>Escape</kbd> keeps it.
+          </p>
           <p className="warn">A warning, in the highlight.</p>
         </Section>
 

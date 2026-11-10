@@ -8,6 +8,8 @@
 // Tools are *not* here. Those differ per surface and per seat by design
 // (R-148), and the table has none at all.
 
+import type { HelpLine } from '../help/index.js';
+
 export type CameraAction =
   | { readonly kind: 'turn'; readonly steps: number }
   | { readonly kind: 'tilt'; readonly steps: number };
@@ -58,12 +60,15 @@ export function wheelZoom(deltaY: number): number {
 /**
  * The one line of help the console shows, matching `cameraAction`.
  */
-export const CAMERA_HINT = `${keysFor('turn')} turn · ${keysFor('tilt')} tilt · right-drag pan · wheel zoom`;
+export const CAMERA_HINT: HelpLine = [
+  { key: keysFor('turn') }, ' turn · ', { key: keysFor('tilt') }, ' tilt · right-drag pan · wheel zoom',
+];
 
 /**
  * The table display's camera legend (D-381). The table is usually run with a
  * mouse alone, so the compass comes first, but it answers to the same keys and
  * says so.
  */
-export const TABLE_CAMERA_HINT =
-  `Compass, or ${keysFor('turn')} turn and ${keysFor('tilt')} tilt · right-drag pan · wheel zoom`;
+export const TABLE_CAMERA_HINT: HelpLine = [
+  'Compass, or ', { key: keysFor('turn') }, ' turn and ', { key: keysFor('tilt') }, ' tilt · right-drag pan · wheel zoom',
+];

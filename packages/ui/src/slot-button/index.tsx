@@ -69,7 +69,8 @@ const HOTKEY_STYLE: CSSProperties = {
   fontSize: 10.5,
   lineHeight: 1,
   fontWeight: 700,
-  color: THEME.dim,
+  // The key colour (D-388): --dim was too faint for a number this small.
+  color: THEME.key,
 };
 
 const HOTKEY_ACTIVE_STYLE: CSSProperties = {

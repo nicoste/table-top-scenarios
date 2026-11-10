@@ -8424,6 +8424,7 @@ does what the panel's Remove button does. No confirmation: removing a prop is
 building, and one undo brings it back (R-212). A field being typed in keeps
 its own Backspace; the console's shortcuts never see a key meant for a field.
 **Amended by D-384**: the panel's Remove asks now; Backspace still does not.
+**Amended by D-389**: Backspace asks too; a second Backspace, or Enter, answers.
 
 ### D-331 — The Party's view forgets props with the room · `agreed`
 *"The party remembers items after clearing what they have seen."*
@@ -10021,6 +10022,7 @@ whole row, name and picture with it, so the question offered *Remove* and
 
 What still takes one action is a key or a stroke: Backspace on a prop, and the
 erase brush, R-151's own exception.
+**Amended by D-389**: Backspace asks now; the erase brush is the one left.
 
 ### D-385 — The review's smaller findings, settled · `agreed`
 *"1. a. Fix it. 1. b. That's ok. 1. c. Fix it. 2. Fix all."*
@@ -10125,3 +10127,71 @@ from the code in its colours, its token names and its icons.
   of its old length. A test holds it to the code: every token it names is in
   tokens.css, every class it names is styled, its icon table is exactly the
   registry, and the gallery draws from both.
+
+### D-388 — A key on screen has one colour · `agreed`
+*"The key-number contrast: change it, estandarize the color you will use for
+that."*
+
+The number on a tool slot was `--dim`: 4:1 on the slot, and 2.9:1 on one under
+the pointer, against the 4.5:1 that text this small needs. Keys named in a
+panel's words were in no colour of their own at all: *(key 3)* was dim, *⇧
+shift* was bold ink, *Escape* was plain.
+
+- **`--ui-key`**, mixed from the ink and the main colour, is the colour of a
+  key wherever one is shown: 6.8:1 on a slot, 4.9:1 under the pointer, more on
+  a panel. A test holds it to 4.5:1 on all four grounds it is drawn on.
+- **A key named in words is a `<kbd>`**, drawn as a slot's number is: bold, in
+  the monospace, in `--ui-key`. The hints that name a key use it, and so do the
+  two legends — the console's bottom bar and a map's, and the table's.
+- **The legends are lines of words and keys** (`HelpLine` in `client-core`),
+  and `WithKeys` in `@tt/ui` draws one. The camera's keys still come from the
+  table `cameraAction` reads (D-385), and now say they are keys.
+- **A tooltip keeps its key as a word** — *— key 4* — since it is a sentence
+  in ink already, and reads.
+
+### D-389 — Backspace asks before a prop goes · `agreed`
+*"Backspace removing a prop without asking: add a prompt and associate a second
+backspace to confirm deletion (or enter), and escape to cancel."*
+
+D-330 had Backspace remove the prop selected at once, and D-384 kept it so: a
+key pressed on purpose was taken for the answer. It is a key pressed near
+others, though, and a GM who meant a field and missed it lost the prop.
+
+- **The first Backspace — or Delete — asks.** The panel's own question opens,
+  *Remove* and *Keep*, as if its Remove button had been clicked; under it the
+  question is said with its keys, and the readout says it too, where the GM is
+  looking. The prop is framed in the red a prop that cannot go there gets.
+- **A second Backspace, or Enter, removes it. Escape keeps it.** The buttons
+  answer as well, and either way opens or closes the one question: the button
+  asked, Backspace can answer, and the other way round.
+- **A key held down asks once.** Its repeats are not a second press, so
+  holding Backspace never answers its own question.
+- **Enter on a focused button is the button's**: on *Keep*, it keeps.
+- **The question is about one prop.** Choosing another, or none, or another
+  tool, closes it.
+- `propKey` in `client-core` is what each key does, and `removeQuestion` the
+  words; `ConfirmDelete` takes `armed` and `onArmed` so a key can open the
+  question its button does. The erase brush is now R-151's one exception.
+
+### D-390 — No icon is a character · `agreed`
+*"the reorder arrows (↑ ↓) and edit mark (✎), which are still characters: fix
+them too, standarize them too."*
+
+D-387 left them as characters and said so. Each was drawn in the font of
+wherever it sat, at that font's size, and each named itself in a native
+`title`, the one thing the design system says a tooltip never is.
+
+- **Four icons in the registry**: `move-up` and `move-down`, arrows with a
+  shaft so they are not taken for the tilt's chevrons; `edit`, a pencil; and
+  `back`, for the two buttons that went *← Back*.
+- **`IconButton`** in `@tt/ui` is a row's action drawn as an icon: the icon,
+  in a square of the quiet size, with its name as its tooltip and its
+  accessible name. The notes' and points of interest's arrows use it, and the
+  edit on a token card and on a prefab.
+- **The other stand-ins went with them.** *Travel* and *Cancel* lose their
+  tick and cross and are words, as every other pair of answers is; the
+  address's *copied* loses its tick, since the green already says it.
+- **A test reads both screens' source and `@tt/ui`** for the arrows, pencils
+  and ticks that stood in for icons, outside comments. `×` is not among them:
+  it is a delete's trigger, typography rather than an icon, and so is the `✕`
+  that marks ground no party can cross.

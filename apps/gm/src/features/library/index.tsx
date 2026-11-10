@@ -12,7 +12,7 @@ import { imageUrl } from '@tt/protocol';
 import { cleanSheetUrl, searchLibrary, tagsFromText } from '@tt/domain';
 import type { ImageId, TokenTemplate } from '@tt/domain';
 import { uploadPicture } from '@tt/client-core';
-import { PictureInput } from '@tt/ui';
+import { IconButton, PictureInput } from '@tt/ui';
 import { PictureCrop } from '../picture-crop/index.js';
 
 /** A silver card with no picture is grey (D-307), here as on the table. */
@@ -222,14 +222,12 @@ export function LibraryPanel({ library, chosen, onChoose, dispatch }: Props) {
                   {entry.tags.length > 0 && <span className="tags">{entry.tags.join(' · ')}</span>}
                 </span>
               </button>
-              <button
-                className="quiet"
-                title={`Edit ${entry.name}`}
-                aria-label={`Edit ${entry.name}`}
+              <IconButton
+                icon="edit"
+                label={`Edit ${entry.name}`}
+                placement="left"
                 onClick={() => open(library.find((e) => e.id === entry.id) ?? null)}
-              >
-                ✎
-              </button>
+              />
             </li>
           ))}
         </ul>

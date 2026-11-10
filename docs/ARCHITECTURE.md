@@ -1773,11 +1773,18 @@ apps/host/src/
 > through `THEME`, and the design gallery (`/gm/gallery.html`) through the same
 > stylesheets the screens load.
 >
+> **Amended by D-388.** A key shown on screen — a slot's number, a `<kbd>` in
+> words — is in `--ui-key`, and nothing else is.
+>
 > **R-217a.** **One concept, one icon, in `GameIcon`.** Monochrome, in the
 > current colour, drawn from `GLYPHS`. A second drawing of a concept the
 > registry has — in a panel, a shell or the gallery — is a bug: `walk` is the
 > walked path and the march on foot, `measure` the tool and its ruler, `light`
 > any light.
+>
+> **Amended by D-390.** No icon is a character: reordering, editing and going
+> back are `move-up`, `move-down`, `edit` and `back`, and a row's action drawn
+> as an icon is an `IconButton`, whose name is its tooltip.
 >
 > **R-217b.** **A tool or a mode is a `SlotButton`**: its icon and one word, the
 > key on the console, and a tooltip when the word needs more — not a paragraph
@@ -2290,6 +2297,10 @@ apps/host/src/
 > asks inside `PictureInput`, with *Keep* where its badge was. What stays one
 > action is a key or a stroke: Backspace on a selected prop (D-330), and the
 > erase brush above.
+>
+> **Amended by D-389.** Backspace asks as well: the first press opens the
+> panel's question, and a second, or Enter, answers it; Escape keeps. The erase
+> brush is the one exception left.
 
 ---
 
@@ -2457,8 +2468,9 @@ apps/host/src/
 > - **The prop in hand is its own ghost** (D-351): the prop itself,
 >   see-through, turned as it will stand and red where it cannot, its box
 >   framed — so which way it faces shows before the click.
-> - **Backspace removes the prop selected** (D-330), or Delete where there is
->   one; the Remove button does the same, and one undo brings it back.
+> - **Backspace asks to remove the prop selected** (D-330, D-389), or Delete
+>   where there is one, as the Remove button does; a second Backspace or Enter
+>   removes it, Escape keeps it, and one undo brings it back.
 > - **The GM's, every part of it.** In play a door opens and shuts with a
 >   **Play** click; never from the table (D-328). A door is not shut on
 >   somebody in the doorway.
@@ -2635,8 +2647,8 @@ apps/host/src/
 >
 > **Amended by D-381.** Because the table display is operated with a mouse and no
 > keyboard, `Compass` accepts optional `onTurn` and `onTilt` callbacks and flanks
-> the dial with clickable turn (`↺`/`↻`) and tilt (`▼`/`▲`) buttons so a mouse
-> alone can rotate and tilt the camera on both surfaces. `TABLE_CAMERA_HINT` in
+> the dial with turn and tilt buttons (`turn-ccw`, `turn-cw`, `tilt-down`,
+> `tilt-up`) so a mouse alone can rotate and tilt the camera on both surfaces. `TABLE_CAMERA_HINT` in
 > `client-core` names those mouse controls on the table, while `CAMERA_HINT` keeps
 > the keyboard legend on the console.
 >

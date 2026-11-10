@@ -12,7 +12,7 @@ import type { Prefab } from '@tt/domain';
 import { searchLibrary, tagsFromText } from '@tt/domain';
 import type { Capture, PrefabPlacing } from '@tt/client-core';
 import { NO_CAPTURE, captureBox, describeBox, mirrorPlacing, saveIntent, turnPlacing } from '@tt/client-core';
-import { GameIcon, Tooltip } from '@tt/ui';
+import { GameIcon, IconButton, Tooltip } from '@tt/ui';
 
 export type PrefabMode = 'place' | 'capture';
 
@@ -149,9 +149,9 @@ export function PrefabsPanel({
               Three clicks: <b>a corner</b> — the outlined cube is in; <b>the opposite
               corner of the area</b>, on that corner&apos;s level; then <b>the top</b> —
               point at the highest block of what you are saving, the top of the tree,
-              and click. Hold <b>⇧ shift</b> on the first click to take the block itself
+              and click. Hold <kbd>⇧ shift</kbd> on the first click to take the block itself
               rather than the cube in front of it. Cut the <b>levels</b> to reach inside
-              a building; <b>Escape</b> steps back a click.
+              a building; <kbd>Escape</kbd> steps back a click.
             </p>
           ) : typeof captured === 'string' ? (
             <p className="warn">That box cannot be saved: {captured}.</p>
@@ -223,14 +223,12 @@ export function PrefabsPanel({
                       </span>
                     </span>
                   </button>
-                  <button
-                    className="quiet"
-                    title={`Edit ${prefab.name}`}
-                    aria-label={`Edit ${prefab.name}`}
+                  <IconButton
+                    icon="edit"
+                    label={`Edit ${prefab.name}`}
+                    placement="left"
                     onClick={() => { setDeleting(false); setEditing({ id: prefab.id, name: prefab.name, tags: prefab.tags.join(' ') }); }}
-                  >
-                    ✎
-                  </button>
+                  />
                 </li>
               ))}
             </ul>

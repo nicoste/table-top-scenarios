@@ -11,6 +11,7 @@ export const THEME = {
   highlight: v('--ui-highlight', '#f5a524'),
   ink: v('--ui-ink', '#e6e9ef'),
   dim: v('--dim', '#8f939a'),
+  key: v('--ui-key', '#bdc0c6'),
   bg: v('--bg', '#101217'),
   radius: v('--ui-radius', '2px'),
   font: v('--ui-font', 'ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, monospace'),

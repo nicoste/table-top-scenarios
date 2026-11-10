@@ -2,7 +2,7 @@
 
 How the two screens look, and where each part of that lives. The rules are
 R-217 to R-217c in [ARCHITECTURE.md](ARCHITECTURE.md); the reasons are D-381,
-D-383, D-386 and D-387.
+D-383, D-386, D-387, D-388, D-389 and D-390.
 
 **To see it, start the host and open `/gm/gallery.html`.** Every part below is
 drawn there by the real components with the real stylesheets, and three
@@ -48,6 +48,10 @@ Mixed from those: `--bg`, `--panel`, `--edge`, `--ink`, `--dim`, `--accent` and
 `--ui-slot-shadow`, and the chosen slot's `--ui-slot-active-bg`,
 `--ui-slot-active-border`, `--ui-slot-active-ink`, `--ui-slot-active-shadow`.
 
+**`--ui-key` is the colour of a key**, wherever one is shown: a tool slot's
+number, and a `<kbd>` in words (D-388). Lighter than `--dim`, so it reads at
+4.5:1 on a slot under the pointer; a test holds it there.
+
 **A colour typed into a shell or a component is a bug** (R-217), with two
 exceptions. Black and white for shading — bevels, shadows, outlines — since
 they shade any theme the same. And a picture of a real thing: the paper of a
@@ -86,6 +90,11 @@ and `--ui-body-font` for anything read as words.
 
 Distances are bare numbers: *sees 12*, *7.4* (D-316).
 
+**A key named in words is a `<kbd>`** (D-388): bold, in `--ui-font`, in
+`--ui-key` — what a slot's number looks like. *Pick **Play** (3)*, *Escape puts
+it down*, and the legends along the foot of both screens. A tooltip keeps its
+key as a word: *— key 4*.
+
 ---
 
 ## Icons
@@ -123,9 +132,15 @@ colour, square ends. One concept has one icon on both screens (R-217a), and
 | `eye-open` | shown to the players |
 | `eye-hidden` | hidden from them |
 | `light` | a light, carried or placed: the flame by a row on stage, filled while lit |
+| `move-up` | a row up the list: a note, a point of interest |
+| `move-down` | a row down the list |
+| `edit` | open a card or a prefab to change it |
+| `back` | out to where you came from: the main menu, the world |
 
-The arrows that reorder a list (↑ ↓) and the edit mark (✎) are still
-characters.
+**No icon is a character** (D-390). The arrows, the pencil and the ticks that
+stood in for these are gone, and a test reads both screens' source so they do
+not come back. `×` stays: it is a delete's trigger, typography rather than an
+icon, as the `✕` of ground that cannot be crossed is.
 
 ---
 
@@ -136,7 +151,8 @@ characters.
 - **`ConfirmDelete`** (R-151): `×` arms it, a second click commits, and *Keep*
   lands where the `×` was. It hides the row's other controls while it asks;
   when that hides the name too, the answer says it — *Remove Aldra* (D-384).
-  `disabled` shows the `×` greyed when there is nothing it may delete yet.
+  `disabled` shows the `×` greyed when there is nothing it may delete yet;
+  `armed` and `onArmed` let a key open the same question (D-389).
 - **`PictureInput`**: a card's picture. The badge on its corner asks before the
   picture goes, with *Keep* where the badge was.
 - **`Compass`**: where north is, with turn and tilt buttons for a mouse alone.
@@ -144,6 +160,11 @@ characters.
 - **`Tooltip`**: always, never a native `title`. It opens on hover and on focus.
 - **`BrandLogo`**: the emblem and the name; `statusLabel` only on the console's
   menu.
+- **`IconButton`** (D-390): a row's action drawn as an icon — move up, move
+  down, edit. Its name is its tooltip and its accessible name, so an icon is
+  never left to say what it does by itself.
+- **`WithKeys`**: a line of words with keys in it — a `HelpLine` from
+  `client-core`, such as the camera's legend — with each key a `<kbd>`.
 
 ---
 
@@ -161,7 +182,8 @@ repeating thing in its own well (`.member`, `.stage-list li`, `.area-list li`,
 | `button` | an action that stands alone: *Open map*, *+ Member* |
 | `.on` | the chosen one of several |
 | `.danger` | the second click of a delete |
-| `.quiet` | an action inside a row: reorder, the eye, edit |
+| `.quiet` | an action inside a row: the eye, *Open map* |
+| `.quiet.icon` | an `IconButton`: reorder, edit |
 | `.quiet.danger-trigger` | a row's `×` |
 | `.plain` | text with no frame |
 
@@ -169,7 +191,9 @@ repeating thing in its own well (`.member`, `.stage-list li`, `.area-list li`,
 several fields; a field and an *Add* button in a row when a name is enough.
 
 **Deleting:** every delete button asks (R-151, D-384) — a row's `×`, or a named
-word in a footer (*Delete*, *Forget*, *Remove*) in a `.row.asks`.
+word in a footer (*Delete*, *Forget*, *Remove*) in a `.row.asks` — and so does a
+key: Backspace on a prop opens its *Remove*, and a second Backspace or Enter
+answers it, Escape keeps (D-389).
 
 **Showing and hiding:** `eye-open` and `eye-hidden`, never characters.
 

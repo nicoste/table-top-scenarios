@@ -111,7 +111,7 @@ export function OnStagePanel({ party, silver, order, library, placeId, poiId, di
       <h2>On stage</h2>
       {rows.length === 0 ? (
         <p className="hint">
-          Nobody here yet. Bring the party in, or pick <b>Spawn</b> (key 4) and a
+          Nobody here yet. Bring the party in, or pick <b>Spawn</b> (<kbd>4</kbd>) and a
           token from the library, then click floors.
         </p>
       ) : (

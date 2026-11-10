@@ -85,3 +85,33 @@ describe('THEME, the one place this package reads the theme', () => {
     }
   });
 });
+
+/** WCAG's relative luminance of an opaque colour. */
+function luminance([r, g, b]: Rgba): number {
+  const lin = (c: number) => {
+    const s = c / 255;
+    return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+}
+
+const contrast = (a: string, b: string) => {
+  const [hi, lo] = [luminance(colour(defined.get(a)!)), luminance(colour(defined.get(b)!))].sort((x, y) => y - x);
+  return (hi! + 0.05) / (lo! + 0.05);
+};
+
+describe('a key named on screen (D-388)', () => {
+  it('reads at 4.5:1 on a slot, on one under the pointer, and on a panel', () => {
+    // Small text: a slot's number is 10.5px, a <kbd> 11px.
+    for (const ground of ['--ui-slot-bg', '--ui-slot-hover-bg', '--panel', '--bg']) {
+      expect(contrast('--ui-key', ground), ground).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it('is what the slot number is drawn in, and not the dim it replaced', () => {
+    const slot = readFileSync(join(HERE, '../src/slot-button/index.tsx'), 'utf8');
+    const hotkey = /const HOTKEY_STYLE[^}]*}/s.exec(slot)![0];
+    expect(hotkey).toContain('THEME.key');
+    expect(contrast('--dim', '--ui-slot-hover-bg')).toBeLessThan(4.5);
+  });
+});

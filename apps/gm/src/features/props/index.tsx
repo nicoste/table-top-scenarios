@@ -16,8 +16,8 @@ import type { Intent } from '@tt/protocol';
 import type { Opened, Prop, PropFlame, PropType, SwatchId } from '@tt/domain';
 import { PROP_TYPES, flameOf, paintOf, propType, reachOf, statesOf, swatchColour, swatchName, turned } from '@tt/domain';
 import type { PropHand } from '@tt/client-core';
-import { takeProp, turnHand } from '@tt/client-core';
-import { ConfirmDelete, DraftInput, GameIcon, Tooltip } from '@tt/ui';
+import { removeQuestion, takeProp, turnHand } from '@tt/client-core';
+import { ConfirmDelete, DraftInput, GameIcon, Tooltip, WithKeys } from '@tt/ui';
 import { isReach } from '../carried/index.js';
 import { GmNote } from '../note/index.js';
 
@@ -27,6 +27,9 @@ interface Props {
   /** The prop clicked on the map, when nothing is in hand. */
   selected: Prop | null;
   onSelect: (id: string | null) => void;
+  /** Asking whether to remove it: by Backspace, or by its Remove button (D-389). */
+  asking: boolean;
+  onAsking: (asking: boolean) => void;
   opened: Opened;
   placeId: string;
   poiId: string;
@@ -109,7 +112,9 @@ function Flames({ flames, chosen, onPick }: { flames: readonly PropFlame[]; chos
   );
 }
 
-export function PropsPanel({ hand, onHand, selected, onSelect, opened, placeId, poiId, swatch, dispatch }: Props) {
+export function PropsPanel({
+  hand, onHand, selected, onSelect, asking, onAsking, opened, placeId, poiId, swatch, dispatch,
+}: Props) {
   const inHand = hand.type ? propType(hand.type) : null;
   const where = { placeId, poiId };
   const selectedType = selected ? propType(selected.type) : null;
@@ -190,12 +195,12 @@ export function PropsPanel({ hand, onHand, selected, onSelect, opened, placeId, 
           )}
           <p className="hint">
             {rulesOf(selectedType)}. Any material: pick it in <b>Paint</b> and click the prop.
-            Backspace removes it; Escape lets go of it.
+            {' '}<kbd>Backspace</kbd> asks to remove it; <kbd>Escape</kbd> lets go of it.
           </p>
           {/*
-            The button asks, as every delete button does (R-151). Backspace
-            does not: a key pressed on purpose is the answer already, and one
-            undo brings the prop back (D-330).
+            The button asks, as every delete button does (R-151), and so does
+            Backspace: the same question, answered with a click or a key
+            (D-389). One undo still brings the prop back.
           */}
           <div className="row asks">
             <ConfirmDelete
@@ -203,11 +208,14 @@ export function PropsPanel({ hand, onHand, selected, onSelect, opened, placeId, 
               triggerLabel="Remove"
               confirmLabel="Remove"
               placement="bottom"
+              armed={asking}
+              onArmed={onAsking}
               onConfirm={() => { dispatch({ kind: 'removeProp', ...where, id: selected.id }); onSelect(null); }}
             >
               <span className="hint grow">One undo brings it back.</span>
             </ConfirmDelete>
           </div>
+          {asking && <p className="hint" role="status"><WithKeys line={removeQuestion(selectedType)} /></p>}
         </div>
       )}
 
@@ -270,10 +278,13 @@ export function PropsPanel({ hand, onHand, selected, onSelect, opened, placeId, 
           <p className="hint">
             {inHand.hangs ? 'Point at a wall; it hangs facing out. ' : ''}
             {inHand.dangles ? 'Or under a ledge or a beam, to hang it from there. ' : ''}
-            {inHand.turnsToWall
-              ? `Point at the side of a wall to ${inHand.climbable ? 'set it against it' : 'climb toward it'}, or at a floor to turn it with Z / X. `
-              : ''}
-            One per click. Escape puts it down.
+            {inHand.turnsToWall && (
+              <>
+                Point at the side of a wall to {inHand.climbable ? 'set it against it' : 'climb toward it'}, or
+                at a floor to turn it with <kbd>Z</kbd> / <kbd>X</kbd>.{' '}
+              </>
+            )}
+            One per click. <kbd>Escape</kbd> puts it down.
           </p>
         </>
       ) : !selected && (
