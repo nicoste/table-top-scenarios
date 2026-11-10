@@ -23,6 +23,14 @@ export interface TooltipProps {
    * is meant to fill its row.
    */
   stretch?: boolean;
+  /**
+   * Wrap the child in no box at all: it keeps its exact place in its parent's
+   * layout, and the bubble is placed against the child itself. For a child its
+   * parent positions — absolutely, as the ladder's handle and a picture's clear
+   * badge are, or as an item of the parent's grid — where a wrapper would be a
+   * box of its own in the way (R-110).
+   */
+  inPlace?: boolean;
   children: ReactNode;
 }
 
@@ -93,7 +101,10 @@ function position(anchor: Box, bubble: Box, preferred: Placement): { left: numbe
  * ancestor that scrolls or clips, and the panels this is used in do both — so an
  * in-place bubble is clipped to whichever panel it sits in.
  */
-export function Tooltip({ label, placement = 'top', stretch = false, children }: TooltipProps) {
+/** No box of its own: what `inPlace` wraps with. */
+const BOXLESS: CSSProperties = { display: 'contents' };
+
+export function Tooltip({ label, placement = 'top', stretch = false, inPlace = false, children }: TooltipProps) {
   const [open, setOpen] = useState(false);
   const [at, setAt] = useState<{ left: number; top: number } | null>(null);
   const id = useId();
@@ -101,11 +112,13 @@ export function Tooltip({ label, placement = 'top', stretch = false, children }:
   const bubbleRef = useRef<HTMLSpanElement | null>(null);
 
   const reposition = useCallback(() => {
-    const anchor = anchorRef.current?.getBoundingClientRect();
+    // A wrapper with no box measures nothing; the child it wraps is the anchor.
+    const anchor = (inPlace ? anchorRef.current?.firstElementChild?.firstElementChild : anchorRef.current)
+      ?.getBoundingClientRect();
     const bubble = bubbleRef.current?.getBoundingClientRect();
     if (!anchor || !bubble) return;
     setAt(position(anchor, bubble, placement));
-  }, [placement]);
+  }, [placement, inPlace]);
 
   // Before paint, so the bubble is never seen at its unpositioned spot.
   useLayoutEffect(() => {
@@ -132,10 +145,12 @@ export function Tooltip({ label, placement = 'top', stretch = false, children }:
     <span
       ref={anchorRef}
       style={
-        stretch
-          // Both, so one flag works in a flex row and a block column alike.
-          ? { position: 'relative', display: 'flex', flex: 1, width: '100%', minWidth: 0 }
-          : { position: 'relative', display: 'inline-flex' }
+        inPlace
+          ? BOXLESS
+          : stretch
+            // Both, so one flag works in a flex row and a block column alike.
+            ? { position: 'relative', display: 'flex', flex: 1, width: '100%', minWidth: 0 }
+            : { position: 'relative', display: 'inline-flex' }
       }
       onMouseEnter={show}
       onMouseLeave={hide}
@@ -150,7 +165,7 @@ export function Tooltip({ label, placement = 'top', stretch = false, children }:
       */}
       <span
         aria-describedby={open && label ? id : undefined}
-        style={stretch ? { display: 'flex', flex: 1, minWidth: 0 } : { display: 'inline-flex' }}
+        style={inPlace ? BOXLESS : stretch ? { display: 'flex', flex: 1, minWidth: 0 } : { display: 'inline-flex' }}
       >
         {children}
       </span>

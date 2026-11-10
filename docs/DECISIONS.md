@@ -10195,3 +10195,29 @@ wherever it sat, at that font's size, and each named itself in a native
   and ticks that stood in for icons, outside comments. `×` is not among them:
   it is a delete's trigger, typography rather than an icon, and so is the `✕`
   that marks ground no party can cross.
+
+### D-391 — The last native titles, and tests that read the code as code · `agreed`
+*"Do this task here: “Replace the remaining native titles with Tooltip”"*
+
+D-390 took the native `title` off the arrows and the pencils. Six were left,
+against R-110: a note's line, the link to a token's sheet, the ladder's handle,
+a card's picture and the badge that clears it, and the size of an area on the
+table.
+
+- **Each is a `Tooltip` now**, with the words its title had.
+- **`inPlace`**: a `Tooltip` wraps its child in two spans, and three of these
+  are placed by their parent — the ladder's handle and a picture's badge
+  absolutely, a note's line across its row. A wrapper there is a box in the
+  way: it became a third row of the ladder's rail, and the corner a badge was
+  placed against. `inPlace` gives both spans no box (`display: contents`) and
+  places the bubble against the child itself, so the layout is what it was.
+  All six use it.
+- **The table's size field** was styled as a direct child of its row; it is
+  styled as a descendant, since it sits inside the tooltip now.
+- **A test reads both screens and `@tt/ui` for a native `title`.** It reads the
+  source with TypeScript's own parser, as does D-390's test for characters
+  standing in for icons, now: matched with a pattern, `accept="image/*"` was
+  taken for the start of a comment, and the code after it went unread — which
+  is how the picture badge's title hid from the first draft of this test.
+  Components whose own prop is a `title` — a crop dialog's heading, a gallery
+  section's — are named, and allowed.

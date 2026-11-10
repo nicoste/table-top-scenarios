@@ -2,7 +2,7 @@
 
 How the two screens look, and where each part of that lives. The rules are
 R-217 to R-217c in [ARCHITECTURE.md](ARCHITECTURE.md); the reasons are D-381,
-D-383, D-386, D-387, D-388, D-389 and D-390.
+D-383, D-386, D-387, D-388, D-389, D-390 and D-391.
 
 **To see it, start the host and open `/gm/gallery.html`.** Every part below is
 drawn there by the real components with the real stylesheets, and three
@@ -157,7 +157,10 @@ icon, as the `✕` of ground that cannot be crossed is.
   picture goes, with *Keep* where the badge was.
 - **`Compass`**: where north is, with turn and tilt buttons for a mouse alone.
   A click on one leaves the focus where it was.
-- **`Tooltip`**: always, never a native `title`. It opens on hover and on focus.
+- **`Tooltip`**: always, never a native `title` (R-110), and a test reads both
+  screens for one. It opens on hover and on focus. `inPlace` wraps its child in
+  no box, for a child its parent positions — the ladder's handle, a picture's
+  badge (D-391).
 - **`BrandLogo`**: the emblem and the name; `statusLabel` only on the console's
   menu.
 - **`IconButton`** (D-390): a row's action drawn as an icon — move up, move

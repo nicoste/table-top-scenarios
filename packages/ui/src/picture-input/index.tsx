@@ -6,6 +6,7 @@
 // picture should go — and asks first, as every delete does (R-151).
 
 import { useRef, useState } from 'react';
+import { Tooltip } from '../tooltip/index.js';
 
 export interface PictureInputProps {
   /** The picture on the card, as an address, or `null` for none. */
@@ -25,18 +26,20 @@ export function PictureInput({ src, fallback, busy = false, label, onPick, onCle
   const [asking, setAsking] = useState(false);
   return (
     <span className="picture-input">
-      <button
-        type="button"
-        className="picture-card"
-        title={src ? `${label} — click to change` : `${label} — click to choose one`}
-        aria-label={label}
-        disabled={busy}
-        style={{ background: fallback }}
-        onClick={() => file.current?.click()}
-      >
-        {src && <img src={src} alt="" />}
-        {busy && <span className="picture-busy">…</span>}
-      </button>
+      {/* In place, both: the card sits in its row, and the badge on its corner (R-110). */}
+      <Tooltip label={src ? `${label} — click to change` : `${label} — click to choose one`} placement="left" inPlace>
+        <button
+          type="button"
+          className="picture-card"
+          aria-label={label}
+          disabled={busy}
+          style={{ background: fallback }}
+          onClick={() => file.current?.click()}
+        >
+          {src && <img src={src} alt="" />}
+          {busy && <span className="picture-busy">…</span>}
+        </button>
+      </Tooltip>
       <input
         ref={file}
         type="file"
@@ -52,15 +55,16 @@ export function PictureInput({ src, fallback, busy = false, label, onPick, onCle
         }}
       />
       {src && !busy && !asking && (
-        <button
-          type="button"
-          className="plain picture-clear"
-          title="Remove picture"
-          aria-label="Remove picture"
-          onClick={() => setAsking(true)}
-        >
-          ×
-        </button>
+        <Tooltip label="Remove picture" placement="top" inPlace>
+          <button
+            type="button"
+            className="plain picture-clear"
+            aria-label="Remove picture"
+            onClick={() => setAsking(true)}
+          >
+            ×
+          </button>
+        </Tooltip>
       )}
       {/*
         "Keep" first, so it opens under the pointer where the × was: the second

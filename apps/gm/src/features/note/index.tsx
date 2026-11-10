@@ -7,6 +7,7 @@
 // would not.
 
 import { useState } from 'react';
+import { Tooltip } from '@tt/ui';
 
 /**
  * The box: written in place, kept on leaving it or on ⌘/Ctrl + Enter, put
@@ -60,13 +61,12 @@ export function GmNote({ note, name, onCommit }: {
   if (open) {
     return <NoteField value={note} name={name} onCommit={onCommit} onClose={() => setOpen(false)} />;
   }
+  // In place: the line is laid out by the row it sits in, across its width (R-110).
   return (
-    <button
-      className={`plain stage-note-line${note ? '' : ' empty'}`}
-      onClick={() => setOpen(true)}
-      title={note ? 'Edit the note — only you see it' : 'Only you see it'}
-    >
-      {note || 'Add a note'}
-    </button>
+    <Tooltip label={note ? 'Edit the note — only you see it' : 'Only you see it'} placement="left" inPlace>
+      <button className={`plain stage-note-line${note ? '' : ' empty'}`} onClick={() => setOpen(true)}>
+        {note || 'Add a note'}
+      </button>
+    </Tooltip>
   );
 }

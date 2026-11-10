@@ -1702,6 +1702,10 @@ apps/host/src/
 > **R-110.** A control whose purpose is not obvious from its label carries a
 > **`Tooltip`** from `@tt/ui`, never a native `title`. Native tooltips are slow to
 > appear, cannot be styled, and are invisible on touch.
+>
+> **Amended by D-391.** A test reads both screens and `@tt/ui` for a native
+> `title`. A child its parent positions takes a `Tooltip` `inPlace`, which wraps
+> it in no box.
 
 > **R-110a.** A floating layer — tooltip, menu, popover — renders through a
 > **portal into `document.body`** with viewport coordinates, never as an
