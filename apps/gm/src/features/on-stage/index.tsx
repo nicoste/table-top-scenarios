@@ -90,7 +90,7 @@ export function OnStagePanel({ party, silver, order, library, placeId, poiId, di
   const number = (row: Row, name: string) => (
     <Tooltip label="Order — highest first, blank for none. Yours to set: nothing rolls." placement="left">
       <span className="stage-sight">
-        <span className="lbl">ord</span>
+        <span className="lbl">order</span>
         <DraftInput
           className="stage-order"
           aria-label={`${name}'s number`}
@@ -139,12 +139,12 @@ export function OnStagePanel({ party, silver, order, library, placeId, poiId, di
                   <div className="stage-controls">
                     {number(row, member.name)}
                     <span className="stage-actions">
-                      <Tooltip label={`How far ${member.name} sees, in cubes — 12 is 60 ft`} placement="left">
+                      <Tooltip label={`How far ${member.name} sees`} placement="left">
                         <span className="stage-sight">
                           <span className="lbl">sees</span>
                           <DraftInput
                             className="sight"
-                            aria-label={`${member.name}'s sight, in cubes`}
+                            aria-label={`${member.name}'s sight`}
                             inputMode="numeric"
                             value={String(member.sight)}
                             valid={isSight}

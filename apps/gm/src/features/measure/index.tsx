@@ -10,7 +10,7 @@ import type { Areas } from '@tt/domain';
 import { AREA_COLOURS, AREA_SHAPES, MAX_AREA_SIZE, MIN_AREA_SIZE, areaColour } from '@tt/domain';
 import type { MeasureHand, MeasureMode } from '@tt/client-core';
 import { chooseAreaColour, chooseMeasure } from '@tt/client-core';
-import { DraftInput, GameIcon, SlotButton, Tooltip } from '@tt/ui';
+import { ConfirmDelete, DraftInput, GameIcon, SlotButton, Tooltip } from '@tt/ui';
 import type { GameIconName } from '@tt/ui';
 
 interface Props {
@@ -25,13 +25,14 @@ interface Props {
 }
 
 const MODES: readonly { readonly id: MeasureMode; readonly name: string; readonly about: string }[] = [
-  { id: 'ruler', name: 'Ruler', about: 'How far from one cube to another — only you see it' },
+  { id: 'ruler', name: 'Ruler', about: 'How far from one cube to another — only you see it; Escape lets go' },
   ...AREA_SHAPES.map((shape) => ({
     id: shape.id,
     name: shape.name,
-    about: shape.id === 'sphere' ? 'Drag from the middle outwards'
+    about: `${shape.id === 'sphere' ? 'Drag from the middle outwards'
       : shape.id === 'cube' ? 'Drag from one corner to the other'
-        : 'Drag from its point the way it goes',
+        : 'Drag from its point the way it goes'
+    } — the players see it unless you hide it; drag it by the mark where it starts to move it`,
   })),
 ];
 
@@ -115,49 +116,47 @@ export function MeasurePanel({ hand, onHand, areas, people, placeId, poiId, disp
                   />
                 </div>
                 <div className="area-follow">
-                  <Tooltip label={`Its ${SIZE_WORD[area.shape]}, in cubes`} placement="left">
-                    <span className="stage-sight">
-                      <DraftInput
-                        className="sight"
-                        aria-label={`${area.name}'s ${SIZE_WORD[area.shape]}`}
-                        inputMode="numeric"
-                        value={String(area.size)}
-                        valid={isSize}
-                        onCommit={(draft) => dispatch({ kind: 'editArea', ...where, id: area.id, size: Number(draft.trim()) })}
-                      />
-                    </span>
-                  </Tooltip>
-                  <span className="lbl">follows</span>
-                  <select
-                    value={area.follows ?? ''}
-                    aria-label={`Whom ${area.name} follows`}
-                    onChange={(e) => dispatch({ kind: 'editArea', ...where, id: area.id, follows: e.target.value || null })}
+                  {/* Asking takes this whole line, under the name it asks about (R-151). */}
+                  <ConfirmDelete
+                    label={`Take ${area.name} away`}
+                    confirmLabel="Remove"
+                    onConfirm={() => dispatch({ kind: 'removeArea', ...where, id: area.id })}
                   >
-                    <option value="">nobody</option>
-                    {people.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}
-                  </select>
-                  <Tooltip
-                    label={area.hidden ? 'Hidden from the players — click to show it' : 'The players see it — click to hide it'}
-                    placement="left"
-                  >
-                    <button
-                      className={`quiet eye${area.hidden ? ' off' : ''}`}
-                      aria-pressed={area.hidden}
-                      aria-label={area.hidden ? `Show ${area.name}` : `Hide ${area.name}`}
-                      onClick={() => dispatch({ kind: 'editArea', ...where, id: area.id, hidden: !area.hidden })}
+                    <Tooltip label={`Its ${SIZE_WORD[area.shape]}`} placement="left">
+                      <span className="stage-sight">
+                        <DraftInput
+                          className="sight"
+                          aria-label={`${area.name}'s ${SIZE_WORD[area.shape]}`}
+                          inputMode="numeric"
+                          value={String(area.size)}
+                          valid={isSize}
+                          onCommit={(draft) => dispatch({ kind: 'editArea', ...where, id: area.id, size: Number(draft.trim()) })}
+                        />
+                      </span>
+                    </Tooltip>
+                    <span className="lbl">follows</span>
+                    <select
+                      value={area.follows ?? ''}
+                      aria-label={`Whom ${area.name} follows`}
+                      onChange={(e) => dispatch({ kind: 'editArea', ...where, id: area.id, follows: e.target.value || null })}
                     >
-                      <GameIcon name={area.hidden ? 'eye-hidden' : 'eye-open'} size={16} />
-                    </button>
-                  </Tooltip>
-                  <Tooltip label={`Take ${area.name} away`} placement="left">
-                    <button
-                      className="quiet danger-trigger"
-                      aria-label={`Take ${area.name} away`}
-                      onClick={() => dispatch({ kind: 'removeArea', ...where, id: area.id })}
+                      <option value="">nobody</option>
+                      {people.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}
+                    </select>
+                    <Tooltip
+                      label={area.hidden ? 'Hidden from the players — click to show it' : 'The players see it — click to hide it'}
+                      placement="left"
                     >
-                      ×
-                    </button>
-                  </Tooltip>
+                      <button
+                        className={`quiet eye${area.hidden ? ' off' : ''}`}
+                        aria-pressed={area.hidden}
+                        aria-label={area.hidden ? `Show ${area.name}` : `Hide ${area.name}`}
+                        onClick={() => dispatch({ kind: 'editArea', ...where, id: area.id, hidden: !area.hidden })}
+                      >
+                        <GameIcon name={area.hidden ? 'eye-hidden' : 'eye-open'} size={16} />
+                      </button>
+                    </Tooltip>
+                  </ConfirmDelete>
                 </div>
               </li>
             ))}

@@ -8423,6 +8423,7 @@ hand and a prop selected, Backspace — or Delete, on a keyboard that has one �
 does what the panel's Remove button does. No confirmation: removing a prop is
 building, and one undo brings it back (R-212). A field being typed in keeps
 its own Backspace; the console's shortcuts never see a key meant for a field.
+**Amended by D-384**: the panel's Remove asks now; Backspace still does not.
 
 ### D-331 — The Party's view forgets props with the room · `agreed`
 *"The party remembers items after clearing what they have seen."*
@@ -8733,6 +8734,7 @@ the drag; a red sphere, a blue cone of 6, a green line of 8 and a violet cube
 of 3 drawn by dragging; the sphere moved by its handle; all four listed with
 their sizes, eyes and whom they follow, and drawn on the table over the
 ground it knows.
+**Amended by D-384**: the × asks first now, on both screens.
 
 ### D-342 — The ruler ends on the middle of a face · `agreed`
 *"There is only 1 thing, and it's on the ruler, measures don't snap to
@@ -9523,6 +9525,7 @@ drew just that, the amber line staying at Bedrock to Floor and the table not
 moving; *Show the table* brought the table down to the dungeon with it. With
 the whole place shown, the furniture the party sees in the dungeon showed
 through the grass, and the goblins they do not see did not.
+**Amended by D-383**: the table's line is pale gold now; amber is the GM's own band.
 
 ### D-370 — One button: Apply to table · `agreed`
 *"I will combine the 3 buttons 'Show the table', 'Back to the table's' and
@@ -9538,6 +9541,7 @@ gone with it: the amber line shows where the table's band is, and the GM drags
 theirs there. Everything R-159 says of the band — what is cut away cannot be
 clicked or built into — holds all the time now, and the sun reaches the
 console's view when the GM's band reaches the Sun.
+**Amended by D-383**: the table's line is pale gold now.
 
 ### D-371 — A move is a walk or a jump: Shift jumps · `agreed`
 *"I want users (GM included) to be able to decide if the path should be
@@ -9897,6 +9901,8 @@ privacy move."*
   `.dial` range thumbs and `.ladder` grips use squared voxel blocks
   (`var(--ui-radius)`). The rules and live component catalogue live in
   `docs/DESIGN_SYSTEM.md` and `docs/ui-gallery.html`.
+**Amended by D-383**: what some tools' paragraphs said had not reached their
+tooltips, and is there now; the changes this entry did not list are listed.
 
 ### D-382 — Brand identity (`BrandLogo`, voxel favicon) and 10-step living isometric diorama on the main menu · `agreed`
 *"I want to add more identity to the tool. Like an icon, a logo, a title... You command. I would love to have the logo in the main menu, what do you think about it? We can also add a floating terrain on an isometric view and a road that highlights the title, some scheduled actions that edit the terrain behind, like step 1, then 2, 3, 4, ... 10, then start undoing down to step 1, and loop."*
@@ -9919,3 +9925,133 @@ privacy move."*
   golden dusk, and the arriving party on the road), pauses briefly, undoes back
   down `10 → 9 → … → 1`, and loops. When a campaign opens, `useDiorama` clears
   the diorama surface and hands the stage cleanly to the campaign world.
+**Amended by D-383**: the island is built once per step, buries nothing, and
+the table shows no step counter.
+
+### D-383 — The design pass, finished: five bugs, and the calls it left open · `agreed`
+*"Fix the bugs. About the 'For you to decide': first point is ok, adding generic
+words or logos won't change the spirit of it that is showing the library; about
+the second, that's intended, I like it that way; about the third one, add those
+missing changes if you like and think it's needed."*
+
+A review of D-381 and D-382, run on a copy of the GM's data, found five things
+broken and three changes nobody had decided out loud.
+
+- **The menu's island is built once per step.** It was built again on every
+  render of the screen, and the Stage rebuilds its whole body for every new map
+  it is handed (R-19a). A camera turn renders the screen on every frame, so
+  turning the camera on the menu rebuilt the island about sixty times a second,
+  on the table display too. Each step's scene is now kept until the step
+  changes, the camera frames the island once per visit to the menu, and a
+  hidden tab does not step at all.
+- **Nothing on the island is buried.** The tower stood in Step 4's crag, so the
+  chest inside it was in rock, and the party's torchbearer stood inside the
+  plinth. The foundation now clears the crag inside its footprint, the road
+  stops at the foot of the stairs instead of running under the plinth, and the
+  torchbearer waits beside the stairs. A test holds it: at every step, every
+  token and prop stands on a block and inside none.
+- **The menu card says GM Console again.** It was drawn in the surface colour,
+  on the surface. It takes the muted text colour now, as do the two grey shapes
+  of the emblem, which had the same mistake.
+- **The table shows no step counter.** It was the GM's toy on the players'
+  card, and on *Disconnected* it sat frozen at 1/10, since the island only runs
+  while no campaign is open.
+- **What the tools' paragraphs said is back, in their tooltips.** D-381 moved
+  each tool's explanation into its tooltip, and some of it did not arrive:
+  Escape or right-click puts a token back, a drawn area is shown to the players
+  unless it is hidden, a selected prop drags and Backspace removes it, and the
+  world's Travel and Places cancel and put back the same way. The map's key
+  line (`1–7 tool · 8–0, −, = or [ ] brush`, and the camera keys) is back at
+  the foot of its Tool card. The world has it in the bottom bar, but on a map
+  the dock runs down over where that bar sits. The map's own card stays under
+  Build alone, as D-381 has it.
+
+The calls D-381 left open, made:
+
+- **`@tt/ui` may hold the product's own words**: icons named after its tools,
+  and its logo. It still knows no rule and no state of play; what it holds is
+  how things look. Its README says so.
+- **The scrollbars stay hidden**, on purpose: a column keeps its width, and the
+  wheel still scrolls it.
+- **The visible changes D-381 did not list.** The highlight went from blue
+  (`#6ea8fe`) to amber (`#f5a524`), corners from 6px (10 to 12px on cards) to
+  2px, body text from 13px to 12.5px, borders from 1px to 2px, and headings and
+  labels to a monospace face. One of them had a cost nobody saw: the GM's band
+  on the level ladder is drawn in the highlight, so it turned amber beside the
+  table's amber line (D-369), and the two bands looked alike. The table's line
+  is the new tertiary now.
+- **A tertiary colour, `--ui-tertiary`**, beside main, highlight, ink, danger
+  and ok: a second highlight, for a highlighted thing that sits beside another
+  and must not be taken for it. It is mixed from the highlight and the ink, a
+  pale gold, so it stays in the highlight's family and moves when the
+  highlight does. Blue was tried first and dropped: nothing else on either
+  screen is blue, so it read as a colour from another palette. Bronze looked
+  switched off, and coral too close to the amber beside it.
+
+Not done, and the GM's to look at next: `DESIGN_SYSTEM.md` and `ui-gallery.html`
+name tokens, values and icons that differ from the code, and a few small
+things remain, among them a menu caption that screen readers would announce
+forever, a key number that is hard to read on hover, and two strings with units.
+**Amended by D-385**: the caption and the units are done; the key number stays.
+
+### D-384 — Every delete button asks, play included · `agreed`
+*"Removing a player from the party has no confirmation like all the other
+deletes, can you confirm and fix that? All delete buttons should have
+confirmation."*
+
+Checked on a copy of the GM's data. The party's × did ask, but asking took the
+whole row, name and picture with it, so the question offered *Remove* and
+*Keep* and showed no one to remove. Four other buttons did not ask at all.
+
+- **A party member's question names them**: *Remove Aldra*, then *Keep*. The
+  row is too narrow for the name field beside both answers, so the answer
+  carries the name; a long one is cut short rather than pushing *Keep* out.
+- **An area asks**, on the console and on the table: the line under its name
+  gives way to *Remove* and *Keep*. D-341 had it go at once, since drawing it
+  again is one drag; but a button that deletes is a button that asks.
+- **A prop's Remove asks**, from a footer row like a place's *Delete* and a
+  map's *Forget*. Backspace still removes at once (D-330): a key pressed on
+  purpose is the answer already, and one undo brings the prop back.
+- **A card's picture asks.** The badge on its corner opens *Keep* and *Remove*
+  beside it, over the row rather than in it, so nothing beside the card moves;
+  *Keep* opens under the pointer, where the badge was, so a double-click keeps
+  the picture.
+
+What still takes one action is a key or a stroke: Backspace on a prop, and the
+erase brush, R-151's own exception.
+
+### D-385 — The review's smaller findings, settled · `agreed`
+*"1. a. Fix it. 1. b. That's ok. 1. c. Fix it. 2. Fix all."*
+
+The rest of the review of D-381 and D-382, on the code. Each one checked on a
+copy of the GM's data.
+
+- **No unit words on the screens** (D-316). The sight, area and light tooltips
+  say how far without "in cubes", "12 is 60 ft" is gone, and the world's
+  Height tooltip says what a drag does instead of how many metres a step is.
+  The key number on a tool button stays as it is: the GM's call.
+- **The menu's caption is not announced.** It changed every second, and a
+  screen reader would have read it every second.
+- **A click on the compass leaves the focus where it was**, so the next Space
+  or Enter reaches what the GM meant instead of turning the camera again. Tab
+  still reaches the buttons.
+- **A tool button's name is its word.** The key number beside it is given as
+  its shortcut, not read into the name: *Build*, not *1Build*.
+- **Both camera hints are written from the key table** that `cameraAction`
+  reads (R-156). The table's names Q/E and R/F after the compass, since the
+  table answers to them. One test holds both.
+- **A party member's row is the same elements at any party size.**
+  `ConfirmDelete` takes `disabled`, so going from one member to two no longer
+  rebuilds a row being typed in.
+- **The island is kept per step and phase**, the same object every time,
+  which is what the Stage's own check needs (R-19a); D-383 had kept it in the
+  hook instead, where no test could see it. Measured (MEASUREMENTS.md): a
+  camera turn on the menu rebuilt it 77 times in 4.6 seconds before, and 3
+  times now, once per step. It holds still, finished, for a system that asks
+  for less motion, and the menu card is nearly opaque instead of blurring an
+  island that changes every step.
+- **The logo takes every colour from the theme**: its glow and badge from the
+  highlight, its faces mixed from the main colour.
+- Smaller: the console finds where the table is the way it finds the open map,
+  without a function written inline, and the `h1` rule is `.launcher h1`
+  alone, since no other heading exists.

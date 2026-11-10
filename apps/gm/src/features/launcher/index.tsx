@@ -38,7 +38,7 @@ export function Launcher({ campaigns, dispatch, diorama }: Props) {
         <div className="launcher-brand">
           <BrandLogo subtitle="GM Console" statusLabel={statusBadge} />
           {diorama && (
-            <div className="diorama-status" aria-live="polite">
+            <div className="diorama-status">
               <div className="diorama-pips" aria-hidden="true">
                 {Array.from({ length: diorama.total }, (_, i) => {
                   const index = i + 1;

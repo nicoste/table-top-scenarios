@@ -118,64 +118,40 @@ export function PartyPanel({ campaign, placement, canPlace, notes, insidePoi = n
               {/*
                 One row for who they are and how their card looks (R-204):
                 portrait card (with its own corner clear badge), base colour
-                swatch, name field, and row remove action.
+                swatch, name field, and row remove action. Asking hides the
+                whole row, name included, since a name field beside "Remove"
+                and "Keep" would be a stub, so the button says whom it removes.
+                One branch for any party size: going from one member to two
+                never rebuilds a row being typed in.
               */}
-              {campaign.party.length > 1 ? (
-                <ConfirmDelete
-                  label={`Remove ${m.name}`}
-                  confirmLabel="Remove"
-                  onConfirm={() => dispatch({ kind: 'removeMember', id: m.id })}
-                >
-                  <PictureInput
-                    src={m.image ? imageUrl(m.image) : null}
-                    fallback={m.colour}
-                    busy={busy === m.id}
-                    label={`Picture for ${m.name}`}
-                    onPick={(file) => { setProblem(null); setFraming({ memberId: m.id, name: m.name, file }); }}
-                    onClear={() => dispatch({ kind: 'editMember', id: m.id, image: null })}
+              <ConfirmDelete
+                label={campaign.party.length > 1 ? `Remove ${m.name}` : 'The party keeps at least one member'}
+                confirmLabel={`Remove ${m.name}`}
+                disabled={campaign.party.length < 2}
+                onConfirm={() => dispatch({ kind: 'removeMember', id: m.id })}
+              >
+                <PictureInput
+                  src={m.image ? imageUrl(m.image) : null}
+                  fallback={m.colour}
+                  busy={busy === m.id}
+                  label={`Picture for ${m.name}`}
+                  onPick={(file) => { setProblem(null); setFraming({ memberId: m.id, name: m.name, file }); }}
+                  onClear={() => dispatch({ kind: 'editMember', id: m.id, image: null })}
+                />
+                <Tooltip label={`Base colour for ${m.name}`} placement="bottom">
+                  <ColourInput
+                    id={`c-${m.id}`}
+                    aria-label={`Base colour for ${m.name}`}
+                    value={m.colour}
+                    onCommit={(colour) => dispatch({ kind: 'editMember', id: m.id, colour })}
                   />
-                  <Tooltip label={`Base colour for ${m.name}`} placement="bottom">
-                    <ColourInput
-                      id={`c-${m.id}`}
-                      aria-label={`Base colour for ${m.name}`}
-                      value={m.colour}
-                      onCommit={(colour) => dispatch({ kind: 'editMember', id: m.id, colour })}
-                    />
-                  </Tooltip>
-                  <DraftInput
-                    value={m.name}
-                    valid={(name) => name.trim().length > 0}
-                    onCommit={(name) => dispatch({ kind: 'editMember', id: m.id, name })}
-                  />
-                </ConfirmDelete>
-              ) : (
-                <>
-                  <PictureInput
-                    src={m.image ? imageUrl(m.image) : null}
-                    fallback={m.colour}
-                    busy={busy === m.id}
-                    label={`Picture for ${m.name}`}
-                    onPick={(file) => { setProblem(null); setFraming({ memberId: m.id, name: m.name, file }); }}
-                    onClear={() => dispatch({ kind: 'editMember', id: m.id, image: null })}
-                  />
-                  <Tooltip label={`Base colour for ${m.name}`} placement="bottom">
-                    <ColourInput
-                      id={`c-${m.id}`}
-                      aria-label={`Base colour for ${m.name}`}
-                      value={m.colour}
-                      onCommit={(colour) => dispatch({ kind: 'editMember', id: m.id, colour })}
-                    />
-                  </Tooltip>
-                  <DraftInput
-                    value={m.name}
-                    valid={(name) => name.trim().length > 0}
-                    onCommit={(name) => dispatch({ kind: 'editMember', id: m.id, name })}
-                  />
-                  <button className="quiet" aria-label={`Remove ${m.name}`} disabled>
-                    ×
-                  </button>
-                </>
-              )}
+                </Tooltip>
+                <DraftInput
+                  value={m.name}
+                  valid={(name) => name.trim().length > 0}
+                  onCommit={(name) => dispatch({ kind: 'editMember', id: m.id, name })}
+                />
+              </ConfirmDelete>
             </div>
             {/* Across maps, so here on the world as well as On stage in a map. */}
             <GmNote

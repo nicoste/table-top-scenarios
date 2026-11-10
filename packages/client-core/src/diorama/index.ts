@@ -8,7 +8,7 @@
 // gate (Step 8), lit road beacons at golden dusk (Step 9), and the arriving
 // party on the road (Step 10) — then undoes step-by-step back to Step 1 and loops.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   blockKey, DAYLIGHT, DEFAULT_MATERIALS, OPEN_SKY, TORCH,
 } from '@tt/domain';
@@ -153,20 +153,33 @@ const ROAD_CELLS: readonly (readonly [number, number])[] = [
   // Bridge approach & span (z = 8..9, x = 8..10)
   [10, 9], [9, 9], [8, 9],
   [9, 8], [8, 8], [7, 8],
-  // Upper road curving toward the Watchtower gate (x = 4..7, z = 6..7)
-  [8, 7], [7, 7], [6, 7],
-  [7, 6], [6, 6], [5, 6],
+  // Upper road curving to the foot of the Watchtower stairs (x = 5..8, z = 6..7).
+  // It stops there: one cell further is the plinth, which would bury it.
+  [8, 7], [7, 7], [6, 7], [5, 7],
+  [7, 6],
 ];
 
 /**
+ * Every scene built so far, by phase and step. Twenty at most, and each one is
+ * handed out again rather than rebuilt: the Stage rebuilds its whole body for
+ * every new map object (R-19a), and the menu re-renders for far more than a
+ * step — every frame of a camera turn, for one.
+ */
+const SCENES = new Map<string, DioramaState>();
+
+/**
  * Pure builder returning the exact 3D EncounterMap, party tokens, and lighting
- * for step `1..10` of the Main Menu diorama.
+ * for step `1..10` of the Main Menu diorama — the same object every time for
+ * the same step and phase.
  */
 export function dioramaAtStep(
   rawStep: number,
   phase: 'build' | 'undo' = 'build',
 ): DioramaState {
   const step = Math.max(1, Math.min(DIORAMA_TOTAL_STEPS, Math.round(rawStep)));
+  const key = `${phase} ${step}`;
+  const kept = SCENES.get(key);
+  if (kept) return kept;
   const blocks = new Map<string, SwatchId>();
   const props: Prop[] = [];
 
@@ -251,6 +264,13 @@ export function dioramaAtStep(
 
   // ── STEP 5: Watchtower Foundation & Approach Stairs ──
   if (step >= 5) {
+    // The foundation is cut into the crag: Step 4's rock is cleared from the
+    // footprint above the plinth, or the keep would be solid inside.
+    for (let x = 3; x <= 6; x++) {
+      for (let z = 3; z <= 6; z++) {
+        for (let y = 2; y <= 3; y++) blocks.delete(blockKey({ x, y, z }));
+      }
+    }
     // Dressed stone plinth & oak inner floor at y = 1 (x: 3..6, z: 3..6)
     fillBox(blocks, 3, 1, 3, 6, 1, 6, SWATCH.stone);
     fillBox(blocks, 4, 1, 4, 5, 1, 5, SWATCH.oak);
@@ -352,7 +372,8 @@ export function dioramaAtStep(
         memberId: 'diorama-vanguard',
         colour: '#f59e0b',
         picture: null,
-        at: { x: 6, y: 1, z: 6 },
+        // On the road beside the stairs, torch up at the gate.
+        at: { x: 6, y: 1, z: 7 },
         light: TORCH,
       },
       {
@@ -400,7 +421,7 @@ export function dioramaAtStep(
     props,
   };
 
-  return {
+  const state: DioramaState = {
     step,
     total: DIORAMA_TOTAL_STEPS,
     phase,
@@ -410,6 +431,53 @@ export function dioramaAtStep(
     tokens,
     lighting,
   };
+  SCENES.set(key, state);
+  return state;
+}
+
+/**
+ * Where the loop starts: step 1, or the finished island held still for anyone
+ * whose system asks for less motion.
+ */
+export function dioramaStart(still: boolean): DioramaCursor {
+  return still
+    ? { step: DIORAMA_TOTAL_STEPS, phase: 'build', hold: 0 }
+    : { step: 1, phase: 'build', hold: 0 };
+}
+
+/** What the diorama asks of a Stage: enough to show a scene and take it away. */
+export type DioramaStage = Pick<Stage, 'setMap' | 'setTokens' | 'setLighting' | 'setTarget'>;
+
+/**
+ * The camera on the island. Its focus is offset slightly toward screen-left
+ * (-X, +Z) so the island sits in the right-centre of the viewport, beside the
+ * menu card.
+ */
+const DIORAMA_FRAME = {
+  focus: { x: 6.2, y: 1.2, z: 9.2 },
+  yawStep: 0,
+  pitchStep: 1,
+  zoom: 22,
+} as const;
+
+/** Puts one step's scene on the Stage, and frames the island when `frame`. */
+export function showDiorama(stage: DioramaStage, state: DioramaState, frame: boolean): void {
+  stage.setMap(state.map, DEFAULT_MATERIALS, '__diorama__');
+  stage.setTokens(state.tokens);
+  stage.setLighting(state.lighting);
+  if (frame) stage.setTarget(DIORAMA_FRAME);
+}
+
+/** Takes the diorama off the Stage, leaving it as a campaign expects to find it. */
+export function clearDiorama(stage: DioramaStage): void {
+  stage.setTokens(null);
+  stage.setMap(null, DEFAULT_MATERIALS, null);
+  stage.setLighting(DAYLIGHT);
+}
+
+/** Whether the system asks for less motion. False wherever there is no way to ask. */
+function prefersStill(): boolean {
+  return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
 /**
@@ -417,55 +485,45 @@ export function dioramaAtStep(
  * is true (`!campaign`), and tears it down cleanly when a campaign opens.
  */
 export function useDiorama(stage: Stage | null, active: boolean): DioramaState {
-  const [cursor, setCursor] = useState<DioramaCursor>({
-    step: 1,
-    phase: 'build',
-    hold: 0,
-  });
+  const still = useMemo(prefersStill, []);
+  const [cursor, setCursor] = useState<DioramaCursor>(() => dioramaStart(still));
 
   useEffect(() => {
     if (!active) {
-      setCursor({ step: 1, phase: 'build', hold: 0 });
+      setCursor(dioramaStart(still));
       return;
     }
+    if (still) return;
     const timer = setInterval(() => {
+      // Nobody is watching a hidden tab, so the island waits for them.
+      if (document.hidden) return;
       setCursor((now) => nextDioramaCursor(now));
     }, STEP_INTERVAL_MS);
     return () => clearInterval(timer);
-  }, [active]);
+  }, [still, active]);
 
+  // The same object for the same step (see `SCENES`), so a re-render hands
+  // the Stage nothing new.
   const state = dioramaAtStep(cursor.step, cursor.phase);
+  const framed = useRef(false);
 
-  // Frame the isometric floating island once when entering the Main Menu, and
-  // clean up the diorama map & tokens when transitioning into a campaign.
+  // Clean up the diorama map & tokens when transitioning into a campaign.
   useEffect(() => {
     if (!stage || !active) return;
     stage.setLampShadows('soft');
     return () => {
-      stage.setTokens(null);
-      stage.setMap(null, DEFAULT_MATERIALS, null);
-      stage.setLighting(DAYLIGHT);
+      framed.current = false;
+      clearDiorama(stage);
     };
   }, [stage, active]);
 
   useEffect(() => {
     if (!stage || !active) return;
-    const firstFrame = cursor.step === 1 && cursor.phase === 'build' && cursor.hold === 0;
-    stage.setMap(state.map, DEFAULT_MATERIALS, '__diorama__');
-    stage.setTokens(state.tokens);
-    stage.setLighting(state.lighting);
-    if (firstFrame) {
-      // Offset the camera focus slightly toward screen-left (-X, +Z) so the
-      // floating island sits comfortably in the right-centre of the viewport
-      // alongside the Main Menu card.
-      stage.setTarget({
-        focus: { x: 6.2, y: 1.2, z: 9.2 },
-        yawStep: 0,
-        pitchStep: 1,
-        zoom: 22,
-      });
-    }
-  }, [stage, active, state, cursor.step, cursor.phase, cursor.hold]);
+    // Framed once per visit to the menu, on whichever step the Stage turns up
+    // for; the camera is the GM's after that.
+    showDiorama(stage, state, !framed.current);
+    framed.current = true;
+  }, [stage, active, state]);
 
   return state;
 }

@@ -92,7 +92,7 @@ export function App({ view, status, rejection, dispatch }: Props) {
   }, []);
   const [selectedPlace, setSelectedPlace] = useState<string | null>(null);
   const campaign = view?.campaign ?? null;
-  const diorama = useDiorama(stage, !campaign);
+  useDiorama(stage, !campaign);
 
   /**
    * Resolved against the **current** wire every render, never cached.
@@ -627,10 +627,9 @@ export function App({ view, status, rejection, dispatch }: Props) {
         <div className="launcher">
           <div className="card">
             <div className="launcher-brand">
-              <BrandLogo
-                subtitle="Table Display"
-                statusLabel={`${diorama.phase === 'build' ? 'Step' : 'Undo'} ${diorama.step}/${diorama.total}`}
-              />
+              {/* No step counter: it is the GM's toy, and on "Disconnected" it
+                  would sit frozen, since the island only runs with no campaign. */}
+              <BrandLogo subtitle="Table Display" />
             </div>
             <h2>{waiting.title}</h2>
             <p className="launcher-lead">{waiting.body}</p>

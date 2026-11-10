@@ -244,6 +244,23 @@ node on the development machine, nothing else running; the screens' are the
 Explored grows only, so the first walk through a map rebuilds the table's body
 a little at a time and every step after that is a colour write (R-69).
 
+### What the menu's island costs (added 9 November 2026)
+
+The GM console on the main menu, no campaign open, in the **Pane** on an Apple
+M4 Pro (Mac16,7), about 110 frames a second while busy. Counted with the
+Stage's own `rebuilds` over 4.6 seconds, once left alone and once with the
+camera turning the whole time (E pressed every 150 ms):
+
+| | rebuilds | steps in that time | frames drawn |
+| --- | --- | --- | --- |
+| left alone, either version | 4 | 4 | about 520 |
+| turning, as D-382 built it | **77** | 4 | **215** |
+| turning, scenes kept per step (D-383) | **3** | 3 | 518 |
+
+One body for the whole island takes **0.2 to 1.3 ms** to build. Cheap, but
+the turn rebuilt it on nearly every frame it drew, and drew fewer than half
+the frames for it: the island was rebuilt for the camera, not for the step.
+
 ---
 
 ## Older baselines, on a scene that no longer exists

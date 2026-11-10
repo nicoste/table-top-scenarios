@@ -3,9 +3,9 @@
 //
 // Knows nothing about what happens to the file — preparing and storing it is
 // the caller's (R-204). It only says which file was chosen, or that the
-// picture should go.
+// picture should go — and asks first, as every delete does (R-151).
 
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 
 export interface PictureInputProps {
   /** The picture on the card, as an address, or `null` for none. */
@@ -22,6 +22,7 @@ export interface PictureInputProps {
 
 export function PictureInput({ src, fallback, busy = false, label, onPick, onClear }: PictureInputProps) {
   const file = useRef<HTMLInputElement | null>(null);
+  const [asking, setAsking] = useState(false);
   return (
     <span className="picture-input">
       <button
@@ -50,16 +51,29 @@ export function PictureInput({ src, fallback, busy = false, label, onPick, onCle
           if (chosen) onPick(chosen);
         }}
       />
-      {src && !busy && (
+      {src && !busy && !asking && (
         <button
           type="button"
           className="plain picture-clear"
           title="Remove picture"
           aria-label="Remove picture"
-          onClick={onClear}
+          onClick={() => setAsking(true)}
         >
           ×
         </button>
+      )}
+      {/*
+        "Keep" first, so it opens under the pointer where the × was: the second
+        click of a double-click keeps the picture. ConfirmDelete puts it last
+        for the same reason, where its row's × was.
+      */}
+      {src && !busy && asking && (
+        <span className="picture-ask" role="group" aria-label="Remove the picture?">
+          <button type="button" className="quiet" onClick={() => setAsking(false)}>Keep</button>
+          <button type="button" className="danger" onClick={() => { setAsking(false); onClear(); }}>
+            Remove
+          </button>
+        </span>
       )}
     </span>
   );

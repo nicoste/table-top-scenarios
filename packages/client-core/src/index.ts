@@ -73,8 +73,9 @@ export type { CameraAction } from './camera/index.js';
 
 export {
   DIORAMA_TOTAL_STEPS, DIORAMA_STEP_TITLES, dioramaAtStep, nextDioramaCursor, useDiorama,
+  dioramaStart, showDiorama, clearDiorama,
 } from './diorama/index.js';
-export type { DioramaCursor, DioramaState } from './diorama/index.js';
+export type { DioramaCursor, DioramaState, DioramaStage } from './diorama/index.js';
 export type {
   ToolPart, ClickAction, TableAction, MapAction, MapHover, MapAim, MapReach, MapVerdict, FillReach,
   Pointed, Cell, Slot, Context,

@@ -2,7 +2,7 @@
 
 **Owns.** Presentational primitives: panels, lists, sliders, palettes, number fields, canonical monochrome icons (`GameIcon`), action slots (`SlotButton`), the brand emblem and wordmark (`BrandLogo`), and the compass (`Compass`).
 
-**Must never know about.** Any domain noun. A component here could serve a different product entirely.
+**Must never know about.** Any rule or state of play: a campaign, a token, what the players may see. A component here could serve a different product entirely. The product's own words for how it looks — icon names after its tools, its logo — are the exception (D-383).
 
 **May depend on:** _nothing_
 
