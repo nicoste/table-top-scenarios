@@ -173,15 +173,16 @@ export function TableTools({ measuring, leap, onLeap, hand, onMove, onMeasure, o
                           placement="bottom"
                           onConfirm={() => onRemove(area.id)}
                         >
-                          <DraftInput
-                            className="size"
-                            title={`Its ${SIZE_WORD[area.shape]}`}
-                            aria-label={`${area.name}'s ${SIZE_WORD[area.shape]}`}
-                            inputMode="numeric"
-                            value={String(area.size)}
-                            valid={isSize}
-                            onCommit={(draft) => onEdit(area.id, { size: Number(draft.trim()) })}
-                          />
+                          <Tooltip label={`Its ${SIZE_WORD[area.shape]}`} placement="top" inPlace>
+                            <DraftInput
+                              className="size"
+                              aria-label={`${area.name}'s ${SIZE_WORD[area.shape]}`}
+                              inputMode="numeric"
+                              value={String(area.size)}
+                              valid={isSize}
+                              onCommit={(draft) => onEdit(area.id, { size: Number(draft.trim()) })}
+                            />
+                          </Tooltip>
                           <span className="lbl">follows</span>
                           <select
                             value={area.follows ?? ''}

@@ -37,7 +37,7 @@ import { MAP_MAX_HEIGHT, MAP_MIN_DEPTH, planeSteps, stepLabel } from '@tt/domain
 import type { LevelRange } from '@tt/domain';
 import { bandMoved, grabEnd, rowAt } from '@tt/client-core';
 import type { RowBox } from '@tt/client-core';
-import { ConfirmDelete, DraftInput } from '@tt/ui';
+import { ConfirmDelete, DraftInput, Tooltip } from '@tt/ui';
 
 interface Props {
   readonly map: MapWire;
@@ -194,22 +194,28 @@ export function LevelLadder({ map, range, table, onRange, placeId, poiId, dispat
                   same gesture — and so React has no pair of elements to swap
                   handlers between mid-drag.
                 */}
-                <button
-                  className={end ? 'grip' : 'pick'}
-                  aria-label={end
-                    ? `Drag the ${end === 'upper' ? 'top' : 'bottom'} of the band`
-                    : `Bring the band to ${stop.name}`}
-                  title={end
+                {/* In place: the rail positions the handle, not a wrapper (R-110). */}
+                <Tooltip
+                  label={end
                     ? `Drag to move the ${end === 'upper' ? 'top' : 'bottom'} of the band`
                     : `Bring the nearer end of the band to ${stop.name}`}
-                  onPointerDown={onRowDown(stop)}
-                  onClick={(e) => {
-                    // Keyboard only. A pointer click has already been served by
-                    // the press above, and serving it twice is the bug.
-                    if (e.detail !== 0) return;
-                    move(grabEnd(range, stop.y), stop.y);
-                  }}
-                />
+                  placement="right"
+                  inPlace
+                >
+                  <button
+                    className={end ? 'grip' : 'pick'}
+                    aria-label={end
+                      ? `Drag the ${end === 'upper' ? 'top' : 'bottom'} of the band`
+                      : `Bring the band to ${stop.name}`}
+                    onPointerDown={onRowDown(stop)}
+                    onClick={(e) => {
+                      // Keyboard only. A pointer click has already been served by
+                      // the press above, and serving it twice is the bug.
+                      if (e.detail !== 0) return;
+                      move(grabEnd(range, stop.y), stop.y);
+                    }}
+                  />
+                </Tooltip>
               </span>
 
               {stop.planeId ? (

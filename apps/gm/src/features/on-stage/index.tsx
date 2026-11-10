@@ -195,17 +195,18 @@ export function OnStagePanel({ party, silver, order, library, placeId, poiId, di
                     only a picture — nothing to click, nothing promised.
                   */}
                   {sheet ? (
-                    <a
-                      className="library-card sheet-link"
-                      href={sheet}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title={`Open ${entry?.name ?? token.name}'s sheet`}
-                      aria-label={`Open ${entry?.name ?? token.name}'s sheet`}
-                      style={look}
-                    >
-                      <span className="link-badge"><LinkIcon /></span>
-                    </a>
+                    <Tooltip label={`Open ${entry?.name ?? token.name}'s sheet`} placement="left" inPlace>
+                      <a
+                        className="library-card sheet-link"
+                        href={sheet}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`Open ${entry?.name ?? token.name}'s sheet`}
+                        style={look}
+                      >
+                        <span className="link-badge"><LinkIcon /></span>
+                      </a>
+                    </Tooltip>
                   ) : (
                     <span className="library-card" style={look} />
                   )}
