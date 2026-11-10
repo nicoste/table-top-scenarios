@@ -10221,3 +10221,32 @@ table.
   is how the picture badge's title hid from the first draft of this test.
   Components whose own prop is a `title` — a crop dialog's heading, a gallery
   section's — are named, and allowed.
+
+### D-392 — Rows read from the left, and the dock scrolls, not its panels · `agreed`
+*"Out of alignment picture and text. Check the prefab too."* — *"On stage has
+an active scroll, I think it's the only panel with inner scroll. Also, the
+right panel is shorter than the left panel that goes down to the bottom."*
+
+- **A token's card and name, and a prefab's words, sat in the middle of their
+  row.** Every button centres what it holds (`base.css`), and the row's button
+  fills the row without saying otherwise. It says `justify-content:
+  flex-start` now, and so do the two other rules of that shape — a palette's
+  rows and a member's name on stage — which looked right only because a part
+  of them stretched. A measure of every left-aligned button on every tool, on
+  the world and in a map, found these two lists and nothing else.
+- **On stage scrolled inside a dock that scrolls**: capped at 420px, it showed
+  420 of 631 with the dock scrolling around it. The areas were capped at 260px
+  the same way. Both are what is on the map now, which the GM wants whole, so
+  neither has a cap; the dock scrolls them. The Tokens Library and the prefabs
+  keep theirs: catalogues, searched, that grow without bound.
+- **The right dock stopped 84px short of the bottom**, room for the address
+  badge, in a map as well, where there is no badge. And on the world the badge
+  with two addresses is 103px, so a full right dock ran 43px under it, while
+  the left dock ran on under the hints bar. Each dock on the world now stands
+  in a column with the bar under it: the column is the screen's height, takes
+  no pointer, and the dock takes what is left above the bar, 8px clear. In a
+  map both docks run to the bottom. R-117 is amended to say why a column that
+  tall is not the stretched panel it forbids.
+- **A test reads the stylesheets** for both: every flex rule that aligns its
+  text left sets its own `justify-content`, and nothing scrolls but the docks,
+  the crop dialog and the two catalogues.

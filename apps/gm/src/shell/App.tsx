@@ -2204,137 +2204,141 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
 
       {status === 'open' && seat === 'gm' && campaign && !openMapWire && (
         <>
-          <div className="dock">
-            <div className="card">
-              <h2>{campaign.name}</h2>
-              <div className="btn-grid campaign-actions">
-                <Tooltip label="Close this campaign and pick another" placement="bottom" stretch>
-                  <button className="wide" onClick={() => dispatch({ kind: 'closeCampaign' })}>
-                    <GameIcon name="back" size={14} />
-                    <span>Back to main menu</span>
-                  </button>
-                </Tooltip>
-                <Tooltip label="Save a copy as a new campaign" placement="bottom" stretch>
-                  <button
-                    className="wide"
-                    onClick={() => dispatch({ kind: 'duplicateCampaign', id: campaign.id })}
-                  >
-                    Duplicate campaign
-                  </button>
-                </Tooltip>
-                {/* Buttons as well as the shortcut: a keyboard-only feature is
-                    one nobody finds, and the disabled state says when there is
-                    nothing left to take back (R-140). */}
-                <Tooltip label={`Undo — ${MOD}Z`} placement="bottom" stretch>
-                  <button disabled={!view?.canUndo} onClick={() => dispatch({ kind: 'undo' })}>
-                    <GameIcon name="turn-ccw" size={14} />
-                    <span>Undo</span>
-                  </button>
-                </Tooltip>
-                <Tooltip label={`Redo — ${MOD}\u21e7Z`} placement="bottom" stretch>
-                  <button disabled={!view?.canRedo} onClick={() => dispatch({ kind: 'redo' })}>
-                    <GameIcon name="turn-cw" size={14} />
-                    <span>Redo</span>
-                  </button>
-                </Tooltip>
+          {/* Each dock with the bar under it, which it makes room for (D-392). */}
+          <div className="dock-column">
+            <div className="dock">
+              <div className="card">
+                <h2>{campaign.name}</h2>
+                <div className="btn-grid campaign-actions">
+                  <Tooltip label="Close this campaign and pick another" placement="bottom" stretch>
+                    <button className="wide" onClick={() => dispatch({ kind: 'closeCampaign' })}>
+                      <GameIcon name="back" size={14} />
+                      <span>Back to main menu</span>
+                    </button>
+                  </Tooltip>
+                  <Tooltip label="Save a copy as a new campaign" placement="bottom" stretch>
+                    <button
+                      className="wide"
+                      onClick={() => dispatch({ kind: 'duplicateCampaign', id: campaign.id })}
+                    >
+                      Duplicate campaign
+                    </button>
+                  </Tooltip>
+                  {/* Buttons as well as the shortcut: a keyboard-only feature is
+                      one nobody finds, and the disabled state says when there is
+                      nothing left to take back (R-140). */}
+                  <Tooltip label={`Undo — ${MOD}Z`} placement="bottom" stretch>
+                    <button disabled={!view?.canUndo} onClick={() => dispatch({ kind: 'undo' })}>
+                      <GameIcon name="turn-ccw" size={14} />
+                      <span>Undo</span>
+                    </button>
+                  </Tooltip>
+                  <Tooltip label={`Redo — ${MOD}\u21e7Z`} placement="bottom" stretch>
+                    <button disabled={!view?.canRedo} onClick={() => dispatch({ kind: 'redo' })}>
+                      <GameIcon name="turn-cw" size={14} />
+                      <span>Redo</span>
+                    </button>
+                  </Tooltip>
+                </div>
               </div>
+            <BuildWorldPanel
+                tool={tool}
+                ground={ground}
+                cover={cover}
+                brush={brush}
+                // Mid-sequence the readout says what the click will do, since that
+                // is more useful than the ground under the pointer (R-132).
+                hoverLabel={travelPrompt(travel, memberName, route) ?? hoverLabel}
+                onTool={setTool}
+                onGround={setGround}
+                onCover={setCover}
+                onBrush={setBrush}
+              />
+              {worldToolShows(tool, 'markers') && (
+                <PlacesPanel markerId={markerId} onMarker={setMarkerId} />
+              )}
+              {/*
+                One card for the tool (D-300): the conveyances it always shows,
+                and the journey underneath once there is one to cost. The
+                pickers stay live through the costing step, because the route
+                and the days recompute as they change.
+              */}
+              {worldToolShows(tool, 'travel') && (
+                <TravelPanel
+                  modes={DEFAULT_TRAVEL_MODES}
+                  travelling={travelling}
+                  onTravelling={(next) => dispatch({
+                    kind: 'setTravelling', travelling: travellingToWire(next),
+                  })}
+                  journey={travel.step === 'choosing' ? {
+                    who: travel.pawn.memberId
+                      ? memberName(travel.pawn.memberId) ?? 'them'
+                      : 'the party',
+                    route,
+                    onConfirm: () => {
+                      dispatch(travelIntent(travel.pawn, travel.at));
+                      setTravel(idle);
+                      stage?.showHighlight(null, 0);
+                    },
+                    onCancel: () => { setTravel(idle); stage?.showHighlight(null, 0); },
+                  } : null}
+                />
+              )}
+              <LightPanel
+                lighting={lighting}
+                ambience={lighting.ambience}
+                where="the world"
+                sunlit
+                onLighting={relight}
+                onAmbience={(next) => relight({ ...lighting, ambience: next })}
+              />
             </div>
-          <BuildWorldPanel
-              tool={tool}
-              ground={ground}
-              cover={cover}
-              brush={brush}
-              // Mid-sequence the readout says what the click will do, since that
-              // is more useful than the ground under the pointer (R-132).
-              hoverLabel={travelPrompt(travel, memberName, route) ?? hoverLabel}
-              onTool={setTool}
-              onGround={setGround}
-              onCover={setCover}
-              onBrush={setBrush}
-            />
-            {worldToolShows(tool, 'markers') && (
-              <PlacesPanel markerId={markerId} onMarker={setMarkerId} />
-            )}
-            {/*
-              One card for the tool (D-300): the conveyances it always shows,
-              and the journey underneath once there is one to cost. The
-              pickers stay live through the costing step, because the route
-              and the days recompute as they change.
-            */}
-            {worldToolShows(tool, 'travel') && (
-              <TravelPanel
-                modes={DEFAULT_TRAVEL_MODES}
-                travelling={travelling}
-                onTravelling={(next) => dispatch({
-                  kind: 'setTravelling', travelling: travellingToWire(next),
-                })}
-                journey={travel.step === 'choosing' ? {
-                  who: travel.pawn.memberId
-                    ? memberName(travel.pawn.memberId) ?? 'them'
-                    : 'the party',
-                  route,
-                  onConfirm: () => {
-                    dispatch(travelIntent(travel.pawn, travel.at));
-                    setTravel(idle);
-                    stage?.showHighlight(null, 0);
-                  },
-                  onCancel: () => { setTravel(idle); stage?.showHighlight(null, 0); },
+            <div className="hints">
+              <kbd>1</kbd>–<kbd>6</kbd> tool · <kbd>7</kbd>–<kbd>0</kbd>, <kbd>−</kbd>, <kbd>=</kbd> or <kbd>[</kbd> <kbd>]</kbd> brush
+              {' · '}<WithKeys line={CAMERA_HINT} />
+            </div>
+          </div>
+
+          <div className="dock-column right">
+            <div className="dock dock-right">
+              {place && (
+                <PlaceInspector
+                  place={place}
+                  revealed={revealedPois.has(place.id)}
+                  chunkKnown={knownChunks.has(`${place.cell.cx},${place.cell.cz}`)}
+                  dispatch={dispatch}
+                  onClose={() => setSelectedPlace(null)}
+                  onOpenMap={(poiId) => {
+                    setOpenMap({ placeId: place.id, poiId });
+                    setSelectedPlace(null);
+                  }}
+                />
+              )}
+              {!place && selectedChunk && (
+                <ChunkInspector
+                  coord={selectedChunk}
+                  known={knownChunks.has(`${selectedChunk.cx},${selectedChunk.cz}`)}
+                  poiCount={chunkPois.length}
+                  revealedPoiCount={chunkPois.filter((p) => revealedPois.has(p.id)).length}
+                  dispatch={dispatch}
+                />
+              )}
+              <PartyPanel
+                campaign={campaign}
+                placement={placement}
+                canPlace={knownChunks.size > 0}
+                notes={memberNotes}
+                insidePoi={insidePlace && insidePoi ? {
+                  placeName: insidePlace.name,
+                  poiName: insidePoi.name,
+                  onOpen: () => setOpenMap({ placeId: insidePlace.id, poiId: insidePoi.id }),
+                  onLeave: () => dispatch({ kind: 'leaveMap' }),
                 } : null}
-              />
-            )}
-            <LightPanel
-              lighting={lighting}
-              ambience={lighting.ambience}
-              where="the world"
-              sunlit
-              onLighting={relight}
-              onAmbience={(next) => relight({ ...lighting, ambience: next })}
-            />
-          </div>
-
-          <div className="dock dock-right">
-            {place && (
-              <PlaceInspector
-                place={place}
-                revealed={revealedPois.has(place.id)}
-                chunkKnown={knownChunks.has(`${place.cell.cx},${place.cell.cz}`)}
-                dispatch={dispatch}
-                onClose={() => setSelectedPlace(null)}
-                onOpenMap={(poiId) => {
-                  setOpenMap({ placeId: place.id, poiId });
-                  setSelectedPlace(null);
-                }}
-              />
-            )}
-            {!place && selectedChunk && (
-              <ChunkInspector
-                coord={selectedChunk}
-                known={knownChunks.has(`${selectedChunk.cx},${selectedChunk.cz}`)}
-                poiCount={chunkPois.length}
-                revealedPoiCount={chunkPois.filter((p) => revealedPois.has(p.id)).length}
                 dispatch={dispatch}
               />
-            )}
-            <PartyPanel
-              campaign={campaign}
-              placement={placement}
-              canPlace={knownChunks.size > 0}
-              notes={memberNotes}
-              insidePoi={insidePlace && insidePoi ? {
-                placeName: insidePlace.name,
-                poiName: insidePoi.name,
-                onOpen: () => setOpenMap({ placeId: insidePlace.id, poiId: insidePoi.id }),
-                onLeave: () => dispatch({ kind: 'leaveMap' }),
-              } : null}
-              dispatch={dispatch}
-            />
+            </div>
+            <ConnectBadge urls={view?.connect ?? []} />
           </div>
-
-          <div className="hints">
-            <kbd>1</kbd>–<kbd>6</kbd> tool · <kbd>7</kbd>–<kbd>0</kbd>, <kbd>−</kbd>, <kbd>=</kbd> or <kbd>[</kbd> <kbd>]</kbd> brush
-            {' · '}<WithKeys line={CAMERA_HINT} />
-          </div>
-          <ConnectBadge urls={view?.connect ?? []} />
         </>
       )}
 

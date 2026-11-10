@@ -155,7 +155,8 @@ button.quiet.danger-trigger:hover:not(:disabled) {
 
 .dock::-webkit-scrollbar { display: none; }
 
-.dock-right { left: auto; right: 12px; max-height: calc(100vh - 84px); }
+/* As tall as the left: what sits under it on the world, it makes room for (D-392). */
+.dock-right { left: auto; right: 12px; }
 
 .dock > * { flex: none; }
 
@@ -257,7 +258,7 @@ button.quiet.icon {
   layout, because nothing in the terrain list is called that (D-243).
 */
 .palette button {
-  width: 100%; display: flex; align-items: center; gap: 8px;
+  width: 100%; display: flex; align-items: center; justify-content: flex-start; gap: 8px;
   padding: 3px 7px; text-align: left; background: transparent; border: 2px solid transparent; box-shadow: none;
 }
 
