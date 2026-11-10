@@ -7,6 +7,8 @@
 **May depend on:** _nothing_
 
 Adding a dependency here requires a numbered decision (R-7). The public surface
-is `src/index.ts` only (R-6). For visual tokens, standardized heights, and the
-live component catalogue, see [`docs/DESIGN_SYSTEM.md`](../../docs/DESIGN_SYSTEM.md)
-and [`docs/ui-gallery.html`](../../docs/ui-gallery.html) (R-217).
+is `src/index.ts` only (R-6). Every colour and size a component reads comes
+through `THEME` (`src/theme/`), one fallback per token, held to `@tt/theme` by a
+test (D-386). Every icon is drawn from `GLYPHS`. For the tokens, the heights and
+the patterns, see [`docs/DESIGN_SYSTEM.md`](../../docs/DESIGN_SYSTEM.md), and the
+gallery at `/gm/gallery.html` (R-217).

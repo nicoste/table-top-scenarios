@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { CSSProperties, ReactNode } from 'react';
+import { THEME } from '../theme/index.js';
 
 export type Placement = 'top' | 'bottom' | 'left' | 'right';
 
@@ -33,10 +34,10 @@ const BUBBLE: CSSProperties = {
   zIndex: 2147483000,
   margin: 0,
   padding: '5px 9px',
-  borderRadius: 'var(--ui-radius, 2px)',
-  background: 'var(--ui-panel-bg, #0b0e13f2)',
-  border: '1px solid var(--ui-slot-border, #333b48)',
-  color: 'var(--ui-ink, #e6e9ef)',
+  borderRadius: THEME.radius,
+  background: THEME.panelBg,
+  border: `1px solid ${THEME.slotBorder}`,
+  color: THEME.ink,
   font: '11.5px/1.45 ui-sans-serif, system-ui, sans-serif',
   whiteSpace: 'nowrap',
   pointerEvents: 'none',

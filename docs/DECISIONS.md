@@ -9903,6 +9903,8 @@ privacy move."*
   `docs/DESIGN_SYSTEM.md` and `docs/ui-gallery.html`.
 **Amended by D-383**: what some tools' paragraphs said had not reached their
 tooltips, and is there now; the changes this entry did not list are listed.
+**Amended by D-387**: R-217 is four rules, the gallery a page of the console,
+and the compass's buttons carry icons, not those characters.
 
 ### D-382 — Brand identity (`BrandLogo`, voxel favicon) and 10-step living isometric diorama on the main menu · `agreed`
 *"I want to add more identity to the tool. Like an icon, a logo, a title... You command. I would love to have the logo in the main menu, what do you think about it? We can also add a floating terrain on an isometric view and a road that highlights the title, some scheduled actions that edit the terrain behind, like step 1, then 2, 3, 4, ... 10, then start undoing down to step 1, and loop."*
@@ -10055,3 +10057,71 @@ copy of the GM's data.
 - Smaller: the console finds where the table is the way it finds the open map,
   without a function written inline, and the `h1` rule is `.launcher h1`
   alone, since no other heading exists.
+
+### D-386 — One theme for both screens, and a browser floor said out loud · `agreed`
+*"3. Fix all."*
+
+The rest of the review, on how the styles are built.
+
+- **`@tt/theme`, a package of two stylesheets.** `tokens.css` holds every
+  colour, size and font as a custom property, and `base.css` the rules both
+  screens had word for word — 84 of the table's 120, plus the two that differed
+  only by a textarea. Each shell imports both first and keeps what is its own,
+  so a colour changes in one file instead of two, and the design gallery can
+  link the real files instead of a copy. A package rather than CSS in `@tt/ui`,
+  which styles itself inline (R-111), or in `client-core`, which is code: it is
+  CSS only, imported with `@import`, and depends on nothing.
+- **Nothing moved but the rules.** Every element's computed style was read on
+  twelve screens before and after, the console's world, its map under each
+  tool, its menu and the table's three, and the two readings match. The one
+  difference on the way — dropdowns gained 3px of padding when a rule moved
+  ahead of another — was why the controls rule went into `base.css` too.
+- **The colours that are the theme's follow it.** The ladder's rail, the
+  address's hover, and the dark behind a dialog, a cropping frame and a link
+  are mixed from the main colour or the ok colour now. Black and white for
+  shading stay as they are, since they shade any theme the same; the paper of
+  a printed card stays its own colour, being a picture of the card.
+- **`@tt/ui` reads the theme through one table, `THEME`**, one entry per custom
+  property with one fallback each, the value the theme gives it. There had been
+  five greys for the same border. A test works out each colour from tokens.css
+  and holds the fallback to it. The tool button's height reads `--ui-slot-h`,
+  which had been defined and never used.
+- **Two unused rules are gone, and four the table never used** are the
+  console's alone now.
+- **Focus on a swatch is a ring outside it**, selection a frame inside, so the
+  chosen one with the keyboard on it shows both.
+- **A browser floor: Chrome or Edge 111, Safari 16.2, Firefox 121**, from 2023.
+  The colours are mixed with color-mix() and some rows are laid out with
+  :has(), and a browser without them draws half a screen that looks like a bug;
+  fallbacks for every mixed colour would not help, since a value with var() in
+  it cannot fall back. So each page carries a sentence saying the browser is
+  too old, the stylesheet hides it where both work, and a screen starts only
+  where they do. A test keeps the sentence and the check naming the same floor.
+
+### D-387 — The design docs say what was built · `agreed`
+*"4. Fix all."*
+
+The last of the review: the docs D-381 added described a design that differed
+from the code in its colours, its token names and its icons.
+
+- **The gallery is a page of the console**, `/gm/gallery.html`, drawn by the
+  real components with the screens' own stylesheet. The static page it
+  replaces was a second implementation by hand — its own tokens, with other
+  values and other names, its own copy of every component, and its own icons,
+  a stick figure where the registry has a path on the ground. Nothing on the
+  new page is a copy, so it cannot drift; it is served with the console, so it
+  needs the host running, which is the cost.
+- **Icons are data.** `GLYPHS` holds every glyph as shapes and attributes, and
+  `GameIcon` draws from it, so the gallery shows the registry by drawing it.
+  The flame beside a row on stage was a drawing of its own; it is the
+  registry's `light` now, which no screen had used, and `filled` fills it in
+  the light's colour while it is lit.
+- **R-217 is four rules**: colours, sizes and fonts from the tokens; one icon
+  per concept in the registry; a tool or a mode is a slot; and the size scale.
+  It was one rule describing what was built, and nothing could break it.
+- **`DESIGN_SYSTEM.md` names what exists and does not copy values**: where
+  each part lives, the master colours, which tokens are mixed from them, the
+  sizes and type, the icons, the components and the patterns. About a third
+  of its old length. A test holds it to the code: every token it names is in
+  tokens.css, every class it names is styled, its icon table is exactly the
+  registry, and the gallery draws from both.

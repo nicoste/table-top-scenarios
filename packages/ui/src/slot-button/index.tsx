@@ -15,6 +15,7 @@ import { GameIcon } from '../game-icon/index.js';
 import type { GameIconName } from '../game-icon/index.js';
 import { Tooltip } from '../tooltip/index.js';
 import type { Placement } from '../tooltip/index.js';
+import { THEME } from '../theme/index.js';
 
 export interface SlotButtonProps {
   readonly icon: GameIconName;
@@ -36,29 +37,29 @@ const BASE_SLOT: CSSProperties = {
   justifyContent: 'center',
   gap: 4,
   width: '100%',
-  minHeight: 54,
+  minHeight: THEME.slotH,
   padding: '6px 4px',
-  borderRadius: 'var(--ui-radius, 2px)',
-  background: 'var(--ui-slot-bg, #202530)',
-  border: '2px solid var(--ui-slot-border, #464e62)',
-  boxShadow: 'var(--ui-slot-shadow, inset 2px 2px 0 rgba(255,255,255,0.11), inset -2px -2px 0 rgba(0,0,0,0.75))',
-  color: 'var(--ui-ink, #e6e9ef)',
-  font: '600 11.5px/1.1 var(--ui-font, ui-monospace, Menlo, monospace)',
+  borderRadius: THEME.radius,
+  background: THEME.slotBg,
+  border: `2px solid ${THEME.slotBorder}`,
+  boxShadow: THEME.slotShadow,
+  color: THEME.ink,
+  font: `600 11.5px/1.1 ${THEME.font}`,
   cursor: 'pointer',
   userSelect: 'none',
   transition: 'border-color 0.1s ease, background 0.1s ease, color 0.1s ease',
 };
 
 const HOVER_SLOT: CSSProperties = {
-  background: 'var(--ui-slot-hover-bg, #282f3d)',
-  borderColor: 'var(--ui-slot-hover-border, #8792a8)',
+  background: THEME.slotHoverBg,
+  borderColor: THEME.slotHoverBorder,
 };
 
 const ACTIVE_SLOT: CSSProperties = {
-  background: 'var(--ui-slot-active-bg, #3b2c14)',
-  borderColor: 'var(--ui-slot-active-border, var(--ui-highlight, #f5a524))',
-  boxShadow: 'var(--ui-slot-active-shadow, inset 2px 2px 0 rgba(255,220,130,0.25), inset -2px -2px 0 rgba(0,0,0,0.85), 0 0 0 1px #f5a524)',
-  color: 'var(--ui-slot-active-ink, #ffd479)',
+  background: THEME.slotActiveBg,
+  borderColor: THEME.slotActiveBorder,
+  boxShadow: THEME.slotActiveShadow,
+  color: THEME.slotActiveInk,
 };
 
 const HOTKEY_STYLE: CSSProperties = {
@@ -68,12 +69,12 @@ const HOTKEY_STYLE: CSSProperties = {
   fontSize: 10.5,
   lineHeight: 1,
   fontWeight: 700,
-  color: 'var(--dim, #8d97a6)',
+  color: THEME.dim,
 };
 
 const HOTKEY_ACTIVE_STYLE: CSSProperties = {
   ...HOTKEY_STYLE,
-  color: 'var(--ui-highlight, #f5a524)',
+  color: THEME.highlight,
 };
 
 const LABEL_STYLE: CSSProperties = {

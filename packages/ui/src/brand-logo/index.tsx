@@ -2,14 +2,14 @@
 // Scenarios (D-382). Built in the Squared Voxel HUD visual language using
 // master CSS tokens (`--ui-highlight`, `--ui-ink`, `--dim`, `--ui-slot-border`)
 // so global theme swaps re-colour the emblem and wordmark automatically (R-111).
-// Every colour below is one of them or mixed from them; the fallbacks are the
-// shells' own defaults.
+// Every colour below is one of them or mixed from them, read through THEME.
 
 import type { CSSProperties } from 'react';
+import { THEME } from '../theme/index.js';
 
-const HIGHLIGHT = 'var(--ui-highlight, #f5a524)';
-const MAIN = 'var(--ui-main, #181c24)';
-const INK = 'var(--ui-ink, #e6e9ef)';
+const HIGHLIGHT = THEME.highlight;
+const MAIN = THEME.main;
+const INK = THEME.ink;
 /** The highlight at `percent` strength over whatever is behind it: glows and tints. */
 const glow = (percent: number) => `color-mix(in srgb, ${HIGHLIGHT} ${percent}%, transparent)`;
 /** The emblem's faces, from darkest to lightest, and the line round them. */
@@ -42,9 +42,9 @@ const EMBLEM_FRAME: CSSProperties = {
   alignItems: 'center',
   justifyContent: 'center',
   flexShrink: 0,
-  background: 'var(--ui-slot-bg, #0d1016)',
-  border: '1px solid var(--ui-slot-border, #4a5262)',
-  borderRadius: 'var(--ui-radius, 2px)',
+  background: THEME.slotBg,
+  border: `1px solid ${THEME.slotBorder}`,
+  borderRadius: THEME.radius,
   boxShadow: `inset 0 0 0 1px ${glow(16)}, 0 4px 14px rgba(0, 0, 0, 0.45)`,
 };
 
@@ -71,7 +71,7 @@ const SUBTITLE: CSSProperties = {
   fontWeight: 700,
   letterSpacing: '0.14em',
   textTransform: 'uppercase',
-  color: 'var(--dim, #8a93a6)',
+  color: THEME.dim,
 };
 
 const DOT: CSSProperties = {
@@ -90,7 +90,7 @@ const STATUS_PILL: CSSProperties = {
   color: HIGHLIGHT,
   background: glow(10),
   border: `1px solid ${glow(35)}`,
-  borderRadius: 'var(--ui-radius, 2px)',
+  borderRadius: THEME.radius,
   padding: '1px 6px',
   fontVariantNumeric: 'tabular-nums',
   whiteSpace: 'nowrap',
@@ -146,7 +146,7 @@ export function BrandLogo({
           {/* Corner HUD ticks */}
           <path
             d="M2 6V2H6M34 2H38V6M38 34V38H34M6 38H2V34"
-            stroke="var(--ui-slot-border, #4a5262)"
+            stroke={THEME.slotBorder}
             strokeWidth="1.2"
           />
 
@@ -154,14 +154,14 @@ export function BrandLogo({
           <polygon
             points="4,22 20,30 20,36 6,28"
             fill={FACE}
-            stroke="var(--ui-slot-border, #4a5262)"
+            stroke={THEME.slotBorder}
             strokeWidth="1.1"
             strokeLinejoin="bevel"
           />
           <polygon
             points="36,22 20,30 20,36 34,28"
             fill={UNDERSIDE}
-            stroke="var(--ui-slot-border, #4a5262)"
+            stroke={THEME.slotBorder}
             strokeWidth="1.1"
             strokeLinejoin="bevel"
           />
@@ -170,7 +170,7 @@ export function BrandLogo({
           <polygon
             points="20,14 36,22 20,30 4,22"
             fill={PLATEAU}
-            stroke="var(--dim, #8a93a6)"
+            stroke={THEME.dim}
             strokeWidth="1.2"
             strokeLinejoin="bevel"
           />
@@ -186,14 +186,14 @@ export function BrandLogo({
           {/* Tower Left Lit Wall */}
           <polygon
             points="12,9 20,13 20,22 12,18"
-            fill="var(--dim, #8a93a6)"
+            fill={THEME.dim}
             stroke={OUTLINE}
             strokeWidth="1"
           />
           {/* Tower Right Shadow Wall */}
           <polygon
             points="28,9 20,13 20,22 28,18"
-            fill="var(--ui-slot-border, #4a5262)"
+            fill={THEME.slotBorder}
             stroke={OUTLINE}
             strokeWidth="1"
           />

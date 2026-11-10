@@ -14,6 +14,7 @@ import type { CSSProperties } from 'react';
 import { GameIcon } from '../game-icon/index.js';
 import type { GameIconName } from '../game-icon/index.js';
 import { Tooltip } from '../tooltip/index.js';
+import { THEME } from '../theme/index.js';
 
 export interface CompassProps {
   /**
@@ -44,10 +45,10 @@ const POD_SHELL: CSSProperties = {
   alignItems: 'center',
   gap: 6,
   padding: 5,
-  borderRadius: 'var(--ui-radius, 2px)',
-  background: 'var(--ui-panel-bg, #151a22e6)',
-  border: '2px solid var(--ui-panel-border, #3a404f)',
-  boxShadow: 'var(--ui-panel-shadow, inset 2px 2px 0 rgba(255,255,255,0.07), inset -2px -2px 0 rgba(0,0,0,0.7), 0 6px 0 rgba(0,0,0,0.45))',
+  borderRadius: THEME.radius,
+  background: THEME.panelBg,
+  border: `2px solid ${THEME.panelBorder}`,
+  boxShadow: THEME.panelShadow,
   zIndex: 4,
   userSelect: 'none',
 };
@@ -58,9 +59,9 @@ const DIAL_SHELL: CSSProperties = {
   boxSizing: 'content-box',
   display: 'grid',
   placeItems: 'center',
-  borderRadius: 'var(--ui-radius, 2px)',
-  background: 'var(--bg, #0f1216)',
-  border: '2px solid var(--ui-slot-border, #464e62)',
+  borderRadius: THEME.radius,
+  background: THEME.bg,
+  border: `2px solid ${THEME.slotBorder}`,
   boxShadow: 'inset 2px 2px 0 rgba(0,0,0,0.65), inset -2px -2px 0 rgba(255,255,255,0.05)',
   pointerEvents: 'none',
   flexShrink: 0,
@@ -77,8 +78,8 @@ const PASSIVE_SHELL: CSSProperties = {
   display: 'grid',
   placeItems: 'center',
   borderRadius: '50%',
-  background: 'var(--ui-panel-bg, #151a22d9)',
-  border: '1px solid var(--ui-panel-border, #333b48)',
+  background: THEME.panelBg,
+  border: `1px solid ${THEME.panelBorder}`,
   boxShadow: '0 2px 10px #0006',
   pointerEvents: 'none',
   zIndex: 4,
@@ -98,18 +99,18 @@ const CAM_BTN: CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
-  borderRadius: 'var(--ui-radius, 2px)',
-  background: 'var(--ui-slot-bg, #202530)',
-  border: '2px solid var(--ui-slot-border, #464e62)',
-  boxShadow: 'var(--ui-slot-shadow, inset 2px 2px 0 rgba(255,255,255,0.11), inset -2px -2px 0 rgba(0,0,0,0.75))',
-  color: 'var(--ui-ink, #e6e9ef)',
+  borderRadius: THEME.radius,
+  background: THEME.slotBg,
+  border: `2px solid ${THEME.slotBorder}`,
+  boxShadow: THEME.slotShadow,
+  color: THEME.ink,
   cursor: 'pointer',
 };
 
 const CAM_BTN_HOVER: CSSProperties = {
-  background: 'var(--ui-slot-hover-bg, #282f3d)',
-  borderColor: 'var(--ui-highlight, #f5a524)',
-  color: 'var(--ui-slot-active-ink, #ffd479)',
+  background: THEME.slotHoverBg,
+  borderColor: THEME.highlight,
+  color: THEME.slotActiveInk,
 };
 
 /** The four cardinals, symmetrically placed 8.5px inside the 64×64 frame. */
@@ -165,18 +166,18 @@ function DialSvg({ bearing }: { readonly bearing: number }) {
           <line
             key={deg}
             x1={C} y1={6} x2={C} y2={10}
-            stroke="var(--ui-slot-border, #4a5364)"
+            stroke={THEME.slotBorder}
             strokeWidth={1.5}
             transform={`rotate(${deg} ${C} ${C})`}
           />
         ))}
         <path
           d={`M${C} 19 L${C + 4.5} ${C + 1} L${C} ${C - 1} L${C - 4.5} ${C + 1} Z`}
-          fill="var(--ui-highlight, #f5a524)"
+          fill={THEME.highlight}
         />
         <path
           d={`M${C} ${SIZE - 19} L${C + 4.5} ${C - 1} L${C} ${C + 1} L${C - 4.5} ${C - 1} Z`}
-          fill="var(--ui-slot-border, #3a4251)"
+          fill={THEME.slotBorder}
         />
         {RING.map(({ letter, x, y }) => (
           <text
@@ -187,8 +188,8 @@ function DialSvg({ bearing }: { readonly bearing: number }) {
             dominantBaseline="central"
             fontSize={letter === 'N' ? 9.5 : 8}
             fontWeight={letter === 'N' ? 700 : 400}
-            fill={letter === 'N' ? 'var(--ui-highlight, #f5a524)' : 'var(--dim, #8b93a1)'}
-            fontFamily="var(--ui-font, ui-monospace, Menlo, monospace)"
+            fill={letter === 'N' ? THEME.highlight : THEME.dim}
+            fontFamily={THEME.font}
           >
             {letter}
           </text>
