@@ -2,7 +2,7 @@
 
 How the two screens look, and where each part of that lives. The rules are
 R-217 to R-217c in [ARCHITECTURE.md](ARCHITECTURE.md); the reasons are D-381,
-D-383, D-386 and D-387.
+D-383, D-386, D-387 and D-388.
 
 **To see it, start the host and open `/gm/gallery.html`.** Every part below is
 drawn there by the real components with the real stylesheets, and three
@@ -48,6 +48,10 @@ Mixed from those: `--bg`, `--panel`, `--edge`, `--ink`, `--dim`, `--accent` and
 `--ui-slot-shadow`, and the chosen slot's `--ui-slot-active-bg`,
 `--ui-slot-active-border`, `--ui-slot-active-ink`, `--ui-slot-active-shadow`.
 
+**`--ui-key` is the colour of a key**, wherever one is shown: a tool slot's
+number, and a `<kbd>` in words (D-388). Lighter than `--dim`, so it reads at
+4.5:1 on a slot under the pointer; a test holds it there.
+
 **A colour typed into a shell or a component is a bug** (R-217), with two
 exceptions. Black and white for shading — bevels, shadows, outlines — since
 they shade any theme the same. And a picture of a real thing: the paper of a
@@ -85,6 +89,11 @@ and `--ui-body-font` for anything read as words.
 | `--ui-text-meta` | 11 | `.diff` and `.tags`: a cost, a size, a tag |
 
 Distances are bare numbers: *sees 12*, *7.4* (D-316).
+
+**A key named in words is a `<kbd>`** (D-388): bold, in `--ui-font`, in
+`--ui-key` — what a slot's number looks like. *Pick **Play** (3)*, *Escape puts
+it down*, and the legends along the foot of both screens. A tooltip keeps its
+key as a word: *— key 4*.
 
 ---
 
@@ -144,6 +153,8 @@ characters.
 - **`Tooltip`**: always, never a native `title`. It opens on hover and on focus.
 - **`BrandLogo`**: the emblem and the name; `statusLabel` only on the console's
   menu.
+- **`WithKeys`**: a line of words with keys in it — a `HelpLine` from
+  `client-core`, such as the camera's legend — with each key a `<kbd>`.
 
 ---
 

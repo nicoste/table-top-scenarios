@@ -10125,3 +10125,24 @@ from the code in its colours, its token names and its icons.
   of its old length. A test holds it to the code: every token it names is in
   tokens.css, every class it names is styled, its icon table is exactly the
   registry, and the gallery draws from both.
+
+### D-388 — A key on screen has one colour · `agreed`
+*"The key-number contrast: change it, estandarize the color you will use for
+that."*
+
+The number on a tool slot was `--dim`: 4:1 on the slot, and 2.9:1 on one under
+the pointer, against the 4.5:1 that text this small needs. Keys named in a
+panel's words were in no colour of their own at all: *(key 3)* was dim, *⇧
+shift* was bold ink, *Escape* was plain.
+
+- **`--ui-key`**, mixed from the ink and the main colour, is the colour of a
+  key wherever one is shown: 6.8:1 on a slot, 4.9:1 under the pointer, more on
+  a panel. A test holds it to 4.5:1 on all four grounds it is drawn on.
+- **A key named in words is a `<kbd>`**, drawn as a slot's number is: bold, in
+  the monospace, in `--ui-key`. The hints that name a key use it, and so do the
+  two legends — the console's bottom bar and a map's, and the table's.
+- **The legends are lines of words and keys** (`HelpLine` in `client-core`),
+  and `WithKeys` in `@tt/ui` draws one. The camera's keys still come from the
+  table `cameraAction` reads (D-385), and now say they are keys.
+- **A tooltip keeps its key as a word** — *— key 4* — since it is a sentence
+  in ink already, and reads.

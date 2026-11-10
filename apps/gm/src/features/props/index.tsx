@@ -270,10 +270,13 @@ export function PropsPanel({ hand, onHand, selected, onSelect, opened, placeId, 
           <p className="hint">
             {inHand.hangs ? 'Point at a wall; it hangs facing out. ' : ''}
             {inHand.dangles ? 'Or under a ledge or a beam, to hang it from there. ' : ''}
-            {inHand.turnsToWall
-              ? `Point at the side of a wall to ${inHand.climbable ? 'set it against it' : 'climb toward it'}, or at a floor to turn it with Z / X. `
-              : ''}
-            One per click. Escape puts it down.
+            {inHand.turnsToWall && (
+              <>
+                Point at the side of a wall to {inHand.climbable ? 'set it against it' : 'climb toward it'}, or
+                at a floor to turn it with <kbd>Z</kbd> / <kbd>X</kbd>.{' '}
+              </>
+            )}
+            One per click. <kbd>Escape</kbd> puts it down.
           </p>
         </>
       ) : !selected && (

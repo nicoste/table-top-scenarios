@@ -274,6 +274,15 @@ button.quiet.danger-trigger:hover:not(:disabled) {
 
 .hint b, .hint strong { color: var(--ink); font-weight: 600; }
 
+/* A key named in words (D-388): drawn as a tool slot's number is, bold, in
+   the console's monospace and the key colour, so "Escape" reads as the key and
+   not as a word of the sentence. */
+kbd {
+  font: 700 var(--ui-text-meta) var(--ui-font);
+  color: var(--ui-key);
+  white-space: nowrap;
+}
+
 /* Standardized control / field label (R-217). */
 .lbl {
   color: var(--dim);

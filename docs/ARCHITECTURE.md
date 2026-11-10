@@ -1773,6 +1773,9 @@ apps/host/src/
 > through `THEME`, and the design gallery (`/gm/gallery.html`) through the same
 > stylesheets the screens load.
 >
+> **Amended by D-388.** A key shown on screen — a slot's number, a `<kbd>` in
+> words — is in `--ui-key`, and nothing else is.
+>
 > **R-217a.** **One concept, one icon, in `GameIcon`.** Monochrome, in the
 > current colour, drawn from `GLYPHS`. A second drawing of a concept the
 > registry has — in a panel, a shell or the gallery — is a bug: `walk` is the

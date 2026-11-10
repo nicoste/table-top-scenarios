@@ -31,7 +31,7 @@ import type { Picked, RulerPoint, Standing, StageFog } from '@tt/render';
 import { useStage, useCost, useDiorama, COST_HINT } from '@tt/client-core';
 import { PlaceCard } from '../features/place/index.js';
 import { TableTools } from '../features/tools/index.js';
-import { BrandLogo, Compass, Metrics } from '@tt/ui';
+import { BrandLogo, Compass, Metrics, WithKeys } from '@tt/ui';
 
 interface Props {
   view: TableView | null;
@@ -678,7 +678,7 @@ export function App({ view, status, rejection, dispatch }: Props) {
         gesture will do matters more than being reminded how to turn — and the
         table stays minimal either way (R-94).
       */}
-      {!waiting && <div className="hints">{prompt ?? TABLE_CAMERA_HINT}</div>}
+      {!waiting && <div className="hints">{prompt ?? <WithKeys line={TABLE_CAMERA_HINT} />}</div>}
       {rejection && <div className="toast">{rejection}</div>}
     </>
   );

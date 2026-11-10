@@ -59,7 +59,7 @@ import { OnStagePanel } from '../features/on-stage/index.js';
 import { ChunkInspector } from '../features/visibility/index.js';
 import { MapPanel } from '../features/map/index.js';
 import { ConnectBadge } from '../features/connect/index.js';
-import { Compass, GameIcon, Metrics, Tooltip } from '@tt/ui';
+import { Compass, GameIcon, Metrics, Tooltip, WithKeys } from '@tt/ui';
 
 /** Mac shows ⌘, everything else Ctrl. Cosmetic: the binding accepts both (R-140). */
 const MOD = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
@@ -2305,7 +2305,8 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
           </div>
 
           <div className="hints">
-            1–6 tool · 7–0, −, = or [ ] brush · {CAMERA_HINT}
+            <kbd>1</kbd>–<kbd>6</kbd> tool · <kbd>7</kbd>–<kbd>0</kbd>, <kbd>−</kbd>, <kbd>=</kbd> or <kbd>[</kbd> <kbd>]</kbd> brush
+            {' · '}<WithKeys line={CAMERA_HINT} />
           </div>
           <ConnectBadge urls={view?.connect ?? []} />
         </>

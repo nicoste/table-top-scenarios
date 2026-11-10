@@ -56,14 +56,26 @@ export function wheelZoom(deltaY: number): number {
 }
 
 /**
+ * A line of help: its words, and the keys among them, which the screens draw
+ * as keys, in the key colour (D-388). `said` gives it back as plain words.
+ */
+export type HelpLine = readonly (string | { readonly key: string })[];
+
+export const said = (line: HelpLine): string =>
+  line.map((part) => (typeof part === 'string' ? part : part.key)).join('');
+
+/**
  * The one line of help the console shows, matching `cameraAction`.
  */
-export const CAMERA_HINT = `${keysFor('turn')} turn · ${keysFor('tilt')} tilt · right-drag pan · wheel zoom`;
+export const CAMERA_HINT: HelpLine = [
+  { key: keysFor('turn') }, ' turn · ', { key: keysFor('tilt') }, ' tilt · right-drag pan · wheel zoom',
+];
 
 /**
  * The table display's camera legend (D-381). The table is usually run with a
  * mouse alone, so the compass comes first, but it answers to the same keys and
  * says so.
  */
-export const TABLE_CAMERA_HINT =
-  `Compass, or ${keysFor('turn')} turn and ${keysFor('tilt')} tilt · right-drag pan · wheel zoom`;
+export const TABLE_CAMERA_HINT: HelpLine = [
+  'Compass, or ', { key: keysFor('turn') }, ' turn and ', { key: keysFor('tilt') }, ' tilt · right-drag pan · wheel zoom',
+];

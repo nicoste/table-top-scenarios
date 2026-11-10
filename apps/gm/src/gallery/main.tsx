@@ -147,6 +147,9 @@ function Gallery() {
           </div>
           <p className="readout">7.4 · sees 12</p>
           <p className="hint">A hint: secondary words, with <b>key terms</b> in ink.</p>
+          <p className="hint">
+            A key named in words is a <kbd>kbd</kbd>, drawn as a slot&apos;s number is: <kbd>Escape</kbd> keeps it.
+          </p>
           <p className="warn">A warning, in the highlight.</p>
         </Section>
 

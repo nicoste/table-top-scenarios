@@ -87,7 +87,7 @@ export function PartyPanel({ campaign, placement, canPlace, notes, insidePoi = n
         </p>
       ) : !placed && (
         <p className="hint" style={{ marginBottom: 8 }}>
-          Not on the map yet. Pick <b>Travel</b> (key 2) and click a revealed cell —
+          Not on the map yet. Pick <b>Travel</b> (<kbd>2</kbd>) and click a revealed cell —
           the sequence is already waiting for a destination.
         </p>
       )}
