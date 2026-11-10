@@ -6,7 +6,7 @@ import { createMap, setBlocks, putProp, editProp, propType, DEFAULT_FLOOR } from
 import {
   EMPTY_HAND, takeProp, turnHand, propAim, propWall, propPreview, placePropIntent, propPrompt, toggleIntent, toggleLabel,
   paintPropIntent, paintPropPrompt, propMovePreview, propMoveIntent, propMovePrompt, turnDrag, propHoverLabel,
-  placedTurn,
+  placedTurn, propKey, removeQuestion, said,
 } from '@tt/client-core';
 
 const cube = (x: number, y: number, z: number): BlockCoord => ({ x, y, z });
@@ -226,3 +226,39 @@ describe('a ladder or a rope goes on up the same wall (D-362)', () => {
   });
 });
 
+
+describe('Backspace asks before a prop goes (D-389)', () => {
+  it('asks first, with Backspace or Delete', () => {
+    expect(propKey('Backspace', false)).toBe('ask');
+    expect(propKey('Delete', false)).toBe('ask');
+  });
+
+  it('removes on a second Backspace, or on Enter', () => {
+    for (const code of ['Backspace', 'Delete', 'Enter', 'NumpadEnter']) expect(propKey(code, true), code).toBe('remove');
+  });
+
+  it('keeps on Escape', () => {
+    expect(propKey('Escape', true)).toBe('keep');
+  });
+
+  it('leaves every other key alone, and Enter and Escape when nothing is asked', () => {
+    expect(propKey('Enter', false)).toBeNull();
+    expect(propKey('Escape', false)).toBeNull();
+    expect(propKey('KeyZ', true)).toBeNull();
+    expect(propKey('Digit1', false)).toBeNull();
+  });
+
+  it('never takes a key held down for the answer to its own question', () => {
+    // The first press asks; the repeats that follow while it is held are not a second press.
+    expect(propKey('Backspace', false, true)).toBe('ask');
+    expect(propKey('Backspace', true, true)).toBeNull();
+    expect(propKey('Enter', true, true)).toBeNull();
+  });
+
+  it('names the prop, and says its answers as keys', () => {
+    const question = removeQuestion(propType('chest'));
+    expect(said(question)).toBe('Remove the chest? Backspace or Enter removes it, Escape keeps it.');
+    for (const key of ['Backspace', 'Enter', 'Escape']) expect(question).toContainEqual({ key });
+    expect(said(removeQuestion(propType('stairs')))).toContain('removes them');
+  });
+});

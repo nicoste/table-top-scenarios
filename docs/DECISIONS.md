@@ -8424,6 +8424,7 @@ does what the panel's Remove button does. No confirmation: removing a prop is
 building, and one undo brings it back (R-212). A field being typed in keeps
 its own Backspace; the console's shortcuts never see a key meant for a field.
 **Amended by D-384**: the panel's Remove asks now; Backspace still does not.
+**Amended by D-389**: Backspace asks too; a second Backspace, or Enter, answers.
 
 ### D-331 — The Party's view forgets props with the room · `agreed`
 *"The party remembers items after clearing what they have seen."*
@@ -10021,6 +10022,7 @@ whole row, name and picture with it, so the question offered *Remove* and
 
 What still takes one action is a key or a stroke: Backspace on a prop, and the
 erase brush, R-151's own exception.
+**Amended by D-389**: Backspace asks now; the erase brush is the one left.
 
 ### D-385 — The review's smaller findings, settled · `agreed`
 *"1. a. Fix it. 1. b. That's ok. 1. c. Fix it. 2. Fix all."*
@@ -10146,3 +10148,27 @@ shift* was bold ink, *Escape* was plain.
   table `cameraAction` reads (D-385), and now say they are keys.
 - **A tooltip keeps its key as a word** — *— key 4* — since it is a sentence
   in ink already, and reads.
+
+### D-389 — Backspace asks before a prop goes · `agreed`
+*"Backspace removing a prop without asking: add a prompt and associate a second
+backspace to confirm deletion (or enter), and escape to cancel."*
+
+D-330 had Backspace remove the prop selected at once, and D-384 kept it so: a
+key pressed on purpose was taken for the answer. It is a key pressed near
+others, though, and a GM who meant a field and missed it lost the prop.
+
+- **The first Backspace — or Delete — asks.** The panel's own question opens,
+  *Remove* and *Keep*, as if its Remove button had been clicked; under it the
+  question is said with its keys, and the readout says it too, where the GM is
+  looking. The prop is framed in the red a prop that cannot go there gets.
+- **A second Backspace, or Enter, removes it. Escape keeps it.** The buttons
+  answer as well, and either way opens or closes the one question: the button
+  asked, Backspace can answer, and the other way round.
+- **A key held down asks once.** Its repeats are not a second press, so
+  holding Backspace never answers its own question.
+- **Enter on a focused button is the button's**: on *Keep*, it keeps.
+- **The question is about one prop.** Choosing another, or none, or another
+  tool, closes it.
+- `propKey` in `client-core` is what each key does, and `removeQuestion` the
+  words; `ConfirmDelete` takes `armed` and `onArmed` so a key can open the
+  question its button does. The erase brush is now R-151's one exception.

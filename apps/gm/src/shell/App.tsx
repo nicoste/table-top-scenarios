@@ -39,6 +39,7 @@ import {
   NO_CAPTURE, captureCorner, captureClick, captureHeight, captureBack, captureBox, capturePrompt,
   EMPTY_HAND, turnHand, propAim, propWall, propPreview, placePropIntent, propPrompt, toggleIntent,
   paintPropIntent, paintPropPrompt, propMovePreview, propMoveIntent, propMovePrompt, turnDrag, propHoverLabel, placedTurn,
+  propKey, removeQuestion, said,
   MEASURE_START, measureCleared, measurePress, measureDrag, measureRelease, rulerShown, areasShown, handleAt,
   measurePrompt, faceCentre, floorCentre, ownBand,
 } from '@tt/client-core';
@@ -113,6 +114,9 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
    */
   const [propHand, setPropHand] = useState<PropHand>(EMPTY_HAND);
   const [selectedProp, setSelectedProp] = useState<string | null>(null);
+  /** The selected prop, when Backspace or its Remove button has asked whether it goes (D-389). */
+  const [propAsking, setPropAsking] = useState<string | null>(null);
+  const askingProp = propAsking !== null && propAsking === selectedProp;
   /** The selected prop being dragged somewhere else (D-354), or none. */
   const [propDrag, setPropDrag] = useState<PropDrag | null>(null);
   /**
@@ -857,19 +861,28 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     const chosen = selectedProp ? propById(openBody.props, selectedProp) : null;
     if (chosen) {
       const box = propBox(chosen);
-      stage.showBlockGhost([box.min, box.max], 0x7fd4ff);
       const type = propType(chosen.type);
+      // Asked whether it goes, it is framed in the "cannot" red, and the
+      // question is said here too, where the GM is looking (D-389).
+      if (askingProp) {
+        stage.showBlockGhost([box.min, box.max], 0xff6b6b);
+        setHoverLabel(said(removeQuestion(type ?? null)));
+        return;
+      }
+      stage.showBlockGhost([box.min, box.max], 0x7fd4ff);
       const it = type?.plural ? 'them' : 'it';
       setHoverLabel(`${type?.name ?? 'Prop'} selected — drag ${it} to move ${it}, change ${it} in the panel, or Escape to let go.`);
       return;
     }
     stage.showBlockGhost([]);
     setHoverLabel(propPrompt(null, null, null));
-  }, [stage, openMap, mapTool, openBody, propHand, propAt, propAtOnProp, propWallAt, selectedProp, propDrag, standingCubes]);
+  }, [stage, openMap, mapTool, openBody, propHand, propAt, propAtOnProp, propWallAt, selectedProp, propDrag, standingCubes, askingProp]);
   // A prop removed, or undone away, is no longer selected.
   useEffect(() => {
     if (selectedProp && openBody && !propById(openBody.props, selectedProp)) setSelectedProp(null);
   }, [selectedProp, openBody]);
+  // A question is about one prop: choosing another, or none, closes it (D-389).
+  useEffect(() => { setPropAsking(null); }, [selectedProp]);
 
   // Putting the tool down, or changing map, drops the ghost and any half-drawn box.
   useEffect(() => {
@@ -1821,12 +1834,22 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
         if (digit === '6') { setMapTool('props'); return; }
         // The seventh (D-341): the ruler, and areas.
         if (digit === '7') { setMapTool('measure'); return; }
-        // Backspace — or Delete, where there is one — removes the prop selected
-        // (D-330). A field being typed in never gets here (the guard above).
-        if (mapTool === 'props' && (e.code === 'Backspace' || e.code === 'Delete') && selectedProp && openMap) {
+        // Backspace — or Delete, where there is one — asks before the prop
+        // selected goes; asked, a second Backspace or Enter removes it and
+        // Escape keeps it (D-330, D-389). A field being typed in never gets
+        // here (the guard above), and Enter on a focused button is that
+        // button's: on Keep, it keeps.
+        const onButton = tag === 'BUTTON' && (e.code === 'Enter' || e.code === 'NumpadEnter');
+        const answer = mapTool === 'props' && selectedProp && !onButton
+          ? propKey(e.code, propAsking === selectedProp, e.repeat) : null;
+        if (answer && selectedProp) {
           e.preventDefault();
-          dispatch({ kind: 'removeProp', placeId: openMap.placeId, poiId: openMap.poiId, id: selectedProp });
-          setSelectedProp(null);
+          if (answer === 'ask') setPropAsking(selectedProp);
+          else if (answer === 'keep') setPropAsking(null);
+          else {
+            dispatch({ kind: 'removeProp', placeId: openMap.placeId, poiId: openMap.poiId, id: selectedProp });
+            setSelectedProp(null);
+          }
           return;
         }
         // Z / X turn the prop in hand, or the one selected (R-203).
@@ -1960,7 +1983,7 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
     // quietly changed the world tool behind the map instead. `stride.step`
     // for the same reason: Escape has to know whether a move is in progress.
     // `tool` and `hands.step` so Z / X know whether they turn a place in hand.
-  }, [stage, openMap, stride.step, silverMove.step, tool, hands.step, mapTool, capture.step, placing.id, propHand.type, selectedProp, openBody]);
+  }, [stage, openMap, stride.step, silverMove.step, tool, hands.step, mapTool, capture.step, placing.id, propHand.type, selectedProp, openBody, propAsking]);
 
   return (
     <>
@@ -2126,6 +2149,8 @@ export function App({ view, status, seat, rejection, dispatch }: Props) {
               onHand={setPropHand}
               selected={selectedProp && openBody ? propById(openBody.props, selectedProp) : null}
               onSelect={setSelectedProp}
+              asking={askingProp}
+              onAsking={(asking) => setPropAsking(asking ? selectedProp : null)}
               opened={openedHere}
               placeId={openPlace.id}
               poiId={openPoi.id}

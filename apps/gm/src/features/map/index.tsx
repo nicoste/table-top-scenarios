@@ -275,7 +275,7 @@ export function MapPanel({
             label="Props"
             hotkey="6"
             active={tool === 'props'}
-            tooltip="Place doors, bars, furniture, lights and climbs (Z/X turn) · click one to edit it, drag it to move it, Backspace removes it — key 6"
+            tooltip="Place doors, bars, furniture, lights and climbs (Z/X turn) · click one to edit it, drag it to move it, Backspace asks to remove it — key 6"
             onClick={() => onTool('props')}
           />
           <SlotButton

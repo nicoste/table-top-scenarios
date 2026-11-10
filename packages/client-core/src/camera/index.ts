@@ -8,6 +8,8 @@
 // Tools are *not* here. Those differ per surface and per seat by design
 // (R-148), and the table has none at all.
 
+import type { HelpLine } from '../help/index.js';
+
 export type CameraAction =
   | { readonly kind: 'turn'; readonly steps: number }
   | { readonly kind: 'tilt'; readonly steps: number };
@@ -54,15 +56,6 @@ const WHEEL_STEP = 1.12;
 export function wheelZoom(deltaY: number): number {
   return deltaY > 0 ? WHEEL_STEP : 1 / WHEEL_STEP;
 }
-
-/**
- * A line of help: its words, and the keys among them, which the screens draw
- * as keys, in the key colour (D-388). `said` gives it back as plain words.
- */
-export type HelpLine = readonly (string | { readonly key: string })[];
-
-export const said = (line: HelpLine): string =>
-  line.map((part) => (typeof part === 'string' ? part : part.key)).join('');
 
 /**
  * The one line of help the console shows, matching `cameraAction`.

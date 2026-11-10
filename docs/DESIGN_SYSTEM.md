@@ -145,7 +145,8 @@ characters.
 - **`ConfirmDelete`** (R-151): `×` arms it, a second click commits, and *Keep*
   lands where the `×` was. It hides the row's other controls while it asks;
   when that hides the name too, the answer says it — *Remove Aldra* (D-384).
-  `disabled` shows the `×` greyed when there is nothing it may delete yet.
+  `disabled` shows the `×` greyed when there is nothing it may delete yet;
+  `armed` and `onArmed` let a key open the same question (D-389).
 - **`PictureInput`**: a card's picture. The badge on its corner asks before the
   picture goes, with *Keep* where the badge was.
 - **`Compass`**: where north is, with turn and tilt buttons for a mouse alone.
@@ -180,7 +181,9 @@ repeating thing in its own well (`.member`, `.stage-list li`, `.area-list li`,
 several fields; a field and an *Add* button in a row when a name is enough.
 
 **Deleting:** every delete button asks (R-151, D-384) — a row's `×`, or a named
-word in a footer (*Delete*, *Forget*, *Remove*) in a `.row.asks`.
+word in a footer (*Delete*, *Forget*, *Remove*) in a `.row.asks` — and so does a
+key: Backspace on a prop opens its *Remove*, and a second Backspace or Enter
+answers it, Escape keeps (D-389).
 
 **Showing and hiding:** `eye-open` and `eye-hidden`, never characters.
 

@@ -2293,6 +2293,10 @@ apps/host/src/
 > asks inside `PictureInput`, with *Keep* where its badge was. What stays one
 > action is a key or a stroke: Backspace on a selected prop (D-330), and the
 > erase brush above.
+>
+> **Amended by D-389.** Backspace asks as well: the first press opens the
+> panel's question, and a second, or Enter, answers it; Escape keeps. The erase
+> brush is the one exception left.
 
 ---
 
@@ -2460,8 +2464,9 @@ apps/host/src/
 > - **The prop in hand is its own ghost** (D-351): the prop itself,
 >   see-through, turned as it will stand and red where it cannot, its box
 >   framed — so which way it faces shows before the click.
-> - **Backspace removes the prop selected** (D-330), or Delete where there is
->   one; the Remove button does the same, and one undo brings it back.
+> - **Backspace asks to remove the prop selected** (D-330, D-389), or Delete
+>   where there is one, as the Remove button does; a second Backspace or Enter
+>   removes it, Escape keeps it, and one undo brings it back.
 > - **The GM's, every part of it.** In play a door opens and shuts with a
 >   **Play** click; never from the table (D-328). A door is not shut on
 >   somebody in the doorway.
