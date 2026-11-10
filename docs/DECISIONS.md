@@ -9810,6 +9810,7 @@ and it is public. That is the moment D-375 set for the automatic checks.
   zod 3 → 4 (every schema in `protocol`), vitest 2 → 4 (clears the six),
   vite 6 → 8 with its React plugin 4 → 6, TypeScript 5 → 7, ESLint 9 → 10,
   dependency-cruiser 16 → 17, and three.js 0.169 → 0.186.
+  **Amended by D-393**: zod is on 4 and vitest on 5, and the audit is at 0.
 - **A README at the root**: what the tool is, how to run it, where the world is
   kept, how to check a change, and the docs in reading order. The package
   READMEs (R-21) are unchanged.
@@ -10250,3 +10251,42 @@ right panel is shorter than the left panel that goes down to the bottom."*
 - **A test reads the stylesheets** for both: every flex rule that aligns its
   text left sets its own `justify-content`, and nothing scrolls but the docks,
   the crop dialog and the two catalogues.
+
+### D-393 — The vulnerable dependencies, upgraded · `agreed`
+*"All merged! Lets attack the dependency issues"*
+
+D-378 counted 7 known vulnerabilities and left the upgrades that clear them
+for later. `npm audit` had found 14 by now: two critical and one high in
+vitest 2's old vite, esbuild and tinypool; a high in zod 3; and 7 moderate in
+the minimatch under typescript-eslint. It reads 0 now. One branch, a commit
+each, since all of them rewrite `package-lock.json`.
+
+- **zod 3 → 4**, in `protocol`, its one user and the one vulnerable package
+  that runs: the host checks every message and every file with it. No schema
+  changed. zod 4 hands a default back as it is instead of parsing it, and
+  every default here is already in its schema's output form. Checked on the
+  GM's own data rather than trusted: the live folder and all 21 backups,
+  loaded through the real stores once under zod 3 (zod 4 still ships it, as
+  `zod/v3`) and once under zod 4, give the same 114 campaigns, saves,
+  libraries and prefab sets, digest for digest.
+- **vitest 2 → 5.** It runs on the vite 6 the screens build with, so the old
+  vite, esbuild, tinypool and vite-node it carried are gone, and with them the
+  critical and high findings. No test or config changed; all 1407 pass, the
+  same count, with no warnings.
+- **minimatch 11 under typescript-eslint.** Every minimatch 10 has the
+  globparts denial of service (GHSA-g3hv-75wg-m249, fixed in 11.0.1), and
+  typescript-eslint 8.72.2 still asks for 10; its pre-releases moved to
+  ^11.0.1 the same day. Until a stable one ships, `overrides` in the root
+  `package.json` gives its parser ^11.0.1. When typescript-eslint 8.72.3 or
+  later asks for it itself, the override does nothing and can go. Lint is
+  unchanged: clean on the code, and it still reports a planted unused
+  variable and an `any`.
+- **The patch releases** with them: typescript-eslint 8.72.2, ws 8.22.2,
+  vite 6.4.6.
+- **Checked running**, on a copy of the data: the host starts, the console
+  opens the campaign and a member added and undone goes there and back, and
+  the table connects and draws the world.
+
+Not done, because nothing in them is a vulnerability, and each changes how
+something is built rather than what is safe: vite 8 with its React plugin 6,
+TypeScript 7, ESLint 10, dependency-cruiser 18, and three.js 0.187.
