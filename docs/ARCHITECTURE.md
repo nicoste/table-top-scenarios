@@ -1744,6 +1744,13 @@ apps/host/src/
 > but breaks the wheel: the scroll chain skips a container the pointer cannot
 > hit, so an overflowing panel stops scrolling. Sizing to content fixes both,
 > because below the content there is simply no box.
+>
+> **Amended by D-392.** A dock with a bar under it — the hints, the address —
+> stands in a column that runs the screen's height, so the dock stops above the
+> bar whatever the bar's height. The column takes no pointer and is not what
+> scrolls: the dock in it is still sized to its content, takes the pointer, and
+> scrolls, so the hover and the wheel both reach the map beside it. Inside a
+> dock, nothing scrolls but a catalogue that is searched.
 
 > **R-116.** Keyboard shortcuts are bound to **`event.code`**, the physical key,
 > never `event.key`.

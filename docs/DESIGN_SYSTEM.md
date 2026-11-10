@@ -2,7 +2,7 @@
 
 How the two screens look, and where each part of that lives. The rules are
 R-217 to R-217c in [ARCHITECTURE.md](ARCHITECTURE.md); the reasons are D-381,
-D-383, D-386, D-387, D-388, D-389, D-390 and D-391.
+D-383, D-386, D-387, D-388, D-389, D-390, D-391 and D-392.
 
 **To see it, start the host and open `/gm/gallery.html`.** Every part below is
 drawn there by the real components with the real stylesheets, and three
@@ -205,6 +205,16 @@ picture or chip alone; numbers and actions go on the line under it.
 
 **Scrollbars are hidden**, on purpose (D-383): a column keeps its width, and the
 wheel still scrolls it.
+
+**The dock scrolls, not the panels in it** (D-392). Everyone on stage and every
+area are shown whole, and the dock scrolls them; only a catalogue that is
+searched — the tokens, the prefabs — scrolls in its own panel. Both docks run
+to the foot of the screen, or on the world to just above the bar under them:
+the hints on the left, the address on the right.
+
+**A row that reads from the left says so**: a button centres what it holds
+(`base.css`), so a flex rule with `text-align: left` gives its own
+`justify-content` (D-392). A test holds the stylesheets to both.
 
 ---
 

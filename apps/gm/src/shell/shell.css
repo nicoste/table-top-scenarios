@@ -64,6 +64,27 @@ input.invalid, input.invalid:focus { border-color: var(--ui-danger); }
  */
 .dock-right.dock-wide { width: 264px; }
 
+/*
+ * A dock and the bar under it, on the world (D-392): the hints under the left
+ * dock, the address under the right. The column is the screen's height and
+ * the dock takes what is left above its bar, so the two never overlap however
+ * many addresses the badge lists — the right dock used to stop 84px short of
+ * the bottom, less than a badge of two, and the left ran on under the hints.
+ * Inside a map there is no bar, and both docks run to the bottom.
+ *
+ * The column takes no pointer, only what is in it does: the strip between a
+ * dock and its bar is still the map, for the hover and the wheel (see .dock).
+ */
+.dock-column {
+  position: fixed; top: 12px; bottom: 12px; left: 12px; z-index: 5;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
+  pointer-events: none;
+}
+.dock-column.right { left: auto; right: 12px; align-items: flex-end; }
+.dock-column > * { pointer-events: auto; }
+.dock-column > .dock { position: static; max-height: none; min-height: 0; flex: 0 1 auto; }
+.dock-column > .hints, .dock-column > .connect { position: static; margin-top: auto; flex: none; }
+
 .btn-grid > *, .btn-grid > * > span:first-child { min-width: 0; width: 100%; display: flex !important; }
 
 /*
@@ -470,12 +491,15 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
 .library-search { margin-bottom: 8px; }
 .library-list, .stage-list {
   list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px;
-  max-height: 320px; overflow-y: auto;
-  scrollbar-width: none; -ms-overflow-style: none;
 }
-.library-list::-webkit-scrollbar,
-.stage-list::-webkit-scrollbar,
-.area-list::-webkit-scrollbar { display: none; }
+/*
+ * A catalogue — the tokens, the prefabs — grows without bound and is searched,
+ * so it scrolls in its panel. What is on the map now does not: everyone on
+ * stage, every area, is the GM's to see at once, and the dock scrolls them
+ * (D-392). A list inside a dock that scrolls was a scroll inside a scroll.
+ */
+.library-list { max-height: 320px; overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none; }
+.library-list::-webkit-scrollbar { display: none; }
 /*
  * The row is the box, not the buttons in it: the entry and its pencil sit on
  * one border, so the chosen row is outlined whole. It was an outline on the
@@ -498,7 +522,11 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
 .library-list li button:hover:not(:disabled) { background: transparent; border-color: transparent; }
 /* The pencil edits; it must not take the red that a quiet button means for delete. */
 .library-list li button.quiet:hover { background: #ffffff14; color: var(--ink); }
-.library-entry { display: flex; align-items: center; gap: 8px; flex: 1 1 auto; min-width: 0; text-align: left; padding: 4px; }
+/* Its card and words from the left: a button centres what it holds (base.css). */
+.library-entry {
+  display: flex; align-items: center; justify-content: flex-start; gap: 8px;
+  flex: 1 1 auto; min-width: 0; text-align: left; padding: 4px;
+}
 .library-card {
   width: 20px; height: 28px; flex: none; border-radius: var(--ui-radius); border: 1px solid var(--edge);
   background-size: cover; background-position: center;
@@ -514,7 +542,7 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
  * and what that kind of token can be asked to do. A silver token's note sits
  * under its row.
  */
-.stage-list { max-height: 420px; --row: var(--ui-control-h); gap: 6px; }
+.stage-list { --row: var(--ui-control-h); gap: 6px; }
 .stage-list li {
   display: flex; flex-direction: column; gap: 4px;
   padding: 6px; border-radius: var(--ui-radius);
@@ -547,7 +575,7 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
  * width and padding, so the two names start at the same place in the column.
  */
 .stage-name {
-  display: flex; align-items: center; gap: 6px; text-align: left; padding: 0 8px;
+  display: flex; align-items: center; justify-content: flex-start; gap: 6px; text-align: left; padding: 0 8px;
   background: transparent; border: 1px solid transparent; box-shadow: none;
 }
 .stage-name .nm { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -625,8 +653,7 @@ input.tiny { width: 3.4em; flex: none; text-align: center; }
  */
 .area-list {
   list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px;
-  max-height: 260px; overflow-y: auto; --row: var(--ui-control-h);
-  scrollbar-width: none; -ms-overflow-style: none;
+  --row: var(--ui-control-h);
 }
 
 .area-row { display: flex; align-items: center; gap: 6px; min-height: var(--row); }
