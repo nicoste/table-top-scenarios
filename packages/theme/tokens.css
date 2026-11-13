@@ -22,11 +22,13 @@
   --ui-font: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, monospace;
   --ui-body-font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 
-  /* Standardized typography scale (R-217) */
+  /* The text sizes (R-217, D-394). Every font size in a stylesheet or a
+     component is one of these; DESIGN_SYSTEM.md says what each is for. */
   --ui-text-h1: 18px;
   --ui-text-h2: 11px;
   --ui-text-label: 10.5px;
   --ui-text-body: 12.5px;
+  --ui-text-control: 12px;
   --ui-text-readout: 12px;
   --ui-text-hint: 11.5px;
   --ui-text-meta: 11px;

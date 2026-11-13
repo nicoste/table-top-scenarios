@@ -129,10 +129,23 @@ describe('DESIGN_SYSTEM.md stays honest', () => {
     expect(listed.sort()).toEqual(Object.keys(GLYPHS).sort());
   });
 
-  it('points at a gallery drawn from the registry and the screens\' own stylesheet', () => {
-    expect(read('apps/gm/src/gallery/main.tsx')).toContain('GLYPHS');
+  it('points at galleries drawn from the registry and the screens\' own stylesheets', () => {
+    expect(read('apps/gm/src/gallery/gallery.tsx')).toContain('GLYPHS');
     expect(read('apps/gm/gallery.html')).toContain('./src/shell/shell.css');
+    expect(read('apps/table/gallery.html')).toContain('./src/shell/shell.css');
     expect(existsSync(join(ROOT, 'docs/ui-gallery.html'))).toBe(false);
+  });
+
+  it('shows only the values tokens.css gives (D-394)', () => {
+    // The page repeats a few values to be readable; a copy drifts unless it is checked.
+    const shown = [...designSystem.matchAll(/^\| `(--[a-z0-9-]+)` \| `?([#0-9a-z.]+)`? \|/gm)]
+      .map((m) => ({ token: m[1]!, value: m[2]! }));
+    expect(shown.length).toBeGreaterThan(15);
+    const wrong = shown.filter(({ token, value }) => {
+      const defined = new RegExp(`^\\s*${token}:\\s*([^;]+);`, 'm').exec(tokens)?.[1]?.trim();
+      return defined !== value && defined !== `${value}px`;
+    });
+    expect(wrong).toEqual([]);
   });
 });
 

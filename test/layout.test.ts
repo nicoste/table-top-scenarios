@@ -3,7 +3,7 @@
 // does (base.css) and the row never said otherwise; and a list scrolled inside
 // a dock that scrolls.
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join, dirname } from 'node:path';
 
@@ -40,5 +40,39 @@ describe('nothing scrolls inside a dock but a catalogue (D-392)', () => {
       .filter((rule) => /overflow(-y)?:\s*(auto|scroll)/.test(rule.body))
       .map((rule) => rule.selector);
     expect(scrolling.sort()).toEqual(['.crop-dialog', '.dock', '.library-list'].sort());
+  });
+});
+
+/**
+ * Where a size is typed on purpose, and why (D-394): a glyph sized to the box
+ * it fills, and the sentence for a browser too old to draw either screen.
+ */
+const TYPED_SIZES = new Set(['.picture-card .picture-busy', '.picture-clear', '.too-old']);
+
+/** Components whose lettering is part of a drawing: the brand's wordmark, the compass's dial. */
+const LETTERED = ['packages/ui/src/brand-logo/index.tsx', 'packages/ui/src/compass/index.tsx'];
+
+function sources(dir: string): string[] {
+  return readdirSync(join(ROOT, dir)).flatMap((name) => {
+    const path = join(dir, name);
+    if (statSync(join(ROOT, path)).isDirectory()) return sources(path);
+    return /\.tsx?$/.test(name) ? [path] : [];
+  });
+}
+
+describe('every font size is a token (R-217, D-394)', () => {
+  it('types no font size in a stylesheet but the named few', () => {
+    const typed = all
+      .filter((rule) => /font-size:\s*[0-9.]+(px|rem|em)|font:[^;]*\b[0-9.]+(px|rem)\b/.test(rule.body))
+      .map((rule) => rule.selector)
+      .filter((selector) => !TYPED_SIZES.has(selector));
+    expect(typed).toEqual([]);
+  });
+
+  it('types none in a component or a screen either, but the lettering of a drawing', () => {
+    const files = ['packages/ui/src', 'apps/gm/src', 'apps/table/src'].flatMap(sources)
+      .filter((path) => !LETTERED.includes(path));
+    const typed = files.filter((path) => /fontSize:\s*[0-9]|font:\s*['"`][^'"`]*\b[0-9.]+px/.test(readFileSync(join(ROOT, path), 'utf8')));
+    expect(typed).toEqual([]);
   });
 });

@@ -5,35 +5,14 @@
 
 .btn-grid > * { min-width: 0; }
 
-.reveal > * { min-width: 0; }
-
-.notes .eye { font-size: 13px; padding: 3px 5px; line-height: 1; opacity: .55; }
-.notes .eye.shown { opacity: 1; }
-
-.palette .nm { flex: 1; }
-.palette .diff {
-  font: 500 var(--ui-text-meta)/1.2 var(--ui-font);
-  font-variant-numeric: tabular-nums; opacity: .75;
-}
-.palette button.on .diff { opacity: .95; color: var(--ui-slot-active-ink); }
-
 .row > .lbl, .area-follow > .lbl { margin: 0; }
-
-.member { border-top: 1px solid var(--edge); padding: 8px 0; }
-
-.member .dot { width: 12px; height: 12px; border-radius: var(--ui-radius); flex: none; }
-.member .grid { display: grid; grid-template-columns: auto 1fr; gap: 4px 6px; margin-top: 6px; align-items: center; }
-.member label { color: var(--dim); font-size: 11.5px; }
-.member input[type=color] { padding: 2px; height: var(--ui-control-h); }
-
-.connect button.url:hover { background: transparent; }
 
 /* Notes on the shared screen: readable at a distance, and not editable —
    no inputs, no drag handles, no reorder arrows (D-174). */
 .notes-read { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
 .notes-read li {
   background: var(--ui-slot-bg); border: 1px solid var(--ui-slot-border); border-radius: var(--ui-radius);
-  padding: 6px 9px; font-size: 12.5px; line-height: 1.45;
+  padding: 6px 9px; font-size: var(--ui-text-body); line-height: 1.45;
 }
 
 /*
@@ -44,7 +23,7 @@
 /* Measure's options on the right, as on the console (D-346) — below the campaign's name. */
 .measure-dock { top: 48px; }
 .tools-card .lbl {
-  margin: 10px 0 4px; font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--dim);
+  margin: 10px 0 4px; font-size: var(--ui-text-label); letter-spacing: .09em; text-transform: uppercase; color: var(--dim);
 }
 .area-colours { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
 .chip-button {
@@ -70,7 +49,7 @@
 .area-row .chip { width: 14px; height: 14px; }
 .area-row button.quiet, .area-follow button.quiet { flex: none; width: var(--row); height: var(--row); padding: 0; }
 
-.area-follow input.size { flex: none; width: 34px; height: var(--row); text-align: right; padding: 0 4px; font-size: 11.5px; }
-.area-follow .lbl { margin: 0; text-transform: none; letter-spacing: 0; font-size: 11px; }
-.area-follow select { flex: 1 1 auto; min-width: 0; padding: 0 6px; font-size: 12px; }
+.area-follow input.size { flex: none; width: 34px; height: var(--row); text-align: right; padding: 0 4px; font-size: var(--ui-text-hint); }
+.area-follow .lbl { margin: 0; text-transform: none; letter-spacing: 0; font-size: var(--ui-text-meta); }
+.area-follow select { flex: 1 1 auto; min-width: 0; padding: 0 6px; font-size: var(--ui-text-control); }
 

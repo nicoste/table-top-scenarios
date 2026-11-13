@@ -3,8 +3,8 @@
 **Owns.** The look both screens share, as two stylesheets: `tokens.css`, every
 colour, size and font as a custom property, and `base.css`, the rules the two
 screens need word for word. Each shell imports both first and adds only what is
-its own (D-386). The design gallery links the same two files, so it shows the
-theme as it is rather than a copy of it.
+its own (D-386). The design galleries link the same files, through each
+screen's shell, so they show the theme as it is rather than a copy of it.
 
 **Must never know about.** Any component's markup, any domain noun, or which
 screen is which. A rule that only one screen needs stays in that screen's shell.

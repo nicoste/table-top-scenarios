@@ -44,7 +44,7 @@ const BASE_SLOT: CSSProperties = {
   border: `2px solid ${THEME.slotBorder}`,
   boxShadow: THEME.slotShadow,
   color: THEME.ink,
-  font: `600 11.5px/1.1 ${THEME.font}`,
+  font: `600 ${THEME.textHint}/1.1 ${THEME.font}`,
   cursor: 'pointer',
   userSelect: 'none',
   transition: 'border-color 0.1s ease, background 0.1s ease, color 0.1s ease',
@@ -66,7 +66,7 @@ const HOTKEY_STYLE: CSSProperties = {
   position: 'absolute',
   top: 3,
   left: 5,
-  fontSize: 10.5,
+  fontSize: THEME.textLabel,
   lineHeight: 1,
   fontWeight: 700,
   // The key colour (D-388): --dim was too faint for a number this small.
