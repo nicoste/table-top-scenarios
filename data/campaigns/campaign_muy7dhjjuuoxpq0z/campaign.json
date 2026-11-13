@@ -4,18 +4,18 @@
  "name": "The Reference",
  "party": [
   {
-   "id": "member_muy7dhjjujn2zgaz",
-   "name": "Galion",
-   "colour": "#df7c20",
-   "visionRange": 22,
-   "image": "3dc8a7563b11f57fe97f7378eca1c0a6ae693228025a26f1c49a6d06441ea03c.webp"
-  },
-  {
    "id": "member_muy7dhjjesbnn0lg",
    "name": "Turdorn",
    "colour": "#b3b5ff",
    "visionRange": 22,
-   "image": "b27f646e429953f7fda703fcc7dae4bbc8f99d0fafa20676c3ec9ff1847c2bb4.webp"
+   "image": "29841cb7204793b70f8a1478d8e7022c575976be8068dfcb53a1d0c79e551760.webp"
+  },
+  {
+   "id": "member_mw9jh2cj4usa95wg",
+   "name": "Galion",
+   "colour": "#57d9a3",
+   "visionRange": 12,
+   "image": "94a15bde39ccd79a9787a88a296f80b3b13fa27a22c3b03841eb84260b937df2.webp"
   }
  ],
  "places": [
@@ -223,6 +223,104 @@
    },
    "markerId": "marker:town",
    "facing": 3,
+   "pois": [],
+   "notes": []
+  },
+  {
+   "id": "place_mvsjtcqsdrmgkfjy",
+   "name": "Goomish",
+   "cell": {
+    "cx": 15,
+    "cz": 15,
+    "x": 26,
+    "z": 19
+   },
+   "markerId": "marker:village",
+   "facing": 0,
+   "pois": [],
+   "notes": []
+  },
+  {
+   "id": "place_mvsjxp0onoc12azr",
+   "name": "Pikes",
+   "cell": {
+    "cx": 15,
+    "cz": 15,
+    "x": 28,
+    "z": 6
+   },
+   "markerId": "marker:village",
+   "facing": 2,
+   "pois": [],
+   "notes": []
+  },
+  {
+   "id": "place_mvsk1rufuegg31cm",
+   "name": "Balanoss",
+   "cell": {
+    "cx": 15,
+    "cz": 15,
+    "x": 29,
+    "z": 14
+   },
+   "markerId": "marker:city",
+   "facing": 2,
+   "pois": [],
+   "notes": []
+  },
+  {
+   "id": "place_mvsk3vz9b5pg9eeh",
+   "name": "Mostolvia",
+   "cell": {
+    "cx": 16,
+    "cz": 15,
+    "x": 7,
+    "z": 15
+   },
+   "markerId": "marker:town",
+   "facing": 2,
+   "pois": [],
+   "notes": []
+  },
+  {
+   "id": "place_mvskddi3yswchv8c",
+   "name": "Quasimodo's Cave",
+   "cell": {
+    "cx": 16,
+    "cz": 15,
+    "x": 11,
+    "z": 23
+   },
+   "markerId": "marker:cave",
+   "facing": 3,
+   "pois": [],
+   "notes": []
+  },
+  {
+   "id": "place_mvskh9al4qucslza",
+   "name": "Newport",
+   "cell": {
+    "cx": 16,
+    "cz": 15,
+    "x": 20,
+    "z": 15
+   },
+   "markerId": "marker:port",
+   "facing": 2,
+   "pois": [],
+   "notes": []
+  },
+  {
+   "id": "place_mvskikk2lmy9efz5",
+   "name": "Sailor's Camp",
+   "cell": {
+    "cx": 16,
+    "cz": 15,
+    "x": 18,
+    "z": 15
+   },
+   "markerId": "marker:camp",
+   "facing": 1,
    "pois": [],
    "notes": []
   }

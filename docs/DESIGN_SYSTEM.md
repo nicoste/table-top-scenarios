@@ -2,12 +2,15 @@
 
 How the two screens look, and where each part of that lives. The rules are
 R-217 to R-217c in [ARCHITECTURE.md](ARCHITECTURE.md); the reasons are D-381,
-D-383, D-386, D-387, D-388, D-389, D-390, D-391 and D-392.
+D-383, D-386, D-387, D-388, D-389, D-390, D-391, D-392 and D-394.
 
 **To see it, start the host and open `/gm/gallery.html`.** Every part below is
-drawn there by the real components with the real stylesheets, and three
-pickers re-colour the page, which is all re-theming is. Nothing on that page is
-a copy, so it cannot show a look the screens do not have.
+drawn there by the real components with the real stylesheets — the console's
+own panels too, handed sample data — and three pickers re-colour the page,
+which is all re-theming is. The table's own parts are on `/table/gallery.html`,
+with the table's stylesheet. Nothing on either page is a copy, so neither can
+show a look the screens do not have, and a test draws both and holds them to
+this page (D-394).
 
 ---
 
@@ -20,10 +23,12 @@ a copy, so it cannot show a look the screens do not have.
 | `apps/gm/src/shell/shell.css`, `apps/table/src/shell/shell.css` | each screen's own rules, after those two |
 | `packages/ui/src/theme/index.ts` | `THEME`: the tokens as `@tt/ui`'s inline styles read them, one fallback each |
 | `packages/ui/src/game-icon/index.tsx` | `GLYPHS`: every icon, as data |
-| `apps/gm/src/gallery/main.tsx` | the gallery |
+| `apps/gm/src/gallery/gallery.tsx` | the gallery |
+| `apps/table/src/gallery/gallery.tsx` | the table's own parts |
 
-A value is written once, in `tokens.css`. This page names tokens and says what
-they are for; it does not repeat their values, which is how a copy drifts.
+A value is written once, in `tokens.css`, and read from there: by the
+stylesheets as `var(--token)`, by `@tt/ui` through `THEME`. The values this page
+shows are `tokens.css`'s, and a test holds them to it (D-394).
 
 ---
 
@@ -55,7 +60,9 @@ number, and a `<kbd>` in words (D-388). Lighter than `--dim`, so it reads at
 **A colour typed into a shell or a component is a bug** (R-217), with two
 exceptions. Black and white for shading — bevels, shadows, outlines — since
 they shade any theme the same. And a picture of a real thing: the paper of a
-printed card (`CARD_STOCK`), and the favicons, which cannot read the theme.
+printed card (`CARD_STOCK`), and the favicons, which cannot read the theme. The
+sentence for a browser too old to draw either screen has plain colours too:
+the tokens are mixed with what that browser lacks.
 
 ---
 
@@ -82,11 +89,19 @@ and `--ui-body-font` for anything read as words.
 | --- | --- | --- |
 | `--ui-text-h1` | 18 | a launcher card's title (`.launcher h1`) |
 | `--ui-text-h2` | 11 | a card's title, uppercase, ruled underneath |
-| `--ui-text-label` | 10.5 | `.lbl`, a field's label, uppercase |
-| `--ui-text-body` | 12.5 | the default, in buttons, fields and rows |
-| `--ui-text-readout` | 12 | `.readout`, figures in a column |
-| `--ui-text-hint` | 11.5 | `.hint`, the secondary words under something |
-| `--ui-text-meta` | 11 | `.diff` and `.tags`: a cost, a size, a tag |
+| `--ui-text-label` | 10.5 | `.lbl` and the other small capitals: a field's label, the address's heading; a tool slot's number |
+| `--ui-text-body` | 12.5 | the default, in buttons, fields and rows; a note on the table |
+| `--ui-text-control` | 12 | words on a compact control: a tool grid's buttons, a row's dropdown, a level's name, a note being written |
+| `--ui-text-readout` | 12 | `.readout`, figures in a column, and the address |
+| `--ui-text-hint` | 11.5 | `.hint`, the secondary words under something; the legend bar, a tool slot's word, a tooltip, the figure in a small field |
+| `--ui-text-meta` | 11 | `.diff` and `.tags`: a cost, a size, a tag; a row's quiet actions, a lowercase label beside a field |
+
+**Every font size is one of these** (D-394), in a stylesheet and in a component,
+which reads them through `THEME`. Three are typed on purpose, and a test names
+them: a glyph sized to the box it fills — the `×` on a picture's badge, the `…`
+on a card while it loads — and the sentence for a browser too old to draw
+either screen, in that browser's own size and face. The brand's wordmark and
+the compass's letters are part of their drawings, lettered to them.
 
 Distances are bare numbers: *sees 12*, *7.4* (D-316).
 
@@ -146,6 +161,12 @@ icon, as the `✕` of ground that cannot be crossed is.
 
 ## Components
 
+- **`DraftInput`**: a field that becomes an edit when it is finished with —
+  Enter or leaving it — and goes back on Escape. A value it would refuse shows
+  as refused and is never sent (R-163).
+- **`ColourInput`**: a colour, chosen once it has held still for a moment, so
+  dragging across the picker is not a stream of edits.
+- **`Metrics`**: what the screen is costing, on the screen itself (R-166).
 - **`SlotButton`** (R-217b): a tool or a mode. Its icon and one word, the key
   on the console, and a tooltip when the word needs more.
 - **`ConfirmDelete`** (R-151): `×` arms it, a second click commits, and *Keep*
@@ -177,6 +198,11 @@ icon, as the `✕` of ground that cannot be crossed is.
 if something applies to the whole panel, then its controls and rows — each
 repeating thing in its own well (`.member`, `.stage-list li`, `.area-list li`,
 `.notes li`) — and last a `.readout`, or the button that adds a row.
+
+**A warning** (`.warn`) is said where it applies, in the highlight: something
+that will not work as the GM expects — *Pick one to place it — a click on the
+map does nothing until you do.* A `.notice` is about the whole panel; a
+`.warn` is about the control above it.
 
 **Buttons, by weight:**
 

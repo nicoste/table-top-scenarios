@@ -205,7 +205,7 @@ button.quiet.danger-trigger:hover:not(:disabled) {
 
 .tools { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
-.tools button { padding: 7px 4px; font-size: 12px; }
+.tools button { padding: 7px 4px; font-size: var(--ui-text-control); }
 
 /* Same treatment as .tools: fixed columns, so the buttons cannot be squeezed
    below their labels by a wrapper's shrink factor (D-129, R-110c). The label
@@ -213,7 +213,7 @@ button.quiet.danger-trigger:hover:not(:disabled) {
    full dock width to share. */
 .brush { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 
-.brush button { padding: 6px 2px; font-size: 12px; }
+.brush button { padding: 6px 2px; font-size: var(--ui-text-control); }
 
 .reveal {
   display: grid;
@@ -239,7 +239,7 @@ button.quiet.danger-trigger:hover:not(:disabled) {
 
 .notes .note-actions { grid-column: 2; display: flex; gap: 3px; justify-content: flex-end; }
 
-.notes .note-actions button { min-height: var(--ui-control-sm); padding: 1px 6px; font-size: 11px; }
+.notes .note-actions button { min-height: var(--ui-control-sm); padding: 1px 6px; font-size: var(--ui-text-meta); }
 
 /* A row's action drawn as an icon (IconButton, D-390): a square of the quiet
    size with the icon in its middle. After the row rules above, which it
@@ -319,10 +319,10 @@ kbd {
 
 .connect button.url:hover code { color: color-mix(in srgb, var(--ok) 70%, white); text-decoration: underline; }
 
-.connect code { color: var(--ok); font-size: 12px; }
+.connect code { color: var(--ok); font-size: var(--ui-text-readout); }
 
 .connect .lbl {
-  color: var(--dim); font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--dim); font-size: var(--ui-text-label); text-transform: uppercase; letter-spacing: .08em;
   transition: color .15s;
 }
 
@@ -338,7 +338,7 @@ kbd {
 
 .badge {
   position: fixed; top: 12px; right: 12px; z-index: 5; color: var(--ink);
-  font: 700 11.5px/1.2 var(--ui-font);
+  font: 700 var(--ui-text-hint)/1.2 var(--ui-font);
   background: var(--ui-panel-bg); border: 2px solid var(--ui-panel-border);
   border-radius: var(--ui-radius); box-shadow: var(--ui-panel-shadow); padding: 6px 11px;
 }
@@ -348,7 +348,7 @@ kbd {
   position: fixed; bottom: 12px; left: 12px; z-index: 5; color: var(--dim);
   background: var(--ui-panel-bg); border: 2px solid var(--ui-panel-border);
   border-radius: var(--ui-radius); box-shadow: var(--ui-panel-shadow);
-  padding: 5px 11px; font-size: 11.5px;
+  padding: 5px 11px; font-size: var(--ui-text-hint);
 }
 
 .readout {
@@ -370,13 +370,13 @@ kbd {
 }
 
 .metrics h2 {
-  margin: 0 0 6px; font-size: 10.5px; letter-spacing: .09em;
+  margin: 0 0 6px; font-size: var(--ui-text-label); letter-spacing: .09em;
   text-transform: uppercase; color: var(--dim); font-weight: 600;
 }
 
 .metrics dl {
   margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 1px 12px;
-  font-size: 11.5px;
+  font-size: var(--ui-text-hint);
 }
 
 .metrics dt { color: var(--dim); }
@@ -392,7 +392,7 @@ kbd {
    moves nothing. */
 .metrics dd.hot { color: var(--ui-highlight); }
 
-.metrics .hint { margin: 7px 0 0; font-size: 10.5px; color: var(--dim); }
+.metrics .hint { margin: 7px 0 0; font-size: var(--ui-text-label); color: var(--dim); }
 
 .area-list li {
   display: flex; flex-direction: column; gap: 4px;
@@ -406,7 +406,8 @@ kbd {
 /*
  * The sentence each page carries for a browser too old to draw it (D-386):
  * plain colours, since the tokens are mixed with what that browser lacks, and
- * hidden wherever both features work. A browser that cannot read the @supports
+ * the browser's own reading size and face, since it is a page of its own and
+ * not a part of either screen (D-394). Hidden wherever both features work. A browser that cannot read the @supports
  * rule at all keeps the sentence too, which is the point.
  */
 .too-old {

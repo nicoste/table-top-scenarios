@@ -63,8 +63,8 @@ The docs, in reading order:
 4. [DECISIONS](docs/DECISIONS.md): every choice, numbered `D-n`, with its reasons.
 5. [MEASUREMENTS](docs/MEASUREMENTS.md): what things cost, measured.
 6. [DESIGN_SYSTEM](docs/DESIGN_SYSTEM.md): how the screens look — the tokens,
-   the icons, the components — and the gallery that shows them, at
-   `/gm/gallery.html` while the host runs.
+   the icons, the components — and the galleries that show them, at
+   `/gm/gallery.html` and `/table/gallery.html` while the host runs.
 
 ## Layout
 

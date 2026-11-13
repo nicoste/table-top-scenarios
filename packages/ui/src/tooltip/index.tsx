@@ -46,7 +46,7 @@ const BUBBLE: CSSProperties = {
   background: THEME.panelBg,
   border: `1px solid ${THEME.slotBorder}`,
   color: THEME.ink,
-  font: '11.5px/1.45 ui-sans-serif, system-ui, sans-serif',
+  font: `${THEME.textHint}/1.45 ${THEME.bodyFont}`,
   whiteSpace: 'nowrap',
   pointerEvents: 'none',
   boxShadow: '0 4px 14px #0008',

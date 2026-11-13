@@ -15,5 +15,15 @@ export default defineConfig({
       '@tt/client-core': fileURLToPath(new URL('../../packages/client-core/src/index.ts', import.meta.url)),
     },
   },
-  build: { outDir: 'dist', emptyOutDir: true },
+  build: {
+    outDir: 'dist',
+    emptyOutDir: true,
+    // The table, and the gallery of its own parts beside it (D-394).
+    rollupOptions: {
+      input: {
+        main: fileURLToPath(new URL('index.html', import.meta.url)),
+        gallery: fileURLToPath(new URL('gallery.html', import.meta.url)),
+      },
+    },
+  },
 });

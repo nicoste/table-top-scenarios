@@ -1787,6 +1787,11 @@ apps/host/src/
 > **Amended by D-388.** A key shown on screen — a slot's number, a `<kbd>` in
 > words — is in `--ui-key`, and nothing else is.
 >
+> **Amended by D-394.** Font sizes are tokens too: no stylesheet or component
+> types one but the few `DESIGN_SYSTEM.md` names, and a test holds both. The
+> galleries draw everything that page names — the table's own parts on the
+> table's gallery — and a test draws them without a browser.
+>
 > **R-217a.** **One concept, one icon, in `GameIcon`.** Monochrome, in the
 > current colour, drawn from `GLYPHS`. A second drawing of a concept the
 > registry has — in a panel, a shell or the gallery — is a bug: `walk` is the

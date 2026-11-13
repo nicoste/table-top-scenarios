@@ -10290,3 +10290,44 @@ each, since all of them rewrite `package-lock.json`.
 Not done, because nothing in them is a vulnerability, and each changes how
 something is built rather than what is safe: vite 8 with its React plugin 6,
 TypeScript 7, ESLint 10, dependency-cruiser 18, and three.js 0.187.
+
+### D-394 — The design page and its galleries, made true · `agreed`
+*"Can you check if our design document and gallery are up to date?"* — *"Yes,
+fix all four on one branch"*
+
+The check found the page right about everything recent and wrong in four
+places. All four are fixed, and each now has a test, so the next drift fails.
+
+- **Font sizes were not tokens.** The page said every value is written once,
+  in `tokens.css`; for text it was not. 37 rules typed a size, against 15 that
+  used a token, and the components typed theirs inline — the tooltip its own
+  list of fonts besides. Now every size is a token. One was added,
+  `--ui-text-control`, for the words on a compact control; the rest went to
+  the token of the same size, so nothing on screen moved: the computed type of
+  every element, on the console's world and every tool, a map and every tool,
+  a place's inspector, and the table at rest and measuring, is what it was.
+  One size moved on purpose: a travel cost, 10.5 to 11, the size the page
+  gives `.diff`. `THEME` reads the sizes the components use, and the body face.
+  Three sizes stay typed, named in the page and the test: the `×` on a
+  picture's badge and the `…` on a loading card, glyphs sized to their box, and
+  the sentence for a browser too old to draw either screen. The brand's
+  wordmark and the compass's letters are lettered to their drawings.
+- **Twelve of the table's rules styled nothing**: an eye in its notes, a
+  palette, a member row, a connect badge — left from when the table had them.
+  Gone, and with them the one `.diff` that had used the token.
+- **The page left things out**: `DraftInput`, `ColourInput` and `Metrics`
+  among the components, `.warn` among the patterns, and the old-browser
+  sentence among the typed colours.
+- **The gallery drew about half of what the page named**, and only with the
+  console's stylesheet. It now draws the colours and the text sizes, every
+  button, and the console's own panels — a place, the tokens, travel, measure,
+  On stage, props with the question Backspace asks — handed sample data and
+  callbacks that do nothing, and the cost overlay held in place. The table's
+  own parts have a gallery of their own, `/table/gallery.html`, drawn by the
+  table's components with its stylesheet. Each gallery's component is a module
+  of its own, and a test draws both without a browser: every class, colour,
+  text size and icon the page names is on one or the other. The first draft of
+  the console's crashed on a sample, silently — the page showed only the
+  old-browser sentence — which is the failure that test now catches.
+- **The page repeated values while saying it did not.** It says why it shows
+  them now, and a test holds each to `tokens.css`.

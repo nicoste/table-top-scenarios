@@ -111,8 +111,9 @@ dispatch({ kind: 'paintGround', ...action.cell, ground, size: brush, stroke: new
 - [ ] a row in [MEASUREMENTS.md](MEASUREMENTS.md) if the change moved a number
       worth comparing against later — **with the machine and the scene it was
       measured on**, because a figure without its conditions is noise
-- [ ] [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) still true, and the gallery
-      (`apps/gm/src/gallery/main.tsx`) showing it, if a primitive, an icon in
+- [ ] [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) still true, and the galleries
+      (`apps/gm/src/gallery/gallery.tsx`, `apps/table/src/gallery/gallery.tsx`)
+      showing it, if a primitive, an icon in
       `packages/ui/src/game-icon/index.tsx` or a token changed (R-217)
 
 ---
